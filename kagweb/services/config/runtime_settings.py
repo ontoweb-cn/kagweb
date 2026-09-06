@@ -814,7 +814,10 @@ class RuntimeSettingsService:
             agent_loop["command"] = value
         if value := self._process_env_value("KAGWEB_AGENT_LOOP_URL"):
             agent_loop["url"] = value
-        if value := self._process_env_value("KAGWEB_AGENT_LOOP_API_KEY"):
+        # The api_key override carries the KAG_ prefix, not KAGWEB_: the
+        # credential belongs to the external agent-loop service, while the
+        # other three are KAGWeb deployment concerns.
+        if value := self._process_env_value("KAG_AGENT_LOOP_API_KEY"):
             agent_loop["api_key"] = value
         if agent_loop:
             payload["agent_loop"] = agent_loop

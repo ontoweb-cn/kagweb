@@ -104,7 +104,8 @@ real status/body.
 
 `data/user/settings/system.json`, `agent_loop` block (normalized by
 `RuntimeSettingsService`; env overrides `KAGWEB_AGENT_LOOP_BACKEND` /
-`_URL` / `_COMMAND` / `_API_KEY`):
+`_URL` / `_COMMAND`, and `KAG_AGENT_LOOP_API_KEY` — the credential carries
+the KAG_ prefix because it belongs to the external agent service):
 
 ```json
 {

@@ -52,10 +52,20 @@ def test_env_overrides_apply(tmp_path: Path) -> None:
         process_env={
             "KAGWEB_AGENT_LOOP_BACKEND": "hermes",
             "KAGWEB_AGENT_LOOP_URL": "http://hermes:9000",
-            "KAGWEB_AGENT_LOOP_API_KEY": "sk-test",
+            "KAG_AGENT_LOOP_API_KEY": "sk-test",
         },
     )
     block = service.load_system()["agent_loop"]
     assert block["backend"] == "hermes"
     assert block["url"] == "http://hermes:9000"
     assert block["api_key"] == "sk-test"
+
+
+def test_kagweb_prefixed_api_key_no_longer_applies(tmp_path: Path) -> None:
+    """The credential override moved to the KAG_ prefix; the old name is inert."""
+    service = RuntimeSettingsService(
+        tmp_path,
+        process_env={"KAGWEB_AGENT_LOOP_API_KEY": "stale"},
+    )
+    block = service.load_system()["agent_loop"]
+    assert block["api_key"] == ""
