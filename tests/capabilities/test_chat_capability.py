@@ -49,7 +49,14 @@ async def test_unconfigured_backend_emits_shell_notice(monkeypatch) -> None:
 
     kinds = [kind for kind, _ in events]
     assert kinds == ["content", "result"]
-    assert "framework shell" in events[0][1]
+    # The notice is localized (interface settings decide zh/en); accept the
+    # i18n entry for either language rather than one fixed wording.
+    from kagweb.services.i18n import t
+
+    assert events[0][1] in {
+        t("chat.stub_notice", language="en"),
+        t("chat.stub_notice", language="zh"),
+    }
     assert context.capability_output.answer_published is True
 
 

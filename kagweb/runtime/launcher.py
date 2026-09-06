@@ -287,12 +287,14 @@ def _port_listeners(port: int) -> list[tuple[int, str]]:
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=3,
         )
     except Exception:
         return []
     pids: list[int] = []
-    for line in completed.stdout.splitlines():
+    for line in (completed.stdout or "").splitlines():
         if not line.startswith("p"):
             continue
         try:
@@ -314,12 +316,18 @@ def _port_listeners_windows(port: int) -> list[tuple[int, str]]:
             check=False,
             capture_output=True,
             text=True,
+            # netstat output is localized (GBK on zh-CN Windows). Decoding
+            # failures in the reader thread leave stdout None with a zero
+            # exit code, so never decode strictly and never trust stdout
+            # to be a str here.
+            encoding="utf-8",
+            errors="replace",
             timeout=5,
         )
     except Exception:
         return []
     pids: list[int] = []
-    for line in completed.stdout.splitlines():
+    for line in (completed.stdout or "").splitlines():
         parts = line.split()
         if len(parts) < 5 or parts[0].upper() != "TCP" or parts[3].upper() != "LISTENING":
             continue
@@ -342,9 +350,13 @@ def _port_listeners_windows(port: int) -> list[tuple[int, str]]:
                     check=False,
                     capture_output=True,
                     text=True,
+                    # Localized (non-UTF-8) output on zh-CN Windows; the
+                    # ASCII CSV tokens we parse survive lossy decoding.
+                    encoding="utf-8",
+                    errors="replace",
                     timeout=3,
                 )
-                first = result.stdout.strip().splitlines()[:1]
+                first = (result.stdout or "").strip().splitlines()[:1]
                 if first and first[0].startswith('"'):
                     name = first[0].split('","')[0].strip('"')
             except Exception:

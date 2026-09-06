@@ -107,7 +107,14 @@ async def test_bare_turn_completes_with_stub_notice(store, stub_workspace, monke
     messages = await store.get_messages(final["session_id"])
     roles = [m["role"] for m in messages]
     assert roles == ["user", "assistant"]
-    assert "framework shell" in messages[1]["content"]
+    # The notice is localized (interface settings decide zh/en); accept the
+    # i18n entry for either language rather than one fixed wording.
+    from kagweb.services.i18n import t
+
+    assert messages[1]["content"] in {
+        t("chat.stub_notice", language="en"),
+        t("chat.stub_notice", language="zh"),
+    }
 
 
 async def test_streamed_content_is_persisted_as_answer(store, stub_workspace) -> None:

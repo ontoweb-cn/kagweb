@@ -124,7 +124,8 @@ async def test_cli_backend_timeout_kills_process(tmp_path: Path) -> None:
     with pytest.raises(AgentLoopError) as excinfo:
         async for _ in backend.run(_request()):
             pass
-    assert "timed out" in str(excinfo.value)
+    # Message wording is localized; the backend attribute is not.
+    assert excinfo.value.backend == "fake-cli"
 
 
 async def test_cli_backend_closing_stream_kills_process(tmp_path: Path) -> None:
@@ -166,7 +167,9 @@ async def test_cli_backend_missing_command_raises(tmp_path: Path) -> None:
     with pytest.raises(AgentLoopError) as excinfo:
         async for _ in backend.run(_request()):
             pass
-    assert "failed to start" in str(excinfo.value)
+    # Message wording is localized; the backend name appears in both.
+    assert excinfo.value.backend == "missing"
+    assert "missing" in str(excinfo.value)
 
 
 # ---------------------------------------------------------------------------
