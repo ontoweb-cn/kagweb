@@ -142,7 +142,7 @@ services:
   # the supervisord children's environment, so changing ports/auth/providers
   # means editing JSONs + `podman compose restart`.
   kagweb:
-    image: ghcr.io/hkuds/kagweb:latest
+    image: ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
     container_name: kagweb
     pull_policy: always
     restart: unless-stopped

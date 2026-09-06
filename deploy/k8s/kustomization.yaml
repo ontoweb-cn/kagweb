@@ -4,5 +4,5 @@ resources:
   - kagweb.yaml
 # Pin images for production instead of floating on :latest, e.g.:
 # images:
-#   - name: ghcr.io/hkuds/kagweb
+#   - name: ghcr.io/YOUR_KAGWEB_ORG/kagweb
 #     newTag: 1.2.3

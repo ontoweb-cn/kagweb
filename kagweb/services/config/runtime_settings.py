@@ -17,8 +17,10 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
     # About → Updates performs at most one release lookup per process/day.
     # Operators may disable even that explicit network boundary for offline or
     # audited deployments; KAGWEB_VERSION_CHECK_ENABLED is the deployment
+    # override. Defaults OFF in KAGWeb: the upstream release URL is a
+    # placeholder until a real release channel is configured.
     # override for read-only settings volumes.
-    "version_check_enabled": True,
+    "version_check_enabled": False,
     "backend_port": 8001,
     "backend_workers": 1,
     "frontend_port": 3782,
@@ -331,7 +333,7 @@ DEFAULT_GRAPHRAG_SETTINGS: dict[str, Any] = {
     "dynamic_community_selection": False,
 }
 
-# LightRAG retrieval + indexing knobs (HKUDS/LightRAG native SDK). ``top_k``
+# LightRAG retrieval + indexing knobs (LightRAG native SDK). ``top_k``
 # is the number of entities/relations the query pulls; ``response_type`` mirrors
 # GraphRAG's. These ride into ``QueryParam`` and the pinned SDK constructor.
 # ``max_concurrent_files`` sizes the native parser worker pool after KAGWeb

@@ -24,8 +24,8 @@ from kagweb.runtime.home import get_runtime_home
 from kagweb.runtime.process import is_process_alive
 from kagweb.services.file_io import atomic_write_json
 
-GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/HKUDS/KAGWeb/releases/latest"
-GITHUB_LATEST_RELEASE_WEB_URL = "https://github.com/HKUDS/KAGWeb/releases/latest"
+GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/example/kagweb/releases/latest"
+GITHUB_LATEST_RELEASE_WEB_URL = "https://github.com/example/kagweb/releases/latest"
 VERSION_CHECK_TTL_SECONDS = 24 * 60 * 60
 LAUNCHER_PID_ENV = "KAGWEB_LAUNCHER_PID"
 
@@ -174,7 +174,7 @@ def detect_installation() -> Installation:
             mode="docker",
             current_version=__version__,
             automatic_update=False,
-            command="docker pull ghcr.io/hkuds/kagweb:latest",
+            command="docker pull ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest",
             reason="Container images are updated and recreated by the Docker host.",
         )
 
@@ -316,7 +316,7 @@ def _release_from_payload(payload: Any) -> ReleaseInfo:
     except ValueError:
         raise VersionCheckError("The latest release has an invalid version") from None
     url = str(payload.get("html_url") or "").strip()
-    if not url.startswith("https://github.com/HKUDS/KAGWeb/releases/"):
+    if not url.startswith("https://github.com/example/kagweb/releases/"):
         raise VersionCheckError("The latest release has an invalid URL")
     body = str(payload.get("body") or "").replace("\r\n", "\n").replace("\r", "\n").strip()
     excerpt = _plain_release_excerpt(body)
@@ -345,7 +345,7 @@ def _release_from_latest_url(value: str) -> ReleaseInfo:
         port = parsed.port
     except ValueError:
         raise VersionCheckError("The latest release has an invalid URL") from None
-    prefix = "/HKUDS/KAGWeb/releases/tag/"
+    prefix = "/example/kagweb/releases/tag/"
     if (
         parsed.scheme != "https"
         or parsed.hostname != "github.com"

@@ -4,7 +4,7 @@ Thank you for your interest in contributing to KAGWeb! We welcome developers of 
 
 <p align="center">
 <a href="https://discord.gg/eRsjPgMU4t"><img src="https://img.shields.io/badge/Discord-Join_Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>&nbsp;
-<a href="https://github.com/HKUDS/KAGWeb/issues/78"><img src="https://img.shields.io/badge/WeChat-Join_Group-07C160?style=for-the-badge&logo=wechat&logoColor=white" alt="WeChat"></a>&nbsp;
+<a href="https://github.com/example/kagweb/issues/78"><img src="https://img.shields.io/badge/WeChat-Join_Group-07C160?style=for-the-badge&logo=wechat&logoColor=white" alt="WeChat"></a>&nbsp;
 <a href="./Communication.md"><img src="https://img.shields.io/badge/Feishu-Join_Group-00D4AA?style=for-the-badge&logo=feishu&logoColor=white" alt="Feishu"></a>
 </p>
 
@@ -86,7 +86,7 @@ pre-commit run --all-files
 6. **Submit** your Pull Request to the correct target branch (not `main` unless it's a hotfix or docs-only change).
 
 > [!TIP]
-> Browse our [Issues](https://github.com/HKUDS/KAGWeb/issues) for tasks labeled `good first issue` to find a great starting point. Comment on the issue to let others know you're working on it.
+> Browse our [Issues](https://github.com/example/kagweb/issues) for tasks labeled `good first issue` to find a great starting point. Comment on the issue to let others know you're working on it.
 
 ---
 

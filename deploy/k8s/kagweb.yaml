@@ -101,7 +101,7 @@ spec:
         # First-start directory/settings bootstrap, exactly once per volume,
         # so the app containers' own (idempotent) init never races.
         - name: init-data
-          image: ghcr.io/hkuds/kagweb:latest
+          image: ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -118,7 +118,7 @@ spec:
       containers:
         # ---------------- backend ----------------
         - name: backend
-          image: ghcr.io/hkuds/kagweb:latest
+          image: ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -169,7 +169,7 @@ spec:
               mountPath: /tmp
         # ---------------- frontend ----------------
         - name: frontend
-          image: ghcr.io/hkuds/kagweb:latest
+          image: ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

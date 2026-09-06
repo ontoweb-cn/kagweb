@@ -3749,7 +3749,7 @@
   "visitor": "visitor",
   "whisper": "whisper",
   "you": "you",
-  "e.g. HKUDS/KAGWeb": "e.g. HKUDS/KAGWeb",
+  "e.g. example/kagweb": "e.g. example/kagweb",
   "main": "main",
   "docs/": "docs/",
   "*.md": "*.md",

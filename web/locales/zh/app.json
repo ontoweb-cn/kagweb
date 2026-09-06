@@ -3749,7 +3749,7 @@
   "visitor": "来访者",
   "whisper": "密语",
   "you": "你",
-  "e.g. HKUDS/KAGWeb": "例如 HKUDS/KAGWeb",
+  "e.g. example/kagweb": "例如 example/kagweb",
   "main": "main",
   "docs/": "docs/",
   "*.md": "*.md",

@@ -12,7 +12,7 @@ file is only about running the published image.
 
 ## Overview
 
-The published `ghcr.io/hkuds/kagweb` image runs both the FastAPI
+The published `ghcr.io/YOUR_KAGWEB_ORG/kagweb` image runs both the FastAPI
 backend (`:8001`) and the Next.js frontend (`:3782`) under `supervisord`
 inside a single container, on top of `python:3.11-slim`. There is one
 data tree (`/app/data` inside the container) that holds settings,
@@ -62,7 +62,7 @@ mappings.
 docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 \
   -v kagweb-data:/app/data \
-  ghcr.io/hkuds/kagweb:latest
+  ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
 ```
 
 Open <http://127.0.0.1:3782>. The container creates
@@ -106,7 +106,7 @@ docker run --rm --name kagweb \
   -p 127.0.0.1:1455:3782 \
   -p 127.0.0.1:1457:3782 \
   -v kagweb-data:/app/data \
-  ghcr.io/hkuds/kagweb:latest
+  ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
 ```
 
 For Compose, add the same temporary overlay to the base file you normally use:
@@ -218,7 +218,7 @@ docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 -p 127.0.0.1:8001:8001 \
   --add-host=host.docker.internal:host-gateway \
   -v kagweb-data:/app/data \
-  ghcr.io/hkuds/kagweb:latest
+  ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
 ```
 
 Then in **Settings → Models**, point the provider Base URL at
@@ -251,7 +251,7 @@ to loopback breaks the published `-p` port forward.
 
 For users who want the strongest default posture — rootless, with a
 read-only root filesystem — `compose.yaml` is the supported starting
-point. It pulls the same `ghcr.io/hkuds/kagweb:latest` image and
+point. It pulls the same `ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest` image and
 relies on the entrypoint chown + supervisord's per-program privilege drop,
 the URL-forwarding `proxy.ts`, and host-side bind mounts to make it all work.
 
@@ -313,7 +313,7 @@ podman run --rm -d --name kagweb \
   --tmpfs /root:size=16m,mode=0700 \
   --tmpfs /home:size=16m,mode=0755 \
   --userns=keep-id \
-  ghcr.io/hkuds/kagweb:latest
+  ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
 ```
 
 After the container is up, the backend and frontend always run as the
@@ -430,7 +430,7 @@ directory you own, or use `:U` on the volume mount.
 **`sed -i` errors on a fresh image.** There shouldn't be any — the
 runtime no longer mutates the bundle. The URL is forwarded at request
 time. If you see one, you are probably on an older image; pull
-`ghcr.io/hkuds/kagweb:latest` again.
+`ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest` again.
 
 **Settings page won't accept the API base URL.** Open
 `data/user/settings/system.json` on the host and set

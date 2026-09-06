@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_MAX_CHARS = 50_000
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024  # 4 MB — safety cap on raw download
 DEFAULT_TIMEOUT_S = 15.0
-DEFAULT_USER_AGENT = "KAGWeb/1.0 (+https://hkuds.dev/kagweb)"
+DEFAULT_USER_AGENT = "KAGWeb/1.0 (+kagweb.local)"
 ALLOWED_SCHEMES = {"http", "https"}
 MAX_REDIRECTS = 5
 

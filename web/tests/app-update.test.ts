@@ -24,7 +24,7 @@ const statusPayload = {
     version: "1.7.0",
     name: "KAGWeb 1.7",
     published_at: "2026-08-30T00:00:00Z",
-    url: "https://github.com/HKUDS/KAGWeb/releases/tag/v1.7.0",
+    url: "https://github.com/example/kagweb/releases/tag/v1.7.0",
     excerpt: "A stable release.",
     migration_warning: false,
   },

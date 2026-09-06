@@ -207,7 +207,7 @@ class DiscordHistoryExporter:
             base_url=DISCORD_API_BASE,
             headers={
                 "Authorization": f"Bot {self.token}",
-                "User-Agent": "DiscordBot (https://github.com/HKUDS/KAGWeb, 1.0)",
+                "User-Agent": "DiscordBot (https://github.com/example/kagweb, 1.0)",
             },
             timeout=30.0,
             follow_redirects=False,
