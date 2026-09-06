@@ -42,14 +42,6 @@ _TOOL_DESCRIPTIONS: dict[str, dict[str, str]] = {
         "en": "Explore ideas broadly and organize them with rationale.",
         "zh": "广泛发散想法，并按理由组织结果。",
     },
-    "code_execution": {
-        "en": "Run sandboxed Python code for computation and data exploration.",
-        "zh": "在沙箱中运行 Python，用于计算和数据探索。",
-    },
-    "exec": {
-        "en": "Run shell commands inside an isolated sandbox workspace.",
-        "zh": "在隔离沙箱工作区中运行 shell 命令。",
-    },
     "paper_search": {
         "en": "Search arXiv preprints and return paper metadata.",
         "zh": "搜索 arXiv 预印本并返回论文元数据。",

@@ -9,13 +9,11 @@ so each container carries exactly one concern while sharing one entrypoint
 |---|---|---|---|
 | `backend` | 8001 | `/app/data`(PVC,RW) | FastAPI;探针 `/health/ready`、`/health/live` |
 | `frontend` | 3782 | `user/settings`(只读) | Next.js;入口导出 auth/API-base 与 backend 同源;代理回环 `127.0.0.1:8001`(同 Pod) |
-| `sandbox-runner` | 8900(Pod 内) | workspace/users + 只读 cli-apps | 不可信命令执行 sidecar;不对外发布 |
 
 ## 使用
 
 ```bash
 # 沙箱 runner 镜像不在 GHCR,先本地构建(入 kind/minikube 需 load):
-docker build -f Dockerfile.runner -t kagweb-sandbox-runner:local .
 kubectl apply -k deploy/k8s
 ```
 
@@ -30,11 +28,8 @@ Secret 挂载替换该子目录(不要提交到仓库)。
   redis 并把 `redis_url` 写入 settings)。
 - redis **不是**单 worker 的依赖:无 redis 时使用进程内协调器,
   `/health/ready` 正常返回 200。
-- runner 与 backend 同 Pod 共享卷,`host_path == sandbox_path` 契约天然
-  成立;`cli-apps` 只读挂载(可执行、不可改),`data/system` 不挂载。
 - 全 Pod 强制 `runAsNonRoot`(UID/GID 1000,与镜像内 `kagweb` 用户
-  一致)+ `seccompProfile: RuntimeDefault`;runner 额外
-  `readOnlyRootFilesystem` + `capabilities.drop: [ALL]`。
+  一致)+ `seccompProfile: RuntimeDefault`。
 - 生产环境请在 `kustomization.yaml` 中把 `:latest` pin 到具体版本 tag。
 
 ## 子目录部署(如 `ai.wust.edu.cn/kagweb`)

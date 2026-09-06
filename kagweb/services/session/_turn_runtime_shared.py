@@ -76,18 +76,9 @@ def _resolve_turn_outcome(
     return status, error
 
 
-def _assemble_persisted_answer(
-    content_segments: Sequence[tuple[str | None, str]],
-    narration_call_ids: set[str],
-) -> str:
-    """Replay visible content bytes, excluding trace-only narration rounds."""
-    return clean_thinking_tags(
-        "".join(
-            text
-            for call_id, text in content_segments
-            if not (call_id and call_id in narration_call_ids)
-        )
-    )
+def _assemble_persisted_answer(content_segments: Sequence[tuple[str | None, str]]) -> str:
+    """Replay captured content bytes as the persisted answer."""
+    return clean_thinking_tags("".join(text for _call_id, text in content_segments))
 
 
 def _clip_text(value: str, limit: int = 4000) -> str:

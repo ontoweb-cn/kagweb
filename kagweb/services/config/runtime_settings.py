@@ -30,15 +30,6 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
     "cors_origins": [],
     "disable_ssl_verify": False,
     "chat_attachment_dir": "",
-    # Enable the restricted-subprocess code-execution sandbox (the `exec` /
-    # `code_execution` tools the office skills — docx/pdf/pptx/xlsx — run on).
-    # Default on so document generation works out of the box across all
-    # deployment shapes; a stronger backend (runner sidecar / bwrap) still
-    # takes precedence when available. Set false to disable host-side exec.
-    "sandbox_allow_subprocess": True,
-    # Conservative chat -> deep_question routing. Explicit requests only, and
-    # callers can still pass config.auto_route=false for a single turn.
-    "capability_routing_enabled": False,
     # Reference policy applied after every web-search provider. This belongs in
     # runtime JSON so packaged installs and the settings service share one
     # source of truth; project main.yaml is intentionally not an operator
@@ -659,7 +650,6 @@ class RuntimeSettingsService:
             "CORS_ORIGINS": ",".join(system["cors_origins"]),
             "DISABLE_SSL_VERIFY": _bool_env(system["disable_ssl_verify"]),
             "CHAT_ATTACHMENT_DIR": system["chat_attachment_dir"],
-            "KAGWEB_SANDBOX_ALLOW_SUBPROCESS": _bool_env(system["sandbox_allow_subprocess"]),
             "AUTH_ENABLED": _bool_env(auth["enabled"]),
             "AUTH_USERNAME": auth["username"],
             "AUTH_PASSWORD_HASH": auth["password_hash"],
@@ -784,10 +774,6 @@ class RuntimeSettingsService:
             or self._process_env_value("BACKEND_WORKERS")
         ):
             payload["backend_workers"] = value
-        if value := self._process_env_value("KAGWEB_SANDBOX_ALLOW_SUBPROCESS"):
-            payload["sandbox_allow_subprocess"] = value
-        if value := self._process_env_value("KAGWEB_CAPABILITY_ROUTING_ENABLED"):
-            payload["capability_routing_enabled"] = value
         if value := self._process_env_value("CHAT_ATTACHMENT_MAX_FILE_MB"):
             payload["chat_attachment_max_file_mb"] = value
         if value := self._process_env_value("CHAT_ATTACHMENT_MAX_TOTAL_MB"):
@@ -1157,12 +1143,6 @@ class RuntimeSettingsService:
             "cors_origins": _coerce_origins(settings.get("cors_origins")),
             "disable_ssl_verify": _coerce_bool(settings.get("disable_ssl_verify"), False),
             "chat_attachment_dir": _string(settings.get("chat_attachment_dir")),
-            "sandbox_allow_subprocess": _coerce_bool(
-                settings.get("sandbox_allow_subprocess"), True
-            ),
-            "capability_routing_enabled": _coerce_bool(
-                settings.get("capability_routing_enabled"), False
-            ),
             "web_search_source_filtering": {
                 "enabled": _coerce_bool(source_filter.get("enabled"), True),
                 "blocked_domains": _string_or_list(source_filter.get("blocked_domains")),

@@ -155,6 +155,7 @@ class TurnExecutor:
             from kagweb.services.model_selection.runtime import (
                 reset_llm_selection as reset_active_llm_selection,
             )
+            from kagweb.services.llm.exceptions import LLMConfigError
 
             request_config = dict(payload.get("config", {}) or {})
             selection_tutor_context = _extract_selection_tutor_context(
@@ -278,7 +279,15 @@ class TurnExecutor:
                     language=str(payload.get("language", "en") or "en"),
                 )
 
-            llm_config, llm_scope_token = activate_llm_selection(payload.get("llm_selection"))
+            # A framework-shell deployment may have no model configured at
+            # all; the capability decides whether that is fatal. Proceed with
+            # a None config so stub capabilities can complete bare turns.
+            try:
+                llm_config, llm_scope_token = activate_llm_selection(
+                    payload.get("llm_selection")
+                )
+            except LLMConfigError:
+                llm_config, llm_scope_token = None, None
             builder = self._create_context_builder()
 
             async def _emit_context_event(event: StreamEvent) -> None:

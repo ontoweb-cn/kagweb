@@ -62,9 +62,6 @@ _MESSAGES: dict[str, dict[str, str]] = {
             "This tool is not available in this conversation. "
             "Only the tools listed in the prompt can be called."
         ),
-        "sandbox.command_blocked": "Error: command blocked by safety guard (dangerous pattern).",
-        "sandbox.disabled_for_account": "Code execution is disabled for your account.",
-        "sandbox.no_backend": "no sandbox backend available",
         "chat.stub_notice": (
             "KAGWeb is running as a framework shell — the conversation backend is not "
             "connected yet. Model providers, sessions, settings and Partners are ready; "
@@ -108,9 +105,6 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "mcp.catalog_entry_missing": "目录中没有名为 {id!r} 的 MCP 服务。",
         "mcp.entry_admin_only": "该服务以本地命令方式运行，只能由管理员添加。",
         "mcp.tool_not_available": "该工具在本次对话中不可用，只能调用提示中列出的工具。",
-        "sandbox.command_blocked": "错误：命令被安全防护拦截（匹配危险模式）。",
-        "sandbox.disabled_for_account": "你的账号已禁用代码执行。",
-        "sandbox.no_backend": "没有可用的沙箱后端",
         "chat.stub_notice": (
             "KAGWeb 目前以框架壳模式运行，对话后端尚未接入。模型服务、会话、设置与 "
             "Partners 均已就绪，对话能力将由 KAG 集成提供。"

@@ -9,10 +9,6 @@
 #              (auth=false) and disagree with the backend's auth gate. For the
 #              API base the seeded default resolves to http://127.0.0.1:8001
 #              (same pod network namespace) when the settings leave it blank.
-#   sandbox-runner   untrusted-exec sidecar; shares the data volume at the
-#              SAME paths as the backend so the runner mount contract
-#              (host_path == sandbox_path) holds. Never exposed outside the pod.
-#
 # Shape notes (see the review in the PR that added this file):
 #   * replicas is pinned to 1 with strategy Recreate: /app/data is a
 #     SQLite-bearing tree on a ReadWriteOnce volume, so it cannot follow a
@@ -28,10 +24,7 @@
 # Usage:
 #   kubectl apply -k deploy/k8s
 #
-# Prerequisite: images. kagweb (production target) comes from GHCR;
-# the sandbox-runner is NOT published there — build and load it first:
-#   docker build -f Dockerfile.runner -t kagweb-sandbox-runner:local .
-#   (kind: kind load docker-image kagweb-sandbox-runner:local)
+# Prerequisite: the kagweb image comes from GHCR.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -125,13 +118,6 @@ spec:
           env:
             - name: KAGWEB_COMPONENT
               value: backend
-            # Route untrusted exec to the sidecar (SYSTEM isolation). Remove
-            # to fall back to bwrap / the restricted subprocess backend.
-            # IPv4 literal, not "localhost": the runner binds 0.0.0.0 only, and
-            # on a dual-stack node localhost may resolve to ::1 first (same
-            # rationale as web/proxy.ts's backend URL).
-            - name: KAGWEB_SANDBOX_RUNNER_URL
-              value: http://127.0.0.1:8900
           ports:
             - name: backend
               containerPort: 8001
@@ -209,55 +195,6 @@ spec:
               readOnly: true
             - name: tmp-frontend
               mountPath: /tmp
-        # ------------- sandbox runner -------------
-        # Executes untrusted shell commands; cap_drop ALL + read-only rootfs
-        # mirror docker-compose.yml. cli-apps is READ-ONLY here: the runner
-        # must be able to execute installed apps but never modify them.
-        - name: sandbox-runner
-          # Not published to GHCR — build from Dockerfile.runner (see header).
-          image: kagweb-sandbox-runner:local
-          imagePullPolicy: IfNotPresent
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          env:
-            - name: RUNNER_PORT
-              value: "8900"
-          ports:
-            - name: runner
-              containerPort: 8900
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: runner
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              memory: 1Gi
-          volumeMounts:
-            # Same in-pod paths as the backend — the runner contract is that
-            # a request's host_path is already visible at sandbox_path.
-            - name: data
-              mountPath: /app/data/user/workspace
-              subPath: user/workspace
-            - name: data
-              mountPath: /app/data/users
-              subPath: users
-            - name: data
-              mountPath: /app/data/cli-apps
-              subPath: cli-apps
-              readOnly: true
-            - name: runner-tmp
-              mountPath: /tmp
-            - name: runner-home
-              mountPath: /home/runner
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -269,8 +206,4 @@ spec:
         - name: tmp
           emptyDir: {}
         - name: tmp-frontend
-          emptyDir: {}
-        - name: runner-tmp
-          emptyDir: {}
-        - name: runner-home
           emptyDir: {}
