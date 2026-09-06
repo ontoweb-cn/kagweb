@@ -24,7 +24,7 @@ The image is built so it works under three deployment shapes:
 1. **`docker run`** — the easy path. Rootful, writable rootfs, single
    bind mount on `/app/data`.
 2. **`docker compose`** (`docker-compose.yml`) — same image plus the
-   PocketBase sidecar and the sandbox-runner sidecar. Still rootful,
+   optional PocketBase and redis sidecars. Still rootful,
    writable rootfs.
 3. **`podman compose -f compose.yaml`** — the hardened path. Rootless
    (`userns_mode: keep-id`), read-only rootfs, tmpfs in place of writable
@@ -139,9 +139,9 @@ expose it on a LAN or public interface — the overlay publishes the **whole**
 frontend on those two ports, not just `/auth/callback`. For a manual
 `docker run` whose container-side frontend port is not `3782`, change the
 right-hand `3782` targets; `scripts/docker_compose.py` handles configured
-custom ports. For single-container installs, set `sandbox_allow_subprocess`
-to `false` if model-generated code must not share the container trust
-boundary with secrets.
+custom ports. Model-generated code execution was removed together with the
+sandbox layer; if you wire an agent-loop backend that executes code, run it
+as a separate service outside this container's trust boundary.
 
 ### One-time migration: `docker-compose.ghcr.yml` now mounts all of `./data`
 
@@ -285,12 +285,6 @@ What `compose.yaml` does, and why:
   directory you own work cleanly.
 - **Loopback-only port bindings.** `127.0.0.1:` prefix on every `ports:`
   entry. Drop the prefix to expose on all interfaces.
-- **No sandbox-runner sidecar.** The `docker-compose.yml` shape includes
-  a hardened sidecar that runs untrusted model-generated code in a
-  least-privileged container. The podman shape does not — the main app
-  falls back to `bwrap` (Linux, if installed in the image) or the
-  restricted subprocess backend controlled by
-  `sandbox_allow_subprocess` in `system.json`.
 
 ### Running outside `compose.yaml`
 
@@ -451,13 +445,11 @@ renormalized on save.
   paths or the bind-mounted `./data` tree will fail.
 - `userns_mode: keep-id` on the host means a container escape lands
   with your host user's permissions, not root.
-- The sandbox-runner sidecar (in `docker-compose.yml`, **not** in
-  `compose.yaml`) is the strongest posture for untrusted model-generated
-  code: a sandbox escape lands in a stripped, unprivileged container
-  with no app secrets, not in the main app. The podman shape trades that
-  for the rootless-podman shape; the main app falls back to `bwrap` or
-  the restricted subprocess backend controlled by
-  `sandbox_allow_subprocess`.
+- Untrusted model-generated code has no execution path in the app any
+  more (the sandbox layer was removed with the RAG strip). If an
+  agent-loop backend reintroduces code execution, deploy it as its own
+  least-privileged service; keep it out of the app container, which holds
+  app secrets.
 - Auth (`data/user/settings/auth.json` → `auth_enabled = true`) gates
   `/api/*` and `/ws/*` via the `dt_token` cookie. `web/proxy.ts` reads
   `KAGWEB_AUTH_ENABLED` (exported by the entrypoint on every start)
@@ -480,9 +472,8 @@ backend port; orchestrators define their own probes, so only plain
 `docker ps` may show "unhealthy" for a frontend-only container.)
 
 A known-good Kubernetes stack (backend + frontend containers from the one
-image, sandbox-runner as a same-pod sidecar sharing the data volume, the
-backend probed on `/health/ready` and `/health/live` while the frontend and
-runner probe their own roots, non-root
+image, the backend probed on `/health/ready` and `/health/live`,
+non-root
 UID 1000 + fsGroup, initContainer for first-start data bootstrap) lives in
 `deploy/k8s/` — apply with `kubectl apply -k deploy/k8s`. See
 `deploy/k8s/README.md` for the shape rationale (RWO/SQLite keeps the stack

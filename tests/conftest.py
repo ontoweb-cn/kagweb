@@ -100,9 +100,7 @@ def _isolate_codebuddy_login(monkeypatch):
     """
     from kagweb.services import codebuddy_credentials
 
-    monkeypatch.setenv(
-        "KAGWEB_CODEBUDDY_AUTH_FILE", str(Path("/nonexistent/codebuddy-auth.info"))
-    )
+    monkeypatch.setenv("KAGWEB_CODEBUDDY_AUTH_FILE", str(Path("/nonexistent/codebuddy-auth.info")))
     monkeypatch.setattr(
         codebuddy_credentials,
         "_local_storage_dir",

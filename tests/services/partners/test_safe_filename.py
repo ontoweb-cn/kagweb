@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 import sys
 
 import pytest
-
-from pathlib import Path
 
 from kagweb.partners.helpers import safe_filename
 

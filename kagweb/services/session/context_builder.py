@@ -156,14 +156,16 @@ class ContextBuilder:
         self.history_budget_ratio = history_budget_ratio
         self.summary_target_ratio = summary_target_ratio
 
-    def _effective_context_window(self, llm_config: LLMConfig) -> int:
+    def _effective_context_window(self, llm_config: LLMConfig | None) -> int:
+        # ``None`` means a bare turn (no model configured): fall through to
+        # the registry default via empty model/None window.
         return resolve_effective_context_window(
             context_window=getattr(llm_config, "context_window", None),
             model=str(getattr(llm_config, "model", "") or ""),
             max_tokens=getattr(llm_config, "max_tokens", None),
         )
 
-    def _history_budget(self, llm_config: LLMConfig) -> int:
+    def _history_budget(self, llm_config: LLMConfig | None) -> int:
         effective_context_window = self._effective_context_window(llm_config)
         ratio_budget = max(256, int(effective_context_window * self.history_budget_ratio))
         return min(ratio_budget, MAX_HISTORY_PLAN_TOKENS)
@@ -183,7 +185,7 @@ class ContextBuilder:
         # leaves almost no headroom before the next compaction.
         return max(128, int(budget * (1 - self.summary_target_ratio)))
 
-    def _rebuild_source_budget(self, llm_config: LLMConfig) -> int:
+    def _rebuild_source_budget(self, llm_config: LLMConfig | None) -> int:
         # A raw prefix is eligible for drift-free rebuild up to this threshold;
         # beyond it we degrade to fold-in (existing summary + new turns).
         ratio_budget = max(1024, self._effective_context_window(llm_config) // 2)
@@ -383,9 +385,7 @@ class ContextBuilder:
         try:
             from kagweb.services.llm import stream as llm_stream
 
-            await _trace_bridge(
-                {"event": "llm_call", "state": "running", **trace_meta}
-            )
+            await _trace_bridge({"event": "llm_call", "state": "running", **trace_meta})
             _chunks: list[str] = []
             try:
                 async for _c in llm_stream(
@@ -422,7 +422,9 @@ class ContextBuilder:
         self,
         *,
         session_id: str,
-        llm_config: LLMConfig,
+        # ``None`` = bare turn: no model configured, capability decides
+        # whether that is fatal. Budgets fall back to registry defaults.
+        llm_config: LLMConfig | None = None,
         language: str = "en",
         on_event: Callable[[StreamEvent], Awaitable[None]] | None = None,
         leaf_message_id: int | None = None,

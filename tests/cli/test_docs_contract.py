@@ -105,9 +105,7 @@ def test_documented_kagweb_subcommands_exist() -> None:
 
 
 def test_deep_research_examples_include_required_config() -> None:
-    examples = [
-        command for command in _kagweb_commands() if "kagweb run deep_research" in command
-    ]
+    examples = [command for command in _kagweb_commands() if "kagweb run deep_research" in command]
 
     assert examples, "docs should include at least one deep_research example"
     for command in examples:

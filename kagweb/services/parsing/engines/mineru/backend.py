@@ -79,7 +79,9 @@ def _pdf_page_count(source_path: Path) -> int:
         with pymupdf.open(source_path) as document:
             return len(document)
     except Exception as exc:
-        raise MinerUError(f"Could not inspect PDF page count for {source_path.name}: {exc}") from exc
+        raise MinerUError(
+            f"Could not inspect PDF page count for {source_path.name}: {exc}"
+        ) from exc
 
 
 def _parse_cloud_pdf_in_chunks(

@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from kagweb.services.llm.usage_tracker import UsageTracker
 from kagweb.runtime.stream_bus import StreamBus
+from kagweb.services.llm.usage_tracker import UsageTracker
 
 
 async def emit_capability_result(

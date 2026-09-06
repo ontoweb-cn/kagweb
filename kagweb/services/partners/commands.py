@@ -6,9 +6,9 @@ from dataclasses import dataclass
 import shlex
 from typing import Any, Callable
 
-from kagweb.tools.builtin import default_optional_tools
 from kagweb.partners.bus.events import InboundMessage
 from kagweb.services.partners.sessions import PartnerSessionStore
+from kagweb.tools.builtin import default_optional_tools
 
 
 @dataclass(frozen=True)

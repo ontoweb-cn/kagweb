@@ -84,6 +84,7 @@ from .exceptions import (
     LLMProviderTransportError,
     LLMRateLimitError,
     LLMTimeoutError,
+    NoModelConfiguredError,
 )
 from .factory import (
     API_PROVIDER_PRESETS,
@@ -136,6 +137,7 @@ __all__ = [
     # Exceptions
     "LLMError",
     "LLMConfigError",
+    "NoModelConfiguredError",
     "LLMProviderError",
     "LLMProviderTransportError",
     "LLMAPIError",

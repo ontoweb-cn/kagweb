@@ -4,7 +4,6 @@ Unified session history API.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any, Literal
 
@@ -173,8 +172,12 @@ async def get_session_trace(
         pattern="^(dsl|mermaid)$",
         description="dsl → JSON document; mermaid → flowchart source",
     ),
-    stable: bool = Query(False, description="Omit volatile fields (exported_at, …) for diff baselines"),
-    normalize_ids: bool = Query(False, description="Renumber node ids sequentially for cross-run diffs"),
+    stable: bool = Query(
+        False, description="Omit volatile fields (exported_at, …) for diff baselines"
+    ),
+    normalize_ids: bool = Query(
+        False, description="Renumber node ids sequentially for cross-run diffs"
+    ),
     include_text: bool = Query(True, description="Include user/assistant text previews"),
 ):
     """Session reasoning trace as a DSL document or Mermaid diagram (module 18).

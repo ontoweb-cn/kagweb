@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import pytest
-
 import importlib.util
 import json
 from pathlib import Path
 import re
 import sys
 
+import pytest
 import yaml
 
 
@@ -144,8 +143,7 @@ def test_container_docs_use_temporary_codex_oauth_bridge() -> None:
             f"-f {base_file} -f compose.codex-oauth.yaml up -d --force-recreate kagweb"
         ) in normalized_section
     assert (
-        "podman compose -f compose.yaml -f compose.codex-oauth.yaml "
-        "up -d --force-recreate kagweb"
+        "podman compose -f compose.yaml -f compose.codex-oauth.yaml up -d --force-recreate kagweb"
     ) in normalized_section
 
 

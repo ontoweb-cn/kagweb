@@ -73,61 +73,68 @@ class SessionTitleService:
         if not first_user or not first_assistant:
             return
 
+        # Bare deployments (no model at all) skip straight to the truncation
+        # fallback instead of paying an LLMConfigError round-trip per turn.
+        # Broken-but-present configs still attempt the call so their real
+        # error surfaces (and the existing handlers degrade gracefully).
+        from kagweb.services.llm.config import has_configured_llm
+
         title = ""
-        try:
-            from kagweb.services.llm import stream as llm_stream
+        if has_configured_llm():
+            try:
+                from kagweb.services.llm import stream as llm_stream
 
-            zh = str(ui_language or "").lower().startswith("zh")
-            if zh:
-                sys_prompt = (
-                    "你需要为一段对话生成一个简洁的标题。"
-                    "直接输出标题文本，不要引号、不要 Markdown 格式、"
-                    '不要末尾标点、不要 "标题：" 这类前缀。'
-                    "标题控制在 4-10 个汉字以内。"
-                )
-                user_prompt = (
-                    "请基于以下对话生成标题：\n\n"
-                    f"[用户]\n{_clip_text(first_user, 800)}\n\n"
-                    f"[助手]\n{_clip_text(first_assistant, 1500)}"
-                )
-            else:
-                sys_prompt = (
-                    "You generate a concise, descriptive title for a "
-                    "conversation. Output only the title as plain text "
-                    "— no quotes, no markdown, no trailing punctuation, "
-                    'no "Title:" prefix. Keep it 4-8 words.'
-                )
-                user_prompt = (
-                    "Generate a title for this conversation:\n\n"
-                    f"[User]\n{_clip_text(first_user, 800)}\n\n"
-                    f"[Assistant]\n{_clip_text(first_assistant, 1500)}"
-                )
+                zh = str(ui_language or "").lower().startswith("zh")
+                if zh:
+                    sys_prompt = (
+                        "你需要为一段对话生成一个简洁的标题。"
+                        "直接输出标题文本，不要引号、不要 Markdown 格式、"
+                        '不要末尾标点、不要 "标题：" 这类前缀。'
+                        "标题控制在 4-10 个汉字以内。"
+                    )
+                    user_prompt = (
+                        "请基于以下对话生成标题：\n\n"
+                        f"[用户]\n{_clip_text(first_user, 800)}\n\n"
+                        f"[助手]\n{_clip_text(first_assistant, 1500)}"
+                    )
+                else:
+                    sys_prompt = (
+                        "You generate a concise, descriptive title for a "
+                        "conversation. Output only the title as plain text "
+                        "— no quotes, no markdown, no trailing punctuation, "
+                        'no "Title:" prefix. Keep it 4-8 words.'
+                    )
+                    user_prompt = (
+                        "Generate a title for this conversation:\n\n"
+                        f"[User]\n{_clip_text(first_user, 800)}\n\n"
+                        f"[Assistant]\n{_clip_text(first_assistant, 1500)}"
+                    )
 
-            async def _collect_title() -> str:
-                buf: list[str] = []
-                async for c in llm_stream(
-                    prompt=user_prompt,
-                    system_prompt=sys_prompt,
-                    temperature=0.3,
-                    max_tokens=80,
-                ):
-                    buf.append(c)
-                return "".join(buf)
+                async def _collect_title() -> str:
+                    buf: list[str] = []
+                    async for c in llm_stream(
+                        prompt=user_prompt,
+                        system_prompt=sys_prompt,
+                        temperature=0.3,
+                        max_tokens=80,
+                    ):
+                        buf.append(c)
+                    return "".join(buf)
 
-            from kagweb.services.model_selection.tasks import task_llm_scope
+                from kagweb.services.model_selection.tasks import task_llm_scope
 
-            # The scope is entered before the task is created so `wait_for`'s
-            # inner task copies it; with no task model configured it is a no-op.
-            with task_llm_scope():
-                raw_title = await asyncio.wait_for(_collect_title(), timeout=20.0)
-            if _looks_like_error_payload(raw_title):
-                logger.debug("Title model streamed an error payload — falling back")
-                raw_title = ""
-            title = _sanitize_session_title(raw_title)
-        except asyncio.TimeoutError:
-            logger.debug("Title LLM call timed out — falling back")
-        except Exception:
-            logger.debug("Title LLM call failed", exc_info=True)
+                # The scope is entered before the task is created so `wait_for`'s
+                # inner task copies it; with no task model configured it is a no-op.
+                with task_llm_scope():
+                    raw_title = await asyncio.wait_for(_collect_title(), timeout=20.0)
+                if _looks_like_error_payload(raw_title):
+                    logger.debug("Title model streamed an error payload — falling back")
+                    raw_title = ""
+                title = _sanitize_session_title(raw_title)
+            except asyncio.TimeoutError:
+                logger.debug("Title LLM call timed out — falling back")
+            except Exception:
+                logger.debug("Title LLM call failed", exc_info=True)
 
         if not title:
             # Fallback: truncate the first user message so the sidebar

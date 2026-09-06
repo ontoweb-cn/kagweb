@@ -161,8 +161,6 @@ async def test_managed_update_creates_durable_job(
     assert store.load().id == payload["id"]
 
 
-
-
 @pytest.mark.asyncio
 async def test_memory_usage_is_withheld_from_non_admins(monkeypatch: pytest.MonkeyPatch) -> None:
     """Same reason /status strips model names: it is operational detail."""

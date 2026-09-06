@@ -17,9 +17,9 @@ from kagweb.services.session.artifact_attachments import (
 from kagweb.services.session.provider_response_state import (
     normalize_provider_response_state,
 )
+
 from .._turn_runtime_shared import (
     _assemble_persisted_answer,
-    _clip_text,
     _count_branch_user_turns,
     _extract_selection_tutor_context,
     _format_selection_tutor_context,
@@ -149,13 +149,13 @@ class TurnExecutor:
 
         try:
             from kagweb.core.context import Attachment, TurnRuntimeContext, UnifiedContext
+            from kagweb.services.llm.exceptions import NoModelConfiguredError
             from kagweb.services.model_selection.runtime import (
                 activate_llm_selection,
             )
             from kagweb.services.model_selection.runtime import (
                 reset_llm_selection as reset_active_llm_selection,
             )
-            from kagweb.services.llm.exceptions import LLMConfigError
 
             request_config = dict(payload.get("config", {}) or {})
             selection_tutor_context = _extract_selection_tutor_context(
@@ -282,11 +282,16 @@ class TurnExecutor:
             # A framework-shell deployment may have no model configured at
             # all; the capability decides whether that is fatal. Proceed with
             # a None config so stub capabilities can complete bare turns.
+            # Only the "no model at all" subtype takes this path: a model
+            # that exists but is misconfigured (missing endpoint / API key)
+            # must fail the turn with its real error instead of silently
+            # completing as a shell notice. Note this except only covers the
+            # no-explicit-selection path — an explicit ``llm_selection``
+            # resolves through ``resolve_llm_runtime_config``, which does not
+            # raise LLMConfigError.
             try:
-                llm_config, llm_scope_token = activate_llm_selection(
-                    payload.get("llm_selection")
-                )
-            except LLMConfigError:
+                llm_config, llm_scope_token = activate_llm_selection(payload.get("llm_selection"))
+            except NoModelConfiguredError:
                 llm_config, llm_scope_token = None, None
             builder = self._create_context_builder()
 
@@ -470,8 +475,8 @@ class TurnExecutor:
             # already unwinding and must not start new blocking work.
             await fill_preview_text(generated_attachments)
 
-            # The persisted answer is the captured content minus any narration
-            # rounds (their text stayed in the trace, never the answer).
+            # The persisted answer is the content captured live from the
+            # stream (thinking tags stripped as a final defence).
             assistant_content = _persisted_answer()
 
             # Assistant continues the same branch as the user message it

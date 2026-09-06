@@ -291,6 +291,28 @@ class GenerationProviderSpec:
 
 # Image-generation providers in the OpenAI-compatible cluster. A single adapter
 # covers all of these; ``default_model`` is only a Settings prefill hint.
+GENERATION_PROVIDER_ALIASES: dict[str, str] = {
+    "aliyun": "dashscope",
+    "bailian": "dashscope",
+    "ark": "volcengine",
+    "volces": "volcengine",
+    "doubao": "volcengine",
+    "seedream": "volcengine",
+    "seedance": "volcengine",
+    "azure": "azure_openai",
+    "aoai": "azure_openai",
+    "openai_compatible": "custom",
+}
+
+
+def _canonical_generation_provider(
+    name: str | None, table: dict[str, GenerationProviderSpec]
+) -> str:
+    key = (name or "").strip().lower().replace("-", "_")
+    key = GENERATION_PROVIDER_ALIASES.get(key, key)
+    return key if key in table else "custom"
+
+
 IMAGEGEN_PROVIDERS: dict[str, GenerationProviderSpec] = {
     "dashscope": GenerationProviderSpec(
         label="Aliyun DashScope",
@@ -340,6 +362,7 @@ IMAGEGEN_PROVIDERS: dict[str, GenerationProviderSpec] = {
         default_model="",
     ),
 }
+
 
 # Video-generation providers. Text-to-video has no synchronous standard; these
 # all use the async-task adapter (submit → poll → download).
@@ -828,6 +851,8 @@ def _resolve_search_max_results(catalog: dict[str, Any], default: int = 5) -> in
         except (TypeError, ValueError):
             pass
     try:
+        from kagweb.services.config.loader import load_config_with_main
+
         settings = load_config_with_main("main.yaml")
     except Exception:
         return default
@@ -1012,7 +1037,6 @@ __all__ = [
     "search_fallback_candidates",
     "supported_search_providers_hint",
     "NANOBOT_LLM_PROVIDERS",
-    "EmbeddingProviderSpec",
     "VoiceProviderSpec",
     "TTS_PROVIDERS",
     "STT_PROVIDERS",
@@ -1029,5 +1053,3 @@ __all__ = [
     "resolve_search_runtime_config",
     "search_provider_state",
 ]
-
-

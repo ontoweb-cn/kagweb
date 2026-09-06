@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 import logging
 import sys

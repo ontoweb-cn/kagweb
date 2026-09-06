@@ -683,9 +683,9 @@ async def tool_options():
     mandatory ``partner_read`` / ``partner_memorize`` / ``partner_search`` tools
     instead, which are always on and not owner-configurable.
     """
-    from kagweb.services.settings.interface_settings import get_enabled_optional_tools
     from kagweb.api.utils.tool_options import build_tool_options
     from kagweb.multi_user.tool_access import combine_whitelists
+    from kagweb.services.settings.interface_settings import get_enabled_optional_tools
 
     optional, mcp = _caller_tool_reach()
     options = await build_tool_options(

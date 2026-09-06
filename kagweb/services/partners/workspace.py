@@ -25,14 +25,12 @@ self-contained on disk, so a copy is a complete transfer:
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Any
 
 from kagweb.multi_user.paths import (
     ensure_scope_workspace,
-    get_admin_path_service,
     get_path_service_for_scope,
 )
 from kagweb.services.partners.scope import partner_scope

@@ -53,8 +53,7 @@ def _capture_stream(monkeypatch) -> dict[str, Any]:
         return LLMResponse(content="OK")
 
     monkeypatch.setattr(
-        "kagweb.services.llm.provider_core.openai_compat_provider."
-        "OpenAICompatProvider.chat_stream",
+        "kagweb.services.llm.provider_core.openai_compat_provider.OpenAICompatProvider.chat_stream",
         fake_chat_stream,
     )
     return captured

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 
 class OutgoingAttachment(BaseModel):
@@ -18,6 +17,7 @@ class OutgoingAttachment(BaseModel):
     mime_type: str | None = None
     id: str | None = None
     extracted_text: str | None = None
+
 
 class LLMSelection(BaseModel):
     model_config = ConfigDict(extra="forbid")

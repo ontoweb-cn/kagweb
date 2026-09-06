@@ -105,6 +105,7 @@ class CodeBuddyAuthService:
         # a shared host, out of whoever else is on that login. Drop our cached
         # clients and report where the session actually lives.
         from kagweb.services.codebuddy_credentials import load_credentials
+
         async with self._lock:
             if load_credentials() is not None:
                 self._connection = "connected"

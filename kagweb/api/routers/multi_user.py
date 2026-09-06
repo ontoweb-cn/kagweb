@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 from copy import deepcopy
-import os
-from pathlib import Path
-import shutil
 from typing import Any
-import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, StrictBool, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from kagweb.api.routers.auth import require_admin, require_auth
 from kagweb.multi_user.audit import log_admin_action, log_guardian_action
@@ -42,8 +37,6 @@ from kagweb.multi_user.identity import (
 from kagweb.multi_user.model_access import is_owner_bound
 from kagweb.multi_user.paths import (
     get_admin_path_service,
-    get_path_service_for_scope,
-    scope_for_user,
 )
 from kagweb.services.auth import POCKETBASE_ENABLED, hash_password
 from kagweb.services.config.model_catalog import ModelCatalogService
@@ -87,7 +80,6 @@ class GuardianRestrictionsPayload(BaseModel):
         if not surfaces or not set(surfaces).issubset(LEARNING_SURFACES):
             raise ValueError("Unknown or empty learning surface")
         return surfaces
-
 
 
 class GuardianCredentialResetPayload(BaseModel):

@@ -35,6 +35,18 @@ class LLMConfigError(LLMError):
     pass
 
 
+class NoModelConfiguredError(LLMConfigError):
+    """Raised when the deployment has no active LLM model at all.
+
+    Distinct from a broken configuration (:class:`LLMConfigError`): a
+    framework-shell deployment legitimately runs with no model, and callers
+    (the turn executor) use this type to route such turns to stub
+    capabilities instead of failing them.
+    """
+
+    pass
+
+
 class LLMProviderError(LLMError):
     """Raised when there's an error with the LLM provider."""
 
@@ -158,6 +170,7 @@ class ProviderContextWindowError(LLMAPIError):
 __all__ = [
     "LLMError",
     "LLMConfigError",
+    "NoModelConfiguredError",
     "LLMProviderError",
     "LLMProviderTransportError",
     "LLMCircuitBreakerError",

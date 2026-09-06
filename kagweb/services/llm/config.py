@@ -29,7 +29,7 @@ from kagweb.services.provider_registry import (
     wire_api_from_api_format,
 )
 
-from .exceptions import LLMConfigError
+from .exceptions import LLMConfigError, NoModelConfiguredError
 
 if TYPE_CHECKING:
     from .traffic_control import TrafficController
@@ -194,7 +194,11 @@ def _get_llm_config_from_resolver() -> LLMConfig:
     """Resolve LLM config from the TutorBot-style runtime adapter."""
     resolved = resolve_llm_runtime_config()
     if not resolved.model:
-        raise LLMConfigError(
+        # NoModelConfiguredError, not plain LLMConfigError: a framework-shell
+        # deployment legitimately has no model, and the turn executor routes
+        # on this type. Everything below is a model that EXISTS but is broken
+        # and must surface as a failed turn, never as a stub.
+        raise NoModelConfiguredError(
             "No active LLM model is configured. Please set it in Settings > Catalog."
         )
     if not resolved.effective_url and resolved.provider_mode != "oauth":
@@ -268,6 +272,29 @@ def clear_llm_config_cache() -> None:
     global _LLM_CONFIG_CACHE
 
     _LLM_CONFIG_CACHE = None
+
+
+def has_configured_llm() -> bool:
+    """Report whether a chat model is resolvable, without raising.
+
+    ``True`` for a resolved config as well as for a *broken but present*
+    configuration (those surface as LLMConfigError at call time and must not
+    be silently downgraded); ``False`` only when no model is configured at
+    all. Callers that merely want to skip optional LLM work on bare
+    deployments (e.g. session-title generation) probe with this instead of
+    catching exceptions.
+    """
+    if _SCOPED_LLM_CONFIG.get() is not None or _LLM_CONFIG_CACHE is not None:
+        return True
+    from kagweb.services.config.provider_runtime import resolve_llm_runtime_config
+
+    try:
+        return bool(resolve_llm_runtime_config().model)
+    except Exception:
+        # Resolution itself failed (not "no model"): treat as configured so
+        # the real error surfaces at the call site instead of being swallowed
+        # by an optional path.
+        return True
 
 
 def reload_config() -> LLMConfig:

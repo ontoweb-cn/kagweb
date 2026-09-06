@@ -8,7 +8,6 @@ import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 import logging
-import re
 from typing import TYPE_CHECKING, Any
 
 from kagweb.core.stream import StreamEvent, StreamEventType
@@ -20,10 +19,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Content call_kinds that make up the persisted answer. The chat agent loop
-# streams every round's text as ``content`` with ``agent_loop_round``; the
-# finish round (and forced-finish) are the answer, narration rounds are
-# filtered back out via their ``call_role`` marker (see _narration_marker_call_id).
+# Content call_kinds that make up the persisted answer. Most producers emit
+# plain CONTENT events without a ``call_id`` (captured unconditionally); an
+# event that DOES carry a call_id is captured only when its call_kind marks
+# it as answer text. The two members cover the historic chat agent loop's
+# final/round tags and stay so future loop integrations tagging their rounds
+# the same way are captured without another change here.
 _ANSWER_CONTENT_CALL_KINDS = frozenset({"llm_final_response", "agent_loop_round"})
 _FINAL_TURN_STATUSES = frozenset({"completed", "failed", "cancelled"})
 

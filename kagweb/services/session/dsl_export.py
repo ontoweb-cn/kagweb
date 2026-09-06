@@ -74,9 +74,10 @@ def _group_has_trace_substance(events: list[dict[str, Any]]) -> bool:
             if str(event.get("content") or "").strip():
                 return True
         elif etype == "progress":
-            if _meta(event).get("trace_kind") != "call_status" and str(
-                event.get("content") or ""
-            ).strip():
+            if (
+                _meta(event).get("trace_kind") != "call_status"
+                and str(event.get("content") or "").strip()
+            ):
                 return True
         elif etype == "content":
             if (narration or not _is_chat_loop_answer_content(event)) and str(
@@ -138,9 +139,7 @@ def _last_call_state(events: list[dict[str, Any]]) -> str | None:
 
 def _extract_duration_ms(events: list[dict[str, Any]]) -> int | None:
     timestamps = [
-        event["timestamp"]
-        for event in events
-        if isinstance(event.get("timestamp"), (int, float))
+        event["timestamp"] for event in events if isinstance(event.get("timestamp"), (int, float))
     ]
     if not timestamps:
         return None
@@ -310,11 +309,7 @@ def _visible_path(
         # negative ids first, which never occur in the store).
         children.sort(key=lambda m: m["id"])
 
-    start = (
-        _ROOT_KEY
-        if children_by_parent.get(_ROOT_KEY)
-        else _fallback_start(messages)
-    )
+    start = _ROOT_KEY if children_by_parent.get(_ROOT_KEY) else _fallback_start(messages)
     visible: list[dict[str, Any]] = []
     siblings: dict[int, dict[str, Any]] = {}
     guard: set[str] = set()
@@ -388,10 +383,7 @@ def _merge_deep_research_pairs(
     followup_ids: set[int] = set()
     merged_events: dict[int, list[dict[str, Any]]] = {}
     for i, message in enumerate(messages):
-        if (
-            message.get("role") != "assistant"
-            or message.get("capability") != "deep_research"
-        ):
+        if message.get("role") != "assistant" or message.get("capability") != "deep_research":
             continue
         if not _has_outline_preview(message.get("events")):
             continue
@@ -530,7 +522,9 @@ def _convert_trace(
                     entry["branches"] = branches
 
         if message.get("role") == "assistant":
-            calls = _convert_calls(_build_call_tree(message.get("events")), writer, counters, prefix)
+            calls = _convert_calls(
+                _build_call_tree(message.get("events")), writer, counters, prefix
+            )
             if calls:
                 entry["calls"] = calls
         entries.append(entry)
@@ -550,9 +544,7 @@ def _collect_branches(
             continue
         override = {key: sibling_id}
         sub_visible, sub_siblings = _visible_path(messages, override)
-        start = next(
-            (i for i, m in enumerate(sub_visible) if m.get("id") == sibling_id), -1
-        )
+        start = next((i for i, m in enumerate(sub_visible) if m.get("id") == sibling_id), -1)
         if start < 0:
             continue
         trace = _convert_trace(

@@ -61,9 +61,7 @@ def stub_partner(monkeypatch) -> dict[str, Any]:
         async def reload_channels(self, partner_id: str):  # noqa: ARG002
             self.reload_calls += 1
 
-    monkeypatch.setattr(
-        "kagweb.services.partners.manager.get_partner_manager", lambda: _Manager()
-    )
+    monkeypatch.setattr("kagweb.services.partners.manager.get_partner_manager", lambda: _Manager())
     return saved
 
 

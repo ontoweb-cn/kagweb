@@ -413,6 +413,7 @@ async def _collect_from_user_message(
             )
         )
 
+
 # ----- Lineage walker (branch-safe, store-protocol-compatible) ------------
 
 
@@ -453,6 +454,14 @@ async def _load_lineage(
 
 
 # ----- Per-type resolvers shared by fresh + historical paths --------------
+
+#: Display labels for transcripts imported from external agent CLIs. The
+#: agent-loop integration may grow this set as new import sources appear.
+_EXTERNAL_AGENT_LABELS: dict[str, str] = {
+    "claude_code": "Claude Code",
+    "codex": "Codex",
+    "opencode": "OpenCode",
+}
 
 
 def _imported_agent_label(meta: dict[str, Any], lang: str) -> str | None:
@@ -662,7 +671,6 @@ async def _load_history_session(
         return "", ""
     name = str(meta.get("title", "") or "Untitled session")
     return transcript, name
-
 
 
 __all__ = [

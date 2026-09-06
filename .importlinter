@@ -18,15 +18,10 @@ type = forbidden
 source_modules =
     kagweb.runtime
     kagweb.services
-    kagweb.knowledge
-    kagweb.learning
     kagweb.multi_user
     kagweb.capabilities
-    kagweb.agents
 forbidden_modules =
     kagweb.api
-ignore_imports =
-    kagweb.learning.tests.** -> kagweb.api.**
 
 [importlinter:contract:app-adapter-direction]
 name = Application does not import API adapters

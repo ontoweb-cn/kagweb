@@ -30,9 +30,7 @@ try:
         UploadError,
     )
 except ImportError as e:
-    raise ImportError(
-        "Matrix dependencies not installed. Run: pip install kagweb[matrix]"
-    ) from e
+    raise ImportError("Matrix dependencies not installed. Run: pip install kagweb[matrix]") from e
 
 try:
     from nio.crypto.attachments import decrypt_attachment

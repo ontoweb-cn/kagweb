@@ -174,9 +174,7 @@ class TurnLifecycle:
     async def _ensure_accepting_turns(self) -> None:
         async with self._lock:
             if self._turns_blocked_for_update_locked():
-                raise RuntimeError(
-                    "KAGWeb is preparing an update; try again after it reconnects"
-                )
+                raise RuntimeError("KAGWeb is preparing an update; try again after it reconnects")
 
     async def _has_live_execution(self, turn_id: str) -> bool:
         """Whether this process still owns the turn's in-memory runner."""

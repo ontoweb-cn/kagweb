@@ -387,6 +387,7 @@ class ConfigTestRunner:
             bytes=len(image_bytes),
         )
 
+
 def get_config_test_runner() -> ConfigTestRunner:
     return ConfigTestRunner.get_instance()
 

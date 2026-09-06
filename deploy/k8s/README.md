@@ -13,7 +13,6 @@ so each container carries exactly one concern while sharing one entrypoint
 ## 使用
 
 ```bash
-# 沙箱 runner 镜像不在 GHCR,先本地构建(入 kind/minikube 需 load):
 kubectl apply -k deploy/k8s
 ```
 

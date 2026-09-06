@@ -41,13 +41,9 @@ def test_python_314_is_supported_by_both_distributions() -> None:
     expected = ">=3.11,<3.15"
     assert _project(REPOSITORY_ROOT / "pyproject.toml")["requires-python"] == expected
     assert (
-        _project(REPOSITORY_ROOT / "packaging" / "kagweb-cli" / "pyproject.toml")[
-            "requires-python"
-        ]
+        _project(REPOSITORY_ROOT / "packaging" / "kagweb-cli" / "pyproject.toml")["requires-python"]
         == expected
     )
-
-
 
 
 @pytest.mark.parametrize(
@@ -117,8 +113,6 @@ def test_full_app_cron_dependency_matches_every_server_install_surface() -> None
     assert (REPOSITORY_ROOT / "requirements" / "server.txt").read_text(
         encoding="utf-8"
     ).splitlines().count(expected) == 1
-
-
 
 
 @pytest.mark.parametrize(
