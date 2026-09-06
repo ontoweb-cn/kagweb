@@ -1,0 +1,115 @@
+# ============================================
+# DeepMentor Docker Compose — Pre-built GHCR Image
+# ============================================
+# Run DeepMentor using the official pre-built image from GitHub Container Registry.
+# No local build required — the image is pulled automatically.
+#
+# Usage:
+#   python scripts/docker_compose.py -f docker-compose.ghcr.yml up -d
+#
+# To pin a specific version:
+#   Edit the image tag below, e.g. ghcr.io/hkuds/deepmentor:1.0.0
+#
+# Prerequisites:
+#   1. Configure providers in data/user/settings/model_catalog.json or the UI
+#   2. Use scripts/docker_compose.py so port mappings are rendered from system.json
+#   3. Read the API URL note below before starting
+#
+# Local LLM (LM Studio / Ollama / vLLM):
+#   Use "host.docker.internal" instead of "localhost" in provider base_url fields.
+#   Configure provider endpoints in data/user/settings/model_catalog.json or the UI.
+#
+# ============================================
+# IMPORTANT: Frontend-to-Backend API URL
+# ============================================
+# The frontend (Next.js) runs entirely in the user's browser — not in the container.
+# This means "localhost" in the browser refers to the USER'S MACHINE, not the Docker host.
+#
+# LOCAL deployment (Docker on the same machine you browse from):
+#   Leave system.next_public_api_base_external blank. The default http://localhost:8001 works
+#   because Docker maps port 8001 from the container to your local machine.
+#
+# REMOTE SERVER deployment (Docker on a server, accessed from another machine):
+#   Set system.next_public_api_base_external to your server's public IP or hostname, e.g.:
+#     "next_public_api_base_external": "http://203.0.113.10:8001"
+#   Without this, the browser will try to reach localhost:8001 on the USER'S laptop
+#   (not the server), and all API calls will fail.
+# ============================================
+
+services:
+  # Internal-only Redis for multi-worker turn coordination. It is deliberately
+  # not published to the host; configure redis_url as redis://redis:6379/0.
+  redis:
+    image: redis:7.4-alpine
+    container_name: deepmentor-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - deepmentor-network
+
+  deepmentor:
+    image: ghcr.io/hkuds/deepmentor:latest
+    pull_policy: always
+    container_name: deepmentor
+    restart: unless-stopped
+    # A root process (supervisord as PID 1) dropping its own children to an
+    # unprivileged user is not a privilege gain, so this is safe with the
+    # per-program user= design — see the Dockerfile's supervisord notes.
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      # Loopback-only by default: the backend runs unauthenticated in
+      # single-user mode. Remove the 127.0.0.1: prefix only when the
+      # deployment must be reachable from other hosts (and turn auth on).
+      - "127.0.0.1:${DEEPMENTOR_DOCKER_BACKEND_PORT:-8001}:${DEEPMENTOR_DOCKER_BACKEND_PORT:-8001}"
+      - "127.0.0.1:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}"
+
+    volumes:
+      # Persist every workspace and deployment secret across recreation.
+      # This used to mount only data/user, data/memory and data/knowledge_bases,
+      # which left data/system (auth secret, accounts, grants, per-owner Codex
+      # tokens), data/users, data/partners and data/cli-apps in the container's
+      # writable layer — discarded on every recreate. Upgrading from that
+      # layout needs a one-time copy out of the running container first; see
+      # CONTAINERIZATION.md → "One-time migration".
+      - ./data:/app/data
+
+    # Optional dependencies, re-applied on every start (#762). This image
+    # ships the base install; anything added with `docker exec … pip install`
+    # or `apt-get install` lives in the container's writable layer and is
+    # discarded on the next `compose down`. Declaring it here instead makes it
+    # a property of the deployment, so every container started from this file
+    # has it. Both steps are idempotent (a warm container only pays a check)
+    # and neither is fatal — a package that fails to install leaves that one
+    # feature unavailable rather than stopping the app. The pip cache lives on
+    # the data volume above, so a recreate reuses the downloads it already
+    # paid for. Preview an extra with
+    # `python scripts/install_extras.py --dry-run "<name>"`. Uncomment the
+    # `environment:` key together with the entries under it.
+    # environment:
+    #   - DEEPMENTOR_EXTRAS=math-animator,partners
+    #   - DEEPMENTOR_APT_PACKAGES=ffmpeg
+
+    # No compose healthcheck override: the image's own HEALTHCHECK
+    # (/app/healthcheck.py) reads the backend port from
+    # data/user/settings/system.json, so it stays correct when the port is
+    # changed in settings without this file's ${DEEPMENTOR_DOCKER_*} vars
+    # being re-rendered by scripts/docker_compose.py.
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+    networks:
+      - deepmentor-network
+
+networks:
+  deepmentor-network:
+    driver: bridge

@@ -1,0 +1,220 @@
+# ============================================
+# DeepMentor Docker Compose Configuration
+# ============================================
+# This file provides orchestration for DeepMentor services
+#
+# Usage:
+#   Production:  python scripts/docker_compose.py up -d
+#   Development: python scripts/docker_compose.py -f docker-compose.yml -f docker-compose.dev.yml up
+#   Build only:  python scripts/docker_compose.py build
+#
+# Prerequisites:
+#   1. Runtime settings are stored in ./data/user/settings (created automatically)
+#   2. Configure model providers from the web Settings page or model_catalog.json
+#   3. Use scripts/docker_compose.py so port mappings are rendered from system.json
+#
+# Local LLM (LM Studio / Ollama / vLLM):
+#   Use "host.docker.internal" instead of "localhost" in provider base_url fields.
+#   Configure provider endpoints in data/user/settings/model_catalog.json or the UI.
+# ============================================
+
+services:
+  # Redis is internal-only runtime coordination state. AOF keeps unflushed
+  # event/command streams available across a sidecar restart; business data
+  # remains in SQLite/PocketBase.
+  redis:
+    image: redis:7.4-alpine
+    container_name: deepmentor-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - deepmentor-network
+
+  # ============================================
+  # PocketBase — optional auth + storage sidecar
+  # Set integrations.pocketbase_url=http://pocketbase:8090 to activate.
+  # Leave integrations.pocketbase_url blank to run without PocketBase (SQLite fallback).
+  # ============================================
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: pocketbase
+    restart: unless-stopped
+    ports:
+      # Loopback-only by default: the backend runs unauthenticated in
+      # single-user mode, so publishing on 0.0.0.0 would expose it to the
+      # whole LAN (same posture as compose.yaml). Drop the 127.0.0.1: prefix
+      # deliberately when you want the deployment reachable from other hosts.
+      - "127.0.0.1:${DEEPMENTOR_DOCKER_POCKETBASE_PORT:-8090}:8090"
+    volumes:
+      # The upstream pocketbase image's entrypoint uses absolute paths
+      # (no /pb/ prefix): --dir=/pb_data --publicDir=/pb_public
+      # --hooksDir=/pb_hooks. The previous example mounted at /pb/pb_data
+      # and crashed on first start with "mkdir /pb_data: read-only file
+      # system".
+      - ./data/pocketbase:/pb_data
+      - ./data/pocketbase/public:/pb_public
+      - ./data/pocketbase/hooks:/pb_hooks
+    networks:
+      - deepmentor-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ============================================
+  # All-in-One DeepMentor Service
+  # ============================================
+  deepmentor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: deepmentor
+    restart: unless-stopped
+    # A root process (supervisord as PID 1) dropping its own children to an
+    # unprivileged user is not a privilege gain, so this is safe with the
+    # per-program user= design — see the Dockerfile's supervisord notes.
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      # Loopback-only by default — see the note on the pocketbase service.
+      - "127.0.0.1:${DEEPMENTOR_DOCKER_BACKEND_PORT:-8001}:${DEEPMENTOR_DOCKER_BACKEND_PORT:-8001}"
+      - "127.0.0.1:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}"
+
+    volumes:
+      # Everything DeepMentor persists lives under ./data — one tree to mount
+      # and back up: admin workspace + runtime settings (data/user), per-user
+      # workspaces (data/users), partners (data/partners), accounts/grants/
+      # audit (data/system), knowledge bases, memory.
+      # The sandbox-runner gets a narrower slice of this volume: never
+      # data/system, which holds auth state, provider API keys, and per-owner
+      # secrets. What it *does* carry for non-admin accounts is wider than
+      # workspace subtrees — see the scope note on that service's own volumes.
+      - ./data:/app/data
+
+    environment:
+      # Route untrusted shell exec to the runner sidecar (SYSTEM isolation).
+      # When this is set, the main app NEVER runs untrusted code in its own
+      # process — see deepmentor/services/sandbox/config.py:build_backend().
+      # On bare-metal / macOS deployments where the runner is not started, leave
+      # this unset: the app degrades to bwrap (Linux, if installed) or, only when
+      # DEEPMENTOR_SANDBOX_ALLOW_SUBPROCESS=1, a restricted subprocess.
+      - DEEPMENTOR_SANDBOX_RUNNER_URL=http://sandbox-runner:8900
+
+      # Optional dependencies, re-applied on every start (#762). Installing
+      # these with `docker exec` does not survive `compose down`, so declare
+      # them here instead. Both are idempotent and never fatal; the pip cache
+      # lives on the data volume, so a rebuild reuses what it already fetched.
+      # Extras come from pyproject.toml — preview one with
+      # `python scripts/install_extras.py --dry-run "<name>"`.
+      # - DEEPMENTOR_EXTRAS=math-animator,partners
+      # - DEEPMENTOR_APT_PACKAGES=ffmpeg
+
+    # No compose healthcheck override: the image's own HEALTHCHECK
+    # (/app/healthcheck.py) reads the backend port from
+    # data/user/settings/system.json, so it stays correct when the port is
+    # changed in settings without this file's ${DEEPMENTOR_DOCKER_*} vars
+    # being re-rendered by scripts/docker_compose.py.
+
+    depends_on:
+      redis:
+        condition: service_healthy
+      pocketbase:
+        condition: service_healthy
+      sandbox-runner:
+        condition: service_healthy
+
+    networks:
+      - deepmentor-network
+
+  # ============================================
+  # Sandbox Runner Sidecar
+  # ============================================
+  # Executes untrusted shell commands in an isolated, least-privileged
+  # container so the main app never has to. Rationale for the sidecar shape:
+  #   * the main `deepmentor` container keeps minimal privileges and does NOT
+  #     mount the docker socket or run untrusted code in its own process;
+  #   * a sandbox escape here lands in a stripped, unprivileged container with
+  #     no app secrets, not in the main app.
+  # Not exposed to the host: it is reachable only on the internal
+  # deepmentor-network at http://sandbox-runner:8900.
+  sandbox-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.runner
+    container_name: deepmentor-sandbox-runner
+    restart: unless-stopped
+
+    # Share the task workspaces at the SAME paths as the main app so the mount
+    # contract holds: a request with host_path == sandbox_path under
+    # /app/data/user/workspace (admin) or /app/data/users/<uid> (per-user)
+    # is already visible here, no per-command mounting needed.
+    # Scope note: every command in this container shares one filesystem view
+    # (per-command isolation is a roadmap item). The admin mount is narrowed to
+    # its workspace subtree, but the per-user mount is a whole user root, so for
+    # non-admin accounts it also carries data/users/<uid>/user/settings,
+    # user/chat_history.db, and knowledge_bases — every account's exec can read
+    # every other account's copy of those. That cross-user visibility is
+    # accepted for the invite-only trust posture and enforced no further.
+    # data/system is never mounted here, which is why credentials that authorize
+    # a person (Codex OAuth tokens) live under data/system/user-secrets/<owner>
+    # instead of inside a user root — and why installed CLI apps live in a third
+    # place, data/cli-apps, rather than in either: the runner has to *execute*
+    # them, so data/system is out; it must not be able to *modify* them, so a
+    # workspace subtree is out too.
+    volumes:
+      - ./data/user/workspace:/app/data/user/workspace
+      - ./data/users:/app/data/users
+      # Installed CLI apps, READ-ONLY. This is the one directory the runner
+      # executes code from that it did not receive in a request, so it must not
+      # be writable here: an escaped command that could overwrite an app's entry
+      # point would run as that app in every later turn, for every account.
+      # Installing writes it from the main container instead (services/cli_apps).
+      - ./data/cli-apps:/app/data/cli-apps:ro
+
+    # No `ports:` — intentionally not published to the host.
+
+    # ----- Security hardening -----
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Read-only root filesystem: the runner only needs to read its own code and
+    # write under the shared volume (and scratch space). Give it tmpfs for the
+    # paths shell tooling expects to be writable (/tmp, $HOME). If a workload
+    # needs more writable scratch, relax read_only rather than widening tmpfs.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/runner
+    pids_limit: 256
+    mem_limit: 1g
+    # cgroup-enforced RSS cap is the authoritative memory backstop; the
+    # per-command RLIMIT_AS in server.py is a cheaper secondary guard.
+
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8900/health',timeout=3).status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+    networks:
+      - deepmentor-network
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  deepmentor-network:
+    driver: bridge

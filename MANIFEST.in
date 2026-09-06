@@ -1,0 +1,2 @@
+recursive-include deepmentor_web *
+recursive-include deepmentor_web/.next *

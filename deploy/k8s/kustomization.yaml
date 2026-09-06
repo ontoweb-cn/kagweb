@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deepmentor.yaml
+# Pin images for production instead of floating on :latest, e.g.:
+# images:
+#   - name: ghcr.io/hkuds/deepmentor
+#     newTag: 1.2.3

@@ -1,0 +1,464 @@
+{
+  "input_messages": [
+    {
+      "id": 1,
+      "session_id": "s1",
+      "role": "user",
+      "content": "what is fourier?",
+      "capability": "",
+      "events": [],
+      "attachments": [],
+      "metadata": {},
+      "created_at": 1,
+      "parent_message_id": null
+    },
+    {
+      "id": 2,
+      "session_id": "s1",
+      "role": "assistant",
+      "content": "",
+      "capability": "chat",
+      "events": [
+        {
+          "type": "thinking",
+          "source": "chat",
+          "stage": "exploring",
+          "content": "plan",
+          "metadata": {
+            "call_id": "r1",
+            "call_kind": "agent_loop_round",
+            "trace_group": "stage"
+          },
+          "timestamp": 1
+        },
+        {
+          "type": "tool_call",
+          "source": "chat",
+          "stage": "exploring",
+          "content": "rag",
+          "metadata": {
+            "call_id": "t1",
+            "trace_group": "tool_call",
+            "tool_name": "rag"
+          },
+          "timestamp": 2
+        },
+        {
+          "type": "progress",
+          "source": "chat",
+          "stage": "exploring",
+          "content": "searching",
+          "metadata": {
+            "call_id": "t1",
+            "trace_role": "retrieve",
+            "query": "fourier"
+          },
+          "timestamp": 3
+        },
+        {
+          "type": "tool_result",
+          "source": "chat",
+          "stage": "exploring",
+          "content": "ok",
+          "metadata": {
+            "call_id": "t1",
+            "trace_group": "tool_call",
+            "tool_metadata": {
+              "provider": "lightrag"
+            }
+          },
+          "timestamp": 4
+        },
+        {
+          "type": "tool_call",
+          "source": "chat",
+          "stage": "exploring",
+          "content": "go",
+          "metadata": {
+            "call_id": "t2",
+            "trace_group": "tool_call",
+            "tool_name": "consult_subagent"
+          },
+          "timestamp": 5
+        },
+        {
+          "type": "progress",
+          "source": "chat",
+          "stage": "exploring",
+          "content": "working",
+          "metadata": {
+            "call_id": "t2",
+            "subagent_name": "math",
+            "consult_index": 1
+          },
+          "timestamp": 6
+        },
+        {
+          "type": "tool_result",
+          "source": "chat",
+          "stage": "exploring",
+          "content": "ok",
+          "metadata": {
+            "call_id": "t2",
+            "trace_group": "tool_call"
+          },
+          "timestamp": 7
+        }
+      ],
+      "attachments": [],
+      "metadata": {},
+      "created_at": 2,
+      "parent_message_id": 1
+    },
+    {
+      "id": 3,
+      "session_id": "s1",
+      "role": "user",
+      "content": "edited question",
+      "capability": "",
+      "events": [],
+      "attachments": [],
+      "metadata": {},
+      "created_at": 3,
+      "parent_message_id": null
+    },
+    {
+      "id": 4,
+      "session_id": "s1",
+      "role": "assistant",
+      "content": "",
+      "capability": "chat",
+      "events": [
+        {
+          "type": "thinking",
+          "source": "chat",
+          "stage": "exploring",
+          "content": "replan",
+          "metadata": {
+            "call_id": "r2",
+            "call_kind": "agent_loop_round",
+            "trace_group": "stage"
+          },
+          "timestamp": 8
+        }
+      ],
+      "attachments": [],
+      "metadata": {},
+      "created_at": 4,
+      "parent_message_id": 3
+    },
+    {
+      "id": 5,
+      "session_id": "s1",
+      "role": "user",
+      "content": "research this",
+      "capability": "",
+      "events": [],
+      "attachments": [],
+      "metadata": {},
+      "created_at": 5,
+      "parent_message_id": 4
+    },
+    {
+      "id": 6,
+      "session_id": "s1",
+      "role": "assistant",
+      "content": "",
+      "capability": "deep_research",
+      "events": [
+        {
+          "type": "thinking",
+          "source": "chat",
+          "stage": "exploring",
+          "content": "rephrase",
+          "metadata": {
+            "call_id": "r3",
+            "call_kind": "agent_loop_round",
+            "trace_group": "stage"
+          },
+          "timestamp": 9
+        },
+        {
+          "type": "result",
+          "source": "chat",
+          "stage": "exploring",
+          "content": "outline",
+          "metadata": {
+            "outline_preview": true
+          },
+          "timestamp": 10
+        }
+      ],
+      "attachments": [],
+      "metadata": {},
+      "created_at": 6,
+      "parent_message_id": 5
+    },
+    {
+      "id": 7,
+      "session_id": "s1",
+      "role": "user",
+      "content": "(start research ack)",
+      "capability": "",
+      "events": [],
+      "attachments": [],
+      "metadata": {},
+      "created_at": 7,
+      "parent_message_id": 6
+    },
+    {
+      "id": 8,
+      "session_id": "s1",
+      "role": "assistant",
+      "content": "",
+      "capability": "deep_research",
+      "events": [
+        {
+          "type": "thinking",
+          "source": "chat",
+          "stage": "researching",
+          "content": "search",
+          "metadata": {
+            "call_id": "r4",
+            "call_kind": "agent_loop_round",
+            "trace_group": "stage"
+          },
+          "timestamp": 11
+        },
+        {
+          "type": "content",
+          "source": "chat",
+          "stage": "reporting",
+          "content": "report body",
+          "metadata": {
+            "call_id": "r4"
+          },
+          "timestamp": 12
+        }
+      ],
+      "attachments": [],
+      "metadata": {},
+      "created_at": 8,
+      "parent_message_id": 7
+    }
+  ],
+  "expected": {
+    "stable_normalized": {
+      "version": 1,
+      "generator": "deepmentor/session-dsl",
+      "trace": [
+        {
+          "node": "turn:1",
+          "kind": "user",
+          "text_preview": "edited question",
+          "branch": {
+            "index": 2,
+            "total": 2
+          },
+          "branches": [
+            {
+              "selected": false,
+              "trace": [
+                {
+                  "node": "b1:turn:1",
+                  "kind": "user",
+                  "text_preview": "what is fourier?",
+                  "branch": {
+                    "index": 1,
+                    "total": 2
+                  }
+                },
+                {
+                  "node": "b1:turn:2",
+                  "kind": "assistant",
+                  "capability": "chat",
+                  "calls": [
+                    {
+                      "node": "b1:turn:2.1",
+                      "kind": "round",
+                      "round_index": 0,
+                      "calls": [
+                        {
+                          "node": "b1:turn:2.2",
+                          "kind": "tool_call",
+                          "tool": "rag",
+                          "provider": "lightrag",
+                          "query": "fourier"
+                        },
+                        {
+                          "node": "b1:turn:2.3",
+                          "kind": "tool_call",
+                          "tool": "consult_subagent",
+                          "calls": [
+                            {
+                              "node": "b1:turn:2.4",
+                              "kind": "subagent",
+                              "subagent_name": "math",
+                              "consult_index": 1
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "node": "turn:2",
+          "kind": "assistant",
+          "capability": "chat",
+          "calls": [
+            {
+              "node": "turn:2.1",
+              "kind": "round",
+              "round_index": 0
+            }
+          ]
+        },
+        {
+          "node": "turn:3",
+          "kind": "user",
+          "text_preview": "research this"
+        },
+        {
+          "node": "turn:4",
+          "kind": "assistant",
+          "capability": "deep_research",
+          "calls": [
+            {
+              "node": "turn:4.1",
+              "kind": "round",
+              "round_index": 0
+            },
+            {
+              "node": "turn:4.2",
+              "kind": "round",
+              "round_index": 1
+            }
+          ]
+        },
+        {
+          "node": "turn:5",
+          "kind": "user",
+          "text_preview": "(start research ack)"
+        }
+      ]
+    },
+    "raw": {
+      "version": 1,
+      "generator": "deepmentor/session-dsl",
+      "trace": [
+        {
+          "node": "msg:3",
+          "kind": "user",
+          "text_preview": "edited question",
+          "branch": {
+            "index": 2,
+            "total": 2
+          },
+          "branches": [
+            {
+              "selected": false,
+              "trace": [
+                {
+                  "node": "msg:1",
+                  "kind": "user",
+                  "text_preview": "what is fourier?",
+                  "branch": {
+                    "index": 1,
+                    "total": 2
+                  }
+                },
+                {
+                  "node": "msg:2",
+                  "kind": "assistant",
+                  "capability": "chat",
+                  "calls": [
+                    {
+                      "node": "call:r1:round:0",
+                      "kind": "round",
+                      "round_index": 0,
+                      "calls": [
+                        {
+                          "node": "call:t1:tool_call:1",
+                          "kind": "tool_call",
+                          "tool": "rag",
+                          "provider": "lightrag",
+                          "query": "fourier",
+                          "duration_ms": 2
+                        },
+                        {
+                          "node": "call:t2:tool_call:2",
+                          "kind": "tool_call",
+                          "tool": "consult_subagent",
+                          "duration_ms": 2,
+                          "calls": [
+                            {
+                              "node": "call:t2:subagent:3",
+                              "kind": "subagent",
+                              "subagent_name": "math",
+                              "consult_index": 1,
+                              "duration_ms": 2
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "node": "msg:4",
+          "kind": "assistant",
+          "capability": "chat",
+          "calls": [
+            {
+              "node": "call:r2:round:0",
+              "kind": "round",
+              "round_index": 0
+            }
+          ]
+        },
+        {
+          "node": "msg:5",
+          "kind": "user",
+          "text_preview": "research this"
+        },
+        {
+          "node": "msg:6",
+          "kind": "assistant",
+          "capability": "deep_research",
+          "calls": [
+            {
+              "node": "call:r3:round:0",
+              "kind": "round",
+              "round_index": 0
+            },
+            {
+              "node": "call:r4:round:1",
+              "kind": "round",
+              "round_index": 1,
+              "duration_ms": 1
+            }
+          ]
+        },
+        {
+          "node": "msg:7",
+          "kind": "user",
+          "text_preview": "(start research ack)"
+        }
+      ],
+      "session": {
+        "id": "s1",
+        "exported_at": "2026-09-03T05:26:46.906Z",
+        "turn_count": 5
+      }
+    }
+  }
+}

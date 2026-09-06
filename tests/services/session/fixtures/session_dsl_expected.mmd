@@ -1,0 +1,28 @@
+flowchart TD
+    turn_1["User: edited question"]
+    b1_turn_1["User: what is fourier?"]
+    turn_1 -. "branch 1" .-> b1_turn_1
+    b1_turn_2["Assistant (chat)"]
+    b1_turn_1 --> b1_turn_2
+    b1_turn_2_1["Round 1"]
+    b1_turn_2 --> b1_turn_2_1
+    b1_turn_2_2["Tool: rag"]
+    b1_turn_2_1 --> b1_turn_2_2
+    b1_turn_2_3["Tool: consult_subagent"]
+    b1_turn_2_2 --> b1_turn_2_3
+    b1_turn_2_4["Subagent: math"]
+    b1_turn_2_3 --> b1_turn_2_4
+    turn_2["Assistant (chat)"]
+    turn_1 --> turn_2
+    turn_2_1["Round 1"]
+    turn_2 --> turn_2_1
+    turn_3["User: research this"]
+    turn_2 --> turn_3
+    turn_4["Assistant (deep_research)"]
+    turn_3 --> turn_4
+    turn_4_1["Round 1"]
+    turn_4 --> turn_4_1
+    turn_4_2["Round 2"]
+    turn_4_1 --> turn_4_2
+    turn_5["User: (start research ack)"]
+    turn_4 --> turn_5

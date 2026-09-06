@@ -1,0 +1,37 @@
+[importlinter]
+root_package = deepmentor
+
+[importlinter:contract:core-purity]
+name = Core contains values and protocols only
+type = forbidden
+source_modules =
+    deepmentor.core
+forbidden_modules =
+    deepmentor.app
+    deepmentor.api
+    deepmentor.runtime
+    deepmentor.services
+
+[importlinter:contract:no-api-backimports]
+name = Runtime and service layers do not import API adapters
+type = forbidden
+source_modules =
+    deepmentor.runtime
+    deepmentor.services
+    deepmentor.knowledge
+    deepmentor.learning
+    deepmentor.multi_user
+    deepmentor.capabilities
+    deepmentor.agents
+forbidden_modules =
+    deepmentor.api
+ignore_imports =
+    deepmentor.learning.tests.** -> deepmentor.api.**
+
+[importlinter:contract:app-adapter-direction]
+name = Application does not import API adapters
+type = forbidden
+source_modules =
+    deepmentor.app
+forbidden_modules =
+    deepmentor.api
