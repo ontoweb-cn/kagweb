@@ -2,7 +2,7 @@
 
 /**
  * SessionActivityPanel — right-side column of *floating cards* recording
- * the conversation's tools, knowledge bases, Space refs, and attachments.
+ * the conversation's tools, Space refs, and attachments.
  *
  * Design notes
  * ────────────
@@ -12,7 +12,7 @@
  * • Clicking an attachment row fires `onOpenAttachment(att)` upward; the
  *   parent routes it into the SessionViewerPanel as a new file tab.
  * • Section content is suppressed entirely when empty — no skeleton cards
- *   for tools/KBs/Space/attachments that never showed up in this session.
+ *   for tools/Space/attachments that never showed up in this session.
  */
 
 import { useEffect, useState, type ReactNode } from 'react'
@@ -20,7 +20,6 @@ import Link from 'next/link'
 import {
   AtSign,
   ChevronDown,
-  Database,
   ExternalLink,
   History,
   LocateFixed,
@@ -137,7 +136,7 @@ export function ActivityBody({
   onTraceToolOutput?: (options: ToolOutputTraceTarget) => void
 }) {
   const { t } = useTranslation()
-  const { tools, knowledgeBases, space, attachments, artifacts } = activity
+  const { tools, space, attachments, artifacts } = activity
   const { sessions } = useResolvedTitles(activity, open)
 
   const spaceSubsections: ReactNode[] = []
@@ -186,21 +185,6 @@ export function ActivityBody({
           <ul className="space-y-0.5 p-1.5">
             {tools.map(tool => (
               <ToolUsageRow key={tool.name} tool={tool} onTraceToolOutput={onTraceToolOutput} />
-            ))}
-          </ul>
-        </SectionCard>
-      ) : null}
-
-      {knowledgeBases.length > 0 ? (
-        <SectionCard icon={Database} title={t('Knowledge bases')} count={knowledgeBases.length}>
-          <ul className="space-y-0.5 p-1.5">
-            {knowledgeBases.map(kb => (
-              <li
-                key={kb}
-                className="truncate rounded-md px-2 py-1.5 text-[12px] font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]/35"
-              >
-                {kb}
-              </li>
             ))}
           </ul>
         </SectionCard>

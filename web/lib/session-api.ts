@@ -33,7 +33,6 @@ export interface SessionPreferences {
   /** Stable learning surface, independent of the action used for a turn. */
   workspace_mode?: "immersive_reading" | "mastery_path" | "";
   tools?: string[];
-  knowledge_bases?: string[];
   language?: string;
   llm_selection?: LLMSelection | null;
   /** Persistent mastery state associated with this conversation. */

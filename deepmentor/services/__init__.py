@@ -4,8 +4,6 @@ Services Layer
 
 Unified service layer for DeepMentor providing:
 - LLM client and configuration
-- Embedding client and configuration
-- RAG pipelines and components
 - Prompt management
 - Web Search providers
 - System setup utilities
@@ -13,8 +11,6 @@ Unified service layer for DeepMentor providing:
 
 Usage:
     from deepmentor.services.llm import get_llm_client
-    from deepmentor.services.embedding import get_embedding_client
-    from deepmentor.services.rag import RAGService
     from deepmentor.services.prompt import get_prompt_manager
     from deepmentor.services.search import web_search
     from deepmentor.services.setup import init_user_directories
@@ -46,8 +42,6 @@ from .path_service import PathService, get_path_service
 
 __all__ = [
     "llm",
-    "embedding",
-    "rag",
     "prompt",
     "search",
     "setup",
@@ -74,8 +68,4 @@ def __getattr__(name: str):
         return importlib.import_module("deepmentor.services.session")
     if name == "config":
         return importlib.import_module("deepmentor.services.config")
-    if name == "rag":
-        return importlib.import_module("deepmentor.services.rag")
-    if name == "embedding":
-        return importlib.import_module("deepmentor.services.embedding")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -27,7 +27,6 @@ function snapshot(fields: Partial<MessageRequestSnapshot> = {}): MessageRequestS
   return {
     content: '',
     enabledTools: [],
-    knowledgeBases: [],
     language: 'en',
     ...fields,
   }
@@ -124,7 +123,7 @@ test('a session with nothing at all is empty', () => {
 })
 
 /* ------------------------------------------------------------------ */
-/*  tools / knowledge bases                                            */
+/*  tools                                                              */
 /* ------------------------------------------------------------------ */
 
 test('counts tool calls and orders them by frequency', () => {
@@ -144,17 +143,6 @@ test('counts tool calls and orders them by frequency', () => {
     { name: 'rag', count: 2 },
     { name: 'exec', count: 1 },
   ])
-})
-
-test('dedupes knowledge bases across turns', () => {
-  const activity = buildSessionActivity(
-    messages(
-      { role: 'user', requestSnapshot: snapshot({ knowledgeBases: ['KB'] }) },
-      { role: 'user', requestSnapshot: snapshot({ knowledgeBases: ['KB'] }) }
-    )
-  )
-
-  assert.deepEqual(activity.knowledgeBases, ['KB'])
 })
 
 test('pairs rag tool calls with their retrieved content', () => {
@@ -413,41 +401,6 @@ test('a tool_call with no result carries a count but no expandable calls', () =>
   )
 
   assert.deepEqual(activity.tools, [{ name: 'rag', count: 1 }])
-})
-
-test('hides deleted knowledge bases when an available set is given', () => {
-  const activity = buildSessionActivity(
-    messages({
-      role: 'user',
-      requestSnapshot: snapshot({ knowledgeBases: ['gone', 'alive'] }),
-    }),
-    { availableKbNames: new Set(['alive']) }
-  )
-
-  assert.deepEqual(activity.knowledgeBases, ['alive'])
-})
-
-test('hides every stale knowledge base when the confirmed set is empty', () => {
-  const activity = buildSessionActivity(
-    messages({
-      role: 'user',
-      requestSnapshot: snapshot({ knowledgeBases: ['last-deleted-kb'] }),
-    }),
-    { availableKbNames: new Set() }
-  )
-
-  assert.deepEqual(activity.knowledgeBases, [])
-})
-
-test('keeps knowledge bases when availability could not be loaded', () => {
-  const activity = buildSessionActivity(
-    messages({
-      role: 'user',
-      requestSnapshot: snapshot({ knowledgeBases: ['unconfirmed'] }),
-    })
-  )
-
-  assert.deepEqual(activity.knowledgeBases, ['unconfirmed'])
 })
 
 /* ------------------------------------------------------------------ */

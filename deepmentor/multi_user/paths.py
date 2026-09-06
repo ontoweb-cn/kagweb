@@ -120,7 +120,6 @@ def ensure_scope_workspace(scope: UserScope) -> Path:
     """
     root = scope.root.resolve()
     PathService(workspace_root=root).ensure_all_directories()
-    (root / "knowledge_bases").mkdir(parents=True, exist_ok=True)
     (root / "memory").mkdir(parents=True, exist_ok=True)
     return root
 

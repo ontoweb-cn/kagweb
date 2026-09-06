@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * New-partner wizard: five full-page steps —
- * Identity → Soul → Mind (model + tools) → Library (assets) → Review.
+ * New-partner wizard: four full-page steps —
+ * Identity → Soul → Mind (model + tools) → Review.
  * One decision per screen; channels are connected after creation on the
  * partner's Channels tab.
  */
@@ -24,9 +24,6 @@ import {
   type SoulSpec,
   type ToolOptions,
 } from "@/lib/partners-api";
-import AssetPicker, {
-  type AssetSelection,
-} from "@/components/partners/AssetPicker";
 import PartnerAvatar from "@/components/partners/PartnerAvatar";
 import FaceEditor, { type FaceValue } from "@/components/partners/FaceEditor";
 import PartnerModelPicker from "@/components/partners/PartnerModelPicker";
@@ -34,7 +31,7 @@ import PartnerModelSelect from "@/components/partners/PartnerModelSelect";
 import SoulPicker from "@/components/partners/SoulPicker";
 import ToolPicker from "@/components/partners/ToolPicker";
 
-type StepKey = "identity" | "soul" | "mind" | "library" | "review";
+type StepKey = "identity" | "soul" | "mind" | "review";
 
 export default function NewPartnerPage() {
   const router = useRouter();
@@ -44,7 +41,6 @@ export default function NewPartnerPage() {
     { key: "identity", label: t("Identity") },
     { key: "soul", label: t("Soul") },
     { key: "mind", label: t("Mind") },
-    { key: "library", label: t("Library") },
     { key: "review", label: t("Review") },
   ];
   const [stepIndex, setStepIndex] = useState(0);
@@ -64,11 +60,6 @@ export default function NewPartnerPage() {
   const [backupSelection, setBackupSelection] = useState<LLMSelection | null>(
     null,
   );
-  const [assets, setAssets] = useState<AssetSelection>({
-    knowledge_bases: [],
-    skills: [],
-    notebooks: [],
-  });
 
   const [llmOptions, setLLMOptions] = useState<LLMOption[]>([]);
   const [activeLLMDefault, setActiveLLMDefault] = useState<LLMSelection | null>(
@@ -151,7 +142,6 @@ export default function NewPartnerPage() {
         // Never null for MCP: the list stays explicit so a server configured
         // later is not silently inherited by this partner.
         mcp_tools: mcpTools,
-        assets,
         start: true,
       });
       // Land in the chat tab — the partner is ready to talk to right away
@@ -191,11 +181,6 @@ export default function NewPartnerPage() {
   const modelSummary = describeSelection(selection, t("System default"));
   const backupSummary = describeSelection(backupSelection, t("No backup"));
 
-  const assetCount =
-    assets.knowledge_bases.length +
-    assets.skills.length +
-    assets.notebooks.length;
-
   const stepTitle: Record<StepKey, { title: string; subtitle: string }> = {
     identity: {
       title: t("Who is this partner?"),
@@ -210,12 +195,6 @@ export default function NewPartnerPage() {
     mind: {
       title: t("Shape its mind"),
       subtitle: t("The model it thinks with and the tools it may use."),
-    },
-    library: {
-      title: t("Hand over some knowledge"),
-      subtitle: t(
-        "Give it a slice of your knowledge — copied into the partner's own workspace.",
-      ),
     },
     review: {
       title: t("Ready to meet {{name}}?", {
@@ -418,10 +397,6 @@ export default function NewPartnerPage() {
             </div>
           )}
 
-          {step === "library" && (
-            <AssetPicker value={assets} onChange={setAssets} />
-          )}
-
           {step === "review" && (
             <div className="space-y-3">
               <dl className="divide-y divide-[var(--border)] rounded-2xl border border-[var(--border)]">
@@ -438,16 +413,6 @@ export default function NewPartnerPage() {
                         ? ` · ${mcpTools.length} ${t("MCP tools")}`
                         : ""
                     }`,
-                  ],
-                  [
-                    t("Library"),
-                    assetCount > 0
-                      ? t("{{count}} items will be copied", {
-                          count: assetCount,
-                        })
-                      : t(
-                          "Nothing assigned yet — this partner only knows what you tell it.",
-                        ),
                   ],
                 ].map(([label, valueText]) => (
                   <div

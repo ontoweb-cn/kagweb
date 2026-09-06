@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
-  Info,
   Loader2,
   Plus,
   RefreshCw,
@@ -44,7 +43,6 @@ import {
   getActiveProfile,
   useSettings,
 } from "@/features/settings/store/SettingsStore";
-import { DimensionField } from "./DimensionField";
 import { ModelCapabilityFields } from "./ModelCapabilityFields";
 import { ModelListPicker } from "./ModelListPicker";
 import {
@@ -87,7 +85,6 @@ const LLM_SHAPED = new Set<ServiceName>(["llm", "task"]);
 const SERVICE_LABEL: Record<ServiceName, string> = {
   llm: "LLM",
   task: "Task model",
-  embedding: "Embedding",
   search: "Search",
   tts: "Text-to-Speech",
   stt: "Speech-to-Text",
@@ -103,8 +100,6 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
     settingsError,
     providers,
     language,
-    embeddingCapabilities,
-    embeddingDefaultDim,
     logs,
     testRunning,
     mutateCatalog,
@@ -114,7 +109,6 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
     removeActiveModel,
     updateProfileField: setProfileField,
     updateModelField: setModelField,
-    updateModelBoolField: setModelBoolField,
     updateContextWindowField: setContextWindowField,
     updateReasoningEffort: setReasoningEffort,
     updateModelCapability: setModelCapability,
@@ -161,11 +155,6 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
     (svc: ServiceName, field: keyof CatalogModel, value: string) =>
       setModelField(svc, field, value, activeProfile?.id, activeModel?.id),
     [setModelField, activeProfile?.id, activeModel?.id],
-  );
-  const updateModelBoolField = useCallback(
-    (svc: ServiceName, field: keyof CatalogModel, value: boolean) =>
-      setModelBoolField(svc, field, value, activeProfile?.id, activeModel?.id),
-    [setModelBoolField, activeProfile?.id, activeModel?.id],
   );
   const updateContextWindowField = useCallback(
     (value: string) =>
@@ -811,56 +800,6 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
                             onChange={updateModelCapability}
                           />
                         )}
-                        {service === "embedding" && (
-                          <div>
-                            <div className="mb-1.5 flex items-center justify-between gap-2">
-                              <span className="text-[12px] text-[var(--muted-foreground)]">
-                                {t("Dimension")}
-                              </span>
-                              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-[var(--muted-foreground)] select-none">
-                                <input
-                                  type="checkbox"
-                                  className="h-3 w-3 cursor-pointer accent-[var(--foreground)]"
-                                  checked={
-                                    activeModel.send_dimensions !== false
-                                  }
-                                  onChange={(e) =>
-                                    updateModelBoolField(
-                                      service,
-                                      "send_dimensions",
-                                      e.target.checked,
-                                    )
-                                  }
-                                />
-                                <span>{t("Send dimensions")}</span>
-                                <span
-                                  tabIndex={0}
-                                  className="group/info relative inline-flex cursor-help focus:outline-none"
-                                >
-                                  <Info className="h-3 w-3 opacity-50 transition-opacity group-hover/info:opacity-100 group-focus/info:opacity-100" />
-                                  <span
-                                    role="tooltip"
-                                    className="pointer-events-none absolute top-full left-1/2 z-20 mt-1.5 w-64 -translate-x-1/2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-2.5 text-[11px] leading-relaxed text-[var(--foreground)] opacity-0 shadow-lg transition-opacity duration-75 group-hover/info:opacity-100 group-focus/info:opacity-100"
-                                  >
-                                    {t(
-                                      "Some embedding models (e.g. Qwen text-embedding-v4) reject the `dimensions` request param. Turn this off if your provider returns HTTP 400.",
-                                    )}
-                                  </span>
-                                </span>
-                              </label>
-                            </div>
-                            <DimensionField
-                              activeModel={activeModel}
-                              activeBinding={activeProfile?.binding}
-                              capabilities={embeddingCapabilities}
-                              embeddingDefaultDim={embeddingDefaultDim}
-                              inputClass={inputClass}
-                              onChangeDimension={(value) =>
-                                updateModelField(service, "dimension", value)
-                              }
-                            />
-                          </div>
-                        )}
                         {service === "tts" && (
                           <>
                             <div>
@@ -1235,16 +1174,6 @@ function formatVoiceBadge(value: string | undefined): string {
   return tail.length > 14 ? `${tail.slice(0, 13)}…` : tail;
 }
 
-function formatDimensionBadge(value: string | number | undefined): string {
-  if (value === undefined || value === "") return "";
-  const parsed =
-    typeof value === "number"
-      ? value
-      : Number.parseInt(String(value).replace(/[^\d]/g, ""), 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) return "";
-  return `${parsed}d`;
-}
-
 function formatIsoLocal(value: string | undefined): string {
   if (!value) return "";
   const parsed = new Date(value);
@@ -1496,9 +1425,6 @@ function ProfileFields({
               if (match) {
                 onProviderChanged(match, providerValue);
               }
-              if (service === "embedding" && match?.default_dim) {
-                updateModelField(service, "dimension", match.default_dim);
-              }
               if (
                 (service === "tts" ||
                   service === "stt" ||
@@ -1601,7 +1527,7 @@ function ProfileFields({
       {fields.baseUrl && (
         <div className="sm:col-span-2">
           <div className="mb-1.5 text-[12px] text-[var(--muted-foreground)]">
-            {service === "embedding" ? t("Endpoint URL") : t("Base URL")}
+            {t("Base URL")}
           </div>
           <input
             className={`${inputClass} disabled:opacity-60`}
@@ -1611,20 +1537,11 @@ function ProfileFields({
               updateProfileField(service, "base_url", e.target.value)
             }
             placeholder={
-              service === "embedding"
-                ? "https://api.openai.com/v1/embeddings"
-                : service === "search"
-                  ? "http://localhost:8888"
-                  : "https://api.openai.com/v1"
+              service === "search"
+                ? "http://localhost:8888"
+                : "https://api.openai.com/v1"
             }
           />
-          {service === "embedding" && (
-            <p className="mt-1.5 text-[11px] text-[var(--muted-foreground)]">
-              {t(
-                "Embedding requests are sent to this URL exactly; DeepMentor does not append /embeddings or /api/embed at request time.",
-              )}
-            </p>
-          )}
           {missingRequiredBaseUrl && (
             <p className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400">
               {t("Required — without it, search falls back to DuckDuckGo.")}

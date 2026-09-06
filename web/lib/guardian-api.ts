@@ -19,7 +19,6 @@ export interface GuardianReport {
   }>;
   grant_summary: {
     model_count: number;
-    knowledge_base_count: number;
     skill_count: number;
   };
 }

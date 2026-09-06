@@ -165,7 +165,7 @@ export default function SettingsOverview() {
                   ready,
                   total: states.length,
                 })
-              : t("Appearance, models, knowledge, chat, and memory.")}
+              : t("Appearance, models, chat, and memory.")}
           </p>
         </div>
         <button

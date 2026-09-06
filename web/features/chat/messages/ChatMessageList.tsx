@@ -9,7 +9,6 @@ import {
   Coins,
   Copy,
   AlertCircle,
-  Database,
   Loader2,
   MessageSquare,
   Pencil,
@@ -680,7 +679,6 @@ export const UserMessage = memo(function UserMessage({
   editDisabled,
   siblingInfo,
   onSwitchBranch,
-  availableKbNames,
   showModeBadge,
 }: {
   msg: ChatMessageItem
@@ -691,8 +689,6 @@ export const UserMessage = memo(function UserMessage({
   editDisabled?: boolean
   siblingInfo?: SiblingInfo
   onSwitchBranch?: (parentMessageId: number | null, childId: number) => void
-  /** Names of KBs confirmed to exist. Omitted when the KB list is unavailable. */
-  availableKbNames?: Set<string>
   /** Label the bubble with its capability. A single-capability surface
    *  already names the mode in its own chrome. */
   showModeBadge?: boolean
@@ -745,14 +741,6 @@ export const UserMessage = memo(function UserMessage({
         onClick: onPreviewAttachment ? () => onPreviewAttachment(a) : undefined,
       }
     }),
-    ...(snap?.knowledgeBases ?? [])
-      .filter(name => !availableKbNames || availableKbNames.has(name))
-      .map((name): ContextTreeItem => ({
-        key: `kb-${name}`,
-        icon: Database,
-        kind: t('Knowledge'),
-        label: name,
-      })),
     // Chat-history references (session ids referenced as context).
     ...(snap?.historyReferences ?? []).map((sid): ContextTreeItem => ({
       key: `hist-${sid}`,
@@ -883,7 +871,6 @@ export const ChatMessageList = memo(function ChatMessageList({
   selectedBranches,
   onEditMessage,
   onSwitchBranch,
-  availableKbNames,
   onSubmitUserReply,
   showModeBadge = true,
 }: {
@@ -914,8 +901,6 @@ export const ChatMessageList = memo(function ChatMessageList({
           answers?: Array<{ questionId: string; text: string }>
         }
   ) => void
-  /** Names of KBs confirmed to exist. Omitted when the KB list is unavailable. */
-  availableKbNames?: Set<string>
   /** Label each user bubble with its capability. Off on surfaces that run a
    *  single capability and already name it in their own chrome. */
   showModeBadge?: boolean
@@ -1003,7 +988,6 @@ export const ChatMessageList = memo(function ChatMessageList({
                 editDisabled={isStreaming}
                 siblingInfo={sib}
                 onSwitchBranch={onSwitchBranch}
-                availableKbNames={availableKbNames}
                 showModeBadge={showModeBadge}
               />
             </div>

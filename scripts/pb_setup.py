@@ -259,33 +259,6 @@ def main():
             "updateRule": "",
             "deleteRule": "",
         },
-        # ----------------------------------------------------------------
-        # knowledge_bases
-        # ----------------------------------------------------------------
-        {
-            "name": "knowledge_bases",
-            "type": "base",
-            "schema": [
-                {"name": "kb_name", "type": "text", "required": True},
-                {"name": "user_id", "type": "text", "required": False},
-                {"name": "description", "type": "text", "required": False},
-                {"name": "rag_provider", "type": "text", "required": False},
-                {"name": "needs_reindex", "type": "bool", "required": False},
-                {"name": "status", "type": "text", "required": False},
-                {"name": "kb_created_at", "type": "text", "required": False},
-                {
-                    "name": "raw_files",
-                    "type": "file",
-                    "required": False,
-                    "options": {"maxSelect": 99, "maxSize": 52428800},
-                },
-            ],
-            "listRule": "",
-            "viewRule": "",
-            "createRule": "",
-            "updateRule": "",
-            "deleteRule": "",
-        },
     ]
 
     print("Creating collections:")

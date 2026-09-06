@@ -25,7 +25,6 @@ def empty_grant(user_id: str) -> dict[str, Any]:
         "version": 2,
         "user_id": user_id,
         "models": {"llm": []},
-        "knowledge_bases": [],
         "skills": [],
         # Partners an admin has lent this user. People build their own partners
         # now, so a grant is only about someone *else's*: it lets the user talk
@@ -118,7 +117,7 @@ def normalize_grant(user_id: str, payload: dict[str, Any] | None) -> dict[str, A
     if not isinstance(items, list):
         items = []
     base["models"]["llm"] = [dict(item) for item in items if isinstance(item, dict)]
-    for key in ("knowledge_bases", "skills", "partners"):
+    for key in ("partners",):
         # Read once, then narrow. Two separate ``.get`` calls cannot be narrowed
         # together — nothing promises they return the same object — so the
         # inline-conditional form left this iterating a possible ``None``.

@@ -40,18 +40,6 @@ from deepmentor.services.config import (
 )
 
 
-def get_embedding_client(*args, **kwargs):
-    from deepmentor.services.embedding.client import get_embedding_client as resolve
-
-    return resolve(*args, **kwargs)
-
-
-def get_embedding_config(*args, **kwargs):
-    from deepmentor.services.embedding.config import get_embedding_config as resolve
-
-    return resolve(*args, **kwargs)
-
-
 def get_llm_config(*args, **kwargs):
     from deepmentor.services.llm.config import get_llm_config as resolve
 
@@ -317,12 +305,11 @@ async def get_system_status():
     Get overall system status including backend and model configurations
 
     Returns:
-        Dictionary containing status of backend, LLM, embeddings, and search
+        Dictionary containing status of backend, LLM, and search
     """
     result = {
         "backend": {"status": "online", "timestamp": datetime.now().isoformat()},
         "llm": {"status": "unknown", "model": None, "testable": True},
-        "embeddings": {"status": "unknown", "model": None, "testable": True},
         "search": {"status": "optional", "provider": None, "testable": True},
     }
 
@@ -340,18 +327,6 @@ async def get_system_status():
     except Exception as e:
         result["llm"]["status"] = "error"
         result["llm"]["error"] = str(e)
-
-    # Check Embeddings configuration
-    try:
-        embedding_config = get_embedding_config()
-        result["embeddings"]["model"] = embedding_config.model
-        result["embeddings"]["status"] = "configured"
-    except ValueError as e:
-        result["embeddings"]["status"] = "not_configured"
-        result["embeddings"]["error"] = str(e)
-    except Exception as e:
-        result["embeddings"]["status"] = "error"
-        result["embeddings"]["error"] = str(e)
 
     try:
         search_config = resolve_search_runtime_config()
@@ -391,7 +366,7 @@ async def get_system_status():
     # exposing the name leaks operational detail and would let curious users
     # fingerprint the deployment. Strip the identifying fields.
     if not get_current_user().is_admin:
-        for section in ("llm", "embeddings"):
+        for section in ("llm",):
             result[section].pop("model", None)
         result["search"].pop("provider", None)
 
@@ -515,63 +490,6 @@ async def test_llm_connection():
         return TestResponse(
             success=False,
             message=f"LLM connection failed: {e!s}",
-            response_time_ms=round(response_time, 2),
-            error=str(e),
-        )
-
-
-@router.post("/test/embeddings", response_model=TestResponse)
-async def test_embeddings_connection():
-    """
-    Test Embeddings model connection by sending a simple embedding request
-
-    Returns:
-        Test result with success status and response time
-    """
-    start_time = time.time()
-
-    try:
-        embedding_config = get_embedding_config()
-        embedding_client = get_embedding_client()
-
-        model = embedding_config.model
-        binding = embedding_config.binding
-
-        # Probe a tiny batch so "connection OK" also exercises the path RAG
-        # uses for multi-chunk indexing.
-        test_texts = ["test", "retrieval batch probe"]
-        embeddings = await embedding_client.embed(test_texts)
-
-        response_time = (time.time() - start_time) * 1000
-
-        if (
-            embeddings is not None
-            and len(embeddings) == len(test_texts)
-            and all(len(vector) > 0 for vector in embeddings)
-            and len({len(vector) for vector in embeddings}) == 1
-        ):
-            return TestResponse(
-                success=True,
-                message=f"Embeddings connection successful ({binding} provider)",
-                model=model,
-                response_time_ms=round(response_time, 2),
-            )
-        return TestResponse(
-            success=False,
-            message="Embeddings connection failed: Invalid response",
-            model=model,
-            error="Embedding response must contain one non-empty vector per input",
-        )
-
-    except ValueError as e:
-        return TestResponse(
-            success=False, message=f"Embeddings configuration error: {e!s}", error=str(e)
-        )
-    except Exception as e:
-        response_time = (time.time() - start_time) * 1000
-        return TestResponse(
-            success=False,
-            message=f"Embeddings connection failed: {e!s}",
             response_time_ms=round(response_time, 2),
             error=str(e),
         )

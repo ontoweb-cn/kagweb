@@ -1,7 +1,7 @@
 """Interactive runtime settings initializer.
 
 ``deepmentor init`` walks the user through a four-step wizard (ports → LLM →
-embedding → review) that writes the same files as the Web Settings page.
+search → review) that writes the same files as the Web Settings page.
 
 Heavy lifting (provider menu, live ``/models`` fetch, connectivity probe,
 review panel) lives in :mod:`deepmentor_cli.init_wizard`. This module is
@@ -183,140 +183,6 @@ def _probe_llm_with_retry(console: Console, strings: dict, choice: wiz.LLMChoice
         )
         if not typer.confirm(strings["init.probe_retry"], default=False):
             return
-        choice.api_key = typer.prompt(
-            strings["init.api_key_prompt"], default="", hide_input=True, show_default=False
-        )
-
-
-def _embedding_default_endpoint(
-    *,
-    provider: str,
-    current_binding: str,
-    current_profile: dict[str, Any],
-    spec: Any,
-) -> str:
-    """Keep a saved endpoint when rerunning setup for the same provider."""
-    saved = str(current_profile.get("base_url") or "")
-    if provider == current_binding and saved:
-        return saved
-    if spec is not None:
-        return str(spec.default_api_base or "")
-    return saved
-
-
-def _embedding_step(
-    console: Console,
-    strings: dict,
-    catalog: dict,
-    llm_api_key: str,
-) -> wiz.EmbeddingChoice | None:
-    """Returns ``None`` when the user picks ``[s] Skip``."""
-
-    from deepmentor.services.config.embedding_endpoint import (
-        EMBEDDING_PROVIDER_LABELS,
-        normalize_embedding_endpoint_for_display,
-        redact_embedding_endpoint_for_display,
-    )
-    from deepmentor.services.config.provider_runtime import EMBEDDING_PROVIDERS
-
-    current_profile = (catalog.get("services", {}).get("embedding", {}).get("profiles") or [{}])[
-        0
-    ] or {}
-    current_binding = str(current_profile.get("binding") or "openai")
-
-    provider_pick = wiz.select_embedding_provider(console, strings, current=current_binding)
-    if provider_pick == wiz.SKIP_SENTINEL:
-        wiz.info(console, strings["init.skipped"])
-        return None
-    if provider_pick is None:
-        provider = typer.prompt(strings["init.binding"], default=current_binding or "openai")
-    else:
-        provider = provider_pick
-
-    spec = EMBEDDING_PROVIDERS.get(provider)
-    display_provider = (
-        spec.label if spec else EMBEDDING_PROVIDER_LABELS.get(provider, provider.title())
-    )
-    default_endpoint = _embedding_default_endpoint(
-        provider=provider,
-        current_binding=current_binding,
-        current_profile=current_profile,
-        spec=spec,
-    )
-
-    edit_endpoint = typer.confirm(strings["init.edit_base_url"], default=not bool(default_endpoint))
-    endpoint = (
-        typer.prompt(strings["init.embedding_endpoint"], default=default_endpoint)
-        if edit_endpoint
-        else default_endpoint
-    )
-    endpoint = normalize_embedding_endpoint_for_display(provider, endpoint)
-    if not edit_endpoint:
-        displayed_endpoint = redact_embedding_endpoint_for_display(endpoint)
-        wiz.info(console, f"Endpoint · {displayed_endpoint or '(empty)'}")
-
-    # Reuse the LLM key by default — most users share creds across services.
-    masked = wiz._mask_secret(llm_api_key)
-    if llm_api_key and typer.confirm(
-        strings["init.api_key_reuse_llm"].format(masked=masked), default=True
-    ):
-        api_key = llm_api_key
-    else:
-        api_key = typer.prompt(
-            strings["init.embedding_api_key"], default="", hide_input=True, show_default=False
-        )
-
-    # Try live ``/models`` first; fall back to the curated list (spec default
-    # first, then EMBEDDING_FALLBACK_MODELS) when the fetch returns nothing.
-    models = wiz.fetch_embedding_models(
-        console, strings, endpoint=endpoint, api_key=api_key, provider=provider
-    )
-    if not models:
-        models = list(wiz.EMBEDDING_FALLBACK_MODELS.get(provider, ()))
-        if spec and spec.default_model and spec.default_model not in models:
-            models = [spec.default_model] + models
-    model = wiz.select_model(
-        console,
-        strings,
-        models=models,
-        current=str((current_profile.get("models") or [{}])[0].get("model") or ""),
-        custom_prompt_label=strings["init.embedding_model"],
-    )
-    endpoint = normalize_embedding_endpoint_for_display(
-        provider,
-        endpoint,
-        model=model,
-    )
-    dimension = typer.prompt(strings["init.embedding_dimension"], default="")
-
-    choice = wiz.EmbeddingChoice(
-        binding=provider,
-        base_url=endpoint,
-        api_key=api_key,
-        model=model,
-        dimension=str(dimension or "").strip(),
-        display_provider=display_provider,
-    )
-
-    if typer.confirm(strings["init.probe_offer"], default=True):
-        wiz.info(console, strings["init.probe_running"].format(what=display_provider))
-        ok_result, elapsed_ms, error = wiz.probe_embedding(
-            base_url=choice.base_url,
-            api_key=choice.api_key,
-            model=choice.model,
-            provider=choice.binding,
-        )
-        choice.probed = True
-        choice.probe_ok = ok_result
-        choice.probe_ms = elapsed_ms
-        if ok_result:
-            wiz.ok(console, strings["init.probe_ok"].format(what=display_provider, ms=elapsed_ms))
-        else:
-            wiz.fail(console, strings["init.probe_fail"].format(what=display_provider, error=error))
-
-    return choice
-
-
 def _search_step(
     console: Console,
     strings: dict,
@@ -476,29 +342,8 @@ def run_init(*, cli_only: bool = False, home: str | Path | None = None) -> None:
         llm_model["model"] = llm_choice.model
         llm_model["name"] = llm_choice.model or "Default Model"
 
-        # --- Step 3: Embedding (skip via [s] inside the picker) ---
-        embedding_choice: wiz.EmbeddingChoice | None = None
-        step_num += 1
-        wiz.step_header(
-            console, strings["init.step_embedding"].format(n=step_num, total=total_steps)
-        )
-        embedding_choice = _embedding_step(console, strings, catalog, llm_choice.api_key)
-        if embedding_choice is not None:
-            emb_profile, emb_model = _ensure_model_service(
-                catalog,
-                "embedding",
-                "embedding-profile-default",
-                "embedding-model-default",
-            )
-            emb_profile["binding"] = embedding_choice.binding
-            emb_profile["base_url"] = embedding_choice.base_url
-            emb_profile["api_key"] = embedding_choice.api_key
-            emb_model["model"] = embedding_choice.model
-            emb_model["name"] = embedding_choice.model or "Default Embedding Model"
-            if embedding_choice.dimension:
-                emb_model["dimension"] = embedding_choice.dimension
+        # --- Step 3: Search (skip via [s] inside the picker) ---
 
-        # --- Step 4: Search (skip via [s] inside the picker) ---
         search_choice: wiz.SearchChoice | None = None
         step_num += 1
         wiz.step_header(console, strings["init.step_search"].format(n=step_num, total=total_steps))
@@ -516,7 +361,6 @@ def run_init(*, cli_only: bool = False, home: str | Path | None = None) -> None:
             console,
             strings,
             llm=llm_choice,
-            embedding=embedding_choice,
             search=search_choice,
             backend_port=None if cli_only else system.get("backend_port"),
             frontend_port=None if cli_only else system.get("frontend_port"),

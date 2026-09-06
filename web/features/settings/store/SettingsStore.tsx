@@ -36,7 +36,6 @@ export type ServiceName =
   | "llm"
   /** Same shape as `llm`; stands in for it on the calls DeepMentor makes itself. */
   | "task"
-  | "embedding"
   | "search"
   | "tts"
   | "stt"
@@ -63,9 +62,6 @@ export type CatalogModel = {
   model: string;
   managed_by?: string;
   capabilities?: ModelCapabilities;
-  dimension?: string;
-  send_dimensions?: boolean;
-  supported_dimensions?: string;
   context_window?: string;
   context_window_source?: string;
   context_window_detected_at?: string;
@@ -147,7 +143,6 @@ export type ConnectionTargetService = {
   provider: string;
   base_url: string;
   default_model: string;
-  default_dim?: string;
   default_voice?: string;
 };
 
@@ -162,7 +157,6 @@ export type ConnectionTarget = {
 export const CONNECTABLE_SERVICES: ServiceName[] = [
   "llm",
   "task",
-  "embedding",
   "tts",
   "stt",
   "imagegen",
@@ -175,7 +169,6 @@ export type Catalog = {
   services: {
     llm: CatalogService;
     task: CatalogService;
-    embedding: CatalogService;
     search: CatalogService;
     tts: CatalogService;
     stt: CatalogService;
@@ -237,7 +230,6 @@ export type ProviderOption = {
   value: string;
   label: string;
   base_url?: string;
-  default_dim?: string;
   default_model?: string;
   default_voice?: string;
   auth_mode?: "api_key" | "oauth";
@@ -259,18 +251,7 @@ export type ProviderOption = {
 export type SystemStatus = {
   backend: { status: string; timestamp: string };
   llm: { status: string; model?: string; error?: string };
-  embeddings: { status: string; model?: string; error?: string };
   search: { status: string; provider?: string; error?: string };
-};
-
-export type EmbeddingCapabilities = {
-  detected_dim?: number;
-  default_dim?: number;
-  supported_dimensions?: number[];
-  supports_variable_dimensions?: boolean;
-  model_known?: boolean;
-  active_dim?: number;
-  active_dim_source?: string;
 };
 
 export type DiagnosticsResult = {
@@ -402,11 +383,6 @@ export function defaultCatalog(): Catalog {
     services: {
       llm: { active_profile_id: null, active_model_id: null, profiles: [] },
       task: { active_profile_id: null, active_model_id: null, profiles: [] },
-      embedding: {
-        active_profile_id: null,
-        active_model_id: null,
-        profiles: [],
-      },
       search: { active_profile_id: null, profiles: [] },
       tts: { active_profile_id: null, active_model_id: null, profiles: [] },
       stt: { active_profile_id: null, active_model_id: null, profiles: [] },
@@ -675,11 +651,7 @@ export type SettingsContextValue = {
   logs: string;
   testRunning: ServiceName | null;
   diagnosticsResults: Partial<Record<ServiceName, DiagnosticsResult>>;
-  embeddingCapabilities: EmbeddingCapabilities | null;
   runDetailedTest: (service: ServiceName) => Promise<void>;
-
-  // Helpers
-  embeddingDefaultDim: (binding?: string) => string;
 
   // Tour
   tourStepIndex: number;
@@ -735,7 +707,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   >({
     llm: [],
     task: [],
-    embedding: [],
     search: [],
     tts: [],
     stt: [],
@@ -762,8 +733,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   >(() => readStoredDiagnosticsResults());
   const [llmContextDetection, setLlmContextDetection] =
     useState<LlmContextWindowDetection | null>(null);
-  const [embeddingCapabilities, setEmbeddingCapabilities] =
-    useState<EmbeddingCapabilities | null>(null);
   const [tourStepIndex, setTourStepIndex] = useState(-1);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -1012,16 +981,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const embeddingDefaultDim = useCallback(
-    (binding?: string) => {
-      const match = (providers.embedding || []).find(
-        (p) => p.value === (binding || "openai"),
-      );
-      return match?.default_dim || "3072";
-    },
-    [providers.embedding],
-  );
-
   const addProfile = useCallback(
     (service: ServiceName) => {
       mutateCatalog((next) => {
@@ -1059,12 +1018,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             model: prefillsDefaultModel(service)
               ? (providerOption?.default_model ?? "")
               : "",
-            ...(service === "embedding"
-              ? {
-                  dimension: embeddingDefaultDim(),
-                  send_dimensions: true,
-                }
-              : {}),
             ...(service === "tts"
               ? {
                   voice: providerOption?.default_voice ?? "",
@@ -1078,7 +1031,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         target.active_profile_id = profileId;
       });
     },
-    [embeddingDefaultDim, language, mutateCatalog, providers],
+    [language, mutateCatalog, providers],
   );
 
   const removeActiveProfile = useCallback(
@@ -1124,12 +1077,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           model: prefillsDefaultModel(service)
             ? (providerOption?.default_model ?? "")
             : "",
-          ...(service === "embedding"
-            ? {
-                dimension: embeddingDefaultDim(profile.binding),
-                send_dimensions: true,
-              }
-            : {}),
           ...(service === "tts"
             ? {
                 voice: providerOption?.default_voice ?? "",
@@ -1144,7 +1091,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         }
       });
     },
-    [embeddingDefaultDim, language, mutateCatalog, providers],
+    [language, mutateCatalog, providers],
   );
 
   // ─── Connections ─────────────────────────────────────────────────────────
@@ -1273,11 +1220,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             model: request.model || spec.default_model || "",
             // Mirrored from the connection on save; seeded here so the draft
             // shows the same values the server will store.
-            baseUrl: base
-              ? request.service === "embedding"
-                ? `${base}/embeddings`
-                : base
-              : spec.base_url,
+            baseUrl: base || spec.base_url,
             activate: draft.services[request.service].profiles.length === 0,
           },
         ];
@@ -1300,12 +1243,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                 id: item.modelId,
                 name: item.model || item.spec.provider,
                 model: item.model,
-                ...(item.service === "embedding"
-                  ? {
-                      dimension: item.spec.default_dim || "",
-                      send_dimensions: true,
-                    }
-                  : {}),
                 ...(item.service === "tts"
                   ? {
                       voice: item.spec.default_voice || "",
@@ -1632,15 +1569,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [catalog, clearPending, t]);
 
   // ── Diagnostics ─────────────────────────────────────────────────────────
-  // Reset capability snapshot when switching embedding profile/model so a
-  // stale "Detected: Xd" hint doesn't bleed across profiles.
-  useEffect(() => {
-    setEmbeddingCapabilities(null);
-  }, [
-    draft.services.embedding.active_profile_id,
-    draft.services.embedding.active_model_id,
-  ]);
-
   const llmActiveProfileId = draft.services.llm.active_profile_id;
   const llmActiveModelId = draft.services.llm.active_model_id;
   useEffect(() => {
@@ -1675,7 +1603,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         return next;
       });
       if (service === "llm") setLlmContextDetection(null);
-      if (service === "embedding") setEmbeddingCapabilities(null);
       try {
         const response = await apiFetch(
           apiUrl(`/api/settings/tests/${service}/start`),
@@ -1702,13 +1629,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             type: string;
             message: string;
             catalog?: Catalog;
-            detected_dim?: number;
-            default_dim?: number;
-            supported_dimensions?: number[];
-            supports_variable_dimensions?: boolean;
-            model_known?: boolean;
-            active_dim?: number;
-            active_dim_source?: string;
             context_window?: number;
             source?: string;
             detail?: string;
@@ -1730,17 +1650,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
                 detectedAt: entry.detected_at,
               });
             }
-          }
-          if (entry.type === "capabilities") {
-            setEmbeddingCapabilities({
-              detected_dim: entry.detected_dim,
-              default_dim: entry.default_dim,
-              supported_dimensions: entry.supported_dimensions,
-              supports_variable_dimensions: entry.supports_variable_dimensions,
-              model_known: entry.model_known,
-              active_dim: entry.active_dim,
-              active_dim_source: entry.active_dim_source,
-            });
           }
           if (entry.catalog) {
             setCatalog(entry.catalog);
@@ -1948,9 +1857,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       logs,
       testRunning,
       diagnosticsResults,
-      embeddingCapabilities,
       runDetailedTest,
-      embeddingDefaultDim,
       tourStepIndex,
       startTour,
       advanceTour,
@@ -1978,8 +1885,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       codeBlockWrapLongLines,
       diagnosticsResults,
       draft,
-      embeddingCapabilities,
-      embeddingDefaultDim,
       hasUnsavedChanges,
       language,
       responseLanguage,

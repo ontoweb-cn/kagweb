@@ -37,13 +37,11 @@ import type { LLMSelection } from "@/features/chat/model/protocol";
 import type { LLMOption } from "@/lib/llm-options";
 import ChatSpaceMenu from "@/components/chat/space/ChatSpaceMenu";
 import ContextBudgetChip, { type ContextBudget } from "./ContextBudgetChip";
-import KnowledgeSelector from "./KnowledgeSelector";
 import ModelSelector from "./ModelSelector";
 import PersonaSelector from "./PersonaSelector";
 
 type SpaceSelectionCounts = {
   attachments: number;
-  knowledge: number;
   chatHistory: number;
   persona: number;
 };
@@ -61,10 +59,6 @@ interface PendingAttachment {
   previewUrl?: string;
   size?: number;
   mimeType?: string;
-}
-
-interface KnowledgeBase {
-  name: string;
 }
 
 /** One row in the capability picker — shared by the built-in list and the
@@ -153,7 +147,6 @@ export default memo(function ChatComposer({
   attachments,
   attachmentError,
   activeCap,
-  knowledgeBases,
   llmOptions,
   activeLLMDefault,
   llmSelection,
@@ -162,13 +155,11 @@ export default memo(function ChatComposer({
   onRefreshLLMOptions,
   contextBudget = null,
   selectedHistorySessions,
-  selectedKnowledgeBases,
   isStreaming,
   awaitingUserReply = false,
   capabilities,
   onSetCapMenuOpen,
   onSetSpaceMenuOpen,
-  onToggleKB,
   onSelectLLM,
   onSelectHistoryPicker,
   onSelectPersonaPicker,
@@ -207,7 +198,6 @@ export default memo(function ChatComposer({
   attachments: PendingAttachment[];
   attachmentError: string | null;
   activeCap: CapabilityDef;
-  knowledgeBases: KnowledgeBase[];
   llmOptions: LLMOption[];
   activeLLMDefault: LLMSelection | null;
   llmSelection: LLMSelection | null;
@@ -221,14 +211,12 @@ export default memo(function ChatComposer({
    */
   contextBudget?: ContextBudget | null;
   selectedHistorySessions: SelectedHistorySession[];
-  selectedKnowledgeBases: string[];
   isStreaming: boolean;
   /** The live turn is paused on an ask_user card and needs an answer. */
   awaitingUserReply?: boolean;
   capabilities: CapabilityDef[];
   onSetCapMenuOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   onSetSpaceMenuOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
-  onToggleKB: (name: string) => void;
   onSelectLLM: (selection: LLMSelection | null) => void;
   onSelectHistoryPicker: () => void;
   onSelectPersonaPicker: () => void;
@@ -426,16 +414,13 @@ export default memo(function ChatComposer({
 
   const spaceSelectionCounts: SpaceSelectionCounts = {
     attachments: attachments.length,
-    knowledge: selectedKnowledgeBases.length,
     chatHistory: selectedHistorySessions.length,
     persona: 0,
   };
   // Badge on the "+" button = how many things are selected through the
-  // "+" menu. Knowledge is excluded: it no longer lives in this menu —
-  // it has its own toolbar chip (KnowledgeSelector) with its own active
-  // state, so counting it here would double-signal.
-  const contextSelectionCount = Object.entries(spaceSelectionCounts).reduce(
-    (total, [key, count]) => (key === "knowledge" ? total : total + count),
+  // "+" menu.
+  const contextSelectionCount = Object.values(spaceSelectionCounts).reduce(
+    (total, count) => total + count,
     0,
   );
 
@@ -443,11 +428,6 @@ export default memo(function ChatComposer({
   // quiet monochrome rows, collapsed behind a count by default. File
   // attachments intentionally stay OUT of the tree — they keep their preview
   // cards below the textarea.
-  // Knowledge bases are intentionally NOT in this tree: they are a
-  // session-level retrieval SCOPE (sticky, persisted), not a one-shot
-  // reference like the rows below. That sticky state lives in the
-  // toolbar KnowledgeSelector chip instead — same lifecycle class as
-  // the persona selector.
   const contextTreeItems: ContextTreeItem[] = [
     ...selectedHistorySessions.map(
       (session): ContextTreeItem => ({
@@ -560,7 +540,6 @@ export default memo(function ChatComposer({
             onInputChange={handleInputChange}
             onPaste={onPaste}
             selectedCounts={spaceSelectionCounts}
-            knowledgeAvailable={false}
             personaAvailable={!onPersonaSelectionChange}
             onSelectAttach={handlePickFiles}
             onSelectHistoryPicker={onSelectHistoryPicker}
@@ -845,7 +824,6 @@ export default memo(function ChatComposer({
                       <ChatSpaceMenu
                         variant="toolbar"
                         selectedCounts={spaceSelectionCounts}
-                        knowledgeAvailable={false}
                         personaAvailable={!onPersonaSelectionChange}
                         onSelectItem={(key) => {
                           onSetSpaceMenuOpen(false);
@@ -860,13 +838,6 @@ export default memo(function ChatComposer({
               </div>
 
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                {knowledgeBases.length > 0 ? (
-                  <KnowledgeSelector
-                    knowledgeBases={knowledgeBases}
-                    selected={selectedKnowledgeBases}
-                    onToggle={onToggleKB}
-                  />
-                ) : null}
                 {onPersonaSelectionChange ? (
                   <PersonaSelector
                     value={personaSelection ?? ""}

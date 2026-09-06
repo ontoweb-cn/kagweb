@@ -89,7 +89,6 @@ class TurnRequest(BaseModel):
     capability: str | None = "chat"
     session_id: str | None = None
     tools: list[str] | None = None
-    knowledge_bases: list[str] = Field(default_factory=list)
     language: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
 

@@ -2,10 +2,6 @@
 
 import importlib
 
-from .knowledge_base_config import (
-    KnowledgeBaseConfigService,
-    get_kb_config_service,
-)
 from .launch_settings import LaunchSettings, load_launch_settings
 from .loader import (
     DEFAULT_CHAT_PARAMS,
@@ -62,10 +58,8 @@ __all__ = [
     "get_chat_params",
     "DEFAULT_CHAT_PARAMS",
     "ResolvedLLMConfig",
-    "ResolvedEmbeddingConfig",
     "ResolvedSearchConfig",
     "resolve_llm_runtime_config",
-    "resolve_embedding_runtime_config",
     "resolve_search_runtime_config",
     "search_provider_state",
     "NANOBOT_LLM_PROVIDERS",
@@ -79,9 +73,7 @@ __all__ = [
     "search_missing_credential",
     "search_fallback_candidates",
     "supported_search_providers_hint",
-    # From knowledge_base_config.py
     "KnowledgeBaseConfigService",
-    "get_kb_config_service",
     "ModelCatalogService",
     "get_model_catalog_service",
     "CATALOG_SECRET_MASK",
@@ -118,10 +110,8 @@ def __getattr__(name: str):
         "SEARCH_PROVIDERS",
         "SUPPORTED_SEARCH_PROVIDERS",
         "ResolvedLLMConfig",
-        "ResolvedEmbeddingConfig",
         "ResolvedSearchConfig",
         "SearchProviderSpec",
-        "resolve_embedding_runtime_config",
         "resolve_llm_runtime_config",
         "resolve_search_runtime_config",
         "search_fallback_candidates",

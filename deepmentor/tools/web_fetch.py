@@ -259,7 +259,7 @@ def _extract_readable(html_or_text: str, base_url: str = "") -> tuple[str, str]:
         # when lxml is available; the regex path below remains a lean-install
         # fallback for malformed pages or environments without that dependency.
         try:
-            from deepmentor.services.web_source.html_extractor import (
+            from deepmentor.utils.html_article import (
                 extract_article_markdown,
             )
 

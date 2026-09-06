@@ -139,7 +139,7 @@ export default function DocumentParsingSettingsPage() {
       <SettingsPageHeader
         title={t("Document Parsing")}
         description={t(
-          "How uploaded documents are converted into text for knowledge bases and question generation. Pick an engine and its options. Local model downloads are off by default — they only happen when you explicitly allow them.",
+          "How uploaded documents are converted into text for chat and question generation. Pick an engine and its options. Local model downloads are off by default — they only happen when you explicitly allow them.",
         )}
       />
 

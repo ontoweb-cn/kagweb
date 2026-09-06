@@ -48,37 +48,6 @@ def test_python_314_is_supported_by_both_distributions() -> None:
     )
 
 
-def test_python_314_rag_dependency_guards_match_every_install_surface() -> None:
-    bm25 = "llama-index-retrievers-bm25>=0.7.1,<0.8.0; python_version < '3.14'"
-    faiss = [
-        "faiss-cpu>=1.8.0,<2.0.0; python_version < '3.14'",
-        "faiss-cpu>=1.12.0,<2.0.0; python_version >= '3.14'",
-    ]
-    root = _project(REPOSITORY_ROOT / "pyproject.toml")
-    cli_package = _project(REPOSITORY_ROOT / "packaging" / "deepmentor-cli" / "pyproject.toml")
-
-    for dependencies in (
-        root["dependencies"],
-        root["optional-dependencies"]["cli"],
-        cli_package["dependencies"],
-    ):
-        assert [
-            item for item in dependencies if item.startswith("llama-index-retrievers-bm25")
-        ] == [bm25]
-        assert [item for item in dependencies if item.startswith("faiss-cpu")] == faiss
-
-    requirement_lines = _cli_requirement_lines()
-    assert [
-        item for item in requirement_lines if item.startswith("llama-index-retrievers-bm25")
-    ] == [bm25.replace("'3.14'", '"3.14"')]
-    assert [item for item in requirement_lines if item.startswith("faiss-cpu")] == [
-        item.replace("'3.14'", '"3.14"') for item in faiss
-    ]
-
-
-def test_graphrag_extra_remains_guarded_until_upstream_supports_python_314() -> None:
-    extras = _project(REPOSITORY_ROOT / "pyproject.toml")["optional-dependencies"]
-    assert extras["graphrag"] == ["graphrag>=3.0.1,<4.0.0; python_version < '3.14'"]
 
 
 @pytest.mark.parametrize(
@@ -150,30 +119,6 @@ def test_full_app_cron_dependency_matches_every_server_install_surface() -> None
     ).splitlines().count(expected) == 1
 
 
-def test_pageindex_sdk_range_matches_every_install_surface() -> None:
-    expected = "pageindex>=0.2.10,<0.3.0"
-    with (REPOSITORY_ROOT / "pyproject.toml").open("rb") as file:
-        root = tomllib.load(file)["project"]
-    with (REPOSITORY_ROOT / "packaging" / "deepmentor-cli" / "pyproject.toml").open("rb") as file:
-        cli_package = tomllib.load(file)["project"]
-
-    assert root["dependencies"].count(expected) == 1
-    assert root["optional-dependencies"]["cli"].count(expected) == 1
-    assert cli_package["dependencies"].count(expected) == 1
-    assert (REPOSITORY_ROOT / "requirements" / "cli.txt").read_text(
-        encoding="utf-8"
-    ).splitlines().count(expected) == 1
-
-
-def test_lightrag_extra_is_the_exact_native_sdk_without_parser_transitives() -> None:
-    with (REPOSITORY_ROOT / "pyproject.toml").open("rb") as file:
-        extras = tomllib.load(file)["project"]["optional-dependencies"]
-
-    requirements = extras["rag-lightrag"]
-    assert requirements == ["lightrag-hku==1.5.7rc2"]
-    names = [requirement.lower().split("=", 1)[0].split("<", 1)[0] for requirement in requirements]
-    assert "raganything" not in names
-    assert "mineru" not in names
 
 
 @pytest.mark.parametrize(

@@ -221,94 +221,6 @@ def _storage_check(data_root: Path) -> DoctorCheck:
     )
 
 
-def _rag_check(
-    config: dict[str, Any],
-    preflight: Callable[[str], dict[str, Any]],
-) -> DoctorCheck:
-    knowledge_bases = config.get("knowledge_bases", {})
-    if not isinstance(knowledge_bases, dict) or not knowledge_bases:
-        return DoctorCheck(
-            key="rag",
-            label="RAG prerequisites",
-            status="skip",
-            detail="No knowledge bases are configured.",
-            required=False,
-        )
-
-    defaults = config.get("defaults", {})
-    default_provider = (
-        str(defaults.get("rag_provider", "llamaindex"))
-        if isinstance(defaults, dict)
-        else "llamaindex"
-    )
-    from deepmentor.services.rag.factory import (
-        LIGHTRAG_SERVER_PROVIDER,
-        WEKNORA_PROVIDER,
-        normalize_provider_name,
-    )
-
-    providers: set[str] = set()
-    failures: list[str] = []
-    for kb_name, entry in knowledge_bases.items():
-        if not isinstance(entry, dict):
-            continue
-        provider = normalize_provider_name(str(entry.get("rag_provider") or default_provider))
-        providers.add(provider)
-        if provider == WEKNORA_PROVIDER:
-            from deepmentor.services.rag.pipelines.weknora.config import (
-                config_from_entry as weknora_config_from_entry,
-            )
-
-            try:
-                weknora_config = weknora_config_from_entry(entry)
-                endpoint_ok, _ = _safe_endpoint(weknora_config.base_url)
-                if not endpoint_ok:
-                    failures.append(f"{kb_name}: invalid WeKnora server URL")
-            except Exception as exc:
-                failures.append(f"{kb_name}: {_redact_error(exc, None)}")
-            continue
-
-        if provider != LIGHTRAG_SERVER_PROVIDER:
-            continue
-
-        from deepmentor.services.rag.pipelines.lightrag_server.config import (
-            config_from_entry as lightrag_server_config_from_entry,
-        )
-
-        try:
-            server_config = lightrag_server_config_from_entry(entry)
-            endpoint_ok, _ = _safe_endpoint(server_config.base_url)
-            if not endpoint_ok:
-                failures.append(f"{kb_name}: invalid LightRAG server URL")
-        except Exception as exc:
-            failures.append(f"{kb_name}: {_redact_error(exc, None)}")
-
-    for provider in sorted(providers - {LIGHTRAG_SERVER_PROVIDER, WEKNORA_PROVIDER}):
-        try:
-            report = preflight(provider)
-            for check in report.get("checks", []):
-                if not check.get("ok") and not check.get("optional", False):
-                    failures.append(f"{provider}: {check.get('label', 'requirement failed')}")
-        except Exception as exc:
-            failures.append(f"{provider}: preflight could not run ({_redact_error(exc, None)})")
-
-    if failures:
-        return DoctorCheck(
-            key="rag",
-            label="RAG prerequisites",
-            status="fail",
-            detail="; ".join(failures),
-            required=False,
-        )
-    return DoctorCheck(
-        key="rag",
-        label="RAG prerequisites",
-        status="pass",
-        detail=f"Ready for configured provider(s): {', '.join(sorted(providers))}.",
-        required=False,
-    )
-
-
 def _redact_error(exc: Exception, config: Any) -> str:
     message = str(exc).strip() or type(exc).__name__
     extra_headers = getattr(config, "extra_headers", None) or {}
@@ -362,8 +274,6 @@ async def run_diagnostics(
     online: bool = False,
     resolve_llm: Callable[[], Any] | None = None,
     data_root: Path | None = None,
-    load_rag_config: Callable[[], dict[str, Any]] | None = None,
-    rag_preflight: Callable[[str], dict[str, Any]] | None = None,
     online_probe: Callable[[Any], Awaitable[None]] | None = None,
 ) -> DoctorReport:
     """Run setup diagnostics without network access unless ``online`` is set."""
@@ -375,14 +285,6 @@ async def run_diagnostics(
         from deepmentor.services.path_service import get_path_service
 
         data_root = get_path_service().get_user_root()
-    if load_rag_config is None:
-        from deepmentor.services.config import get_kb_config_service
-
-        load_rag_config = get_kb_config_service().get_all_configs
-    if rag_preflight is None:
-        from deepmentor.services.rag.preflight import engine_preflight
-
-        rag_preflight = engine_preflight
     if online_probe is None:
         online_probe = _probe_provider
 
@@ -405,18 +307,6 @@ async def run_diagnostics(
         )
 
     checks.append(_storage_check(data_root))
-    try:
-        checks.append(_rag_check(load_rag_config(), rag_preflight))
-    except Exception as exc:
-        checks.append(
-            DoctorCheck(
-                key="rag",
-                label="RAG prerequisites",
-                status="fail",
-                detail=f"Could not inspect RAG settings: {_redact_error(exc, None)}",
-                required=False,
-            )
-        )
 
     if not online:
         checks.append(

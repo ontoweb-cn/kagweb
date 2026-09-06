@@ -24,12 +24,6 @@ from rich.table import Table
 from rich.text import Text
 import typer
 
-from deepmentor.services.config.embedding_endpoint import (
-    GEMINI_API_HOST,
-    SENSITIVE_ENDPOINT_QUERY_KEYS,
-    is_gemini_native_embedding_endpoint,
-    redact_embedding_endpoint_for_display,
-)
 from deepmentor.services.llm.config import get_token_limit_kwargs
 from deepmentor.services.provider_registry import PROVIDERS, ProviderSpec, find_by_name
 
@@ -82,50 +76,6 @@ LLM_FALLBACK_MODELS: dict[str, tuple[str, ...]] = {
     ),
     "ollama": ("llama3.2", "qwen2.5", "mistral"),
 }
-
-# Featured embedding providers — display order. Source of truth for label /
-# default URL / default model is ``EMBEDDING_PROVIDERS`` in
-# ``deepmentor.services.config.provider_runtime``. Adding a new featured entry
-# just means appending its key here.
-FEATURED_EMBEDDING_PROVIDERS: tuple[str, ...] = (
-    "openai",
-    "gemini",
-    "aliyun",  # DashScope / Qwen multimodal embeddings
-    "siliconflow",
-    "jina",
-    "cohere",
-    "openrouter",
-    "azure_openai",
-    "vllm",  # also covers LM Studio, llama.cpp via the same OpenAI-compatible adapter
-    "ollama",
-)
-
-# Fallback model lists used only when live ``/models`` fetch fails. For
-# providers where ``EmbeddingProviderSpec.default_model`` is set, that's
-# preferred and these are extras.
-EMBEDDING_FALLBACK_MODELS: dict[str, tuple[str, ...]] = {
-    "openai": ("text-embedding-3-large", "text-embedding-3-small"),
-    "gemini": ("gemini-embedding-2", "gemini-embedding-001"),
-    "aliyun": ("qwen3-vl-embedding", "text-embedding-v3", "text-embedding-v2"),
-    "siliconflow": (
-        "Qwen/Qwen3-Embedding-8B",
-        "BAAI/bge-m3",
-        "BAAI/bge-large-en-v1.5",
-    ),
-    "jina": ("jina-embeddings-v3", "jina-embeddings-v2-base-en"),
-    "cohere": ("embed-v4.0", "embed-multilingual-v3.0", "embed-english-v3.0"),
-    "openrouter": ("openai/text-embedding-3-large",),
-    "orcarouter": ("openai/text-embedding-3-large",),
-    "vllm": ("BAAI/bge-m3",),
-    "ollama": ("nomic-embed-text", "mxbai-embed-large", "snowflake-arctic-embed"),
-}
-
-
-# --- Search providers ----------------------------------------------------------
-# Source of truth: ``SUPPORTED_SEARCH_PROVIDERS`` in
-# ``deepmentor.services.config.provider_runtime``. Each entry below describes
-# how the wizard captures the credentials/config for that provider.
-
 
 @dataclass(frozen=True)
 class SearchProviderSpec:
@@ -263,19 +213,6 @@ class LLMChoice:
     api_key: str
     model: str
     display_provider: str  # human-friendly label for the review panel
-    probed: bool = False
-    probe_ok: bool = False
-    probe_ms: int = 0
-
-
-@dataclass
-class EmbeddingChoice:
-    binding: str
-    base_url: str  # full /embeddings URL (already normalised)
-    api_key: str
-    model: str
-    dimension: str
-    display_provider: str
     probed: bool = False
     probe_ok: bool = False
     probe_ms: int = 0
@@ -433,7 +370,7 @@ def select_llm_provider(
         options.append((spec.name, spec.label, hint))
 
     # ``[s]`` is reserved for the "Skip" shortcut in optional steps
-    # (embedding / search). LLM is mandatory, so we use ``[a]`` for "show all".
+    # (search). LLM is mandatory, so we use ``[a]`` for "show all".
     extra = {
         "a": strings["init.show_all"],
         "c": strings["init.custom_provider"],
@@ -485,54 +422,6 @@ def _select_provider_full_list(
 
 
 SKIP_SENTINEL = "__skip__"
-
-
-def select_embedding_provider(
-    console: Console,
-    strings: dict[str, str],
-    *,
-    current: str | None = None,
-) -> str | None:
-    """Pick an embedding provider key. Returns one of:
-
-    - canonical provider name (e.g. ``"openai"``, ``"aliyun"``)
-    - ``None`` → user wants to type their own (custom)
-    - :data:`SKIP_SENTINEL` → user wants to skip this step entirely
-
-    The featured list is driven by :data:`FEATURED_EMBEDDING_PROVIDERS`; labels
-    and default endpoints come from ``EMBEDDING_PROVIDERS`` in
-    ``provider_runtime`` so we don't duplicate the source of truth.
-    """
-
-    from deepmentor.services.config.provider_runtime import EMBEDDING_PROVIDERS
-
-    options: list[tuple[str, str, str]] = []
-    for name in FEATURED_EMBEDDING_PROVIDERS:
-        spec = EMBEDDING_PROVIDERS.get(name)
-        if not spec:
-            continue
-        hint = spec.default_api_base or ("local" if spec.is_local else "")
-        options.append((name, spec.label, hint))
-
-    extra = {
-        "s": strings["init.skip_step"],
-        "c": strings["init.custom_provider"],
-    }
-    default_key = current if current in {n for n, _, _ in options} else "openai"
-    pick = select_from_options(
-        console,
-        title=strings["init.pick_embedding_provider"],
-        options=options,
-        default_key=default_key,
-        extra_keys=extra,
-        prompt_label=strings["init.choice"],
-        invalid_label=strings["init.choice_invalid"],
-    )
-    if pick == "s":
-        return SKIP_SENTINEL
-    if pick == "c":
-        return None
-    return pick
 
 
 def select_search_provider(
@@ -622,7 +511,7 @@ def fetch_models(
     """Query the provider for an available-model list.
 
     Returns ``[]`` on any failure — callers should fall back to the curated
-    list in ``LLM_FALLBACK_MODELS`` / ``EMBEDDING_FALLBACK_MODELS``.
+    list in ``LLM_FALLBACK_MODELS``.
     """
     if not base_url:
         return []
@@ -680,138 +569,6 @@ def fetch_models(
         deduped.append(n)
     if deduped:
         ok(console, strings["init.fetch_models_ok"].format(count=len(deduped)))
-    return deduped
-
-
-def _derive_embedding_models_url(endpoint: str, provider: str) -> str:
-    """Convert a (full) embedding endpoint URL into its sibling ``/models`` URL.
-
-    Embedding endpoints are stored as the *exact* URL adapters POST to
-    (e.g. ``https://api.openai.com/v1/embeddings``), not a base. To list
-    available models we have to strip the embedding-specific path segment.
-
-    Ollama is special-cased: it exposes installed models at ``/api/tags``,
-    not ``/models``.
-    """
-    url = endpoint.rstrip("/")
-
-    if provider == "gemini":
-        parsed = urlparse(url)
-        if parsed.scheme and parsed.netloc:
-            path = parsed.path.rstrip("/")
-            if "/models/" in path and path.endswith(":batchEmbedContents"):
-                prefix = path.rsplit("/models/", 1)[0]
-                models_path = f"{prefix}/models"
-            elif path.endswith("/embeddings"):
-                prefix = path.removesuffix("/embeddings")
-                if prefix.endswith("/openai"):
-                    prefix = prefix.removesuffix("/openai")
-                models_path = f"{prefix}/models"
-            else:
-                models_path = f"{path}/models"
-            return parsed._replace(path=models_path, fragment="").geturl()
-
-    if provider == "ollama" or url.endswith("/api/embed"):
-        base = url
-        for suffix in ("/api/embed", "/api/embeddings"):
-            if base.endswith(suffix):
-                base = base[: -len(suffix)]
-                break
-        return f"{base.rstrip('/')}/api/tags"
-
-    for suffix in ("/embeddings", "/embed"):
-        if url.endswith(suffix):
-            return f"{url[: -len(suffix)]}/models"
-
-    return f"{url}/models"
-
-
-# Strict "embed" substring match. Broader heuristics (``e5-``, ``nomic``,
-# ``voyage``...) drag too many LLMs in. Embedding models that don't follow
-# the naming convention (``bge-m3``, ``qwen3-embedding-8b``) are picked up
-# from the curated EMBEDDING_FALLBACK_MODELS list instead.
-def _looks_like_embedding_model(name: str) -> bool:
-    return "embed" in name.lower()
-
-
-def fetch_embedding_models(
-    console: Console,
-    strings: dict[str, str],
-    *,
-    endpoint: str,
-    api_key: str,
-    provider: str,
-) -> list[str]:
-    """Live-list embedding models from the provider's ``/models`` endpoint.
-
-    Returns ``[]`` on any failure so callers can fall back to the curated
-    list. When the provider's ``/models`` includes non-embedding models
-    (typical for OpenAI-compatible endpoints), the result is filtered down
-    to entries whose name looks like an embedding model. If filtering
-    leaves nothing, the unfiltered list is returned as a safety net.
-    """
-    if not endpoint:
-        return []
-
-    models_url = _derive_embedding_models_url(endpoint, provider)
-    headers: dict[str, str] = {}
-    if api_key:
-        if provider == "gemini" and urlparse(endpoint).hostname == GEMINI_API_HOST:
-            headers["x-goog-api-key"] = api_key
-        else:
-            headers["Authorization"] = f"Bearer {api_key}"
-
-    displayed_models_url = redact_embedding_endpoint_for_display(models_url)
-    info(console, strings["init.fetch_models"].format(url=displayed_models_url))
-    try:
-        with httpx.Client(timeout=5.0) as client:
-            response = client.get(models_url, headers=headers)
-        response.raise_for_status()
-        payload = response.json()
-    except Exception as exc:
-        error = str(exc).replace(models_url, displayed_models_url)[:160]
-        warn(console, strings["init.fetch_models_fail"].format(error=error))
-        return []
-
-    raw_items: list[Any] = []
-    if isinstance(payload, dict):
-        for key in ("data", "models"):
-            value = payload.get(key)
-            if isinstance(value, list):
-                raw_items = value
-                break
-    elif isinstance(payload, list):
-        raw_items = payload
-
-    names: list[str] = []
-    for item in raw_items:
-        if isinstance(item, str):
-            names.append(item)
-        elif isinstance(item, dict):
-            name = item.get("id") or item.get("name") or item.get("model")
-            if isinstance(name, str) and name:
-                if provider == "gemini" and name.startswith("models/"):
-                    name = name.removeprefix("models/")
-                names.append(name)
-    if not names:
-        warn(console, strings["init.fetch_models_fail"].format(error="empty model list"))
-        return []
-
-    # Mixed lists (OpenAI returns gpt-4o, dall-e, etc. alongside embeddings).
-    # Strict ``embed`` filter; if it matches nothing, return empty so the
-    # caller falls through to the curated EMBEDDING_FALLBACK_MODELS list.
-    filtered = [n for n in names if _looks_like_embedding_model(n)]
-    if not filtered:
-        return []
-
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for n in filtered:
-        if n in seen:
-            continue
-        seen.add(n)
-        deduped.append(n)
-    ok(console, strings["init.fetch_models_ok"].format(count=len(deduped)))
     return deduped
 
 
@@ -900,65 +657,6 @@ def probe_llm(*, base_url: str, api_key: str, binding: str, model: str) -> tuple
         return False, elapsed, str(exc)[:200]
 
 
-def probe_embedding(
-    *,
-    base_url: str,
-    api_key: str,
-    model: str,
-    provider: str = "",
-) -> tuple[bool, int, str]:
-    """POST a tiny embedding request. Returns ``(ok, elapsed_ms, error)``."""
-    if not base_url or not model:
-        return False, 0, "missing base_url or model"
-    started = time.monotonic()
-
-    def _safe_error(text: str) -> str:
-        secrets = [api_key]
-        secrets.extend(
-            value
-            for key, value in parse_qsl(urlparse(base_url).query, keep_blank_values=True)
-            if key.lower() in SENSITIVE_ENDPOINT_QUERY_KEYS
-        )
-        safe = text.replace(
-            base_url,
-            redact_embedding_endpoint_for_display(base_url),
-        )
-        for secret in secrets:
-            if secret:
-                safe = safe.replace(secret, "[REDACTED]")
-        return safe[:200]
-
-    try:
-        headers = {"Content-Type": "application/json"}
-        body: dict[str, Any]
-        if provider == "gemini" and is_gemini_native_embedding_endpoint(base_url):
-            if api_key and urlparse(base_url).hostname == GEMINI_API_HOST:
-                headers["x-goog-api-key"] = api_key
-            elif api_key:
-                headers["Authorization"] = f"Bearer {api_key}"
-            model_id = model.removeprefix("models/")
-            body = {
-                "requests": [
-                    {
-                        "model": f"models/{model_id}",
-                        "content": {"parts": [{"text": "ping"}]},
-                    }
-                ]
-            }
-        else:
-            headers["Authorization"] = f"Bearer {api_key or 'sk-no-key-required'}"
-            body = {"model": model, "input": "ping"}
-        with httpx.Client(timeout=15.0) as client:
-            response = client.post(base_url, headers=headers, json=body)
-        elapsed = int((time.monotonic() - started) * 1000)
-        if response.status_code >= 400:
-            return False, elapsed, f"HTTP {response.status_code} · {_safe_error(response.text)}"
-        return True, elapsed, ""
-    except Exception as exc:
-        elapsed = int((time.monotonic() - started) * 1000)
-        return False, elapsed, _safe_error(str(exc))
-
-
 # --- Review panel --------------------------------------------------------------
 
 
@@ -967,7 +665,6 @@ def render_review_panel(
     strings: dict[str, str],
     *,
     llm: LLMChoice | None,
-    embedding: EmbeddingChoice | None,
     search: SearchChoice | None,
     backend_port: int | None,
     frontend_port: int | None,
@@ -991,15 +688,6 @@ def render_review_panel(
             strings["init.review_llm"],
             f"{llm.display_provider} · {llm.model} · {llm.base_url}",
             probe=(llm.probed, llm.probe_ok),
-        )
-    if embedding:
-        _row(
-            strings["init.review_embedding"],
-            (
-                f"{embedding.display_provider} · {embedding.model} · "
-                f"{redact_embedding_endpoint_for_display(embedding.base_url)}"
-            ),
-            probe=(embedding.probed, embedding.probe_ok),
         )
     if search:
         if search.provider == "none":
@@ -1025,9 +713,6 @@ def render_review_panel(
 
 
 __all__ = [
-    "EMBEDDING_FALLBACK_MODELS",
-    "EmbeddingChoice",
-    "FEATURED_EMBEDDING_PROVIDERS",
     "FEATURED_LLM_PROVIDERS",
     "LLMChoice",
     "LLM_FALLBACK_MODELS",
@@ -1037,15 +722,12 @@ __all__ = [
     "SearchProviderSpec",
     "capture_api_key",
     "fail",
-    "fetch_embedding_models",
     "fetch_models",
     "info",
     "ok",
-    "probe_embedding",
     "probe_llm",
     "render_review_panel",
     "search_api_key_from_env",
-    "select_embedding_provider",
     "select_from_options",
     "select_llm_provider",
     "select_model",

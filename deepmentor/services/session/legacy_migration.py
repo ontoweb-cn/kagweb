@@ -79,13 +79,9 @@ def _normalize_session(raw: Any, index: int) -> dict[str, Any]:
     created_at = float(raw.get("created_at") or 0)
     updated_at = float(raw.get("updated_at") or created_at)
     settings = raw.get("settings") if isinstance(raw.get("settings"), dict) else {}
-    knowledge_base = str(settings.get("kb_name") or "").strip()
     preferences = {
         "capability": "chat",
         "tools": ["web_search"] if bool(settings.get("enable_web_search")) else [],
-        "knowledge_bases": (
-            [knowledge_base] if knowledge_base and bool(settings.get("enable_rag")) else []
-        ),
         "legacy_chat_settings": dict(settings),
         "legacy_migrated": True,
     }

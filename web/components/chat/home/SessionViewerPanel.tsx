@@ -56,13 +56,10 @@ import {
   buildToolTraceTerms,
   collectSessionGraphs,
   collectSessionSources,
-  type SessionSourceEntry,
   type ToolOutputTraceTarget,
 } from '@/lib/session-activity'
 import { apiUrl } from '@/lib/api'
 import type { MessageAttachment } from '@/features/chat/ChatStateAdapter'
-import { listKnowledgeBaseFiles, type KnowledgeBaseFile } from '@/features/knowledge/api/files'
-import { knowledgeBaseFileRoute } from '@/lib/resource-routes'
 
 const PdfPreview = dynamic(() => import('@/components/chat/preview/previewers/PdfPreview'))
 const ImagePreview = dynamic(() => import('@/components/chat/preview/previewers/ImagePreview'))
@@ -610,7 +607,7 @@ function TabBar({
 /* ------------------------------------------------------------------ */
 
 /**
- * The merged Activity landing: the session-activity sections (tools, KBs,
+ * The merged Activity landing: the session-activity sections (tools,
  * Space refs, attachments — see ``ActivityBody``) plus a compact opener for
  * a URL or a local file. Clicking an attachment opens it as a file tab in
  * this same panel.
@@ -674,47 +671,10 @@ function ActivityDock({
   // null = "follow the data"; once the user picks a tab it sticks.
   const [picked, setPicked] = useState<ActivityDockTab | null>(null)
   const [graphIdx, setGraphIdx] = useState(0)
-  const [kbFiles, setKbFiles] = useState<KnowledgeBaseFile[]>([])
   const tab: ActivityDockTab =
     picked ?? (graphs.length > 0 ? 'graph' : files.length > 0 ? 'files' : 'open')
   const safeGraphIdx = Math.min(graphIdx, Math.max(graphs.length - 1, 0))
   const activeGraph = graphs[safeGraphIdx]
-
-  useEffect(() => {
-    if (tab !== 'files') return
-    const kbNames = [
-      ...new Set(files.map(file => file.kbName).filter((name): name is string => Boolean(name))),
-    ]
-    if (kbNames.length === 0) {
-      queueMicrotask(() => setKbFiles([]))
-      return
-    }
-    let cancelled = false
-    Promise.all(
-      kbNames.map(name => listKnowledgeBaseFiles(name).catch(() => [] as KnowledgeBaseFile[]))
-    ).then(lists => {
-      if (cancelled) return
-      setKbFiles(lists.flat().filter(file => file.type !== 'folder'))
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [files, tab])
-
-  const findKbFile = useCallback(
-    (entry: SessionSourceEntry) => {
-      if (!entry.filename) return null
-      const exact = kbFiles.find(file => file.name === entry.filename)
-      if (exact) return exact
-      const basename = entry.filename.split('/').pop()
-      return (
-        kbFiles.find(file => file.name === entry.filename) ??
-        (basename ? kbFiles.find(file => file.name.split('/').pop() === basename) : undefined) ??
-        null
-      )
-    },
-    [kbFiles]
-  )
 
   const dockTabs: Array<{
     id: ActivityDockTab
@@ -818,11 +778,7 @@ function ActivityDock({
         files.length > 0 ? (
           <ul className="max-h-[280px] overflow-y-auto px-2 py-2">
             {files.map(file => {
-              const kbFile = findKbFile(file)
-              const href =
-                file.kbName && (kbFile?.name || file.filename)
-                  ? knowledgeBaseFileRoute(file.kbName, kbFile?.name || file.filename)
-                  : file.url
+              const href = file.url
               return (
                 <li key={`${file.label}:${file.callId ?? ''}`} title={file.label}>
                   <div className="flex items-center gap-2 rounded-md px-1.5 py-1 text-[11.5px] text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]/35">
@@ -838,11 +794,11 @@ function ActivityDock({
                         rel="noreferrer"
                         className="min-w-0 flex-1 truncate transition-colors hover:text-[var(--primary)]"
                       >
-                        {kbFile?.name || file.filename || file.label}
+                        {file.filename || file.label}
                       </a>
                     ) : (
                       <span className="min-w-0 flex-1 truncate">
-                        {kbFile?.name || file.filename || file.label}
+                        {file.filename || file.label}
                       </span>
                     )}
                     <span className="shrink-0 rounded-full bg-[var(--muted)]/55 px-1.5 py-[1px] text-[9.5px] font-semibold tabular-nums text-[var(--muted-foreground)]">
@@ -863,7 +819,6 @@ function ActivityDock({
                                   filename: file.filename,
                                   title: file.label,
                                   source: file.filename,
-                                  kb_name: file.kbName,
                                 },
                               ],
                             }),

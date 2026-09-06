@@ -35,7 +35,7 @@ import zipfile
 from defusedxml import ElementTree as DefusedElementTree
 from defusedxml.common import DefusedXmlException
 
-from deepmentor.services.rag.file_routing import FileTypeRouter
+from deepmentor.utils.file_types import FileTypeRouter
 
 logger = logging.getLogger(__name__)
 

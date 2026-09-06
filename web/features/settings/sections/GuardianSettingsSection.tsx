@@ -314,7 +314,6 @@ export default function GuardianSettingsPage() {
                 </div>
                 <div className="mt-1 text-lg font-semibold">
                   {report.grant_summary.model_count +
-                    report.grant_summary.knowledge_base_count +
                     report.grant_summary.skill_count}
                 </div>
               </div>

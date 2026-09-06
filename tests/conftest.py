@@ -153,7 +153,6 @@ def rich_context() -> UnifiedContext:
         ],
         enabled_tools=["rag", "web_search"],
         active_capability="deep_solve",
-        knowledge_bases=["my-kb"],
         attachments=[Attachment(type="image", url="https://img.png")],
         config_overrides={"temperature": 0.7},
         language="en",

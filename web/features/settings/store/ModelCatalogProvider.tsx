@@ -28,8 +28,6 @@ type ModelCatalogSlice = Pick<
   | "linkConnectionToServices"
   | "llmContextDetection"
   | "applyDetectedContextWindow"
-  | "embeddingCapabilities"
-  | "embeddingDefaultDim"
 >;
 
 const ModelCatalogContext = createContext<ModelCatalogSlice | null>(null);
@@ -61,8 +59,6 @@ export function ModelCatalogProvider({ children }: { children: ReactNode }) {
       linkConnectionToServices: source.linkConnectionToServices,
       llmContextDetection: source.llmContextDetection,
       applyDetectedContextWindow: source.applyDetectedContextWindow,
-      embeddingCapabilities: source.embeddingCapabilities,
-      embeddingDefaultDim: source.embeddingDefaultDim,
     }),
     [
       source.catalog,
@@ -88,8 +84,6 @@ export function ModelCatalogProvider({ children }: { children: ReactNode }) {
       source.linkConnectionToServices,
       source.llmContextDetection,
       source.applyDetectedContextWindow,
-      source.embeddingCapabilities,
-      source.embeddingDefaultDim,
     ],
   );
   return (

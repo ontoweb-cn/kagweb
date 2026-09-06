@@ -27,27 +27,21 @@ function makeToken(payload: Record<string, unknown>): string {
 }
 
 test("isBackendPath matches /api and /ws paths only", () => {
-  assert.equal(isBackendPath("/api/knowledge-bases"), true);
+  assert.equal(isBackendPath("/api/sessions"), true);
   assert.equal(isBackendPath("/ws/chat"), true);
   assert.equal(isBackendPath("/chat"), false);
   assert.equal(isBackendPath("/apidocs"), false); // no trailing slash → not backend
   assert.equal(isBackendPath("/logo.png"), false);
 });
 
-test("large knowledge uploads bypass the buffering proxy", () => {
+test("matcher lets backend paths through so they rewrite to the API server", () => {
   const matches = (url: string) =>
     unstable_doesMiddlewareMatch({ config: proxyConfig, url });
 
-  assert.equal(matches("http://localhost/api/knowledge-bases"), false);
-  assert.equal(
-    matches("http://localhost/api/knowledge-bases/my%20kb/upload"),
-    false,
-  );
-  assert.equal(
-    matches("http://localhost/api/knowledge-bases/my%20kb/files"),
-    true,
-  );
+  assert.equal(matches("http://localhost/api/sessions"), true);
+  assert.equal(matches("http://localhost/ws/chat"), true);
   assert.equal(matches("http://localhost/chat"), true);
+  assert.equal(matches("http://localhost/_next/static/x.js"), false);
 });
 
 test("backend proxy allows long-running agent requests", () => {
@@ -115,7 +109,6 @@ test("isAuthExempt does NOT exempt protected app routes", () => {
   assert.equal(isAuthExempt("/chat"), false);
   assert.equal(isAuthExempt("/dashboard"), false);
   assert.equal(isAuthExempt("/space/agents"), false);
-  assert.equal(isAuthExempt("/knowledge-bases"), false);
 });
 
 test("classifyToken reports missing for absent or empty cookie", () => {

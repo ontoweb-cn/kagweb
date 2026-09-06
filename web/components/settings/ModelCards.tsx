@@ -367,13 +367,9 @@ export function ModelCard({
       ? model.context_window
         ? t("{{n}} ctx", { n: model.context_window })
         : undefined
-      : service === "embedding"
-        ? model.dimension
-          ? t("{{n}} dim", { n: model.dimension })
-          : undefined
-        : service === "tts"
-          ? model.voice || undefined
-          : undefined;
+      : service === "tts"
+        ? model.voice || undefined
+        : undefined;
 
   return (
     <CardShell expanded={expanded} inUse={inUse} onOpen={onToggleExpand}>

@@ -10,10 +10,8 @@ from typing import Any
 from uuid import uuid4
 
 from .context_window_detection import detect_context_window
-from .embedding_endpoint import redact_embedding_endpoint_for_display
 from .model_catalog import get_model_catalog_service, redact_catalog_secrets
 from .provider_runtime import (
-    resolve_embedding_runtime_config,
     resolve_llm_runtime_config,
     resolve_search_runtime_config,
     supported_search_providers_hint,
@@ -118,8 +116,6 @@ class ConfigTestRunner:
 
             if service == "llm":
                 asyncio.run(self._test_llm(run, catalog))
-            elif service == "embedding":
-                asyncio.run(self._test_embedding(run, model or {}, catalog))
             elif service == "search":
                 self._test_search(run, catalog)
             elif service == "tts":
@@ -137,30 +133,6 @@ class ConfigTestRunner:
             run.status = "failed"
             run.emit("failed", str(exc))
 
-    def _persist_embedding_dimension(
-        self,
-        catalog: dict[str, Any],
-        model: dict[str, Any],
-        actual_dimension: int,
-    ) -> dict[str, Any]:
-        """Write the probe-detected dim onto the active embedding model entry.
-
-        Called after every successful "Test connection" — the probe is the
-        single source of truth, so any prior catalog dim is overwritten.
-        Refreshes the embedding client singleton so subsequent embed calls
-        use the new dim.
-        """
-        from deepmentor.services.embedding.client import reset_embedding_client
-
-        service = get_model_catalog_service()
-        if model is None:
-            return catalog
-        model["dimension"] = str(actual_dimension)
-        saved = service.save(catalog)
-        reset_embedding_client()
-        return redact_catalog_secrets(saved)
-
-    @staticmethod
     def _capabilities_from_adapter(adapter: Any, model_name: str) -> dict[str, Any]:
         """Normalize an adapter's static-model knowledge into a uniform shape.
 
@@ -285,136 +257,6 @@ class ConfigTestRunner:
         run.emit(
             "info",
             "Context window detection is available in Settings and was not written automatically.",
-        )
-
-    async def _test_embedding(
-        self, run: TestRun, model: dict[str, Any], catalog: dict[str, Any]
-    ) -> None:
-        from deepmentor.services.embedding.client import EmbeddingClient
-        from deepmentor.services.embedding.config import EmbeddingConfig
-
-        run.emit("info", "Loading embedding config from the active catalog selection.")
-        resolved = resolve_embedding_runtime_config(catalog=catalog)
-        catalog_dim = _coerce_int(model.get("dimension"), 0, minimum=0)
-        # Force the smoke probe to send NO `dimensions=` parameter so we get
-        # the model's native max dim back. If we used the configured dim,
-        # Matryoshka models (OpenAI text-embedding-3-*, Cohere embed-v4,
-        # Jina v3/v4, DashScope qwen3-vl-embedding) would just truncate and
-        # return whatever we asked for — making "detected_dim" meaningless.
-        config = EmbeddingConfig(
-            model=resolved.model,
-            api_key=resolved.api_key,
-            base_url=resolved.base_url,
-            effective_url=resolved.effective_url,
-            binding=resolved.binding,
-            provider_name=resolved.provider_name,
-            provider_mode=resolved.provider_mode,
-            api_version=resolved.api_version,
-            extra_headers=resolved.extra_headers,
-            dim=0,
-            send_dimensions=False,
-            request_timeout=max(1, resolved.request_timeout),
-            batch_size=max(1, resolved.batch_size),
-            batch_delay=max(0.0, resolved.batch_delay),
-        )
-        run.emit(
-            "info", f"Resolved embedding model `{config.model}` with binding `{config.binding}`."
-        )
-        run.emit(
-            "info",
-            "Request target (POSTed exactly as shown in Settings): "
-            f"{redact_embedding_endpoint_for_display(config.base_url)}",
-        )
-        run.emit(
-            "info",
-            "Probing native max dimension with a small batch (sending no `dimensions=` param).",
-        )
-        client = EmbeddingClient(config)
-        probe_texts = [
-            "DeepMentor embedding smoke test",
-            "DeepMentor retrieval batch probe",
-        ]
-        vectors = await client.embed(probe_texts)
-        if len(vectors) != len(probe_texts):
-            raise ValueError(
-                "Embedding service returned an unexpected number of vectors "
-                f"(expected {len(probe_texts)}, got {len(vectors)})."
-            )
-        if any(not vector for vector in vectors):
-            raise ValueError("Embedding service returned an empty vector.")
-        detected_dim = len(vectors[0])
-        if any(len(vector) != detected_dim for vector in vectors):
-            raise ValueError("Embedding service returned inconsistent vector dimensions.")
-
-        capabilities = self._capabilities_from_adapter(client.adapter, config.model)
-        supported = capabilities["supported_dimensions"]
-        default_dim = capabilities["default_dim"]
-        model_known = capabilities["model_known"]
-
-        # Probe is the source of truth: always overwrite the catalog dim with
-        # the detected value. Matryoshka users who want a truncated variant
-        # can edit the field manually after the test. Source code stays
-        # ``"detected"`` so the UI shows "Source: detected from API probe".
-        active_dim = detected_dim
-        active_source = "detected"
-        if catalog_dim and catalog_dim != detected_dim:
-            active_message = (
-                f"Catalog dim {catalog_dim}d overwritten with API probe value {detected_dim}d."
-            )
-        else:
-            active_message = f"Active dim {detected_dim}d set from API probe."
-
-        run.emit(
-            "capabilities",
-            (
-                f"Probe returned {detected_dim}d. "
-                + (
-                    f"Static catalog: default {default_dim}d, "
-                    f"supported {supported or '(fixed)'}, model recognized."
-                    if model_known
-                    else "Static catalog: model not recognized — using probe value as the only signal."
-                )
-            ),
-            detected_dim=detected_dim,
-            default_dim=default_dim,
-            supported_dimensions=supported,
-            supports_variable_dimensions=capabilities["supports_variable_dimensions"],
-            model_known=model_known,
-            active_dim=active_dim,
-            active_dim_source=active_source,
-        )
-
-        run.emit(
-            "response",
-            "Embedding vector received.",
-            actual_dimension=detected_dim,
-            expected_dimension=catalog_dim or None,
-        )
-
-        # Refresh the cached ``supported_dimensions`` CSV on the model entry so
-        # the settings page can populate the dropdown without re-running the
-        # test. Empty list → empty string clears any stale cache. Mutation
-        # happens before the persist call so a single save round-trip carries
-        # both fields.
-        new_supported_csv = ",".join(str(d) for d in supported)
-        if (model.get("supported_dimensions") or "") != new_supported_csv:
-            model["supported_dimensions"] = new_supported_csv
-
-        run.emit(
-            "info",
-            active_message,
-            active_dim=active_dim,
-            active_dim_source=active_source,
-        )
-
-        # Always persist: the probe runs end-to-end successfully, so the
-        # detected dim is authoritative. ``_persist_embedding_dimension`` also
-        # writes the refreshed ``supported_dimensions`` CSV in the same save.
-        saved_catalog = self._persist_embedding_dimension(catalog, model, detected_dim)
-        run.emit(
-            "catalog",
-            "Saved detected embedding dimension to model_catalog.json.",
-            catalog=saved_catalog,
         )
 
     def _test_search(self, run: TestRun, catalog: dict[str, Any]) -> None:

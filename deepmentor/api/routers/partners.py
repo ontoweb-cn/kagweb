@@ -214,9 +214,8 @@ class SoulSpec(BaseModel):
 
 
 class AssetSpec(BaseModel):
-    knowledge_bases: list[str] = Field(default_factory=list)
-    skills: list[str] = Field(default_factory=list)
-    notebooks: list[str] = Field(default_factory=list)
+    """Deprecated asset-selection payload (assets were removed with the
+    capability layer); accepted empty for client compatibility."""
 
 
 class CreatePartnerRequest(BaseModel):
@@ -758,12 +757,7 @@ async def _create_partner(payload: CreatePartnerRequest) -> dict[str, Any]:
 
     provisioning: dict[str, Any] = {"copied": {}, "errors": []}
     if payload.assets is not None:
-        provisioning = provision_assets(
-            partner_id,
-            knowledge_bases=payload.assets.knowledge_bases,
-            skills=payload.assets.skills,
-            notebooks=payload.assets.notebooks,
-        )
+        provisioning = provision_assets(partner_id)
 
     if payload.start:
         remote = await _request_partner_control(
@@ -1210,12 +1204,7 @@ async def get_partner_assets(partner_id: str):
 
 @router.post("/{partner_id}/assets", dependencies=_MANAGEABLE)
 async def add_partner_assets(partner_id: str, payload: AssetAddRequest):
-    report = provision_assets(
-        partner_id,
-        knowledge_bases=payload.knowledge_bases,
-        skills=payload.skills,
-        notebooks=payload.notebooks,
-    )
+    report = provision_assets(partner_id)
     return {"partner_id": partner_id, **report, "assets": list_assets(partner_id)}
 
 

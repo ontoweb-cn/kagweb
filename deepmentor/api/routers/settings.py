@@ -353,15 +353,13 @@ def _invalidate_runtime_caches() -> None:
     a WARNING so the cause is visible in the audit trail.
     """
     logger.warning(
-        "Admin applied catalog; resetting global LLM/embedding clients. "
+        "Admin applied catalog; resetting the global LLM client. "
         "In-flight user turns may flip backend client mid-call."
     )
-    from deepmentor.services.embedding.client import reset_embedding_client
     from deepmentor.services.llm.client import reset_llm_client
 
     clear_llm_config_cache()
     reset_llm_client()
-    reset_embedding_client()
 
 
 def load_ui_settings() -> dict[str, Any]:
@@ -454,12 +452,10 @@ def _provider_choices() -> dict[str, list[dict[str, Any]]]:
     """Build dropdown options for provider selection, keyed by service type."""
     from deepmentor.services.config.provider_runtime import (
         DEPRECATED_SEARCH_PROVIDERS,
-        EMBEDDING_PROVIDERS,
         IMAGEGEN_PROVIDERS,
         SEARCH_PROVIDERS,
         STT_PROVIDERS,
         TTS_PROVIDERS,
-        VIDEOGEN_PROVIDERS,
     )
     from deepmentor.services.provider_registry import PROVIDERS
 
@@ -492,19 +488,6 @@ def _provider_choices() -> dict[str, list[dict[str, Any]]]:
                 "status": "legacy" if s.is_legacy else "supported",
             }
             for s in PROVIDERS
-        ],
-        key=lambda p: p["label"].lower(),
-    )
-    embedding = sorted(
-        [
-            {
-                "value": name,
-                "label": spec.label,
-                "base_url": spec.default_api_base,
-                "default_dim": str(spec.default_dim) if spec.default_dim else "",
-            }
-            for name, spec in EMBEDDING_PROVIDERS.items()
-            if name != "custom_openai_sdk"
         ],
         key=lambda p: p["label"].lower(),
     )
@@ -576,28 +559,14 @@ def _provider_choices() -> dict[str, list[dict[str, Any]]]:
         ],
         key=lambda p: p["label"].lower(),
     )
-    videogen = sorted(
-        [
-            {
-                "value": name,
-                "label": spec.label,
-                "base_url": spec.default_api_base,
-                "default_model": spec.default_model,
-            }
-            for name, spec in VIDEOGEN_PROVIDERS.items()
-        ],
-        key=lambda p: p["label"].lower(),
-    )
     return {
         "llm": llm,
         # Same shape, same vendors: the task service stands in for the LLM.
         "task": llm,
-        "embedding": embedding,
         "search": search,
         "tts": tts,
         "stt": stt,
         "imagegen": imagegen,
-        "videogen": videogen,
     }
 
 
@@ -631,20 +600,16 @@ def _connection_targets() -> list[dict[str, Any]]:
     connectable, and the web app never keeps a second copy of the tables.
     """
     from deepmentor.services.config.provider_runtime import (
-        EMBEDDING_PROVIDERS,
         IMAGEGEN_PROVIDERS,
         STT_PROVIDERS,
         TTS_PROVIDERS,
-        VIDEOGEN_PROVIDERS,
     )
     from deepmentor.services.provider_registry import PROVIDERS
 
     service_tables: dict[str, dict[str, Any]] = {
-        "embedding": {k: v for k, v in EMBEDDING_PROVIDERS.items() if k != "custom_openai_sdk"},
         "tts": TTS_PROVIDERS,
         "stt": STT_PROVIDERS,
         "imagegen": IMAGEGEN_PROVIDERS,
-        "videogen": VIDEOGEN_PROVIDERS,
     }
 
     targets: list[dict[str, Any]] = []
@@ -670,10 +635,6 @@ def _connection_targets() -> list[dict[str, Any]]:
                 "base_url": service_spec.default_api_base,
                 "default_model": service_spec.default_model,
             }
-            if service_name == "embedding":
-                entry["default_dim"] = (
-                    str(service_spec.default_dim) if service_spec.default_dim else ""
-                )
             if service_name == "tts":
                 entry["default_voice"] = service_spec.default_voice
             services[service_name] = entry

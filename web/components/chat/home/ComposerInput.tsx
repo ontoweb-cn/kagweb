@@ -30,16 +30,9 @@ interface ComposerInputProps {
   onInputChange: (content: string) => void;
   onPaste: (e: React.ClipboardEvent) => void;
   selectedCounts: ChatSpaceSelectionCounts;
-  /**
-   * Hide the Knowledge entry in the @ menu. Knowledge now lives in the
-   * toolbar KnowledgeSelector chip, so this is currently always false —
-   * kept as a prop in case a surface wants the @ entry back.
-   */
-  knowledgeAvailable: boolean;
   /** Hide the Persona entry (main chat: persona has its own selector). */
   personaAvailable: boolean;
   onSelectAttach: () => void;
-  onSelectKnowledge?: () => void;
   onSelectHistoryPicker: () => void;
   onSelectPersonaPicker: () => void;
   /**
@@ -119,10 +112,8 @@ export const ComposerInput = memo(
       onInputChange,
       onPaste,
       selectedCounts,
-      knowledgeAvailable,
       personaAvailable,
       onSelectAttach,
-      onSelectKnowledge,
       onSelectHistoryPicker,
       onSelectPersonaPicker,
       onOpenPersonaSelector,
@@ -280,18 +271,16 @@ export const ComposerInput = memo(
     );
 
     const handleSelectSpaceItem = useCallback(
-      (key: "attach" | "knowledge" | "chat_history" | "persona") => {
+      (key: "attach" | "chat_history" | "persona") => {
         clearTrailingMention();
         setShowAtPopup(false);
         if (key === "attach") onSelectAttach();
-        else if (key === "knowledge") onSelectKnowledge?.();
         else if (key === "chat_history") onSelectHistoryPicker();
         else if (key === "persona") onSelectPersonaPicker();
       },
       [
         clearTrailingMention,
         onSelectAttach,
-        onSelectKnowledge,
         onSelectHistoryPicker,
         onSelectPersonaPicker,
       ],
@@ -341,7 +330,6 @@ export const ComposerInput = memo(
             <ChatSpaceMenu
               variant="mention"
               selectedCounts={selectedCounts}
-              knowledgeAvailable={knowledgeAvailable}
               personaAvailable={personaAvailable}
               onSelectItem={handleSelectSpaceItem}
             />

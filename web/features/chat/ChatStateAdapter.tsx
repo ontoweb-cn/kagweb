@@ -121,7 +121,6 @@ export interface ChatState {
   activeCapability: string | null;
   /** Stable product surface; per-turn capability selection is orthogonal. */
   workspaceMode: WorkspaceMode | null;
-  knowledgeBases: string[];
   llmSelection: LLMSelection | null;
   /** Persistent mastery state associated with this conversation. */
   masteryPathId: string | null;
@@ -144,7 +143,6 @@ export interface ChatState {
 export interface SessionConfiguration {
   capability?: string | null;
   workspaceMode?: WorkspaceMode | null;
-  knowledgeBases?: string[];
   masteryPathId?: string | null;
   courseId?: string;
   enabledTools?: string[];
@@ -181,7 +179,6 @@ export interface MessageRequestSnapshot {
   capability?: string | null;
   workspaceMode?: WorkspaceMode | null;
   enabledTools: string[];
-  knowledgeBases: string[];
   language: string;
   attachments?: MessageAttachment[];
   config?: Record<string, unknown>;
@@ -243,7 +240,6 @@ interface SessionSnapshot {
   tools?: string[];
   capability?: string | null;
   workspaceMode?: WorkspaceMode | null;
-  knowledgeBases?: string[];
   llmSelection?: LLMSelection | null;
   masteryPathId?: string | null;
   courseId?: string;
@@ -255,7 +251,6 @@ interface SessionSnapshot {
 type Action =
   | { type: "SET_TOOLS"; tools: string[] }
   | { type: "SET_CAPABILITY"; cap: string | null }
-  | { type: "SET_KB"; kbs: string[] }
   | { type: "SET_LLM_SELECTION"; selection: LLMSelection | null }
   // ``key`` targets a specific conversation — a backend push belongs to the
   // session that produced it, which may no longer be the selected one. The
@@ -337,7 +332,6 @@ function createSessionEntry(
     enabledTools: [],
     activeCapability: null,
     workspaceMode: null,
-    knowledgeBases: [],
     llmSelection: null,
     masteryPathId: null,
     courseId: "",
@@ -394,10 +388,6 @@ function applySessionConfiguration(
       configuration.workspaceMode !== undefined
         ? configuration.workspaceMode
         : session.workspaceMode,
-    knowledgeBases:
-      configuration.knowledgeBases !== undefined
-        ? [...configuration.knowledgeBases]
-        : session.knowledgeBases,
     masteryPathId:
       configuration.masteryPathId !== undefined
         ? configuration.masteryPathId
@@ -456,11 +446,6 @@ function reducer(state: ProviderState, action: Action): ProviderState {
       return updateSelectedSession(state, (session) => ({
         ...session,
         activeCapability: action.cap,
-      }));
-    case "SET_KB":
-      return updateSelectedSession(state, (session) => ({
-        ...session,
-        knowledgeBases: action.kbs,
       }));
     case "SET_LLM_SELECTION":
       return updateSelectedSession(state, (session) => ({
@@ -780,7 +765,6 @@ function reducer(state: ProviderState, action: Action): ProviderState {
               action.workspaceMode !== undefined
                 ? action.workspaceMode
                 : existing.workspaceMode,
-            knowledgeBases: action.knowledgeBases ?? existing.knowledgeBases,
             llmSelection:
               action.llmSelection !== undefined
                 ? action.llmSelection
@@ -992,7 +976,6 @@ interface ChatContextValue {
   state: ChatState;
   setTools: (tools: string[]) => void;
   setCapability: (cap: string | null) => void;
-  setKBs: (kbs: string[]) => void;
   setLLMSelection: (selection: LLMSelection | null) => void;
   setMasteryPathId: (masteryPathId: string | null) => void;
   setCourseId: (courseId: string) => void;
@@ -1168,7 +1151,6 @@ function hydrateRequestSnapshot(
       stored.capability ?? message.capability,
     ),
     enabledTools: asStringArray(stored.enabledTools),
-    knowledgeBases: asStringArray(stored.knowledgeBases),
     language: typeof stored.language === "string" ? stored.language : "en",
     ...(attachments.length ? { attachments } : {}),
   };
@@ -1665,9 +1647,6 @@ export function ChatStateAdapterProvider({
             ? null
             : session.preferences?.capability || null,
         workspaceMode: loadedWorkspaceMode,
-        knowledgeBases: Array.isArray(session.preferences?.knowledge_bases)
-          ? session.preferences.knowledge_bases
-          : [],
         llmSelection: asLLMSelection(session.preferences?.llm_selection),
         masteryPathId:
           typeof session.preferences?.mastery_path_id === "string"
@@ -1836,8 +1815,6 @@ export function ChatStateAdapterProvider({
         replaySnapshot?.workspaceMode ?? session.workspaceMode;
       const effectiveTools =
         replaySnapshot?.enabledTools ?? session.enabledTools;
-      const effectiveKnowledgeBases =
-        replaySnapshot?.knowledgeBases ?? session.knowledgeBases;
       const effectiveLLMSelection =
         replaySnapshot && "llmSelection" in replaySnapshot
           ? (replaySnapshot.llmSelection ?? null)
@@ -1900,7 +1877,6 @@ export function ChatStateAdapterProvider({
         capability: effectiveCapability,
         workspaceMode: effectiveWorkspaceMode,
         enabledTools: [...effectiveTools],
-        knowledgeBases: [...effectiveKnowledgeBases],
         language: effectiveLanguage,
         ...(effectiveAttachments?.length
           ? { attachments: effectiveAttachments }
@@ -2001,7 +1977,6 @@ export function ChatStateAdapterProvider({
         tools: effectiveTools,
         capability: effectiveCapability,
         workspaceMode: effectiveWorkspaceMode ?? "",
-        knowledgeBases: effectiveKnowledgeBases,
         sessionId: session.sessionId,
         courseId: session.courseId.trim() || null,
         persistUserMessage,
@@ -2160,7 +2135,6 @@ export function ChatStateAdapterProvider({
       enabledTools: current.enabledTools,
       activeCapability: current.activeCapability,
       workspaceMode: current.workspaceMode,
-      knowledgeBases: current.knowledgeBases,
       llmSelection: current.llmSelection,
       masteryPathId: current.masteryPathId,
       courseId: current.courseId,
@@ -2193,10 +2167,6 @@ export function ChatStateAdapterProvider({
 
   const setCapability = useCallback((cap: string | null) => {
     dispatch({ type: "SET_CAPABILITY", cap });
-  }, []);
-
-  const setKBs = useCallback((kbs: string[]) => {
-    dispatch({ type: "SET_KB", kbs });
   }, []);
 
   const setLLMSelection = useCallback((selection: LLMSelection | null) => {
@@ -2379,7 +2349,6 @@ export function ChatStateAdapterProvider({
       state: derivedState,
       setTools,
       setCapability,
-      setKBs,
       setLLMSelection,
       setMasteryPathId,
       setCourseId,
@@ -2405,7 +2374,6 @@ export function ChatStateAdapterProvider({
       derivedState,
       setTools,
       setCapability,
-      setKBs,
       setLLMSelection,
       setMasteryPathId,
       setCourseId,

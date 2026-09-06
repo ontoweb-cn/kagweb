@@ -15,9 +15,6 @@ def test_status_redacts_model_for_non_admin(mu_isolated_root, as_user, monkeypat
     class _FakeLLM:
         model = "gpt-test"
 
-    class _FakeEmbedding:
-        model = "embed-test"
-
     class _FakeSearch:
         requested_provider = "brave"
         provider = "brave"
@@ -27,13 +24,11 @@ def test_status_redacts_model_for_non_admin(mu_isolated_root, as_user, monkeypat
         fallback_reason = None
 
     monkeypatch.setattr(system_router, "get_llm_config", lambda: _FakeLLM())
-    monkeypatch.setattr(system_router, "get_embedding_config", lambda: _FakeEmbedding())
     monkeypatch.setattr(system_router, "resolve_search_runtime_config", lambda: _FakeSearch())
 
     with as_user("u_alice", role="user"):
         result = asyncio.run(system_router.get_system_status())
     assert result["llm"].get("model") is None
-    assert result["embeddings"].get("model") is None
     assert "provider" not in result["search"] or result["search"].get("provider") is None
     # Status itself stays, just the identifying fields are gone.
     assert result["llm"]["status"] == "configured"
@@ -45,9 +40,6 @@ def test_status_keeps_model_for_admin(mu_isolated_root, as_user, monkeypatch):
     class _FakeLLM:
         model = "gpt-test"
 
-    class _FakeEmbedding:
-        model = "embed-test"
-
     class _FakeSearch:
         requested_provider = "brave"
         provider = "brave"
@@ -57,11 +49,9 @@ def test_status_keeps_model_for_admin(mu_isolated_root, as_user, monkeypatch):
         fallback_reason = None
 
     monkeypatch.setattr(system_router, "get_llm_config", lambda: _FakeLLM())
-    monkeypatch.setattr(system_router, "get_embedding_config", lambda: _FakeEmbedding())
     monkeypatch.setattr(system_router, "resolve_search_runtime_config", lambda: _FakeSearch())
 
     with as_user("u_admin", role="admin"):
         result = asyncio.run(system_router.get_system_status())
     assert result["llm"]["model"] == "gpt-test"
-    assert result["embeddings"]["model"] == "embed-test"
     assert result["search"]["provider"] == "brave"

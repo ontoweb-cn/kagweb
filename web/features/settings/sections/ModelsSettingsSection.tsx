@@ -18,10 +18,6 @@ const TaskModelsSettingsPage = dynamic(
   () => import("./models/TaskModelsSettingsSection"),
   { loading },
 );
-const EmbeddingSettingsPage = dynamic(
-  () => import("./models/EmbeddingSettingsSection"),
-  { loading },
-);
 const SearchSettingsPage = dynamic(
   () => import("./models/SearchSettingsSection"),
   { loading },
@@ -45,7 +41,6 @@ const MODEL_SECTIONS = [
   { key: "connections", Component: ConnectionsSettingsPage },
   { key: "llm", Component: LlmSettingsPage },
   { key: "task-models", Component: TaskModelsSettingsPage },
-  { key: "embedding", Component: EmbeddingSettingsPage },
   { key: "search", Component: SearchSettingsPage },
   { key: "tts", Component: TtsSettingsPage },
   { key: "stt", Component: SttSettingsPage },

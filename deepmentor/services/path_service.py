@@ -117,9 +117,6 @@ class PathService:
     def get_user_root(self) -> Path:
         return self._user_data_dir
 
-    def get_knowledge_bases_root(self) -> Path:
-        return self._workspace_root / "knowledge_bases"
-
     def get_parse_cache_root(self) -> Path:
         """Shared, content-addressed document-parse cache.
 

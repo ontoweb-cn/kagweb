@@ -1,11 +1,10 @@
 /**
  * Session activity — folding a conversation's messages into what it touched.
  *
- * Pure data reduction over the message list: which tools ran, which knowledge
- * bases and Space objects were referenced, which files the user attached, and
- * which files the assistant produced. No React and no rendering, so the
- * `SessionActivityPanel` that draws it stays presentational and this fold is
- * directly testable.
+ * Pure data reduction over the message list: which tools ran, which Space
+ * objects were referenced, which files the user attached, and which files the
+ * assistant produced. No React and no rendering, so the `SessionActivityPanel`
+ * that draws it stays presentational and this fold is directly testable.
  */
 
 import type {
@@ -100,7 +99,6 @@ export interface SpaceReferenceSummary {
 
 export interface SessionActivity {
   tools: ToolUsage[]
-  knowledgeBases: string[]
   space: SpaceReferenceSummary
   /** Files the user uploaded. */
   attachments: AttachmentWithOrigin[]
@@ -292,13 +290,10 @@ export function buildToolTraceTerms(input: {
 }
 
 export function buildSessionActivity(
-  messages: MessageItem[],
-  options?: { availableKbNames?: Set<string> }
+  messages: MessageItem[]
 ): SessionActivity {
-  const availableKbNames = options?.availableKbNames
   const toolCounts = new Map<string, number>()
   const toolCalls = new Map<string, ToolCallDetail[]>()
-  const kbs = new Set<string>()
   const historySessionIds = new Set<string>()
   const bookIds = new Set<string>()
   const bookPages = new Map<string, string[]>()
@@ -443,9 +438,6 @@ export function buildSessionActivity(
 
     const snap: MessageRequestSnapshot | undefined = msg.requestSnapshot
     if (snap) {
-      snap.knowledgeBases?.forEach(k => {
-        if (!availableKbNames || availableKbNames.has(k)) kbs.add(k)
-      })
       snap.historyReferences?.forEach(s => historySessionIds.add(s))
       snap.bookReferences?.forEach(b => {
         bookIds.add(b.book_id)
@@ -488,7 +480,6 @@ export function buildSessionActivity(
 
   const isEmpty =
     tools.length === 0 &&
-    kbs.size === 0 &&
     attachments.length === 0 &&
     artifacts.length === 0 &&
     space.historySessionIds.length === 0 &&
@@ -500,7 +491,6 @@ export function buildSessionActivity(
 
   return {
     tools,
-    knowledgeBases: Array.from(kbs),
     space,
     attachments,
     artifacts,

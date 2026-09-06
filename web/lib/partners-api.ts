@@ -72,7 +72,6 @@ export interface ToolOptions {
 }
 
 export interface PartnerAssets {
-  knowledge_bases: { name: string; documents?: number }[];
   skills: { name: string }[];
   notebooks: { id: string; name: string; record_count?: number }[];
 }
@@ -115,7 +114,6 @@ export interface CreatePartnerPayload {
   builtin_tools?: string[] | null;
   mcp_tools?: string[] | null;
   assets?: {
-    knowledge_bases?: string[];
     skills?: string[];
     notebooks?: string[];
   };
@@ -296,29 +294,9 @@ export async function getPartnerAssets(
   );
 }
 
-export async function addPartnerAssets(
-  partnerId: string,
-  assets: {
-    knowledge_bases?: string[];
-    skills?: string[];
-    notebooks?: string[];
-  },
-): Promise<{ assets: PartnerAssets } & ProvisioningReport> {
-  return json(
-    await apiFetch(
-      apiUrl(`/api/partners/${encodeURIComponent(partnerId)}/assets`),
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(assets),
-      },
-    ),
-  );
-}
-
 export async function removePartnerAsset(
   partnerId: string,
-  assetType: "knowledge_base" | "skill" | "notebook",
+  assetType: "skill" | "notebook",
   name: string,
 ): Promise<{ assets: PartnerAssets }> {
   return json(

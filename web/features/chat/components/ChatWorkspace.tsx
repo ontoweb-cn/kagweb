@@ -47,7 +47,6 @@ import { useMeasuredHeight } from '@/hooks/useMeasuredHeight'
 import { useSetupSync } from '@/hooks/useSetupSync'
 import { consumePendingPrompt } from '@/lib/pending-prompt'
 import { fetchSessionAskHint } from '@/lib/session-api'
-import { listKnowledgeBases } from '@/features/knowledge/api/catalog'
 import { useLLMOptions } from '@/hooks/useLLMOptions'
 import { getEnabledOptionalTools, invalidateEnabledOptionalToolsCache } from '@/lib/tools-settings'
 import { ALL_TOOLS, getChatCapability, type ToolName } from '@/features/capabilities/presentation'
@@ -64,25 +63,6 @@ import {
 const HistorySessionPicker = dynamic(() => import('@/components/chat/HistorySessionPicker'), {
   ssr: false,
 })
-
-/* ------------------------------------------------------------------ */
-/*  Type & data definitions                                           */
-/* ------------------------------------------------------------------ */
-
-interface KnowledgeBase {
-  name: string
-  is_default?: boolean
-  metadata?: {
-    /** Connected-source kind, e.g. "obsidian" | "subagent". */
-    type?: string
-    /** Backend of a connected subagent: "claude_code" | "codex" | "partner". */
-    agent_kind?: string
-    rag_provider?: string
-  }
-  statistics?: {
-    rag_provider?: string
-  }
-}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
@@ -281,7 +261,6 @@ export default function ChatWorkspace() {
     state,
     setTools,
     setCapability,
-    setKBs,
     setLLMSelection,
     setPersonaSelection,
     sendMessage,
@@ -297,12 +276,6 @@ export default function ChatWorkspace() {
     renameSessionTitle,
   } = useChatStateAdapter()
 
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
-  const [knowledgeBasesLoaded, setKnowledgeBasesLoaded] = useState(false)
-  const availableKbNames = useMemo(
-    () => new Set(knowledgeBases.map(kb => kb.name)),
-    [knowledgeBases]
-  )
   const {
     options: llmOptions,
     activeDefault: activeLLMDefault,
@@ -866,41 +839,6 @@ export default function ChatWorkspace() {
     setActiveSessionId(state.sessionId || sessionIdParam || null)
   }, [state.sessionId, sessionIdParam, setActiveSessionId])
 
-  const refreshKnowledgeBases = useCallback(async (options?: { force?: boolean }) => {
-    try {
-      const list = await listKnowledgeBases({ force: options?.force })
-      setKnowledgeBases(list)
-      setKnowledgeBasesLoaded(true)
-    } catch {
-      setKnowledgeBasesLoaded(false)
-      setKnowledgeBases([])
-    }
-  }, [])
-
-  /* Load KBs.
-   *
-   * Switching sessions remounts this page (the session id is a route
-   * segment), so these mount-time loads run again on every switch. They read
-   * through the shared client cache rather than forcing a refetch: forcing
-   * would put a handful of session-independent requests on the wire in
-   * parallel with the session fetch itself, and they'd compete for the same
-   * six connections — that, not the conversation's length, is what used to
-   * make opening a chat feel slow. The focus/visibility listener below is
-   * what keeps these values fresh. */
-  useEffect(() => {
-    void refreshKnowledgeBases()
-  }, [refreshKnowledgeBases])
-
-  // A physical KB delete does not cascade into persisted session preferences.
-  // Reconcile only after a successful fetch: an empty result then means every
-  // KB was deleted, while a failed request must keep the existing selection.
-  useEffect(() => {
-    if (!knowledgeBasesLoaded) return
-    const selected = state.knowledgeBases
-    const pruned = selected.filter(name => availableKbNames.has(name))
-    if (pruned.length !== selected.length) setKBs(pruned)
-  }, [availableKbNames, knowledgeBasesLoaded, state.knowledgeBases, setKBs])
-
   const refreshUserEnabledTools = useCallback(async (options?: { force?: boolean }) => {
     try {
       const list = await getEnabledOptionalTools({ force: options?.force })
@@ -923,7 +861,6 @@ export default function ChatWorkspace() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const refresh = () => {
-      void refreshKnowledgeBases({ force: true })
       void refreshLLMOptions({ force: true, background: true })
       // Picks up toggles the user changed in another tab (/settings#tools).
       invalidateEnabledOptionalToolsCache()
@@ -940,7 +877,7 @@ export default function ChatWorkspace() {
       window.removeEventListener('pageshow', refresh)
       document.removeEventListener('visibilitychange', refreshWhenVisible)
     }
-  }, [refreshKnowledgeBases, refreshLLMOptions, refreshUserEnabledTools])
+  }, [refreshLLMOptions, refreshUserEnabledTools])
 
   /* Composer setup requested by the URL that opened this page. Runs once:
      from here on the composer is the user's to change. */
@@ -1090,13 +1027,10 @@ export default function ChatWorkspace() {
   )
 
   // Fold all messages once per state.messages change to power the
-  // SessionActivityPanel on the right (tools, KBs, space refs, attachments).
+  // SessionActivityPanel on the right (tools, space refs, attachments).
   const sessionActivity = useMemo(
-    () =>
-      buildSessionActivity(state.messages, {
-        availableKbNames: knowledgeBasesLoaded ? availableKbNames : undefined,
-      }),
-    [state.messages, availableKbNames, knowledgeBasesLoaded]
+    () => buildSessionActivity(state.messages),
+    [state.messages]
   )
 
   // Context-window readout for the composer chip: the newest turn that was
@@ -1259,29 +1193,6 @@ export default function ChatWorkspace() {
     regenerateLastMessage()
   }, [regenerateLastMessage])
 
-  const handleToggleKB = useCallback(
-    (name: string) => {
-      const current = state.knowledgeBases
-      const providerOf = (kbName: string) => {
-        const kb = knowledgeBases.find(item => item.name === kbName)
-        return kb?.metadata?.rag_provider || kb?.statistics?.rag_provider || ''
-      }
-      const selectingOss = providerOf(name) === 'pageindex-oss'
-      setKBs(
-        current.includes(name)
-          ? current.filter(kb => kb !== name)
-          : [
-              ...(selectingOss
-                ? current.filter(kb => providerOf(kb) !== 'pageindex-oss')
-                : current),
-              name,
-            ]
-      )
-    },
-    [knowledgeBases, setKBs, state.knowledgeBases]
-  )
-
-  const kbOptions = useMemo(() => knowledgeBases, [knowledgeBases])
   const handleSelectHistoryPicker = useCallback(() => {
     setShowHistoryPicker(true)
   }, [])
@@ -1492,7 +1403,6 @@ export default function ChatWorkspace() {
                     onEditMessage={editMessage}
                     onSwitchBranch={switchBranch}
                     onSubmitUserReply={submitUserReply}
-                    availableKbNames={knowledgeBasesLoaded ? availableKbNames : undefined}
                   />
                   <div ref={messagesEndRef} className="h-px w-full shrink-0" />
                 </div>
@@ -1520,7 +1430,6 @@ export default function ChatWorkspace() {
             attachments={attachments}
             attachmentError={attachmentError}
             activeCap={activeCap}
-            knowledgeBases={kbOptions}
             llmOptions={llmOptions}
             activeLLMDefault={activeLLMDefault}
             llmSelection={state.llmSelection}
@@ -1529,12 +1438,10 @@ export default function ChatWorkspace() {
             onRefreshLLMOptions={() => void refreshLLMOptions({ force: true })}
             contextBudget={contextBudget}
             selectedHistorySessions={selectedHistorySessions}
-            selectedKnowledgeBases={state.knowledgeBases}
             isStreaming={state.isStreaming}
             capabilities={visibleCapabilities}
             onSetCapMenuOpen={setCapMenuOpen}
             onSetSpaceMenuOpen={setSpaceMenuOpen}
-            onToggleKB={handleToggleKB}
             onSelectLLM={setLLMSelection}
             onSelectHistoryPicker={handleSelectHistoryPicker}
             onSelectPersonaPicker={handleSelectPersonaPicker}

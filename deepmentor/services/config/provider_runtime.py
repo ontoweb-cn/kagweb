@@ -32,15 +32,6 @@ from deepmentor.services.voice.config import (
     TTSConfig,
 )
 
-from .embedding_endpoint import (
-    EMBEDDING_PROVIDER_ALIASES,
-    EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS,
-    dashscope_embedding_endpoint,
-    embedding_endpoint_validation_error,
-    gemini_default_embedding_endpoint,
-    normalize_embedding_endpoint_for_display,
-)
-from .loader import load_config_with_main
 from .model_catalog import (
     LLM_SHAPED_SERVICES,
     MODEL_CAPABILITY_KEYS,
@@ -133,156 +124,6 @@ def supported_search_providers_hint() -> str:
 
 
 LLM_LOCALHOST_PROVIDERS = ("ollama", "vllm")
-
-
-@dataclass(frozen=True)
-class EmbeddingProviderSpec:
-    """Single embedding-provider metadata entry.
-
-    Note on `default_api_base`: as of v1.3.0 this is the **fully-qualified
-    embedding endpoint URL** (e.g. ``https://api.openai.com/v1/embeddings``),
-    not a base. Adapters use the configured URL verbatim — no path appending.
-    """
-
-    label: str
-    default_api_base: str
-    keywords: tuple[str, ...]
-    is_local: bool
-    adapter: str = "openai_compat"
-    mode: str = "standard"
-    default_model: str = ""
-    default_dim: int = 0
-    # Per-provider cap on items per embedding request batch. Adapters/clients
-    # clamp `batch_size` against this. SiliconFlow Qwen3 family caps at 32;
-    # DashScope caps at 20; most others have generous limits.
-    max_batch_items: int = 256
-    # Whether the active default model supports multimodal `contents` input.
-    multimodal: bool = False
-
-
-EMBEDDING_PROVIDERS: dict[str, EmbeddingProviderSpec] = {
-    "openai": EmbeddingProviderSpec(
-        label="OpenAI",
-        default_api_base=EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS["openai"],
-        keywords=("openai", "text-embedding", "ada-002", "embedding-3"),
-        is_local=False,
-        default_model="text-embedding-3-large",
-        default_dim=3072,
-    ),
-    "gemini": EmbeddingProviderSpec(
-        label="Gemini",
-        adapter="gemini",
-        default_api_base=EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS["gemini"],
-        keywords=("gemini", "gemini-embedding", "text-embedding"),
-        is_local=False,
-        default_model="gemini-embedding-2",
-        default_dim=3072,
-    ),
-    "azure_openai": EmbeddingProviderSpec(
-        label="Azure OpenAI",
-        mode="direct",
-        default_api_base="",
-        keywords=("azure", "aoai"),
-        is_local=False,
-    ),
-    "cohere": EmbeddingProviderSpec(
-        label="Cohere",
-        adapter="cohere",
-        default_api_base=EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS["cohere"],
-        keywords=("cohere", "embed-v4", "embed-english", "embed-multilingual"),
-        is_local=False,
-        default_model="embed-v4.0",
-        default_dim=1024,
-        multimodal=True,
-    ),
-    "jina": EmbeddingProviderSpec(
-        label="Jina",
-        adapter="jina",
-        default_api_base=EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS["jina"],
-        keywords=("jina", "jina-embeddings"),
-        is_local=False,
-        default_model="jina-embeddings-v3",
-        default_dim=1024,
-    ),
-    "ollama": EmbeddingProviderSpec(
-        label="Ollama",
-        adapter="ollama",
-        mode="local",
-        default_api_base=EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS["ollama"],
-        keywords=("ollama", "nomic-embed", "mxbai", "snowflake-arctic", "all-minilm"),
-        is_local=True,
-        default_model="nomic-embed-text",
-        default_dim=768,
-    ),
-    "vllm": EmbeddingProviderSpec(
-        label="vLLM / LM Studio",
-        mode="local",
-        default_api_base=EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS["vllm"],
-        keywords=("vllm", "lmstudio"),
-        is_local=True,
-    ),
-    "siliconflow": EmbeddingProviderSpec(
-        label="SiliconFlow",
-        adapter="openai_compat",
-        default_api_base=EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS["siliconflow"],
-        keywords=(
-            "siliconflow",
-            "qwen3-embedding",
-            "qwen3-vl-embedding",
-            "bge-m3",
-            "Pro/BAAI",
-        ),
-        is_local=False,
-        default_model="Qwen/Qwen3-Embedding-8B",
-        default_dim=4096,
-        max_batch_items=32,
-        multimodal=True,
-    ),
-    "aliyun": EmbeddingProviderSpec(
-        label="Aliyun DashScope",
-        adapter="dashscope_native",
-        default_api_base=EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS["aliyun"],
-        keywords=("dashscope", "qwen3-vl-embedding", "qwen3-embedding", "aliyun", "bailian"),
-        is_local=False,
-        default_model="qwen3-vl-embedding",
-        default_dim=2560,
-        max_batch_items=20,
-        multimodal=True,
-    ),
-    "custom": EmbeddingProviderSpec(
-        label="OpenAI Compatible",
-        mode="direct",
-        default_api_base="",
-        keywords=(),
-        is_local=False,
-    ),
-    # Retained for legacy configs only. Public Settings providers use exact
-    # endpoint URLs and raw HTTP adapters so no request path is hidden.
-    "custom_openai_sdk": EmbeddingProviderSpec(
-        label="Custom (OpenAI SDK)",
-        adapter="openai_sdk",
-        mode="direct",
-        default_api_base="",
-        keywords=(),
-        is_local=False,
-    ),
-    "openrouter": EmbeddingProviderSpec(
-        label="OpenRouter",
-        adapter="openai_compat",
-        default_api_base=EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS["openrouter"],
-        keywords=("openrouter",),
-        is_local=False,
-    ),
-    "orcarouter": EmbeddingProviderSpec(
-        label="OrcaRouter",
-        adapter="openai_compat",
-        default_api_base=EMBEDDING_PROVIDER_DEFAULT_ENDPOINTS["orcarouter"],
-        keywords=("orcarouter", "orca_router"),
-        is_local=False,
-        default_model="openai/text-embedding-3-large",
-        default_dim=3072,
-    ),
-}
 
 
 @dataclass(frozen=True)
@@ -502,50 +343,6 @@ IMAGEGEN_PROVIDERS: dict[str, GenerationProviderSpec] = {
 
 # Video-generation providers. Text-to-video has no synchronous standard; these
 # all use the async-task adapter (submit → poll → download).
-VIDEOGEN_PROVIDERS: dict[str, GenerationProviderSpec] = {
-    "dashscope": GenerationProviderSpec(
-        label="Aliyun DashScope",
-        default_api_base="https://dashscope.aliyuncs.com/api/v1",
-        adapter="dashscope",
-        default_model="wanx2.1-t2v-turbo",
-    ),
-    "volcengine": GenerationProviderSpec(
-        label="Volcengine Ark (Seedance)",
-        default_api_base="https://ark.cn-beijing.volces.com/api/v3",
-        adapter="async_task",
-        default_model="doubao-seedance-1-0-pro-250528",
-    ),
-    "custom": GenerationProviderSpec(
-        label="Async Task (Custom)",
-        default_api_base="",
-        adapter="async_task",
-        default_model="",
-    ),
-}
-
-# Provider-name aliases accepted from older/loose catalog values.
-GENERATION_PROVIDER_ALIASES = {
-    "aliyun": "dashscope",
-    "bailian": "dashscope",
-    "ark": "volcengine",
-    "volces": "volcengine",
-    "doubao": "volcengine",
-    "seedream": "volcengine",
-    "seedance": "volcengine",
-    "azure": "azure_openai",
-    "aoai": "azure_openai",
-    "openai_compatible": "custom",
-}
-
-
-def _canonical_generation_provider(
-    name: str | None, table: dict[str, GenerationProviderSpec]
-) -> str:
-    key = (name or "").strip().lower().replace("-", "_")
-    key = GENERATION_PROVIDER_ALIASES.get(key, key)
-    return key if key in table else "custom"
-
-
 @dataclass(slots=True)
 class NormalizedProviderConfig:
     """Normalized provider configuration input."""
@@ -577,27 +374,6 @@ class ResolvedLLMConfig:
     context_window: int | None = None
     # The active model's explicit capability overrides (see MODEL_CAPABILITY_KEYS).
     capabilities: dict[str, bool] = field(default_factory=dict)
-
-
-@dataclass(slots=True)
-class ResolvedEmbeddingConfig:
-    """Resolved runtime embedding config."""
-
-    model: str
-    provider_name: str
-    provider_mode: str
-    binding_hint: str | None = None
-    binding: str = "openai"
-    api_key: str | list[str] = ""
-    base_url: str | None = None
-    effective_url: str | None = None
-    api_version: str | None = None
-    extra_headers: dict[str, str] = field(default_factory=dict)
-    dimension: int = 0
-    send_dimensions: bool | None = None
-    request_timeout: int = 60
-    batch_size: int = 10
-    batch_delay: float = 0.0
 
 
 @dataclass(slots=True)
@@ -888,55 +664,6 @@ def resolve_llm_runtime_config(
     )
 
 
-def _canonical_embedding_provider_name(name: str | None) -> str | None:
-    if not name:
-        return None
-    key = name.strip().replace("-", "_")
-    if not key:
-        return None
-    key = EMBEDDING_PROVIDER_ALIASES.get(key, key)
-    key = canonical_provider_name(key) or key
-    key = EMBEDDING_PROVIDER_ALIASES.get(key, key)
-    if key in EMBEDDING_PROVIDERS:
-        return key
-    return None
-
-
-def _collect_embedding_provider_pool(
-    catalog: dict[str, Any],
-) -> dict[str, NormalizedProviderConfig]:
-    providers: dict[str, NormalizedProviderConfig] = {}
-    embedding_profiles = catalog.get("services", {}).get("embedding", {}).get("profiles", [])
-    for profile in embedding_profiles:
-        name = _canonical_embedding_provider_name(_as_str(profile.get("binding")))
-        if not name:
-            continue
-        providers[name] = NormalizedProviderConfig(
-            name=name,
-            api_key=_as_api_key(profile.get("api_key")),
-            api_base=_as_str(profile.get("base_url")) or None,
-            api_version=_as_str(profile.get("api_version")) or None,
-            extra_headers=_to_headers(profile.get("extra_headers")) or None,
-        )
-    return providers
-
-
-def _resolve_embedding_dimension(value: Any, default: int = 0) -> int:
-    """Parse the dimension value. Returns 0 when unknown/unparseable.
-
-    A value of 0 means "use the provider's native default" downstream;
-    test_runner auto-fills the catalog with the actual response dim on
-    first successful connection test.
-    """
-    try:
-        parsed = int(str(value).strip())
-    except (TypeError, ValueError):
-        return default
-    if parsed <= 0:
-        return default
-    return parsed
-
-
 def _coerce_optional_bool(value: Any) -> bool | None:
     """Parse a tri-state bool from catalog values.
 
@@ -966,122 +693,6 @@ def _coerce_optional_int(value: Any) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed > 0 else None
-
-
-def _resolve_embedding_provider(
-    *,
-    hint: str | None,
-    model: str,
-    api_base: str | None,
-    provider_pool: dict[str, NormalizedProviderConfig],
-) -> str:
-    if hint and hint in EMBEDDING_PROVIDERS:
-        return hint
-
-    model_lower = (model or "").lower()
-    model_prefix = model_lower.split("/", 1)[0].replace("-", "_") if "/" in model_lower else ""
-    if model_prefix in EMBEDDING_PROVIDERS:
-        return model_prefix
-
-    for provider_name, spec in EMBEDDING_PROVIDERS.items():
-        if any(keyword in model_lower for keyword in spec.keywords):
-            return provider_name
-
-    if _is_local_base_url(api_base):
-        if api_base and "11434" in api_base:
-            return "ollama"
-        return "vllm"
-
-    for provider_name, spec in EMBEDDING_PROVIDERS.items():
-        configured = provider_pool.get(provider_name)
-        if not configured:
-            continue
-        if spec.is_local and configured.api_base:
-            return provider_name
-        if configured.api_key:
-            return provider_name
-
-    return "openai"
-
-
-def resolve_embedding_runtime_config(
-    catalog: dict[str, Any] | None = None,
-    *,
-    service: ModelCatalogService | None = None,
-) -> ResolvedEmbeddingConfig:
-    """Resolve active embedding config using provider-runtime normalization."""
-    catalog_service = service or get_model_catalog_service()
-    loaded = _load_catalog(catalog)
-    profile, model = _active_profile_and_model(loaded, catalog_service, "embedding")
-    resolved_model = _as_str((model or {}).get("model"))
-    if not resolved_model:
-        raise ValueError(
-            "No active embedding model is configured. Please set it in Settings > Catalog."
-        )
-
-    binding_hint_raw = _as_str((profile or {}).get("binding"))
-    binding_hint = _canonical_embedding_provider_name(binding_hint_raw)
-
-    active_api_key = _as_api_key((profile or {}).get("api_key"))
-    active_api_base = _as_str((profile or {}).get("base_url"))
-    active_api_version = _as_str((profile or {}).get("api_version"))
-    active_extra_headers = _to_headers((profile or {}).get("extra_headers"))
-    # Default 0 means "not yet known" — the test_runner auto-fills on first
-    # successful connection. Adapters/clients should treat 0 as "let the
-    # provider use its native default". 3072 used to be hard-coded here, which
-    # forced every non-OpenAI provider to fail dim validation on first use.
-    dimension = _resolve_embedding_dimension((model or {}).get("dimension") or 0, default=0)
-    # ``None`` means "fall back to adapter heuristic".
-    send_dimensions = _coerce_optional_bool((model or {}).get("send_dimensions"))
-
-    provider_pool = _collect_embedding_provider_pool(loaded)
-    provider_name = _resolve_embedding_provider(
-        hint=binding_hint,
-        model=resolved_model,
-        api_base=active_api_base or None,
-        provider_pool=provider_pool,
-    )
-    spec = EMBEDDING_PROVIDERS[provider_name]
-    mapped = provider_pool.get(provider_name)
-
-    api_key = active_api_key or (mapped.api_key if mapped else "")
-    api_base = active_api_base or ((mapped.api_base or "") if mapped else "")
-    if not api_base:
-        if provider_name == "gemini":
-            # Gemini's native endpoint embeds the selected model in the path,
-            # and only Embedding 2 defaults to it — see
-            # gemini_default_embedding_endpoint for why 001 stays where it was.
-            api_base = gemini_default_embedding_endpoint(resolved_model)
-        elif spec.default_api_base:
-            api_base = spec.default_api_base
-    if provider_name == "aliyun":
-        # DashScope's SDK derives the endpoint from the model id and ignores any
-        # configured URL, so a saved multimodal endpoint would mislead the
-        # diagnostic for a text model (issue #660). Surface the true per-model
-        # endpoint the SDK will actually POST to.
-        api_base = dashscope_embedding_endpoint(resolved_model)
-    api_version = active_api_version or ((mapped.api_version or "") if mapped else "")
-    extra_headers = active_extra_headers or ((mapped.extra_headers or {}) if mapped else {})
-
-    return ResolvedEmbeddingConfig(
-        model=resolved_model,
-        provider_name=provider_name,
-        provider_mode=spec.mode,
-        binding_hint=binding_hint,
-        binding=provider_name,
-        api_key=api_key,
-        base_url=api_base or None,
-        effective_url=api_base or None,
-        api_version=api_version or None,
-        extra_headers=extra_headers,
-        dimension=dimension,
-        send_dimensions=send_dimensions,
-        request_timeout=60,
-        # Some providers (e.g. Volcengine Ark plan tier) enforce very low RPM limits;
-        # allow per-profile batch_size/batch_delay in the embedding profile, defaults unchanged
-        batch_size=_clamp_batch_size(profile),
-        batch_delay=_clamp_batch_delay(profile),
-    )
 
 
 def _coerce_optional_float(value: Any) -> float | None:
@@ -1402,7 +1013,6 @@ __all__ = [
     "supported_search_providers_hint",
     "NANOBOT_LLM_PROVIDERS",
     "EmbeddingProviderSpec",
-    "EMBEDDING_PROVIDERS",
     "VoiceProviderSpec",
     "TTS_PROVIDERS",
     "STT_PROVIDERS",
@@ -1410,32 +1020,14 @@ __all__ = [
     "resolve_stt_runtime_config",
     "GenerationProviderSpec",
     "IMAGEGEN_PROVIDERS",
-    "VIDEOGEN_PROVIDERS",
     "resolve_imagegen_runtime_config",
-    "EMBEDDING_PROVIDER_ALIASES",
-    "embedding_endpoint_validation_error",
-    "normalize_embedding_endpoint_for_display",
     "NormalizedProviderConfig",
     "ResolvedLLMConfig",
-    "ResolvedEmbeddingConfig",
     "ResolvedSearchConfig",
     "LLM_LOCALHOST_PROVIDERS",
     "resolve_llm_runtime_config",
-    "resolve_embedding_runtime_config",
     "resolve_search_runtime_config",
     "search_provider_state",
 ]
 
 
-def _clamp_batch_size(profile: dict | None) -> int:
-    try:
-        return max(1, int((profile or {}).get("batch_size", 10)))
-    except Exception:
-        return 10
-
-
-def _clamp_batch_delay(profile: dict | None) -> float:
-    try:
-        return max(0.0, float((profile or {}).get("batch_delay", 0.0)))
-    except Exception:
-        return 0.0

@@ -1,15 +1,14 @@
 "use client";
 
 import { Fragment, memo, useEffect, useRef, useState } from "react";
-import { ChevronRight, Database, History, Paperclip, UserRound } from "lucide-react";
+import { ChevronRight, History, Paperclip, UserRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { setPickerOrigin } from "@/lib/picker-origin";
 
-type SelectableSpaceKey = "attach" | "knowledge" | "chat_history" | "persona";
+type SelectableSpaceKey = "attach" | "chat_history" | "persona";
 
 export interface ChatSpaceSelectionCounts {
   attachments: number;
-  knowledge: number;
   chatHistory: number;
   persona: number;
 }
@@ -17,8 +16,6 @@ export interface ChatSpaceSelectionCounts {
 interface ChatSpaceMenuProps {
   variant: "toolbar" | "mention";
   selectedCounts: ChatSpaceSelectionCounts;
-  /** Hide the Knowledge entry when no knowledge bases are configured. */
-  knowledgeAvailable?: boolean;
   /**
    * Hide the Persona entry. The main chat sets this to false — its
    * persona lives in the standalone toolbar selector (and `/persona`),
@@ -30,7 +27,6 @@ interface ChatSpaceMenuProps {
 
 const ITEM_ORDER: SelectableSpaceKey[] = [
   "attach",
-  "knowledge",
   "chat_history",
   "persona",
 ];
@@ -42,8 +38,6 @@ function countFor(
   switch (key) {
     case "attach":
       return counts.attachments;
-    case "knowledge":
-      return counts.knowledge;
     case "chat_history":
       return counts.chatHistory;
     case "persona":
@@ -56,7 +50,6 @@ function countFor(
 export default memo(function ChatSpaceMenu({
   variant,
   selectedCounts,
-  knowledgeAvailable = true,
   personaAvailable = true,
   onSelectItem,
 }: ChatSpaceMenuProps) {
@@ -67,7 +60,6 @@ export default memo(function ChatSpaceMenu({
   // Render the items in a fixed, hand-tuned order so the menu always reads
   // the same regardless of how it may be reordered.
   const items = ITEM_ORDER.filter((key) => {
-    if (key === "knowledge") return knowledgeAvailable;
     if (key === "persona") return personaAvailable;
     return true;
   }).map((key) => {
@@ -79,14 +71,6 @@ export default memo(function ChatSpaceMenu({
         label: "Attach files",
         description: "Upload images, Office docs, code & text.",
         icon: Paperclip,
-      };
-    }
-    if (key === "knowledge") {
-      return {
-        key,
-        label: "Knowledge",
-        description: "Search the selected knowledge bases.",
-        icon: Database,
       };
     }
     if (key === "persona") {

@@ -17,7 +17,6 @@ _LAZY_EXPORTS = {
     "CodeExecutionTool": (".builtin", "CodeExecutionTool"),
     "GeoGebraAnalysisTool": (".builtin", "GeoGebraAnalysisTool"),
     "PaperSearchToolWrapper": (".builtin", "PaperSearchToolWrapper"),
-    "RAGTool": (".builtin", "RAGTool"),
     "ReasonTool": (".builtin", "ReasonTool"),
     "WebSearchTool": (".builtin", "WebSearchTool"),
     "ToolPromptComposer": (".prompting", "ToolPromptComposer"),

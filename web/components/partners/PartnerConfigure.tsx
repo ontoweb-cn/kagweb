@@ -2,18 +2,17 @@
 
 /**
  * Partner configuration panel: identity, soul, model, tool surface, and the
- * provisioned asset library (knowledge bases / skills / notebooks copied
- * into the partner workspace).
+ * provisioned asset library (skills / notebooks copied into the partner
+ * workspace).
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Save, Trash2, X } from "lucide-react";
+import { Loader2, Save, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import PartnerModelSelect from "@/components/partners/PartnerModelSelect";
 import { listLLMOptions, type LLMOption } from "@/lib/llm-options";
 import type { LLMSelection } from "@/features/chat/model/protocol";
 import {
-  addPartnerAssets,
   getPartnerAssets,
   getPartnerSoul,
   getToolOptions,
@@ -24,9 +23,6 @@ import {
   type PartnerInfo,
   type ToolOptions,
 } from "@/lib/partners-api";
-import AssetPicker, {
-  type AssetSelection,
-} from "@/components/partners/AssetPicker";
 import ToolPicker from "@/components/partners/ToolPicker";
 import FaceEditor, { type FaceValue } from "@/components/partners/FaceEditor";
 import SoulEditor from "@/components/partners/SoulEditor";
@@ -113,13 +109,6 @@ export default function PartnerConfigure({
 
   // Assets
   const [assets, setAssets] = useState<PartnerAssets | null>(null);
-  const [showAssetPicker, setShowAssetPicker] = useState(false);
-  const [pendingAssets, setPendingAssets] = useState<AssetSelection>({
-    knowledge_bases: [],
-    skills: [],
-    notebooks: [],
-  });
-  const [addingAssets, setAddingAssets] = useState(false);
 
   useEffect(() => {
     void getPartnerSoul(partnerId)
@@ -233,31 +222,8 @@ export default function PartnerConfigure({
     }
   };
 
-  const submitAssets = async () => {
-    setAddingAssets(true);
-    try {
-      const result = await addPartnerAssets(partnerId, pendingAssets);
-      setAssets(result.assets);
-      if (result.errors.length > 0) {
-        onToast(
-          t("Some items failed: {{names}}", {
-            names: result.errors.map((e) => e.name).join(", "),
-          }),
-        );
-      } else {
-        onToast(t("Assets added"));
-      }
-      setPendingAssets({ knowledge_bases: [], skills: [], notebooks: [] });
-      setShowAssetPicker(false);
-    } catch (e) {
-      onToast(e instanceof Error ? e.message : t("Save failed"));
-    } finally {
-      setAddingAssets(false);
-    }
-  };
-
   const removeAsset = useCallback(
-    async (assetType: "knowledge_base" | "skill" | "notebook", id: string) => {
+    async (assetType: "skill" | "notebook", id: string) => {
       try {
         const result = await removePartnerAsset(partnerId, assetType, id);
         setAssets(result.assets);
@@ -271,12 +237,6 @@ export default function PartnerConfigure({
   const assetRows = useMemo(() => {
     if (!assets) return [];
     return [
-      ...assets.knowledge_bases.map((kb) => ({
-        type: "knowledge_base" as const,
-        id: kb.name,
-        label: kb.name,
-        kind: t("Knowledge base"),
-      })),
       ...assets.skills.map((skill) => ({
         type: "skill" as const,
         id: skill.name,
@@ -291,11 +251,6 @@ export default function PartnerConfigure({
       })),
     ];
   }, [assets, t]);
-
-  const pendingCount =
-    pendingAssets.knowledge_bases.length +
-    pendingAssets.skills.length +
-    pendingAssets.notebooks.length;
 
   return (
     <div className="space-y-4">
@@ -457,52 +412,9 @@ export default function PartnerConfigure({
       <Section
         title={t("Library")}
         description={t(
-          "Knowledge bases, skills, and notebooks copied into this partner's workspace.",
+          "Skills and notebooks copied into this partner's workspace.",
         )}
-        action={
-          <button
-            type="button"
-            onClick={() => setShowAssetPicker((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] font-medium text-[var(--foreground)] hover:border-[var(--ring)]"
-          >
-            {showAssetPicker ? (
-              <X className="h-3.5 w-3.5" />
-            ) : (
-              <Plus className="h-3.5 w-3.5" />
-            )}
-            {showAssetPicker ? t("Cancel") : t("Add")}
-          </button>
-        }
       >
-        {showAssetPicker && (
-          <div className="mb-4 rounded-xl border border-dashed border-[var(--border)] p-3.5">
-            <AssetPicker
-              value={pendingAssets}
-              onChange={setPendingAssets}
-              excluded={{
-                knowledge_bases:
-                  assets?.knowledge_bases.map((kb) => kb.name) ?? [],
-                skills: assets?.skills.map((skill) => skill.name) ?? [],
-                notebooks: assets?.notebooks.map((nb) => nb.id) ?? [],
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => void submitAssets()}
-              disabled={addingAssets || pendingCount === 0}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[12px] font-medium text-[var(--primary-foreground)] disabled:opacity-40"
-            >
-              {addingAssets ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Plus className="h-3.5 w-3.5" />
-              )}
-              {t("Copy into workspace")}
-              {pendingCount > 0 ? ` (${pendingCount})` : ""}
-            </button>
-          </div>
-        )}
-
         {assetRows.length === 0 ? (
           <p className="text-[12.5px] text-[var(--muted-foreground)]">
             {t(

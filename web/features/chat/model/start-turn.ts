@@ -14,7 +14,6 @@ export interface StartTurnInput {
   capability?: string | null;
   sessionId?: string | null;
   tools?: string[] | null;
-  knowledgeBases?: string[];
   language?: string | null;
   capabilityConfig?: Record<string, unknown>;
   allowedCapabilityConfigKeys?: readonly string[];

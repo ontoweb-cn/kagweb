@@ -11,8 +11,8 @@ from deepmentor_cli.main import app
 runner = CliRunner()
 
 
-def test_config_show_handles_missing_embedding(monkeypatch) -> None:
-    """CLI-only defaults skip embedding setup, so config show must not traceback."""
+def test_config_show_reports_unconfigured_services(monkeypatch) -> None:
+    """CLI-only defaults leave some services unconfigured; config show must not traceback."""
     import deepmentor.services.config as config
 
     monkeypatch.setattr(
@@ -35,10 +35,6 @@ def test_config_show_handles_missing_embedding(monkeypatch) -> None:
         ),
     )
 
-    def _missing_embedding() -> None:
-        raise ValueError("No active embedding model is configured.")
-
-    monkeypatch.setattr(config, "resolve_embedding_runtime_config", _missing_embedding)
     monkeypatch.setattr(
         config,
         "resolve_search_runtime_config",
@@ -61,5 +57,3 @@ def test_config_show_handles_missing_embedding(monkeypatch) -> None:
     result = runner.invoke(app, ["config", "show"])
 
     assert result.exit_code == 0, result.output
-    assert '"status": "not_configured"' in result.output
-    assert "No active embedding model is configured." in result.output

@@ -25,7 +25,6 @@ function emptyGrant(userId: string): GrantPayload {
     version: 2,
     user_id: userId,
     models: { llm: [] },
-    knowledge_bases: [],
     skills: [],
     partners: [],
     enabled_tools: null,
@@ -199,15 +198,6 @@ export function GrantEditor({
   const dirty =
     Boolean(savedFingerprint) && currentFingerprint !== savedFingerprint;
 
-  const kbIds = useMemo(
-    () =>
-      new Set(
-        grant.knowledge_bases.map((item) =>
-          String(item.resource_id || item.id || ""),
-        ),
-      ),
-    [grant.knowledge_bases],
-  );
   const skillIds = useMemo(
     () =>
       new Set(
@@ -257,22 +247,6 @@ export function GrantEditor({
       next.models.llm = items.filter((item) =>
         Array.isArray(item.model_ids) ? item.model_ids.length > 0 : true,
       );
-      return next;
-    });
-  }
-
-  function toggleKb(resourceId: string, name: string) {
-    setGrant((current) => {
-      const next = structuredClone(current) as GrantPayload;
-      const exists = kbIds.has(resourceId);
-      next.knowledge_bases = exists
-        ? next.knowledge_bases.filter(
-            (item) => String(item.resource_id || item.id || "") !== resourceId,
-          )
-        : [
-            ...next.knowledge_bases,
-            { resource_id: resourceId, name, access: "read", source: "admin" },
-          ];
       return next;
     });
   }
@@ -451,9 +425,6 @@ export function GrantEditor({
             <div className="flex flex-wrap gap-1.5 text-[11px] text-[var(--muted-foreground)]">
               <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
                 {selectedModelCount} models
-              </span>
-              <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
-                {kbIds.size} KBs
               </span>
               <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
                 {skillIds.size} skills
@@ -645,20 +616,6 @@ export function GrantEditor({
                       </label>
                     ))}
                   </div>
-                ))}
-              </div>
-            </section>
-            <section className="min-w-0">
-              <SectionTitle>Knowledge</SectionTitle>
-              <div className="space-y-1.5 text-xs">
-                {(resources?.knowledge_bases || []).map((kb) => (
-                  <CheckRow
-                    key={kb.resource_id}
-                    label={kb.name}
-                    checked={kbIds.has(kb.resource_id)}
-                    disabled={controlsDisabled}
-                    onToggle={() => toggleKb(kb.resource_id, kb.name)}
-                  />
                 ))}
               </div>
             </section>

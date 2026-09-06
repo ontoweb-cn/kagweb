@@ -154,7 +154,7 @@ export default function ToolPicker({
           </div>
           <p className="mb-1.5 px-2 text-[11.5px] text-[var(--muted-foreground)]">
             {t(
-              "Mounted automatically when the context calls for it — a knowledge base attached, memory available, the sandbox enabled. Deny any you don't want this partner to have.",
+              "Mounted automatically when the context calls for it — memory available, the sandbox enabled. Deny any you don't want this partner to have.",
             )}
           </p>
           <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-2">

@@ -543,59 +543,6 @@ async def _probe_llm(value: str) -> ProbeResult:
     return ProbeResult(ok=True, elapsed_ms=int((time.monotonic() - started) * 1000))
 
 
-async def _probe_embedding(value: str) -> ProbeResult:
-    """Embed one short string with the candidate selection."""
-    import asyncio
-    import time
-
-    from deepmentor.services.config.provider_runtime import resolve_embedding_runtime_config
-    from deepmentor.services.embedding.client import EmbeddingClient
-    from deepmentor.services.embedding.config import EmbeddingConfig
-
-    started = time.monotonic()
-    try:
-        resolved = resolve_embedding_runtime_config(
-            catalog=_candidate_catalog("embedding", value, with_model=True)
-        )
-        if not resolved.model:
-            return ProbeResult(ok=False, detail="No embedding model resolved from that selection.")
-        # ``dim=0`` / ``send_dimensions=False`` mirror the settings smoke test:
-        # sending no ``dimensions=`` parameter keeps Matryoshka models from
-        # simply echoing back whatever width we asked for.
-        client = EmbeddingClient(
-            EmbeddingConfig(
-                model=resolved.model,
-                api_key=resolved.api_key,
-                base_url=resolved.base_url,
-                effective_url=resolved.effective_url,
-                binding=resolved.binding,
-                provider_name=resolved.provider_name,
-                provider_mode=resolved.provider_mode,
-                api_version=resolved.api_version,
-                extra_headers=resolved.extra_headers,
-                dim=0,
-                send_dimensions=False,
-                # Clamped to the probe budget rather than the configured
-                # timeout, which is sized for indexing a whole corpus.
-                request_timeout=max(1, min(resolved.request_timeout, int(_PROBE_TIMEOUT_SECONDS))),
-                batch_size=max(1, resolved.batch_size),
-                batch_delay=max(0.0, resolved.batch_delay),
-            )
-        )
-        vectors = await asyncio.wait_for(client.embed(["ping"]), timeout=_PROBE_TIMEOUT_SECONDS)
-        if not vectors or not vectors[0]:
-            return ProbeResult(ok=False, detail="The endpoint returned an empty embedding.")
-    except (TimeoutError, asyncio.TimeoutError):
-        return _timed_out(started)
-    except Exception as exc:  # noqa: BLE001 - any failure means "do not commit"
-        return ProbeResult(
-            ok=False,
-            detail=_redact(str(exc))[:300],
-            elapsed_ms=int((time.monotonic() - started) * 1000),
-        )
-    return ProbeResult(ok=True, elapsed_ms=int((time.monotonic() - started) * 1000))
-
-
 def _redact(text: str) -> str:
     """Strip anything that looks like a bearer token out of an error string.
 
@@ -623,23 +570,6 @@ def _catalog_specs() -> list[SettingSpec]:
             write=_write_catalog_model("llm"),
             probe=_probe_llm,
             effect_detail="Applies from the next turn onwards.",
-        ),
-        SettingSpec(
-            key="catalog.embedding",
-            area="models",
-            scope="global",
-            effect="reindex",
-            label="Embedding model",
-            summary="The model that turns documents into vectors for knowledge-base search.",
-            read=_read_catalog_model("embedding"),
-            choices=_catalog_model_choices("embedding"),
-            write=_write_catalog_model("embedding"),
-            probe=_probe_embedding,
-            effect_detail=(
-                "Existing knowledge bases were indexed with the previous model and must be "
-                "rebuilt before they can be searched again — vectors from two different "
-                "models are not comparable."
-            ),
         ),
         SettingSpec(
             key="catalog.search",

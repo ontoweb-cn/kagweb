@@ -71,20 +71,5 @@ class CurrentUser:
         }
 
 
-@dataclass(frozen=True, slots=True)
-class KnowledgeResource:
-    id: str
-    name: str
-    base_dir: Path
-    source: Literal["admin", "user"]
-    assigned: bool = False
-    read_only: bool = False
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def physical_name(self) -> str:
-        return self.name
-
-
 LOCAL_ADMIN_ID = "local-admin"
 LOCAL_ADMIN_USERNAME = "local"

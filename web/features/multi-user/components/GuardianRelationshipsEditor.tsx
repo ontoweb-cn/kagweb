@@ -267,7 +267,6 @@ export function GuardianRelationshipsEditor({
                   materials: report.assigned_materials.length,
                   resources:
                     report.grant_summary.model_count +
-                    report.grant_summary.knowledge_base_count +
                     report.grant_summary.skill_count,
                 },
               )}
