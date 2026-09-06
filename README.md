@@ -1,7 +1,7 @@
 # KAGWeb
 
 KAGWeb is an agent-native intelligent learning companion framework, derived
-from [DeepMentor](https://github.com/HKUDS/DeepMentor) (HKUDS, Apache-2.0).
+from [DeepMentor](https://openkg.cn) (OPENKG, Apache-2.0).
 
 This fork strips the product capability layer down to a **framework shell** and
 prepares the codebase for a custom KAG backend integration:

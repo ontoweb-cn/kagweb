@@ -168,4 +168,4 @@ npm run test:e2e:critical / test:e2e:multi-worker
 ### 7.6 图标与品牌资产
 
 - 界面图标统一 lucide-react（tree-shakeable 单组件 import）。
-- 品牌/提供商图标为 `public/` 下静态资产：`agent-icons/`（各 LLM 厂商）、`knowledge-engine-icons/`（GraphRAG/LightRAG/LlamaIndex 等），经 `ProviderIcon`/`BrandIcon` 组件消费；`scripts/build-brand-icons.mts` 维护资产生成。
+- 品牌/提供商图标为 `public/` 下静态资产：`agent-icons/`（各 LLM 厂商），经 `ProviderIcon`/`BrandIcon` 组件消费；`scripts/build-brand-icons.mts` 维护资产生成。（知识库引擎图标 `knowledge-engine-icons/` 已随 RAG/知识库层删除。）

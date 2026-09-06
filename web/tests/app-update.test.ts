@@ -173,5 +173,5 @@ test("sidebar keeps update status and external brand links hidden", () => {
 
   assert.doesNotMatch(shell, /VersionBadge/);
   assert.doesNotMatch(shell, /kagweb\.info/);
-  assert.doesNotMatch(shell, /github\.com\/HKUDS\/KAGWeb/);
+  assert.doesNotMatch(shell, /github\.com\/OPENKG\/KAGWeb/);
 });
