@@ -30,7 +30,7 @@ cd web && npm ci
 
 ```bash
 kagweb start                 # backend + frontend together
-kagweb serve --port 8001     # API server only
+kagweb serve --port 8082     # API server only
 kagweb run chat "hello"      # single turn through the stub capability
 ```
 

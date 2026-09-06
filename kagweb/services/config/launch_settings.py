@@ -11,8 +11,8 @@ from kagweb.runtime.home import get_runtime_home
 from .runtime_settings import RuntimeSettingsService
 
 PROJECT_ROOT = get_runtime_home()
-DEFAULT_BACKEND_PORT = 8001
-DEFAULT_FRONTEND_PORT = 3782
+DEFAULT_BACKEND_PORT = 8082
+DEFAULT_FRONTEND_PORT = 8092
 DEFAULT_LANGUAGE = "en"
 
 

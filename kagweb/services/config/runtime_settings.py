@@ -21,9 +21,9 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
     # placeholder until a real release channel is configured.
     # override for read-only settings volumes.
     "version_check_enabled": False,
-    "backend_port": 8001,
+    "backend_port": 8082,
     "backend_workers": 1,
-    "frontend_port": 3782,
+    "frontend_port": 8092,
     "next_public_api_base_external": "",
     "next_public_api_base": "",
     "cors_origin": "",
@@ -1203,9 +1203,9 @@ class RuntimeSettingsService:
         return {
             "version": 1,
             "version_check_enabled": _coerce_bool(settings.get("version_check_enabled"), True),
-            "backend_port": _coerce_port(settings.get("backend_port"), 8001),
+            "backend_port": _coerce_port(settings.get("backend_port"), 8082),
             "backend_workers": _coerce_clamped_int(settings.get("backend_workers"), 1, 1, 64),
-            "frontend_port": _coerce_port(settings.get("frontend_port"), 3782),
+            "frontend_port": _coerce_port(settings.get("frontend_port"), 8092),
             "next_public_api_base_external": public_api_base,
             "next_public_api_base": _string(settings.get("next_public_api_base")),
             "cors_origin": _string(settings.get("cors_origin")),

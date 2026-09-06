@@ -212,7 +212,7 @@ CALLBACK_PATH = "/api/space/mcp/oauth/callback"
 _PUBLIC_URL_ENV = "KAGWEB_PUBLIC_URL"
 
 #: Single-container compose publishes the frontend here (see docker-compose.yml).
-_DEFAULT_PUBLIC_URL = "http://localhost:3782"
+_DEFAULT_PUBLIC_URL = "http://localhost:8092"
 
 
 def oauth_redirect_uri(origin: str = "") -> str:

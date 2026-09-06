@@ -13,7 +13,7 @@ file is only about running the published image.
 ## Overview
 
 The published `ghcr.io/YOUR_KAGWEB_ORG/kagweb` image runs both the FastAPI
-backend (`:8001`) and the Next.js frontend (`:3782`) under `supervisord`
+backend (`:8082`) and the Next.js frontend (`:8092`) under `supervisord`
 inside a single container, on top of `python:3.11-slim`. There is one
 data tree (`/app/data` inside the container) that holds settings,
 workspaces, memory, knowledge bases, and logs. Bind-mount that tree to
@@ -36,7 +36,7 @@ no longer lives in the frontend bundle. Concretely:
 - The bundle is built with no `NEXT_PUBLIC_API_BASE` placeholder and no
   `sed -i` of the build output. `web/lib/api.ts` exports `apiUrl` and
   `wsUrl` as one-line pass-throughs, so the browser fetches relative
-  paths through the frontend (`:3782/api/...`).
+  paths through the frontend (`:8092/api/...`).
 - `web/proxy.ts` catches `/api/*` and `/ws/*` and rewrites them to
   `KAGWEB_API_BASE_URL` at request time. That env var is set by the
   container entrypoint on every start, read from
@@ -60,28 +60,28 @@ mappings.
 
 ```bash
 docker run --rm --name kagweb \
-  -p 127.0.0.1:3782:3782 \
+  -p 127.0.0.1:8092:8092 \
   -v kagweb-data:/app/data \
   ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
 ```
 
-Open <http://127.0.0.1:3782>. The container creates
+Open <http://127.0.0.1:8092>. The container creates
 `/app/data/user/settings/*.json` on first boot; configure model providers
 from the Web Settings page. Config, API keys, logs, workspace files,
 memory, and knowledge bases persist in the `kagweb-data` named volume.
 
 Notes:
 
-- **Only `3782` needs to be published.** The browser talks exclusively to
-  the frontend origin (`:3782`); all `/api/*` and `/ws/*` traffic is
+- **Only `8092` needs to be published.** The browser talks exclusively to
+  the frontend origin (`:8092`); all `/api/*` and `/ws/*` traffic is
   forwarded to the FastAPI backend **inside the container** by the Next.js
   middleware (`web/proxy.ts`), which reads `KAGWEB_API_BASE_URL`
-  (`http://localhost:8001` by default) at request time. You do **not** need
-  to expose `:8001` to the host for the UI to work. Publishing `:8001`
-  (`-p 127.0.0.1:8001:8001`) is optional — handy only for hitting the API
+  (`http://localhost:8082` by default) at request time. You do **not** need
+  to expose `:8082` to the host for the UI to work. Publishing `:8082`
+  (`-p 127.0.0.1:8082:8082`) is optional — handy only for hitting the API
   directly (curl, scripts) or debugging.
 - **Different host ports:** change the left side of each `-p host:container`
-  mapping (e.g. `-p 127.0.0.1:8088:3782`). If you change container-side
+  mapping (e.g. `-p 127.0.0.1:8088:8092`). If you change container-side
   ports in `data/user/settings/system.json` (`backend_port`,
   `frontend_port`), restart the container and update the right side of
   each mapping to match.
@@ -102,9 +102,9 @@ image and data volume with two extra loopback-only mappings:
 
 ```bash
 docker run --rm --name kagweb \
-  -p 127.0.0.1:3782:3782 \
-  -p 127.0.0.1:1455:3782 \
-  -p 127.0.0.1:1457:3782 \
+  -p 127.0.0.1:8092:8092 \
+  -p 127.0.0.1:1455:8092 \
+  -p 127.0.0.1:1457:8092 \
   -v kagweb-data:/app/data \
   ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
 ```
@@ -137,8 +137,8 @@ This releases host ports `1455` and `1457`; credentials remain in the persistent
 `/app/data/system` tree. Bind every callback mapping to `127.0.0.1` and never
 expose it on a LAN or public interface — the overlay publishes the **whole**
 frontend on those two ports, not just `/auth/callback`. For a manual
-`docker run` whose container-side frontend port is not `3782`, change the
-right-hand `3782` targets; `scripts/docker_compose.py` handles configured
+`docker run` whose container-side frontend port is not `8092`, change the
+right-hand `8092` targets; `scripts/docker_compose.py` handles configured
 custom ports. Model-generated code execution was removed together with the
 sandbox layer; if you wire an agent-loop backend that executes code, run it
 as a separate service outside this container's trust boundary.
@@ -174,8 +174,8 @@ For the common **single-container** case (this image), you do **not** need
 to configure an API base at all. The browser issues relative `/api/*` and
 `/ws/*` requests against whatever origin serves the UI
 (`https://kagweb.example.com`), and the in-container Next.js middleware
-forwards them to the backend on `localhost:8001`. Just point your reverse
-proxy / TLS terminator at the published `:3782` and you're done.
+forwards them to the backend on `localhost:8082`. Just point your reverse
+proxy / TLS terminator at the published `:8092` and you're done.
 
 You only need to set an API base for a **split deployment** where the
 backend runs in a separate container. Edit `data/user/settings/system.json`
@@ -185,13 +185,13 @@ frontend container uses to reach the backend container:
 
 ```json
 {
-  "next_public_api_base": "http://backend:8001"
+  "next_public_api_base": "http://backend:8082"
 }
 ```
 
 The entrypoint reads this on every start and exports
 `KAGWEB_API_BASE_URL` for `proxy.ts` (precedence: `next_public_api_base`,
-then `next_public_api_base_external`, then `http://localhost:8001`). Note
+then `next_public_api_base_external`, then `http://localhost:8082`). Note
 that because the proxy is **server-side**, `KAGWEB_API_BASE_URL` is the
 address the frontend *server* uses to reach the backend — not a URL the
 browser ever sees. `public_api_base` is accepted as a compatibility alias
@@ -215,7 +215,7 @@ gateway (recommended):
 
 ```bash
 docker run --rm --name kagweb \
-  -p 127.0.0.1:3782:3782 -p 127.0.0.1:8001:8001 \
+  -p 127.0.0.1:8092:8092 -p 127.0.0.1:8082:8082 \
   --add-host=host.docker.internal:host-gateway \
   -v kagweb-data:/app/data \
   ghcr.io/YOUR_KAGWEB_ORG/kagweb:latest
@@ -235,7 +235,7 @@ without `--add-host`. On Linux, the flag is the portable way.
 
 **Linux alternative — host networking:** add `--network=host` and drop
 the `-p` flags. The container shares the host network directly, so open
-<http://127.0.0.1:3782> (or the `frontend_port` in `system.json`), and
+<http://127.0.0.1:8092> (or the `frontend_port` in `system.json`), and
 host services can be reached with normal localhost URLs.
 
 In host-network mode the processes bind directly on the host interfaces
@@ -296,8 +296,8 @@ mkdir -p data/user/settings
 echo '{}' > data/user/settings/system.json
 
 podman run --rm -d --name kagweb \
-  -p 127.0.0.1:8001:8001 \
-  -p 127.0.0.1:3782:3782 \
+  -p 127.0.0.1:8082:8082 \
+  -p 127.0.0.1:8092:8092 \
   -v $(pwd)/data:/app/data:U \
   --read-only \
   --tmpfs /tmp:size=512m,mode=1777 \
@@ -409,7 +409,7 @@ current image (or, on an old one, set the `/var/run` tmpfs to `mode=1777`).
 backend through the in-container proxy, not a host port, so this is almost
 always a backend that failed to start (check `docker logs kagweb` for the
 `[program:backend]` lines) or a wrong `KAGWEB_API_BASE_URL` in a split
-deployment — **not** a missing `:8001` host mapping (which the UI does not
+deployment — **not** a missing `:8082` host mapping (which the UI does not
 need).
 
 **`Cannot connect to the Docker daemon` on a podman host.** Run

@@ -61,8 +61,8 @@ def test_render_docker_env_uses_defaults_for_missing_or_invalid_json(tmp_path: P
 
     values = module.render_docker_env(settings_dir, output_path)
 
-    assert values["KAGWEB_DOCKER_BACKEND_PORT"] == "8001"
-    assert values["KAGWEB_DOCKER_FRONTEND_PORT"] == "3782"
+    assert values["KAGWEB_DOCKER_BACKEND_PORT"] == "8082"
+    assert values["KAGWEB_DOCKER_FRONTEND_PORT"] == "8092"
     assert values["KAGWEB_DOCKER_POCKETBASE_PORT"] == "8090"
 
 
@@ -104,8 +104,8 @@ def test_codex_oauth_overlay_forwards_loopback_callbacks_to_frontend() -> None:
     ports = _compose_service(root, "compose.codex-oauth.yaml")["ports"]
 
     assert set(ports) == {
-        "127.0.0.1:1455:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}",
-        "127.0.0.1:1457:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}",
+        "127.0.0.1:1455:${KAGWEB_DOCKER_FRONTEND_PORT:-8092}",
+        "127.0.0.1:1457:${KAGWEB_DOCKER_FRONTEND_PORT:-8092}",
     }
 
 
@@ -136,8 +136,8 @@ def test_container_docs_use_temporary_codex_oauth_bridge() -> None:
     normalized_section = " ".join(section.replace("\\\n", " ").split())
 
     assert "CONTAINERIZATION.md#temporary-local-codex-oauth-bridge" in readme
-    assert "127.0.0.1:1455:3782" in section
-    assert "127.0.0.1:1457:3782" in section
+    assert "127.0.0.1:1455:8092" in section
+    assert "127.0.0.1:1457:8092" in section
     for base_file in ("docker-compose.yml", "docker-compose.ghcr.yml"):
         assert (
             f"-f {base_file} -f compose.codex-oauth.yaml up -d --force-recreate kagweb"

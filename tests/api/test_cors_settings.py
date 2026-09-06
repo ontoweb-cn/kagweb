@@ -13,13 +13,13 @@ def test_cors_allows_remote_http_origins_when_auth_disabled(
     monkeypatch.delenv("AUTH_ENABLED", raising=False)
     monkeypatch.delenv("CORS_ORIGIN", raising=False)
     monkeypatch.delenv("CORS_ORIGINS", raising=False)
-    monkeypatch.setenv("FRONTEND_PORT", "3782")
+    monkeypatch.setenv("FRONTEND_PORT", "8092")
 
     settings = api_main._build_cors_settings()
 
     assert settings["allow_origin_regex"] == r"https?://.*"
-    assert "http://localhost:3782" in settings["allow_origins"]
-    assert "http://127.0.0.1:3782" in settings["allow_origins"]
+    assert "http://localhost:8092" in settings["allow_origins"]
+    assert "http://127.0.0.1:8092" in settings["allow_origins"]
 
 
 def test_cors_requires_explicit_origins_when_auth_enabled(monkeypatch) -> None:
@@ -43,14 +43,14 @@ def test_cors_normalizes_common_origin_input_mistakes(monkeypatch) -> None:
     monkeypatch.setenv("AUTH_ENABLED", "true")
     monkeypatch.setenv(
         "CORS_ORIGIN",
-        "172.26.0.10:3782; https://learn.example.com/app/",
+        "172.26.0.10:8092; https://learn.example.com/app/",
     )
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000;api.example.com")
 
     settings = api_main._build_cors_settings()
 
     assert settings["allow_origin_regex"] is None
-    assert "http://172.26.0.10:3782" in settings["allow_origins"]
+    assert "http://172.26.0.10:8092" in settings["allow_origins"]
     assert "https://learn.example.com" in settings["allow_origins"]
     assert "http://api.example.com" in settings["allow_origins"]
 

@@ -18,7 +18,7 @@ def test_config_show_reports_unconfigured_services(monkeypatch) -> None:
     monkeypatch.setattr(
         config,
         "load_system_settings",
-        lambda: {"backend_port": 8001, "frontend_port": 3782},
+        lambda: {"backend_port": 8082, "frontend_port": 8092},
     )
     monkeypatch.setattr(
         config,

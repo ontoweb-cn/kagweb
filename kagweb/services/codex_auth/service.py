@@ -340,7 +340,7 @@ class CodexOAuthService:
         oauth_client: CodexOAuthClient | None = None,
         callback_factory: Callable[[str], Awaitable[Any]] | None = None,
         clock: Callable[[], float] = time.time,
-        callback_forward_port: int = 3782,
+        callback_forward_port: int = 8092,
     ) -> None:
         if (
             isinstance(callback_forward_port, bool)

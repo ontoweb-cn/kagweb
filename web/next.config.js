@@ -50,7 +50,7 @@ const AUTH_SETTINGS = readJsonFile(path.join(SETTINGS_DIR, "auth.json"));
 const BACKEND_PORT = firstNonEmpty(
   process.env.BACKEND_PORT,
   SYSTEM_SETTINGS.backend_port,
-  "8001",
+  "8082",
 );
 
 // Use data/user/settings as the frontend source of truth. Environment values

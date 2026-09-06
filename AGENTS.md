@@ -82,7 +82,7 @@ kagweb chat
 kagweb partner list
 
 # Server
-kagweb serve --port 8001       # API server only
+kagweb serve --port 8082       # API server only
 kagweb start                   # backend + frontend together
 ```
 

@@ -29,5 +29,5 @@ test("backend proxy survives Next workers that retain only managed env", () => {
 });
 
 test("backend proxy keeps the legacy default for a bare frontend start", () => {
-  assert.equal(resolveBackendApiBase({}), "http://127.0.0.1:8001");
+  assert.equal(resolveBackendApiBase({}), "http://127.0.0.1:8082");
 });

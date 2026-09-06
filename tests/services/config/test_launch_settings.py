@@ -55,8 +55,8 @@ def test_launch_settings_creates_default_system_json_without_dotenv_migration(
 
     settings = load_launch_settings(tmp_path)
 
-    assert settings.backend_port == 8001
-    assert settings.frontend_port == 3782
+    assert settings.backend_port == 8082
+    assert settings.frontend_port == 8092
     assert settings.system_json_path.exists()
     assert settings.language == "en"
 

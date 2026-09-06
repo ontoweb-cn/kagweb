@@ -26,13 +26,13 @@
 # This means "localhost" in the browser refers to the USER'S MACHINE, not the Docker host.
 #
 # LOCAL deployment (Docker on the same machine you browse from):
-#   Leave system.next_public_api_base_external blank. The default http://localhost:8001 works
-#   because Docker maps port 8001 from the container to your local machine.
+#   Leave system.next_public_api_base_external blank. The default http://localhost:8082 works
+#   because Docker maps port 8082 from the container to your local machine.
 #
 # REMOTE SERVER deployment (Docker on a server, accessed from another machine):
 #   Set system.next_public_api_base_external to your server's public IP or hostname, e.g.:
-#     "next_public_api_base_external": "http://203.0.113.10:8001"
-#   Without this, the browser will try to reach localhost:8001 on the USER'S laptop
+#     "next_public_api_base_external": "http://203.0.113.10:8082"
+#   Without this, the browser will try to reach localhost:8082 on the USER'S laptop
 #   (not the server), and all API calls will fail.
 # ============================================
 
@@ -68,8 +68,8 @@ services:
       # Loopback-only by default: the backend runs unauthenticated in
       # single-user mode. Remove the 127.0.0.1: prefix only when the
       # deployment must be reachable from other hosts (and turn auth on).
-      - "127.0.0.1:${KAGWEB_DOCKER_BACKEND_PORT:-8001}:${KAGWEB_DOCKER_BACKEND_PORT:-8001}"
-      - "127.0.0.1:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}"
+      - "127.0.0.1:${KAGWEB_DOCKER_BACKEND_PORT:-8082}:${KAGWEB_DOCKER_BACKEND_PORT:-8082}"
+      - "127.0.0.1:${KAGWEB_DOCKER_FRONTEND_PORT:-8092}:${KAGWEB_DOCKER_FRONTEND_PORT:-8092}"
 
     volumes:
       # Persist every workspace and deployment secret across recreation.

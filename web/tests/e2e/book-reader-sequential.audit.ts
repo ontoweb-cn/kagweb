@@ -95,7 +95,7 @@ test("book arrows read the current chapter before turning chapters", async ({
     // browser fixture directly at that destination so Next's proxy cannot
     // rewrite it away from Playwright's mock.
     const url =
-      requestUrl.origin === "http://127.0.0.1:8001"
+      requestUrl.origin === "http://127.0.0.1:8082"
         ? new URL(requestUrl.pathname + requestUrl.search, BASE_URL)
         : requestUrl;
     const { pathname } = url;

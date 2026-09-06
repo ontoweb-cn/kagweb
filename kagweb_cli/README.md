@@ -158,7 +158,7 @@ kagweb chat [options]
 ## `serve` — 启动 API 服务
 
 ```bash
-kagweb serve [--host 0.0.0.0] [--port 8001] [--reload]
+kagweb serve [--host 0.0.0.0] [--port 8082] [--reload]
 ```
 
 `kagweb serve` 需要完整 Web/API 依赖；如果你是通过本地 `./packaging/kagweb-cli` 安装的 CLI-only 包，请先卸载本地 CLI 包并切换到 `pip install -U kagweb`。
@@ -234,16 +234,16 @@ kagweb provider login codebuddy         # 校验 CodeBuddy SDK 登录；未登�
 远程部署时，浏览器的 `localhost` 和服务器的 `localhost` 不是同一台机器，仅有普通反向代理无法把浏览器的 localhost callback 送到服务器，必须用 SSH 隧道建立 callback 桥。隧道通向已发布的 Web 端口；Next.js 只把精确的 callback 路径改写到 public callback broker，broker 校验 `state` 后才路由到原 OAuth operation。callback listener 仍位于后端 loopback，不发布 `1455`/`1457`，并支持默认 Docker bridge 网络。
 
 ```bash
-ssh -N -L 1455:127.0.0.1:3782 <ssh-user>@<server-host>
+ssh -N -L 1455:127.0.0.1:8092 <ssh-user>@<server-host>
 ```
 
 若 KAGWeb 显示 fallback callback 端口 `1457`，则使用：
 
 ```bash
-ssh -N -L 1457:127.0.0.1:3782 <ssh-user>@<server-host>
+ssh -N -L 1457:127.0.0.1:8092 <ssh-user>@<server-host>
 ```
 
-只运行与实际 callback 端口对应的其中一条命令，不能两条都运行。`3782` 只是示例 Web 端口：它是 KAGWeb 配置并作为 `callback_forward_port` 显示的 frontend/container 端口，不保证 SSH 主机的 `127.0.0.1` 正在监听同一端口。若 Docker/Podman 映射到不同宿主机端口，或反向代理监听不同端口，只替换 SSH 命令右侧的目标端口（上例中的 `3782`）为 SSH 主机 `127.0.0.1` 实际监听的 Web 端口；左侧 callback 端口仍保持 `1455` 或 `1457`。`<server-host>` 是该 loopback 监听端口所在的 SSH 主机；若浏览器域名指向反向代理或负载均衡器，请替换为正确的 SSH 前端主机。
+只运行与实际 callback 端口对应的其中一条命令，不能两条都运行。`8092` 只是示例 Web 端口：它是 KAGWeb 配置并作为 `callback_forward_port` 显示的 frontend/container 端口，不保证 SSH 主机的 `127.0.0.1` 正在监听同一端口。若 Docker/Podman 映射到不同宿主机端口，或反向代理监听不同端口，只替换 SSH 命令右侧的目标端口（上例中的 `8092`）为 SSH 主机 `127.0.0.1` 实际监听的 Web 端口；左侧 callback 端口仍保持 `1455` 或 `1457`。`<server-host>` 是该 loopback 监听端口所在的 SSH 主机；若浏览器域名指向反向代理或负载均衡器，请替换为正确的 SSH 前端主机。
 
 CLI 会先打印隧道命令，随后立即尝试打开浏览器。远程用户应先保持授权页打开但不要完成授权，在另一终端建立所显示的隧道，然后再继续授权。
 

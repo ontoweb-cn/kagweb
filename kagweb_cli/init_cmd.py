@@ -315,13 +315,13 @@ def run_init(*, cli_only: bool = False, home: str | Path | None = None) -> None:
             system["backend_port"] = int(
                 typer.prompt(
                     strings["init.backend_port"],
-                    default=str(system.get("backend_port") or 8001),
+                    default=str(system.get("backend_port") or 8082),
                 )
             )
             system["frontend_port"] = int(
                 typer.prompt(
                     strings["init.frontend_port"],
-                    default=str(system.get("frontend_port") or 3782),
+                    default=str(system.get("frontend_port") or 8092),
                 )
             )
 

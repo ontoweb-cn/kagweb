@@ -53,9 +53,9 @@ class _FakeCliCodexService:
             "operation_id": "operation-1",
             "authorize_url": "https://auth.openai.com/oauth/authorize?state=opaque",
             "callback_port": 1457,
-            "callback_forward_port": 3782,
+            "callback_forward_port": 8092,
             "redirect_uri": "http://localhost:1457/auth/callback",
-            "ssh_forward_command": ("ssh -N -L 1457:127.0.0.1:3782 <ssh-user>@<server-host>"),
+            "ssh_forward_command": ("ssh -N -L 1457:127.0.0.1:8092 <ssh-user>@<server-host>"),
             "expires_in": 300,
         }
 
@@ -113,13 +113,13 @@ def test_cli_opens_authorize_url_and_waits_for_completion(monkeypatch) -> None:
     assert result.exit_code == 0
     assert "http://localhost:1457/auth/callback" in result.stdout
     assert "https://auth.openai.com/oauth/authorize?state=opaque" in result.stdout
-    assert "ssh -N -L 1457:127.0.0.1:3782 <ssh-user>@<server-host>" in result.stdout
+    assert "ssh -N -L 1457:127.0.0.1:8092 <ssh-user>@<server-host>" in result.stdout
     assert "ssh -N -L 1457:127.0.0.1:1457" not in result.stdout
     open_index = events.index(("open", "https://auth.openai.com/oauth/authorize?state=opaque"))
     output_before_open = "\n".join(message for kind, message in events[:open_index])
     assert "http://localhost:1457/auth/callback" in output_before_open
     assert "https://auth.openai.com/oauth/authorize?state=opaque" in output_before_open
-    assert "ssh -N -L 1457:127.0.0.1:3782 <ssh-user>@<server-host>" in output_before_open
+    assert "ssh -N -L 1457:127.0.0.1:8092 <ssh-user>@<server-host>" in output_before_open
     assert "ssh -N -L 1457:127.0.0.1:1457" not in output_before_open
     # The CLI speaks English like every other command in this app.
     assert "private directory" in result.stdout

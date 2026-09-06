@@ -233,7 +233,7 @@ def get_backend_port(project_root: Path | None = None) -> int:
     Get backend port from runtime settings.
 
     Returns:
-        Backend port number (default: 8001)
+        Backend port number (default: 8082)
     """
     try:
         from kagweb.services.config.launch_settings import load_launch_settings
@@ -242,7 +242,7 @@ def get_backend_port(project_root: Path | None = None) -> int:
     except Exception as exc:
         logger = _get_setup_logger()
         logger.warning(f"Failed to load backend port from runtime settings: {exc}")
-        return 8001
+        return 8082
 
 
 def get_frontend_port(project_root: Path | None = None) -> int:
@@ -250,7 +250,7 @@ def get_frontend_port(project_root: Path | None = None) -> int:
     Get frontend port from runtime settings.
 
     Returns:
-        Frontend port number (default: 3782)
+        Frontend port number (default: 8092)
     """
     try:
         from kagweb.services.config.launch_settings import load_launch_settings
@@ -259,7 +259,7 @@ def get_frontend_port(project_root: Path | None = None) -> int:
     except Exception as exc:
         logger = _get_setup_logger()
         logger.warning(f"Failed to load frontend port from runtime settings: {exc}")
-        return 3782
+        return 8092
 
 
 def get_ports(project_root: Path | None = None) -> tuple[int, int]:

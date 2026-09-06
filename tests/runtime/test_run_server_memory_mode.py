@@ -22,7 +22,7 @@ def uvicorn_kwargs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str,
 
     monkeypatch.setattr(kagweb_logging, "configure_logging", lambda: None)
     monkeypatch.setattr(mode, "set_mode", lambda _mode: None)
-    monkeypatch.setattr(setup, "get_backend_port", lambda _root: 8001)
+    monkeypatch.setattr(setup, "get_backend_port", lambda _root: 8082)
     return captured
 
 

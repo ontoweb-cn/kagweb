@@ -1,6 +1,6 @@
 type BackendRuntimeEnvironment = Record<string, string | undefined>;
 
-const DEFAULT_BACKEND_API_BASE = "http://127.0.0.1:8001";
+const DEFAULT_BACKEND_API_BASE = "http://127.0.0.1:8082";
 
 function nonEmpty(value: string | undefined): string | undefined {
   const normalized = value?.trim();

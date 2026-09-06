@@ -18,7 +18,7 @@ if errorlevel 1 (
 )
 
 echo Starting KAGWeb Backend Server...
-echo Backend will be available at: http://localhost:8001
+echo Backend will be available at: http://localhost:8082
 echo Press Ctrl+C to stop the server.
 python -m kagweb.api.run_server
 pause

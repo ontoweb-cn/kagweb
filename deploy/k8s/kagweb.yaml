@@ -1,13 +1,13 @@
 # KAGWeb on Kubernetes — component-split stack
 #
 # One pod, three containers, one image:
-#   backend    KAGWEB_COMPONENT=backend   FastAPI (:8001) + the data PVC
-#   frontend   KAGWEB_COMPONENT=frontend  Next.js (:3782). It mounts ONLY
+#   backend    KAGWEB_COMPONENT=backend   FastAPI (:8082) + the data PVC
+#   frontend   KAGWEB_COMPONENT=frontend  Next.js (:8092). It mounts ONLY
 #              data/user/settings, read-only: the entrypoint exports
 #              KAGWEB_AUTH_ENABLED / KAGWEB_API_BASE_URL from those
 #              JSONs, and a frontend without them would re-seed defaults
 #              (auth=false) and disagree with the backend's auth gate. For the
-#              API base the seeded default resolves to http://127.0.0.1:8001
+#              API base the seeded default resolves to http://127.0.0.1:8082
 #              (same pod network namespace) when the settings leave it blank.
 # Shape notes (see the review in the PR that added this file):
 #   * replicas is pinned to 1 with strategy Recreate: /app/data is a
@@ -55,11 +55,11 @@ spec:
     app: kagweb
   ports:
     - name: frontend
-      port: 3782
-      targetPort: 3782
+      port: 8092
+      targetPort: 8092
     - name: backend
-      port: 8001
-      targetPort: 8001
+      port: 8082
+      targetPort: 8082
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -120,7 +120,7 @@ spec:
               value: backend
           ports:
             - name: backend
-              containerPort: 8001
+              containerPort: 8082
           readinessProbe:
             httpGet:
               path: /health/ready
@@ -164,7 +164,7 @@ spec:
               value: frontend
           ports:
             - name: frontend
-              containerPort: 3782
+              containerPort: 8092
           readinessProbe:
             httpGet:
               path: /

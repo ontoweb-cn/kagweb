@@ -24,7 +24,7 @@ def test_log_helpers_do_not_raise_on_legacy_windows_code_page() -> None:
         cli_kit = _load_cli_kit()
 
         assert sys.stdout.errors == "replace"
-        cli_kit.banner("KAGWeb", ["Backend http://localhost:8001"])
+        cli_kit.banner("KAGWeb", ["Backend http://localhost:8082"])
         cli_kit.log_success("KAGWeb started")
         cli_kit.log_error("KAGWeb failed")
         stdout.flush()

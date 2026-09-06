@@ -6,7 +6,7 @@
 #
 # Build/run:
 #   docker build -t kagweb:local .
-#   docker run -p 127.0.0.1:3782:3782 -p 127.0.0.1:8001:8001 \
+#   docker run -p 127.0.0.1:8092:8092 -p 127.0.0.1:8082:8082 \
 #     -v kagweb-data:/app/data kagweb:local
 #
 # Prerequisites:
@@ -286,7 +286,7 @@ RUN cat > /app/start-backend.sh <<'EOF'
 #!/bin/bash
 set -e
 
-BACKEND_PORT=${BACKEND_PORT:-8001}
+BACKEND_PORT=${BACKEND_PORT:-8082}
 BACKEND_HOST=${BACKEND_HOST:-0.0.0.0}
 BACKEND_WORKERS=${BACKEND_WORKERS:-1}
 
@@ -325,7 +325,7 @@ RUN cat > /app/start-frontend.sh <<'EOF'
 #!/bin/bash
 set -e
 
-FRONTEND_PORT=${FRONTEND_PORT:-3782}
+FRONTEND_PORT=${FRONTEND_PORT:-8092}
 FRONTEND_HOST=${FRONTEND_HOST:-0.0.0.0}
 echo "[Frontend] 🚀 Starting Next.js frontend on ${FRONTEND_HOST}:${FRONTEND_PORT}..."
 
@@ -441,8 +441,8 @@ for key, value in export_runtime_settings_to_env(overwrite=True).items():
 PY
 )"
 
-export BACKEND_PORT=${BACKEND_PORT:-8001}
-export FRONTEND_PORT=${FRONTEND_PORT:-3782}
+export BACKEND_PORT=${BACKEND_PORT:-8082}
+export FRONTEND_PORT=${FRONTEND_PORT:-8092}
 
 # KAGWEB_API_BASE_URL and KAGWEB_AUTH_ENABLED are exported by the
 # export_runtime_settings_to_env eval above (see render_environment in
@@ -504,7 +504,7 @@ from pathlib import Path
 import json
 import urllib.request
 
-port = 8001
+port = 8082
 settings_path = Path("/app/data/user/settings/system.json")
 try:
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
@@ -516,7 +516,7 @@ urllib.request.urlopen(f"http://localhost:{port}/health/ready", timeout=5).close
 EOF
 
 # Expose ports
-EXPOSE 8001 3782
+EXPOSE 8082 8092
 
 # Health check. Read the port from JSON so standalone `docker run` does not
 # depend on a Dockerfile-level BACKEND_PORT default.
@@ -568,7 +568,7 @@ RUN pip install --no-cache-dir \
 # the production stage is reused as-is.
 RUN cat > /etc/supervisor/conf.d/programs.conf <<'EOF'
 [program:backend]
-command=/bin/bash -c "exec python -m uvicorn kagweb.api.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8001} --reload --no-access-log --ws-max-size $(python -c 'from kagweb.services.config import get_ws_max_size; print(get_ws_max_size())' 2>/dev/null || echo 16777216) --timeout-keep-alive $(python -c 'from kagweb.services.config import HTTP_KEEP_ALIVE_TIMEOUT; print(HTTP_KEEP_ALIVE_TIMEOUT)' 2>/dev/null || echo 300)"
+command=/bin/bash -c "exec python -m uvicorn kagweb.api.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8082} --reload --no-access-log --ws-max-size $(python -c 'from kagweb.services.config import get_ws_max_size; print(get_ws_max_size())' 2>/dev/null || echo 16777216) --timeout-keep-alive $(python -c 'from kagweb.services.config import HTTP_KEEP_ALIVE_TIMEOUT; print(HTTP_KEEP_ALIVE_TIMEOUT)' 2>/dev/null || echo 300)"
 directory=/app
 user=kagweb
 autostart=true
@@ -580,7 +580,7 @@ stderr_logfile_maxbytes=0
 environment=PYTHONPATH="/app",PYTHONUNBUFFERED="1"
 
 [program:frontend]
-command=/bin/bash -c "cd /app/web && node scripts/dev.mjs -H 0.0.0.0 -p ${FRONTEND_PORT:-3782}"
+command=/bin/bash -c "cd /app/web && node scripts/dev.mjs -H 0.0.0.0 -p ${FRONTEND_PORT:-8092}"
 directory=/app/web
 user=kagweb
 autostart=true
@@ -596,4 +596,4 @@ EOF
 RUN sed -i 's/\r$//' /etc/supervisor/conf.d/programs.conf
 
 # Development ports
-EXPOSE 8001 3782
+EXPOSE 8082 8092

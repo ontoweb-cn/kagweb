@@ -87,8 +87,8 @@ services:
       - no-new-privileges:true
     ports:
       # Loopback-only by default — see the note on the pocketbase service.
-      - "127.0.0.1:${KAGWEB_DOCKER_BACKEND_PORT:-8001}:${KAGWEB_DOCKER_BACKEND_PORT:-8001}"
-      - "127.0.0.1:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}"
+      - "127.0.0.1:${KAGWEB_DOCKER_BACKEND_PORT:-8082}:${KAGWEB_DOCKER_BACKEND_PORT:-8082}"
+      - "127.0.0.1:${KAGWEB_DOCKER_FRONTEND_PORT:-8092}:${KAGWEB_DOCKER_FRONTEND_PORT:-8092}"
 
     volumes:
       # Everything KAGWeb persists lives under ./data — one tree to mount

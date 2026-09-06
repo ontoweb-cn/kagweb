@@ -412,7 +412,7 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
   if (!catalogEditable) {
     // catalogEditable=false covers two unrelated cases: settings fetch failed,
     // or multi-user grant denied. Split them so a Docker user without the
-    // 8001 port mapped does not see an "assigned by administrator" hint.
+    // 8082 port mapped does not see an "assigned by administrator" hint.
     if (settingsError) {
       return (
         <div className="rounded-xl border border-dashed border-[var(--border)] px-5 py-10 text-center text-[13px] text-[var(--muted-foreground)]">

@@ -219,7 +219,7 @@ export default function NetworkSettingsPage() {
   const { registerExtension, pendingExtensionPayload, draftRevision } =
     useSettings();
   const apiBasePlaceholder = "https://api.example.com";
-  const corsPlaceholder = "https://learn.example.com\nhttp://10.0.0.5:3782";
+  const corsPlaceholder = "https://learn.example.com\nhttp://10.0.0.5:8092";
   const [payload, setPayload] = useState<NetworkSettingsPayload | null>(null);
   const [draft, setDraft] = useState<NetworkSettings | null>(null);
   const [corsText, setCorsText] = useState("");

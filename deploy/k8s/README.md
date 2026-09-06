@@ -7,8 +7,8 @@ so each container carries exactly one concern while sharing one entrypoint
 
 | Container | 端口 | 数据卷 | 说明 |
 |---|---|---|---|
-| `backend` | 8001 | `/app/data`(PVC,RW) | FastAPI;探针 `/health/ready`、`/health/live` |
-| `frontend` | 3782 | `user/settings`(只读) | Next.js;入口导出 auth/API-base 与 backend 同源;代理回环 `127.0.0.1:8001`(同 Pod) |
+| `backend` | 8082 | `/app/data`(PVC,RW) | FastAPI;探针 `/health/ready`、`/health/live` |
+| `frontend` | 8092 | `user/settings`(只读) | Next.js;入口导出 auth/API-base 与 backend 同源;代理回环 `127.0.0.1:8082`(同 Pod) |
 
 ## 使用
 

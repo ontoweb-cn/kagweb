@@ -37,8 +37,8 @@ def test_port_probe_detects_ipv6_only_loopback_listener(monkeypatch) -> None:
 
     monkeypatch.setattr(launcher.socket, "create_connection", fake_create_connection)
 
-    assert launcher._port_accepts_connection(3782)
-    assert attempts == [("127.0.0.1", 3782), ("::1", 3782)]
+    assert launcher._port_accepts_connection(8092)
+    assert attempts == [("127.0.0.1", 8092), ("::1", 8092)]
 
 
 def test_packaged_web_cache_replaces_next_public_placeholders(tmp_path: Path) -> None:
@@ -56,12 +56,12 @@ def test_packaged_web_cache_replaces_next_public_placeholders(tmp_path: Path) ->
     runtime = launcher._copy_packaged_web_if_needed(
         packaged,
         home=tmp_path / "home",
-        api_base="http://localhost:8001",
+        api_base="http://localhost:8082",
         auth_enabled=True,
     )
 
     assert (runtime / "server.js").read_text(encoding="utf-8") == (
-        "const api='http://localhost:8001';"
+        "const api='http://localhost:8082';"
     )
     assert "auth='true'" in (runtime / ".next" / "static" / "app.js").read_text(encoding="utf-8")
 
@@ -134,7 +134,7 @@ def test_packaged_web_cache_refreshes_when_public_settings_change(tmp_path: Path
     first = launcher._copy_packaged_web_if_needed(
         packaged,
         home=home,
-        api_base="http://localhost:8001",
+        api_base="http://localhost:8082",
         auth_enabled=False,
     )
     second = launcher._copy_packaged_web_if_needed(
@@ -398,8 +398,8 @@ def test_source_frontend_defaults_to_cached_production_build(
 
     runtime = launcher._resolve_frontend(
         tmp_path,
-        3782,
-        api_base="http://localhost:8001",
+        8092,
+        api_base="http://localhost:8082",
         auth_enabled=True,
     )
 
@@ -407,7 +407,7 @@ def test_source_frontend_defaults_to_cached_production_build(
     standalone = source / launcher.SOURCE_PRODUCTION_DIST_DIR / "standalone"
     assert runtime.command == ["/bin/node", str(standalone / "server.js")]
     assert runtime.cwd == standalone
-    assert builds == [(source, "/bin/npm", "http://localhost:8001", True)]
+    assert builds == [(source, "/bin/npm", "http://localhost:8082", True)]
 
 
 def test_source_frontend_dev_mode_is_explicit_and_skips_production_build(
@@ -429,14 +429,14 @@ def test_source_frontend_dev_mode_is_explicit_and_skips_production_build(
 
     runtime = launcher._resolve_frontend(
         tmp_path,
-        3782,
-        api_base="http://localhost:8001",
+        8092,
+        api_base="http://localhost:8082",
         auth_enabled=False,
         dev=True,
     )
 
     assert runtime.kind == "source"
-    assert runtime.command == ["/bin/npm", "run", "dev", "--", "--port", "3782"]
+    assert runtime.command == ["/bin/npm", "run", "dev", "--", "--port", "8092"]
 
 
 def test_source_production_build_is_reused_until_an_input_changes(
@@ -468,7 +468,7 @@ def test_source_production_build_is_reused_until_an_input_changes(
         launcher._ensure_source_production_build(
             source,
             "npm",
-            api_base="http://localhost:8001",
+            api_base="http://localhost:8082",
             auth_enabled=False,
         )
 
@@ -476,7 +476,7 @@ def test_source_production_build_is_reused_until_an_input_changes(
     launcher._ensure_source_production_build(
         source,
         "npm",
-        api_base="http://localhost:8001",
+        api_base="http://localhost:8082",
         auth_enabled=False,
     )
 
@@ -487,7 +487,7 @@ def test_source_production_build_is_reused_until_an_input_changes(
     assert next_env.read_text(encoding="utf-8") == "// developer dist types\n"
 
 
-@pytest.mark.parametrize("resolved_backend_port", [8001, 8123])
+@pytest.mark.parametrize("resolved_backend_port", [8082, 8123])
 def test_start_uses_ipv4_loopback_for_frontend_proxy(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -498,8 +498,8 @@ def test_start_uses_ipv4_loopback_for_frontend_proxy(
 
     settings_dir = tmp_path / "data" / "user" / "settings"
     settings = config_module.LaunchSettings(
-        backend_port=8001,
-        frontend_port=3782,
+        backend_port=8082,
+        frontend_port=8092,
         language="en",
         source="test",
         settings_dir=settings_dir,
@@ -535,7 +535,7 @@ def test_start_uses_ipv4_loopback_for_frontend_proxy(
     monkeypatch.setattr(
         launcher,
         "_resolve_port_conflicts",
-        lambda **_kwargs: (resolved_backend_port, 3782),
+        lambda **_kwargs: (resolved_backend_port, 8092),
     )
     monkeypatch.setattr(launcher, "_install_signal_handlers", lambda _callback, **_kwargs: None)
     monkeypatch.setattr(launcher.atexit, "register", lambda _callback: None)
@@ -629,14 +629,14 @@ def test_open_frontend_in_browser_is_best_effort(monkeypatch) -> None:
     opened: list[str] = []
     monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url) or True)
 
-    launcher._open_frontend_in_browser("http://localhost:3782")
-    assert opened == ["http://localhost:3782"]
+    launcher._open_frontend_in_browser("http://localhost:8092")
+    assert opened == ["http://localhost:8092"]
 
     def fail_to_open(_url: str) -> bool:
         raise RuntimeError("no browser")
 
     monkeypatch.setattr("webbrowser.open", fail_to_open)
-    launcher._open_frontend_in_browser("http://localhost:3782")
+    launcher._open_frontend_in_browser("http://localhost:8092")
 
 
 def test_launch_detached_uses_a_separate_windows_process_group(

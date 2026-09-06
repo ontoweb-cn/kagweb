@@ -106,7 +106,7 @@ def test_ssh_forward_command_maps_callback_to_frontend_port() -> None:
     )
 
 
-@pytest.mark.parametrize("callback_forward_port", [0, 65_536, True, "3782"])
+@pytest.mark.parametrize("callback_forward_port", [0, 65_536, True, "8092"])
 def test_callback_forward_port_must_be_a_valid_integer(
     tmp_path: Path,
     callback_forward_port: object,

@@ -129,7 +129,7 @@ services:
       start_period: 10s
 
   # ----------------------------------------------------------
-  # KAGWeb — backend (FastAPI :8001) + frontend (Next.js :3782)
+  # KAGWeb — backend (FastAPI :8082) + frontend (Next.js :8092)
   # ----------------------------------------------------------
   # Both run inside the same image, supervised by supervisord under the
   # unprivileged `kagweb` user (UID 1000). The image's entrypoint loads
@@ -161,8 +161,8 @@ services:
       - /root:size=16m,mode=0700
       - /home:size=16m,mode=0755
     ports:
-      - "127.0.0.1:${HOST_PORT_BACKEND:-8001}:8001"
-      - "127.0.0.1:${HOST_PORT_FRONTEND:-3782}:3782"
+      - "127.0.0.1:${HOST_PORT_BACKEND:-8082}:8082"
+      - "127.0.0.1:${HOST_PORT_FRONTEND:-8092}:8092"
     volumes:
       # Bind mount a host directory so the host user (UID $UID) owns
       # the entire data tree. With userns_mode: keep-id the process
