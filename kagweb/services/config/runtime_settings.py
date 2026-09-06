@@ -50,6 +50,25 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
     "chat_attachment_max_total_mb": 25,
     "chat_attachment_max_chars_per_doc": 200_000,
     "chat_attachment_max_chars_total": 150_000,
+    # Conversation backend: an external agent loop (Claude Code / Codex /
+    # OpenCode CLIs, or Intellect / Hermes / AgentScope services) instead of
+    # a plain LLM call. ``backend`` "" keeps the framework-shell stub chat.
+    # CLI-family backends spawn subprocesses with the server's privileges —
+    # single-operator shape; multi-user deployments should use the HTTP
+    # family so the loop runs in its own service. See
+    # kagweb/services/agent_loop/ for the full contract.
+    "agent_loop": {
+        "backend": "",
+        "command": "",
+        "args": [],
+        "env": {},
+        "url": "",
+        "turn_path": "/agent/turn",
+        "headers": {},
+        "api_key": "",
+        "timeout_seconds": 900,
+        "session_workspace": True,
+    },
 }
 
 # Clamp bounds for the chat attachment knobs. The MB ceilings are deliberately
@@ -58,6 +77,8 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
 CHAT_ATTACHMENT_MAX_FILE_MB_RANGE = (1, 1024)
 CHAT_ATTACHMENT_MAX_TOTAL_MB_RANGE = (1, 2048)
 CHAT_ATTACHMENT_CHARS_RANGE = (10_000, 5_000_000)
+
+AGENT_LOOP_TIMEOUT_RANGE = (30, 86_400)
 
 DEFAULT_AUTH_SETTINGS: dict[str, Any] = {
     "version": 1,
@@ -782,6 +803,17 @@ class RuntimeSettingsService:
             payload["chat_attachment_max_chars_per_doc"] = value
         if value := self._process_env_value("CHAT_ATTACHMENT_MAX_CHARS_TOTAL"):
             payload["chat_attachment_max_chars_total"] = value
+        agent_loop = dict(payload.get("agent_loop") or {})
+        if value := self._process_env_value("KAGWEB_AGENT_LOOP_BACKEND"):
+            agent_loop["backend"] = value
+        if value := self._process_env_value("KAGWEB_AGENT_LOOP_COMMAND"):
+            agent_loop["command"] = value
+        if value := self._process_env_value("KAGWEB_AGENT_LOOP_URL"):
+            agent_loop["url"] = value
+        if value := self._process_env_value("KAGWEB_AGENT_LOOP_API_KEY"):
+            agent_loop["api_key"] = value
+        if agent_loop:
+            payload["agent_loop"] = agent_loop
         return self._normalize_system(payload)
 
     def _apply_auth_process_overrides(self, settings: dict[str, Any]) -> dict[str, Any]:
@@ -1113,6 +1145,36 @@ class RuntimeSettingsService:
     def _normalize_text_only_engine(self, _settings: dict[str, Any]) -> dict[str, Any]:
         return {}
 
+    def _normalize_agent_loop(self, settings: dict[str, Any]) -> dict[str, Any]:
+        raw = settings.get("agent_loop")
+        block = raw if isinstance(raw, dict) else {}
+
+        def _env_map(value: Any) -> dict[str, str]:
+            if not isinstance(value, dict):
+                return {}
+            return {
+                str(key): str(item) for key, item in value.items() if str(key).strip() and str(item)
+            }
+
+        return {
+            "backend": _string(block.get("backend")).strip(),
+            "command": _string(block.get("command")).strip(),
+            "args": [str(arg) for arg in (block.get("args") or []) if str(arg).strip() != ""]
+            if isinstance(block.get("args"), list)
+            else [],
+            "env": _env_map(block.get("env")),
+            "url": _string(block.get("url")).strip(),
+            "turn_path": _string(block.get("turn_path")).strip() or "/agent/turn",
+            "headers": _env_map(block.get("headers")),
+            "api_key": _string(block.get("api_key")),
+            "timeout_seconds": _coerce_clamped_int(
+                block.get("timeout_seconds"),
+                DEFAULT_SYSTEM_SETTINGS["agent_loop"]["timeout_seconds"],
+                *AGENT_LOOP_TIMEOUT_RANGE,
+            ),
+            "session_workspace": _coerce_bool(block.get("session_workspace"), True),
+        }
+
     def _normalize_system(self, settings: dict[str, Any]) -> dict[str, Any]:
         public_api_base = _string(settings.get("next_public_api_base_external")) or _string(
             settings.get("public_api_base")
@@ -1160,6 +1222,7 @@ class RuntimeSettingsService:
                 DEFAULT_SYSTEM_SETTINGS["chat_attachment_max_chars_total"],
                 *CHAT_ATTACHMENT_CHARS_RANGE,
             ),
+            "agent_loop": self._normalize_agent_loop(settings),
         }
 
     def _normalize_auth(self, settings: dict[str, Any]) -> dict[str, Any]:

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -38,6 +39,21 @@ class _ScriptedEngine:
 
     async def execute(self, context: Any):
         for event in self._events:
+            yield event
+
+
+class _FakeAgentBackend:
+    """Minimal agent-loop backend for the full-pipeline delegation test."""
+
+    name = "fake"
+
+    def __init__(self, *events: Any) -> None:
+        self.events = list(events)
+        self.requests: list[Any] = []
+
+    async def run(self, request: Any):
+        self.requests.append(request)
+        for event in self.events:
             yield event
 
 
@@ -81,6 +97,7 @@ async def test_bare_turn_completes_with_stub_notice(store, stub_workspace, monke
     )
     # Title generation must skip (not raise) on a bare deployment.
     monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
+    monkeypatch.setattr("kagweb.capabilities.chat.capability.get_agent_loop_backend", lambda: None)
 
     runtime = TurnRuntimeManager(store=store)
     final = await _run_turn_and_wait(runtime, _stub_payload())
@@ -134,6 +151,7 @@ async def test_broken_model_config_fails_turn_with_real_error(
             LLMConfigError("OpenAI API key is not configured. Set it in Settings > Catalog.")
         ),
     )
+    monkeypatch.setattr("kagweb.capabilities.chat.capability.get_agent_loop_backend", lambda: None)
 
     runtime = TurnRuntimeManager(store=store)
     final = await _run_turn_and_wait(runtime, _stub_payload())
@@ -141,6 +159,68 @@ async def test_broken_model_config_fails_turn_with_real_error(
     assert final is not None
     assert final["status"] == "failed", final
     assert "API key is not configured" in str(final.get("error") or "")
+
+
+async def test_agent_loop_backend_streams_and_persists(store, stub_workspace, monkeypatch) -> None:
+    """Configured agent-loop backend: events map to the stream, content persists."""
+    from kagweb.services.agent_loop.protocol import AgentLoopEvent, AgentLoopRequest
+
+    backend = _FakeAgentBackend(
+        AgentLoopEvent("thinking", text="pondering"),
+        AgentLoopEvent("content", text="the answer"),
+        AgentLoopEvent("tool_call", name="shell", data={"args": {"command": "ls"}}),
+        AgentLoopEvent("tool_result", name="shell", text="file.txt"),
+        AgentLoopEvent("usage", data={"input_tokens": 10, "output_tokens": 5}),
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_backend", lambda: backend
+    )
+    monkeypatch.setattr(
+        "kagweb.services.agent_loop.settings.get_agent_loop_settings",
+        lambda: {"backend": "fake", "session_workspace": False},
+    )
+    # The turn needs a resolvable model config only for context budgeting;
+    # a bare deployment delegates entirely to the agent loop.
+    monkeypatch.setattr(
+        "kagweb.services.model_selection.runtime.activate_llm_selection",
+        lambda selection: (
+            SimpleNamespace(model="agent-loop", context_window=None, max_tokens=None),
+            None,
+        ),
+    )
+    monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
+
+    runtime = TurnRuntimeManager(store=store)
+    session, turn = await runtime.start_turn(_stub_payload("what files?"))
+    execution = runtime._executions.get(turn["id"])
+    assert execution is not None and execution.task is not None
+    await execution.task
+
+    final = await store.get_turn(turn["id"])
+    assert final is not None and final["status"] == "completed", final
+
+    # The backend saw the composed request.
+    assert len(backend.requests) == 1
+    request: AgentLoopRequest = backend.requests[0]
+    assert request.prompt == "what files?"
+    assert request.session_id == session["id"]
+
+    # Events were mapped onto the turn stream.
+    kinds = [e["type"] for e in execution.events]
+    assert "thinking" in kinds
+    assert "tool_call" in kinds
+    assert "tool_result" in kinds
+
+    # Content became the persisted answer; the RESULT envelope carries the
+    # backend identity.
+    messages = await store.get_messages(session["id"])
+    assistant = next(m for m in messages if m["role"] == "assistant")
+    assert assistant["content"] == "the answer"
+    result_events = [e for e in execution.events if e["type"] == "result"]
+    assert result_events
+    agent_meta = result_events[-1]["metadata"].get("agent_loop") or {}
+    assert agent_meta.get("backend") == "fake"
+    assert agent_meta.get("usage", {}).get("input_tokens") == 10
 
 
 async def test_cancelled_turn_persists_partial_content(store, stub_workspace, monkeypatch) -> None:

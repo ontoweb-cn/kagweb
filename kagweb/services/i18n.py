@@ -65,7 +65,25 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "chat.stub_notice": (
             "KAGWeb is running as a framework shell — the conversation backend is not "
             "connected yet. Model providers, sessions, settings and Partners are ready; "
-            "the chat capability will be provided by the KAG integration."
+            "conversation comes from the agent-loop integration "
+            '("agent_loop" in system.json).'
+        ),
+        "agent_loop.spawn_failed": ("Agent-loop backend {backend!r} failed to start: {error}"),
+        "agent_loop.exited": ("Agent-loop backend {backend!r} exited with code {code}{detail}"),
+        "agent_loop.timeout": ("Agent-loop backend {backend!r} timed out after {seconds}s."),
+        "agent_loop.http_status": (
+            "Agent-loop backend {backend!r} returned HTTP {status}: {detail}"
+        ),
+        "agent_loop.http_failed": ("Agent-loop backend {backend!r} request failed: {error}"),
+        "agent_loop.unknown_backend": (
+            'Unknown agent-loop backend {backend!r}; check the "agent_loop" settings.'
+        ),
+        "agent_loop.command_required": (
+            'Agent-loop backend {backend!r} needs a command; set "command" in the '
+            '"agent_loop" settings.'
+        ),
+        "agent_loop.url_required": (
+            'Agent-loop backend {backend!r} needs a url; set "url" in the "agent_loop" settings.'
         ),
     },
     "zh": {
@@ -107,7 +125,22 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "mcp.tool_not_available": "该工具在本次对话中不可用，只能调用提示中列出的工具。",
         "chat.stub_notice": (
             "KAGWeb 目前以框架壳模式运行，对话后端尚未接入。模型服务、会话、设置与 "
-            "Partners 均已就绪，对话能力将由 KAG 集成提供。"
+            "Partners 均已就绪，对话能力由 agent-loop 集成提供"
+            '（system.json 的 "agent_loop" 配置块）。'
+        ),
+        "agent_loop.spawn_failed": "Agent-loop 后端 {backend!r} 启动失败：{error}",
+        "agent_loop.exited": "Agent-loop 后端 {backend!r} 异常退出（code {code}）{detail}",
+        "agent_loop.timeout": "Agent-loop 后端 {backend!r} 超时（{seconds} 秒）。",
+        "agent_loop.http_status": "Agent-loop 后端 {backend!r} 返回 HTTP {status}：{detail}",
+        "agent_loop.http_failed": "Agent-loop 后端 {backend!r} 请求失败：{error}",
+        "agent_loop.unknown_backend": (
+            '未知的 agent-loop 后端 {backend!r}，请检查 "agent_loop" 配置。'
+        ),
+        "agent_loop.command_required": (
+            'Agent-loop 后端 {backend!r} 需要可执行命令，请在 "agent_loop" 配置中设置 "command"。'
+        ),
+        "agent_loop.url_required": (
+            'Agent-loop 后端 {backend!r} 需要服务地址，请在 "agent_loop" 配置中设置 "url"。'
         ),
     },
 }

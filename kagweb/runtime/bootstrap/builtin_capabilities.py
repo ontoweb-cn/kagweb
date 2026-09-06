@@ -42,7 +42,8 @@ BUILTIN_CAPABILITY_SPECS: dict[str, BuiltinCapabilitySpec] = {
         BUILTIN_CAPABILITY_CLASSES["chat"],
         _manifest(
             "chat",
-            "Default conversation capability (KAGWeb shell: awaiting the KAG backend integration).",
+            "Default conversation capability: delegates turns to the configured "
+            "agent-loop backend (framework-shell notice while none is configured).",
             stages=["responding"],
             tools_used=[],
             cli_aliases=["chat"],

@@ -8,8 +8,13 @@ model — single-shot **Tools** invoked by the LLM, and multi-stage
 CLI, WebSocket API, and Python SDK.
 
 This fork ships a **framework shell**: the runtime, provider, storage, and web
-layers are complete, while the default `chat` capability is a stub awaiting the
-KAG backend integration.
+layers are complete. The conversation backend is an external **agent loop** —
+not a plain LLM call — selected at runtime via the `agent_loop` settings block
+(`kagweb/services/agent_loop/`): CLI backends (Claude Code, Codex, OpenCode,
+custom) and HTTP service backends (Intellect community/team, Hermes,
+AgentScope, custom). While no backend is configured, `chat` is a stub that
+completes every turn with a localized notice. See `ARCHITECTURE.md` for the
+wire contracts and trust boundaries.
 
 ## Architecture
 
@@ -25,7 +30,12 @@ Entry Points:  CLI (Typer)  |  WebSocket /ws  |  Python SDK
               ┌──────────▼──┐  ┌────────▼──────────┐
               │ ToolRegistry │  │ CapabilityRegistry │
               │  (Level 1)   │  │   (Level 2)        │
-              └──────────────┘  └────────────────────┘
+              └──────────────┘  └────────┬──────────┘
+                                          │ chat delegates to
+                              ┌───────────▼───────────┐
+                              │  AgentLoopBackend     │
+                              │  CLI subprocess | HTTP │
+                              └───────────────────────┘
 ```
 
 All capabilities emit on a shared `StreamBus`; the orchestrator fans events out
@@ -48,11 +58,12 @@ mount point for future context-gated tools.
 
 ### Level 2 — Capabilities
 
-`chat` is the only built-in capability: a stub that completes every turn with a
-localized notice (`kagweb/capabilities/chat/`). All capabilities converge on
-`emit_capability_result()` in `kagweb/capabilities/_shared.py` so every turn
-emits the same envelope (response payload + `cost_summary` from
-`UsageTracker`).
+`chat` is the only built-in capability (`kagweb/capabilities/chat/`): with an
+agent-loop backend configured it delegates the turn and maps the backend's
+neutral events onto the `StreamBus`; otherwise it is the shell stub. All
+capabilities converge on `emit_capability_result()` in
+`kagweb/capabilities/_shared.py` so every turn emits the same envelope
+(response payload + `cost_summary` from `UsageTracker`).
 
 ## CLI Usage
 
@@ -61,7 +72,7 @@ emits the same envelope (response payload + `cost_summary` from
 pip install kagweb      # Full app (CLI + Web/API + packaged Web assets)
 pip install kagweb-cli  # CLI-only
 
-# Run the (stub) chat capability
+# Run the chat capability (stub notice without an agent_loop backend)
 kagweb run chat "Explain Fourier transform"
 
 # Interactive REPL
@@ -90,6 +101,7 @@ kagweb start                   # backend + frontend together
 | `kagweb/core/context.py`                   | `UnifiedContext` dataclass           |
 | `kagweb/tools/builtin/__init__.py`         | Built-in tool wrappers               |
 | `kagweb/capabilities/`                     | Built-in capability implementations  |
+| `kagweb/services/agent_loop/`              | Agent-loop backends (CLI/HTTP) + presets |
 | `kagweb/app.py`                            | `KAGWebApp` — Python SDK facade      |
 | `kagweb_cli/main.py`                       | Typer CLI entry point                |
 | `kagweb/api/routers/unified_ws.py`         | Unified WebSocket endpoint           |
