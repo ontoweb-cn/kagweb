@@ -58,12 +58,22 @@ translator (`translate_claude_code` / `translate_codex` /
 streaming, stderr draining, wall-clock timeout, kill-on-cancel, non-zero exit
 → failed turn with the stderr tail.
 
+The child environment is **allowlisted** (PATH/HOME/TMPDIR plus the Windows
+shell/temp/app-data basics) — the server environment carries deployment
+secrets (`AUTH_PASSWORD_HASH`, `POCKETBASE_ADMIN_PASSWORD`, provider keys
+are exported into it at boot) and must never reach the child. Backend
+credentials pass exclusively through the operator's `env` settings block.
+At most 4 agent-loop subprocesses run concurrently per process (each can be
+a heavyweight node runtime); further turns wait, counting against their own
+turn timeout.
+
 With `session_workspace: true` (default) each session gets a working
 directory (`data/user/workspace/chat/<session_id>`), so files the loop
 creates stay reachable across its turns.
 
 **Trust boundary**: the subprocess runs with the server process's
-privileges. CLI backends are the single-operator / local-deployment shape.
+privileges (minus the exported secrets above). CLI backends are the
+single-operator / local-deployment shape.
 
 ### HTTP family (`http_backend.py`)
 
@@ -85,8 +95,10 @@ Authorization: Bearer <api_key>            # when set
 ```
 
 Objects without a neutral `kind` fall back to a heuristic translator, so a
-service can adopt the contract gradually. HTTP errors and timeouts fail the
-turn with the real status/body.
+service can adopt the contract gradually. Single lines (NDJSON and SSE data
+events alike) are capped at `MAX_LINE_BYTES`; a runaway line is discarded
+and the stream continues. HTTP errors and timeouts fail the turn with the
+real status/body.
 
 ## Configuration
 

@@ -22,6 +22,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
+#: Hard cap on a single NDJSON/SSE line from any backend family (agents can
+#: inline big tool outputs; an unbounded line is a memory-exhaustion vector).
+MAX_LINE_BYTES = 4 * 1024 * 1024
+
 #: Event kinds produced by every backend, whatever the vendor wire format.
 EVENT_KINDS = frozenset(
     {
@@ -101,4 +105,5 @@ __all__ = [
     "AgentLoopEvent",
     "AgentLoopRequest",
     "EVENT_KINDS",
+    "MAX_LINE_BYTES",
 ]

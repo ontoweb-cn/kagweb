@@ -23,8 +23,9 @@ from typing import Any
 from kagweb.capabilities._shared import emit_capability_result
 from kagweb.core.capability_protocol import CapabilityManifest, TurnCapability
 from kagweb.core.context import UnifiedContext
-from kagweb.services.agent_loop import get_agent_loop_backend
+from kagweb.services.agent_loop import build_agent_loop_backend
 from kagweb.services.agent_loop.protocol import AgentLoopBackend, AgentLoopEvent
+from kagweb.services.agent_loop.settings import get_agent_loop_settings
 from kagweb.services.i18n import t
 from kagweb.services.llm.usage_tracker import UsageTracker
 from kagweb.services.settings.interface_settings import get_response_language
@@ -45,11 +46,15 @@ class ChatCapability(TurnCapability):
     )
 
     async def run(self, context: UnifiedContext, stream) -> None:  # noqa: ANN001
-        backend = get_agent_loop_backend()
+        # One settings read per turn: load_system() hits the JSON file (and
+        # may rewrite it), so neither the backend factory nor the request
+        # builder may go to disk a second time.
+        settings = get_agent_loop_settings()
+        backend = build_agent_loop_backend(settings)
         if backend is None:
             await self._run_shell_notice(context, stream)
             return
-        await self._run_agent_loop(context, stream, backend)
+        await self._run_agent_loop(context, stream, backend, settings)
 
     # ------------------------------------------------------------------
     # Framework-shell stub
@@ -76,11 +81,12 @@ class ChatCapability(TurnCapability):
     # ------------------------------------------------------------------
 
     async def _run_agent_loop(
-        self, context: UnifiedContext, stream, backend: AgentLoopBackend
-    ) -> None:  # noqa: ANN001
-        from kagweb.services.agent_loop.settings import get_agent_loop_settings
-
-        settings = get_agent_loop_settings()
+        self,
+        context: UnifiedContext,
+        stream,  # noqa: ANN001
+        backend: AgentLoopBackend,
+        settings: dict[str, Any],
+    ) -> None:
         request = _build_request(context, session_workspace=bool(settings.get("session_workspace")))
 
         answer_parts: list[str] = []
@@ -93,6 +99,16 @@ class ChatCapability(TurnCapability):
                 usage.update({k: v for k, v in event.data.items() if v is not None})
 
         answer = "".join(answer_parts).strip()
+        if not answer:
+            # A completed turn with no answer text is a backend problem the
+            # operator must be able to see; surface it in the trace without
+            # failing the turn (partial tool output may still be useful).
+            await stream.error(
+                t("agent_loop.empty_answer", backend=backend.name),
+                source=self.name,
+                stage="responding",
+                metadata={"non_terminal": True},
+            )
         context.capability_output.agent_output = answer
         context.capability_output.answer_published = True
         # RESULT metadata is the shallow-merged payload itself, so keep the
@@ -128,8 +144,14 @@ def _build_request(context: UnifiedContext, *, session_workspace: bool) -> Any:
         try:
             from kagweb.services.path_service import get_path_service
 
-            workdir = str(get_path_service().get_task_workspace("chat", context.session_id))
+            workdir_path = get_path_service().get_task_workspace("chat", context.session_id)
+            # get_task_workspace is a pure path join — create it here or the
+            # subprocess spawn fails with a missing cwd on the first turn.
+            workdir_path.mkdir(parents=True, exist_ok=True)
+            workdir = str(workdir_path)
         except Exception:
+            # A missing workspace must degrade to the server cwd, never
+            # fail the turn.
             workdir = ""
 
     history = [

@@ -111,6 +111,54 @@ async def test_cli_backend_nonzero_exit_fails_turn(tmp_path: Path) -> None:
     assert "boom details" in str(excinfo.value)
 
 
+async def test_cli_backend_child_env_is_allowlisted(tmp_path, monkeypatch) -> None:
+    """Server-environment secrets must not leak into the agent subprocess."""
+    monkeypatch.setenv("KAGWEB_TEST_SECRET", "s3cr3t")
+    monkeypatch.setenv("AUTH_PASSWORD_HASH", "$2b$12$leak")
+    monkeypatch.setenv("POCKETBASE_ADMIN_PASSWORD", "leak")
+    # Guard the passthrough basics at the same time.
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")  # allowlisted on every OS
+    script = _write_agent(
+        tmp_path,
+        """
+        import json, os
+        env = dict(os.environ)
+        leaks = [k for k in ("KAGWEB_TEST_SECRET", "AUTH_PASSWORD_HASH",
+                             "POCKETBASE_ADMIN_PASSWORD") if k in env]
+        assert not leaks, leaks
+        assert "PATH" in env
+        print(json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "env ok"},
+        ]}}), flush=True)
+        """,
+    )
+    backend = _cli_backend(script)
+    events = [e async for e in backend.run(_request())]
+    assert events and events[0].kind == "content" and events[0].text == "env ok"
+
+
+async def test_cli_backend_configured_env_passes_through(tmp_path) -> None:
+    script = _write_agent(
+        tmp_path,
+        """
+        import json, os
+        assert os.environ.get("ANTHROPIC_API_KEY") == "operator-key", os.environ
+        print(json.dumps({"type": "text", "text": "key ok"}), flush=True)
+        """,
+    )
+    backend = CliAgentLoopBackend(
+        name="fake-cli",
+        command=sys.executable,
+        base_args=["-u", str(script)],
+        extra_args=[],
+        env={"ANTHROPIC_API_KEY": "operator-key"},
+        timeout_seconds=30.0,
+        translator=TRANSLATORS["generic"],
+    )
+    events = [e async for e in backend.run(_request())]
+    assert events and events[0].text == "key ok"
+
+
 async def test_cli_backend_timeout_kills_process(tmp_path: Path) -> None:
     script = _write_agent(
         tmp_path,
@@ -240,6 +288,47 @@ async def test_http_backend_sse_events() -> None:
     backend = _http_backend(handler)
     events = [e async for e in backend.run(_request())]
     assert [e.text for e in events] == ["hello", " world"]
+
+
+async def test_http_backend_discards_oversized_lines() -> None:
+    """A runaway NDJSON line must be dropped without killing the stream."""
+    from kagweb.services.agent_loop.protocol import MAX_LINE_BYTES
+
+    oversized = b"x" * (MAX_LINE_BYTES + 1024)
+    body = (
+        b'{"kind": "content", "text": "before"}\n'
+        + oversized
+        + b"\n"
+        + b'{"kind": "content", "text": "after"}\n'
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, headers={"content-type": "application/x-ndjson"}, content=body)
+
+    backend = _http_backend(handler)
+    events = [e async for e in backend.run(_request())]
+    assert [e.text for e in events] == ["before", "after"]
+
+
+async def test_http_backend_discards_oversized_sse_event() -> None:
+    from kagweb.services.agent_loop.protocol import MAX_LINE_BYTES
+
+    oversized = b"x" * (MAX_LINE_BYTES + 1024)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=(
+                b'data: {"kind": "content", "text": "kept"}\n\n'
+                b"data: " + oversized + b"\n\n"
+                b'data: {"kind": "content", "text": "also kept"}\n\n'
+            ),
+        )
+
+    backend = _http_backend(handler)
+    events = [e async for e in backend.run(_request())]
+    assert [e.text for e in events] == ["kept", "also kept"]
 
 
 async def test_http_backend_generic_fallback_events() -> None:

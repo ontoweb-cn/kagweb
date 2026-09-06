@@ -26,16 +26,76 @@ from typing import Any, Callable
 
 from kagweb.services.i18n import t
 
-from .protocol import AgentLoopBackend, AgentLoopError, AgentLoopEvent, AgentLoopRequest
+from .protocol import (
+    MAX_LINE_BYTES,
+    AgentLoopBackend,
+    AgentLoopError,
+    AgentLoopEvent,
+    AgentLoopRequest,
+)
 
 logger = logging.getLogger(__name__)
 
 #: Keep stderr tails bounded: they surface in failed-turn error text.
 _STDERR_TAIL_LIMIT = 2000
-#: Hard cap on a single JSON line (agents can inline big tool outputs).
-_MAX_LINE_BYTES = 4 * 1024 * 1024
 
 Translator = Callable[[dict[str, Any], dict[str, Any]], list[AgentLoopEvent]]
+
+#: Environment the agent-loop subprocess may inherit from the server. The
+#: server environment carries deployment secrets (settings export writes
+#: AUTH_PASSWORD_HASH / POCKETBASE_ADMIN_PASSWORD / provider keys into
+#: os.environ), and the child — plus anything it executes — must not read
+#: them. Only process-basics and the CLI's own credential locations pass
+#: through; backend credentials come exclusively from the operator's
+#: ``env`` settings block.
+_CHILD_ENV_ALLOWLIST = frozenset(
+    {
+        # process basics
+        "PATH",
+        "LANG",
+        "LC_ALL",
+        "TZ",
+        # POSIX / Unix homes and tmp
+        "HOME",
+        "TMPDIR",
+        # Windows: shells, temp dirs, and per-user app data (the agent CLIs
+        # keep their own login state under APPDATA/USERPROFILE).
+        "SYSTEMROOT",
+        "SYSTEMDRIVE",
+        "WINDIR",
+        "COMSPEC",
+        "PATHEXT",
+        "TEMP",
+        "TMP",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+    }
+)
+
+
+def _build_child_env(os_env: dict[str, str], extra: dict[str, str]) -> dict[str, str]:
+    """Allowlisted server env + the operator's explicit ``env`` block."""
+    child = {
+        key: value for key, value in os_env.items() if key.upper() in _CHILD_ENV_ALLOWLIST and value
+    }
+    child.update(extra)
+    return child
+
+
+#: Concurrent agent-loop subprocesses per process. Each CLI agent can be
+#: heavyweight (node runtime, model context); unbounded parallel turns
+#: across sessions would exhaust the host. Per-process by design — each
+#: backend worker enforces its own share.
+_MAX_CONCURRENT_TURNS = 4
+_spawn_slots: asyncio.Semaphore | None = None
+
+
+def _spawn_semaphore() -> asyncio.Semaphore:
+    global _spawn_slots
+    if _spawn_slots is None:
+        _spawn_slots = asyncio.Semaphore(_MAX_CONCURRENT_TURNS)
+    return _spawn_slots
 
 
 # ---------------------------------------------------------------------------
@@ -303,32 +363,34 @@ class CliAgentLoopBackend(AgentLoopBackend):
 
     async def run(self, request: AgentLoopRequest) -> AsyncIterator[AgentLoopEvent]:
         argv = self.build_argv(request)
-        env = {**os.environ, **self.env}
+        env = _build_child_env(dict(os.environ), self.env)
         cwd = request.workdir or None
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *argv,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=cwd,
-                env=env,
-            )
-        except (OSError, ValueError) as exc:
-            raise AgentLoopError(
-                t("agent_loop.spawn_failed", backend=self.name, error=str(exc)),
-                backend=self.name,
-            ) from exc
-
+        proc: asyncio.subprocess.Process | None = None
+        stderr_task: asyncio.Task[None] | None = None
         stderr_tail: list[bytes] = []
-        stderr_task = asyncio.create_task(self._drain_stderr(proc, stderr_tail))
-        state: dict[str, Any] = {}
+        state: dict[str, Any] = {"dropped_lines": 0}
         try:
-            # The wall-clock cap covers streaming AND the final wait, so a
-            # hung child can never pin a turn open.
+            # The wall-clock cap covers slot waiting, spawn, streaming AND
+            # the final wait, so a hung child (or a saturated slot pool)
+            # can never pin a turn open.
             timeout_cm = (
                 asyncio.timeout(self.timeout_seconds) if self.timeout_seconds else nullcontext()
             )
-            async with timeout_cm:
+            async with timeout_cm, _spawn_semaphore():
+                try:
+                    proc = await asyncio.create_subprocess_exec(
+                        *argv,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        cwd=cwd,
+                        env=env,
+                    )
+                except (OSError, ValueError) as exc:
+                    raise AgentLoopError(
+                        t("agent_loop.spawn_failed", backend=self.name, error=str(exc)),
+                        backend=self.name,
+                    ) from exc
+                stderr_task = asyncio.create_task(self._drain_stderr(proc, stderr_tail))
                 async for event in self._iter_stdout(proc, state):
                     yield event
                 returncode = await proc.wait()
@@ -352,14 +414,21 @@ class CliAgentLoopBackend(AgentLoopBackend):
             ) from exc
         finally:
             # Covers turn cancellation mid-stream as well as normal exit.
-            if proc.returncode is None:
+            if proc is not None:
+                if proc.returncode is None:
+                    with suppress(Exception):
+                        proc.kill()
                 with suppress(Exception):
-                    proc.kill()
-            with suppress(Exception):
-                await proc.wait()
-            stderr_task.cancel()
-            with suppress(Exception):
-                await stderr_task
+                    await proc.wait()
+            if stderr_task is not None:
+                stderr_task.cancel()
+                with suppress(Exception):
+                    await stderr_task
+            dropped = int(state.get("dropped_lines") or 0)
+            if dropped:
+                logger.info(
+                    "agent-loop %s: dropped %d unparseable stdout line(s)", self.name, dropped
+                )
 
     async def _iter_stdout(
         self, proc: asyncio.subprocess.Process, state: dict[str, Any]
@@ -386,21 +455,26 @@ class CliAgentLoopBackend(AgentLoopBackend):
 
     def _line_events(self, raw: bytes, state: dict[str, Any]) -> list[AgentLoopEvent]:
         text = raw.decode("utf-8", "replace").strip()
-        if not text or text.startswith("#") or len(raw) > _MAX_LINE_BYTES:
-            if len(raw) > _MAX_LINE_BYTES:
-                logger.warning(
-                    "agent-loop %s: dropping oversized JSON line (%d bytes)",
-                    self.name,
-                    len(raw),
-                )
+        if not text or text.startswith("#"):
+            return []
+        if len(raw) > MAX_LINE_BYTES:
+            logger.warning(
+                "agent-loop %s: dropping oversized JSON line (%d bytes)",
+                self.name,
+                len(raw),
+            )
+            state["dropped_lines"] = int(state.get("dropped_lines") or 0) + 1
             return []
         try:
             obj = json.loads(text)
         except json.JSONDecodeError:
-            # Non-JSON stdout (banners, warnings) is trace noise, not errors.
+            # Non-JSON stdout (banners, warnings) is trace noise, not errors,
+            # but stays countable so a chatty backend is visible in the logs.
             logger.debug("agent-loop %s: non-JSON stdout line: %.200s", self.name, text)
+            state["dropped_lines"] = int(state.get("dropped_lines") or 0) + 1
             return []
         if not isinstance(obj, dict):
+            state["dropped_lines"] = int(state.get("dropped_lines") or 0) + 1
             return []
         return self.translator(obj, state)
 

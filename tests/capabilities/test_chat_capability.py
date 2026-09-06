@@ -43,7 +43,10 @@ async def _run_capability(context: UnifiedContext, bus: StreamBus) -> list[tuple
 
 
 async def test_unconfigured_backend_emits_shell_notice(monkeypatch) -> None:
-    monkeypatch.setattr("kagweb.capabilities.chat.capability.get_agent_loop_backend", lambda: None)
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": ""},
+    )
     context = UnifiedContext(session_id="s", user_message="hi", language="en")
     events = await _run_capability(context, StreamBus())
 
@@ -72,11 +75,12 @@ async def test_configured_backend_streams_and_publishes_result(monkeypatch) -> N
         ]
     )
     monkeypatch.setattr(
-        "kagweb.capabilities.chat.capability.get_agent_loop_backend", lambda: backend
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "recording", "session_workspace": False},
     )
     monkeypatch.setattr(
-        "kagweb.services.agent_loop.settings.get_agent_loop_settings",
-        lambda: {"backend": "recording", "session_workspace": False},
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
     )
     context = UnifiedContext(
         session_id="sess-1",
@@ -131,13 +135,54 @@ async def test_backend_error_fails_the_turn(monkeypatch) -> None:
             yield  # pragma: no cover - generator marker
 
     monkeypatch.setattr(
-        "kagweb.capabilities.chat.capability.get_agent_loop_backend",
-        lambda: _ExplodingBackend(),
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "boom", "session_workspace": False},
     )
     monkeypatch.setattr(
-        "kagweb.services.agent_loop.settings.get_agent_loop_settings",
-        lambda: {"backend": "boom", "session_workspace": False},
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: _ExplodingBackend(),
     )
     context = UnifiedContext(session_id="s", user_message="hi", language="en")
     with pytest.raises(AgentLoopError, match="backend exploded"):
         await ChatCapability().run(context, StreamBus())
+
+
+async def test_empty_answer_surfaces_non_terminal_error(monkeypatch) -> None:
+    """Backend finishing with zero content: turn completes, trace shows why."""
+    backend = _RecordingBackend([AgentLoopEvent("thinking", text="worked hard")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "recording", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    context = UnifiedContext(session_id="s", user_message="hi", language="en")
+    events = await _run_capability(context, StreamBus())
+
+    kinds = [kind for kind, _ in events]
+    assert kinds == ["thinking", "error", "result"]
+    from kagweb.services.i18n import t
+
+    assert events[1][1] in {
+        t("agent_loop.empty_answer", backend="recording", language="en"),
+        t("agent_loop.empty_answer", backend="recording", language="zh"),
+    }
+    assert context.capability_output.agent_output == ""
+
+
+async def test_session_workspace_is_created_before_use(tmp_path, monkeypatch) -> None:
+    """The per-session workdir must exist before the subprocess spawns."""
+    from kagweb.capabilities.chat.capability import _build_request
+
+    class _StubPathService:
+        def get_task_workspace(self, feature: str, task_id: str):
+            return tmp_path / "ws" / feature / task_id  # deliberately not created
+
+    monkeypatch.setattr("kagweb.services.path_service.get_path_service", lambda: _StubPathService())
+    request = _build_request(
+        UnifiedContext(session_id="sess-9", user_message="hi"), session_workspace=True
+    )
+    assert request.workdir == str(tmp_path / "ws" / "chat" / "sess-9")
+    assert (tmp_path / "ws" / "chat" / "sess-9").is_dir()

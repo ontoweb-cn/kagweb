@@ -17,7 +17,8 @@ from typing import Any
 #:     "backend": "",             # preset name; "" disables the layer (stub chat)
 #:     "command": "",             # CLI family: override the preset's executable
 #:     "args": [],                # CLI family: extra argv appended to the preset's
-#:     "env": {},                 # CLI family: extra env vars for the subprocess
+#:     "env": {},                 # CLI family: extra env vars — the ONLY credentials
+#:                                #   the child gets; it does NOT inherit the server env
 #:     "url": "",                 # HTTP family: base URL of the agent service
 #:     "turn_path": "/agent/turn",  # HTTP family: path of the streaming turn endpoint
 #:     "headers": {},             # HTTP family: extra headers (auth schemes etc.)

@@ -85,6 +85,9 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.url_required": (
             'Agent-loop backend {backend!r} needs a url; set "url" in the "agent_loop" settings.'
         ),
+        "agent_loop.empty_answer": (
+            "The agent-loop backend {backend!r} finished without producing an answer."
+        ),
     },
     "zh": {
         "api.content_required": "content 不能为空",
@@ -142,6 +145,7 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.url_required": (
             'Agent-loop 后端 {backend!r} 需要服务地址，请在 "agent_loop" 配置中设置 "url"。'
         ),
+        "agent_loop.empty_answer": "Agent-loop 后端 {backend!r} 结束但未产生回答。",
     },
 }
 

@@ -61,6 +61,10 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
         "backend": "",
         "command": "",
         "args": [],
+        # CLI family: the ONLY credentials the agent subprocess receives —
+        # the child does not inherit the server environment (which holds
+        # exported deployment secrets), just an allowlisted process basics
+        # set plus these entries.
         "env": {},
         "url": "",
         "turn_path": "/agent/turn",

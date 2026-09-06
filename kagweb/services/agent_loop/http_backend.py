@@ -43,6 +43,7 @@ from kagweb.services.i18n import t
 from .cli_backend import translate_generic
 from .protocol import (
     EVENT_KINDS,
+    MAX_LINE_BYTES,
     AgentLoopBackend,
     AgentLoopError,
     AgentLoopEvent,
@@ -157,7 +158,7 @@ class HttpAgentLoopBackend(AgentLoopBackend):
     async def _iter_ndjson(
         self, response: httpx.Response, state: dict[str, Any]
     ) -> AsyncIterator[AgentLoopEvent]:
-        async for line in response.aiter_lines():
+        async for line in _capped_lines(response, self.name):
             text = line.strip()
             if not text:
                 continue
@@ -175,7 +176,7 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         self, response: httpx.Response, state: dict[str, Any]
     ) -> AsyncIterator[AgentLoopEvent]:
         data_lines: list[str] = []
-        async for line in response.aiter_lines():
+        async for line in _capped_lines(response, self.name):
             if line.startswith(":"):
                 continue  # SSE comment / keepalive
             if not line.strip():
@@ -195,6 +196,13 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         if not data_lines:
             return []
         merged = "\n".join(data_lines)
+        if len(merged) > MAX_LINE_BYTES:
+            logger.warning(
+                "agent-loop %s: dropping oversized SSE event (%d chars)",
+                self.name,
+                len(merged),
+            )
+            return []
         events: list[AgentLoopEvent] = []
         for candidate in (merged, *data_lines):
             try:
@@ -207,3 +215,44 @@ class HttpAgentLoopBackend(AgentLoopBackend):
                     events.append(event)
             break  # first parseable interpretation wins
         return events
+
+
+async def _capped_lines(response: httpx.Response, backend_name: str) -> AsyncIterator[str]:
+    """Yield decoded lines from the response body, bounding each line's size.
+
+    ``aiter_lines`` buffers an unbounded line in memory before yielding, so
+    the cap is enforced at the byte-buffer level: a runaway line is
+    discarded (with a warning) and iteration continues with the next one.
+    """
+    buffer = bytearray()
+    discarding = False
+    async for chunk in response.aiter_bytes(65536):
+        buffer.extend(chunk)
+        while True:
+            newline = buffer.find(b"\n")
+            if newline < 0:
+                if len(buffer) > MAX_LINE_BYTES:
+                    logger.warning(
+                        "agent-loop %s: stream line exceeds %d bytes, discarding it",
+                        backend_name,
+                        MAX_LINE_BYTES,
+                    )
+                    buffer.clear()
+                    discarding = True
+                break
+            line = bytes(buffer[:newline])
+            del buffer[: newline + 1]
+            if discarding:
+                # Tail of the discarded line; skip up to and past its newline.
+                discarding = False
+                continue
+            if len(line) > MAX_LINE_BYTES:
+                logger.warning(
+                    "agent-loop %s: stream line exceeds %d bytes, discarding it",
+                    backend_name,
+                    MAX_LINE_BYTES,
+                )
+                continue
+            yield line.decode("utf-8", "replace").rstrip("\r")
+    if not discarding and buffer and len(buffer) <= MAX_LINE_BYTES:
+        yield buffer.decode("utf-8", "replace").rstrip("\r")

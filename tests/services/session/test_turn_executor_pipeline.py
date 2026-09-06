@@ -97,7 +97,10 @@ async def test_bare_turn_completes_with_stub_notice(store, stub_workspace, monke
     )
     # Title generation must skip (not raise) on a bare deployment.
     monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
-    monkeypatch.setattr("kagweb.capabilities.chat.capability.get_agent_loop_backend", lambda: None)
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": ""},
+    )
 
     runtime = TurnRuntimeManager(store=store)
     final = await _run_turn_and_wait(runtime, _stub_payload())
@@ -158,7 +161,10 @@ async def test_broken_model_config_fails_turn_with_real_error(
             LLMConfigError("OpenAI API key is not configured. Set it in Settings > Catalog.")
         ),
     )
-    monkeypatch.setattr("kagweb.capabilities.chat.capability.get_agent_loop_backend", lambda: None)
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": ""},
+    )
 
     runtime = TurnRuntimeManager(store=store)
     final = await _run_turn_and_wait(runtime, _stub_payload())
@@ -180,11 +186,12 @@ async def test_agent_loop_backend_streams_and_persists(store, stub_workspace, mo
         AgentLoopEvent("usage", data={"input_tokens": 10, "output_tokens": 5}),
     )
     monkeypatch.setattr(
-        "kagweb.capabilities.chat.capability.get_agent_loop_backend", lambda: backend
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "fake", "session_workspace": False},
     )
     monkeypatch.setattr(
-        "kagweb.services.agent_loop.settings.get_agent_loop_settings",
-        lambda: {"backend": "fake", "session_workspace": False},
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
     )
     # The turn needs a resolvable model config only for context budgeting;
     # a bare deployment delegates entirely to the agent loop.
