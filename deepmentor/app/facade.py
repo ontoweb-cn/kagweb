@@ -7,8 +7,6 @@ import importlib.util
 import json
 from typing import Any, AsyncIterator
 
-from deepmentor.services.notebook import get_notebook_manager
-
 from .container import get_application_container
 from .contracts import TurnRequest
 
@@ -23,12 +21,11 @@ class CapabilityAvailability:
 
 
 class DeepMentorApp:
-    """Facade around runtime, session, notebook, and capability contracts."""
+    """Facade around runtime, session, and capability contracts."""
 
     def __init__(self) -> None:
         self.container = get_application_container()
         self.turns = self.container.turns
-        self.notebooks = get_notebook_manager()
         self.capabilities = self.container.capability_registry
 
     def resolve_capability(self, value: str | None) -> str:
@@ -171,43 +168,6 @@ class DeepMentorApp:
     async def get_active_turn(self, session_id: str) -> dict[str, Any] | None:
         await self.container.start()
         return await self.turns.check_active_turn(session_id)
-
-    def list_notebooks(self) -> list[dict[str, Any]]:
-        return self.notebooks.list_notebooks()
-
-    def create_notebook(
-        self,
-        name: str,
-        description: str = "",
-        *,
-        color: str = "#3B82F6",
-        icon: str = "book",
-    ) -> dict[str, Any]:
-        return self.notebooks.create_notebook(
-            name=name,
-            description=description,
-            color=color,
-            icon=icon,
-        )
-
-    def get_notebook(self, notebook_id: str) -> dict[str, Any] | None:
-        return self.notebooks.get_notebook(notebook_id)
-
-    def add_record(self, **kwargs: Any) -> dict[str, Any]:
-        return self.notebooks.add_record(**kwargs)
-
-    def update_record(
-        self, notebook_id: str, record_id: str, **kwargs: Any
-    ) -> dict[str, Any] | None:
-        return self.notebooks.update_record(notebook_id, record_id, **kwargs)
-
-    def remove_record(self, notebook_id: str, record_id: str) -> bool:
-        return self.notebooks.remove_record(notebook_id, record_id)
-
-    def get_records_by_references(
-        self, notebook_references: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        return self.notebooks.get_records_by_references(notebook_references)
 
 
 def dumps_json(value: Any) -> str:

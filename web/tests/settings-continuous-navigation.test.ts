@@ -31,10 +31,8 @@ test("settings page: stacks every first-level section from overview to about", (
     "models",
     "knowledge",
     "chat",
-    "agents",
     "learner-profile",
     "guardian",
-    "memory",
     "about",
   ];
 

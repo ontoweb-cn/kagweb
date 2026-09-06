@@ -590,12 +590,11 @@ class PartnerRunner:
         )
         msg.metadata["_attachment_records"] = attachment_records
 
-        # Partner-scope context blocks (soul / skills / KBs) are assembled
+        # Partner-scope context blocks (soul) are assembled
         # inside the partner scope so the same service locators the chat
         # turn-runtime uses resolve to the partner workspace.
         with user_context(partner_user(self.partner_id, name=self.config.name)):
             skills_manifest = self._build_skills_manifest()
-            kb_names = self._list_kb_names()
 
         metadata: dict[str, Any] = {
             "turn_id": turn_id,
@@ -693,7 +692,6 @@ class PartnerRunner:
             enabled_tools=self._resolved_enabled_tools(),
             allowed_builtin_tools=self._resolved_builtin_tools(),
             active_capability="chat",
-            knowledge_bases=kb_names,
             attachments=attachments,
             language=self._language(),
             persona_context=persona_context,
@@ -708,21 +706,19 @@ class PartnerRunner:
         ``None`` in config means "everything the user could toggle on in
         chat" — partners default to fully equipped; an explicit list (or
         ``[]``) is the owner's selection. The result is intersected with the
-        admin's global chat toggles (``admin_enabled_optional_tools``) so a
+        admin's global chat toggles (Settings -> Chat -> Tools) so a
         tool the admin disabled in Settings → Chat → Tools can never run
         inside a partner turn, even if the partner config saved it (or saved
         ``None`` before the admin turned the tool off).
         """
-        from deepmentor.agents._shared.tool_composition import (
-            admin_enabled_optional_tools,
-            default_optional_tools,
-        )
+        from deepmentor.services.settings.interface_settings import get_enabled_optional_tools
+        from deepmentor.tools.builtin import default_optional_tools
 
         configured = getattr(self.config, "enabled_tools", None)
         candidates = (
             default_optional_tools() if configured is None else [str(name) for name in configured]
         )
-        globally_enabled = set(admin_enabled_optional_tools())
+        globally_enabled = set(get_enabled_optional_tools())
         return [name for name in candidates if name in globally_enabled]
 
     def _resolved_builtin_tools(self) -> list[str] | None:
@@ -740,36 +736,9 @@ class PartnerRunner:
         return [str(name) for name in configured]
 
     def _build_skills_manifest(self) -> str:
-        try:
-            from deepmentor.services.skill.service import (
-                get_skill_service,
-                render_skills_manifest,
-            )
-
-            service = get_skill_service()
-            entries = service.summary_entries()
-            always_block = service.load_always_for_context()
-            return "\n\n".join(
-                part for part in (always_block, render_skills_manifest(entries)) if part
-            )
-        except Exception:
-            logger.warning(
-                "Failed to build skills manifest for partner %s", self.partner_id, exc_info=True
-            )
-            return ""
-
-    def _list_kb_names(self) -> list[str]:
-        try:
-            from deepmentor.knowledge.manager import KnowledgeBaseManager
-            from deepmentor.services.path_service import get_path_service
-
-            kb_root = get_path_service().get_knowledge_bases_root()
-            if not kb_root.is_dir():
-                return []
-            return KnowledgeBaseManager(base_dir=str(kb_root)).list_knowledge_bases()
-        except Exception:
-            logger.warning("Failed to list KBs for partner %s", self.partner_id, exc_info=True)
-            return []
+        # Skills were removed with the capability layer; partners ship no
+        # skill manifest.
+        return ""
 
     def _language(self) -> str:
         lang = str(getattr(self.config, "language", "") or "").strip().lower()

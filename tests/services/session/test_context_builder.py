@@ -501,17 +501,17 @@ class TestContextBuilderSummarize:
     async def test_target_stays_below_small_output_cap(self) -> None:
         captured: dict[str, Any] = {}
 
-        async def _stream_llm(**kwargs: Any):
+        async def _stream_llm(*args: Any, **kwargs: Any):
             captured.update(kwargs)
+            if args:
+                captured["user_prompt"] = args[0]
             yield "short summary"
 
-        agent = MagicMock()
-        agent.stream_llm = _stream_llm
         builder = ContextBuilder(store=MagicMock())
 
         with patch(
-            "deepmentor.services.session.context_builder._ContextSummaryAgent",
-            return_value=agent,
+            "deepmentor.services.llm.stream",
+            _stream_llm,
         ):
             summary, _events = await builder._summarize(
                 session_id="s1",

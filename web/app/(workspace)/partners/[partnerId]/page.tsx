@@ -11,7 +11,6 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Archive,
-  BookmarkPlus,
   Download,
   Link2,
   Loader2,
@@ -46,10 +45,6 @@ import PartnerChannels from "@/components/partners/PartnerChannels";
 import PartnerConfigure from "@/components/partners/PartnerConfigure";
 import PartnerArchives from "@/components/partners/PartnerArchives";
 import PartnerLinkModal from "@/components/partners/PartnerLinkModal";
-import SaveToNotebookModal, {
-  type NotebookSaveMessage,
-  type NotebookSavePayload,
-} from "@/components/notebook/SaveToNotebookModal";
 
 type Tab = "chat" | "configure" | "channels" | "archive";
 
@@ -84,7 +79,6 @@ function PartnerDetail() {
   const [archiveMessages, setArchiveMessages] = useState<ExportableMessage[]>(
     [],
   );
-  const [showSaveModal, setShowSaveModal] = useState(false);
   const [archiveBusy, setArchiveBusy] = useState(false);
   // The active web session key lives here so the Archive tab's Resume can
   // point the (always-mounted) Chat tab at a different conversation.
@@ -120,39 +114,6 @@ function PartnerDetail() {
       ?.content.trim();
     return firstUser?.slice(0, 80) || partner?.name || "Conversation";
   }, [exportMessages, partner?.name]);
-
-  const savePayload = useMemo<NotebookSavePayload | null>(() => {
-    if (!partner || !canExport) return null;
-    return {
-      recordType: "tutorbot",
-      title: exportTitle,
-      // The transcript / userQuery are rebuilt inside the modal from the
-      // user's selected subset; these are just fallbacks.
-      userQuery: "",
-      output: "",
-      metadata: {
-        source: "partner",
-        partner_id: partnerId,
-        partner_name: partner.name,
-      },
-    };
-  }, [partner, canExport, exportTitle, partnerId]);
-
-  const saveMessages = useMemo<NotebookSaveMessage[]>(
-    () =>
-      exportMessages
-        .filter(
-          (msg) =>
-            msg.role === "user" ||
-            msg.role === "assistant" ||
-            msg.role === "system",
-        )
-        .map((msg) => ({
-          role: msg.role as NotebookSaveMessage["role"],
-          content: msg.content,
-        })),
-    [exportMessages],
-  );
 
   const handleDownload = useCallback(() => {
     if (!exportMessages.length) return;
@@ -347,16 +308,6 @@ function PartnerDetail() {
               ) : null}
               <button
                 type="button"
-                onClick={() => setShowSaveModal(true)}
-                disabled={!canExport}
-                title={t("Save to Notebook")}
-                aria-label={t("Save to Notebook")}
-                className="rounded-md p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <BookmarkPlus className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
                 onClick={handleDownload}
                 disabled={!canExport}
                 title={t("Download chat history as Markdown")}
@@ -459,17 +410,6 @@ function PartnerDetail() {
           </div>
         ) : null}
       </div>
-
-      <SaveToNotebookModal
-        open={showSaveModal}
-        payload={savePayload}
-        messages={saveMessages}
-        onClose={() => setShowSaveModal(false)}
-        onSaved={() => {
-          setShowSaveModal(false);
-          setToast(t("Saved to notebook."));
-        }}
-      />
 
       {toast && (
         <div className="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-[var(--foreground)] px-3.5 py-2 text-[12.5px] text-[var(--background)] shadow-lg">

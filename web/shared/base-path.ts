@@ -7,7 +7,7 @@
  * the two rules must be kept in sync by hand), and the browser-side inlines
  * of the same variable flow through here. Every place that builds a URL
  * outside `Link` / `router.push` (which the framework prefixes
- * automatically) must go through `withBasePath()` — raw `fetch("/api/…")`,
+ * automatically) must go through `withBasePath()` — raw `fetch` calls,
  * `new WebSocket("/ws/…")`, `window.location.href` and native HTML
  * attributes like `<svg><image href>` all resolve against the domain root
  * and would silently drop the prefix.

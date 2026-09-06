@@ -9,21 +9,9 @@ import { useChatStateAdapter } from "@/features/chat/ChatStateAdapter";
 import {
   deleteSession,
   listSessions,
-  updateSessionOrganization,
   updateSessionTitle,
-  type SessionOrganizationPatch,
   type SessionSummary,
 } from "@/lib/session-api";
-import { listCourses, type StudyCourse } from "@/lib/courses-api";
-import {
-  fetchReadingCollectionIndex,
-  type ReadingCollectionLabel,
-} from "@/lib/reading-workspace-api";
-import {
-  fetchMasteryTopicIndex,
-  type MasteryTopicLabel,
-} from "@/lib/learning-api";
-import { sessionRoute } from "@/lib/mastery-session";
 import { subscribeSessionChanges } from "@/lib/session-events";
 
 export default function WorkspaceSidebar() {
@@ -37,11 +25,6 @@ export default function WorkspaceSidebar() {
     sidebarRefreshToken,
   } = useChatStateAdapter();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [courses, setCourses] = useState<StudyCourse[]>([]);
-  const [masteryTopics, setMasteryTopics] = useState<MasteryTopicLabel[]>([]);
-  const [readingCollections, setReadingCollections] = useState<
-    ReadingCollectionLabel[]
-  >([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const hasLoadedSessionsRef = useRef(false);
 
@@ -50,20 +33,8 @@ export default function WorkspaceSidebar() {
       setLoadingSessions(true);
     }
     try {
-      // Topic labels are only there to name a group heading, so a failure to
-      // load them must not cost the session list: the conversations then read
-      // as ungrouped rather than as missing.
-      const [nextSessions, nextCourses, nextTopics, nextCollections] =
-        await Promise.all([
-          listSessions(50, 0, { force: true }),
-          listCourses({ force: true }),
-          fetchMasteryTopicIndex().catch(() => [] as MasteryTopicLabel[]),
-          fetchReadingCollectionIndex(),
-        ]);
+      const nextSessions = await listSessions(50, 0, { force: true });
       setSessions(nextSessions);
-      setCourses(nextCourses);
-      setMasteryTopics(nextTopics);
-      setReadingCollections(nextCollections);
       hasLoadedSessionsRef.current = true;
     } catch (error) {
       console.error("Failed to load sessions", error);
@@ -124,15 +95,11 @@ export default function WorkspaceSidebar() {
     reconcileUnread(liveSessionIds, selectedSessionId);
   }, [liveSessionIds, selectedSessionId]);
 
-  // A study conversation opens on its own path, not in the main chat: the
-  // outline, the waypoint header and the tutor's own composer are the context
-  // it was held in, and /chat would drop all three.
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
-      const session = sessions.find((item) => item.session_id === sessionId);
-      router.push(session ? sessionRoute(session) : `/chat/${sessionId}`);
+      router.push(`/chat/${sessionId}`);
     },
-    [router, sessions],
+    [router],
   );
 
   const handleRenameSession = useCallback(
@@ -169,38 +136,15 @@ export default function WorkspaceSidebar() {
     [cancelStreamingTurn, newSession, router, selectedSessionId, t],
   );
 
-  const handleOrganizeSession = useCallback(
-    async (sessionId: string, patch: SessionOrganizationPatch) => {
-      const updated = await updateSessionOrganization(sessionId, patch);
-      setSessions((previous) =>
-        previous.map((session) =>
-          session.session_id === sessionId
-            ? {
-                ...session,
-                updated_at: updated.updated_at,
-                preferences: updated.preferences,
-              }
-            : session,
-        ),
-      );
-    },
-    [],
-  );
-
   return (
     <SidebarShell
       showSessions
       sessions={liveSessions}
-      liveSessionIds={liveSessionIds}
-      courses={courses}
-      masteryTopics={masteryTopics}
-      readingCollections={readingCollections}
       activeSessionId={selectedSessionId}
       loadingSessions={loadingSessions}
       onSelectSession={handleSelectSession}
       onRenameSession={handleRenameSession}
       onDeleteSession={handleDeleteSession}
-      onOrganizeSession={handleOrganizeSession}
     />
   );
 }

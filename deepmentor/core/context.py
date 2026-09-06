@@ -38,8 +38,6 @@ class TurnRuntimeContext:
     turn_id: str = ""
     wait_for_user_reply: Callable[[], Awaitable[dict[str, Any] | None]] | None = None
     provider_response_state: dict[str, Any] | None = None
-    subagent_consult_budget: int | None = None
-    min_loop_rounds: int = 0
 
 
 @dataclass
@@ -77,7 +75,6 @@ class UnifiedContext:
             context condition. A list restricts which built-ins may mount;
             partners set this so an owner can deny built-ins per companion.
         active_capability: Capability name selected by the user, or None for plain chat.
-        knowledge_bases: KB names to use for RAG.
         attachments: Images / files sent with the message.
         config_overrides: Per-request config tweaks (e.g. temperature).
         language: UI / response language ("en" | "zh").
@@ -109,7 +106,6 @@ class UnifiedContext:
     enabled_tools: list[str] | None = None
     allowed_builtin_tools: list[str] | None = None
     active_capability: str | None = None
-    knowledge_bases: list[str] = field(default_factory=list)
     attachments: list[Attachment] = field(default_factory=list)
     config_overrides: dict[str, Any] = field(default_factory=dict)
     language: str = "en"

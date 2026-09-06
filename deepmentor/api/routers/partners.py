@@ -684,7 +684,7 @@ async def tool_options():
     mandatory ``partner_read`` / ``partner_memorize`` / ``partner_search`` tools
     instead, which are always on and not owner-configurable.
     """
-    from deepmentor.agents._shared.tool_composition import admin_enabled_optional_tools
+    from deepmentor.services.settings.interface_settings import get_enabled_optional_tools
     from deepmentor.api.utils.tool_options import build_tool_options
     from deepmentor.multi_user.tool_access import combine_whitelists
 
@@ -692,7 +692,7 @@ async def tool_options():
     options = await build_tool_options(
         exclude_builtin={"read_memory", "write_memory"},
         optional_tools=sorted(
-            combine_whitelists(set(admin_enabled_optional_tools()), optional) or ()
+            combine_whitelists(set(get_enabled_optional_tools()), optional) or ()
         ),
     )
     if mcp is not None:

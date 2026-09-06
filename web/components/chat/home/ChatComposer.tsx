@@ -12,14 +12,9 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowUp,
-  BookMarked,
-  BookOpen,
-  Bot,
-  Brain,
   Check,
   ChevronDown,
   ChevronRight,
-  ClipboardList,
   Loader2,
   MessageSquare,
   Mic,
@@ -27,7 +22,6 @@ import {
   Plus,
   Sparkles,
   Square,
-  UserRound,
   X,
 } from "lucide-react";
 import {
@@ -38,18 +32,10 @@ import {
 } from "@/lib/doc-attachments";
 import { useTranslation } from "react-i18next";
 
-import { CoursePill } from "@/components/chat/home/CoursePill";
-import type { StudyCourse } from "@/lib/courses-api";
 import type { SelectedHistorySession } from "@/components/chat/HistorySessionPicker";
-import type { SelectedQuestionEntry } from "@/components/chat/QuestionBankPicker";
-import type { SelectedRecord } from "@/lib/notebook-selection-types";
 import type { LLMSelection } from "@/features/chat/model/protocol";
 import type { LLMOption } from "@/lib/llm-options";
 import ChatSpaceMenu from "@/components/chat/space/ChatSpaceMenu";
-import type { SpaceMemoryFile } from "@/lib/space-items";
-import type { SelectedBookReference } from "@/lib/book-references";
-import type { SelectedReadingReference } from "@/lib/reading-references";
-import AgentSelector from "./AgentSelector";
 import ContextBudgetChip, { type ContextBudget } from "./ContextBudgetChip";
 import KnowledgeSelector from "./KnowledgeSelector";
 import ModelSelector from "./ModelSelector";
@@ -59,13 +45,7 @@ type SpaceSelectionCounts = {
   attachments: number;
   knowledge: number;
   chatHistory: number;
-  myAgents: number;
-  books: number;
-  reading: number;
-  notebooks: number;
-  questionBank: number;
   persona: number;
-  memory: number;
 };
 import ContextReferenceTree, {
   type ContextTreeItem,
@@ -137,7 +117,7 @@ function CapMenuItem({
  * turn — send, working, stop — rather than two buttons that swap places at
  * the moment of the click. These are its four states; only the skin changes.
  */
-type SendState = "idle" | "blocked" | "ready" | "streaming";
+type SendState = "idle" | "ready" | "streaming";
 
 /**
  * `idle` keeps a legible glyph on a hairline ring instead of fading the whole
@@ -154,13 +134,6 @@ type SendState = "idle" | "blocked" | "ready" | "streaming";
  */
 const SEND_STATE_CLASS: Record<SendState, string> = {
   idle: "cursor-default text-[var(--muted-foreground)] ring-1 ring-inset ring-[var(--border)]",
-  // The glyph goes to `--foreground`, not `--primary-foreground`: this fill is
-  // a wash of `--muted-foreground` and therefore sits near the background, so
-  // only the foreground colour is guaranteed to read against it on all four
-  // themes. (Inherited as `--primary-foreground`, which was white on pale grey
-  // — invisible — but never showed because the old `/30` compiled to nothing.)
-  blocked:
-    "bg-[color-mix(in_srgb,var(--muted-foreground)_30%,transparent)] text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--muted-foreground)_45%,transparent)]",
   ready:
     "bg-[var(--primary)] text-[var(--primary-foreground)] ring-[3px] ring-[color-mix(in_srgb,var(--primary)_18%,transparent)] hover:-translate-y-px hover:ring-[5px]",
   streaming: "bg-[var(--primary)] text-[var(--primary-foreground)]",
@@ -175,20 +148,12 @@ export default memo(function ChatComposer({
   dragCounter,
   dragging,
   capMenuOpen,
-  courses = [],
-  courseId = "",
-  onSelectCourse,
   spaceMenuOpen,
   hasMessages,
   attachments,
   attachmentError,
   activeCap,
   knowledgeBases,
-  connectedAgents = [],
-  selectedAgent = null,
-  onSelectAgent,
-  subagentBudget = null,
-  onSubagentBudgetChange,
   llmOptions,
   activeLLMDefault,
   llmSelection,
@@ -196,51 +161,26 @@ export default memo(function ChatComposer({
   llmOptionsError,
   onRefreshLLMOptions,
   contextBudget = null,
-  selectedNotebookRecords,
-  selectedBookReferences,
-  selectedReadingReferences = [],
   selectedHistorySessions,
-  selectedAgentSessions,
-  selectedQuestionEntries,
-  notebookReferenceGroups,
-  selectedPersona,
-  selectedMemoryFiles,
   selectedKnowledgeBases,
   isStreaming,
   awaitingUserReply = false,
-  isVisualizeMode,
-  capabilityNeedsConfig,
-  capabilityConfigConfirmed,
-  onRequestConfigConfirm,
   capabilities,
   onSetCapMenuOpen,
   onSetSpaceMenuOpen,
   onToggleKB,
   onSelectLLM,
-  onSelectNotebookPicker,
-  onSelectBookPicker,
-  onSelectReadingPicker,
   onSelectHistoryPicker,
-  onSelectAgentsPicker,
-  onSelectQuestionBankPicker,
   onSelectPersonaPicker,
-  onSelectMemoryPicker,
   onClearPersona,
   personaSelection,
   onPersonaSelectionChange,
   personaSelectorOpen,
   onPersonaSelectorOpenChange,
-  agentsAvailable = true,
-  onToggleMemoryFile,
   onSend,
   onRemoveAttachment,
   onPreviewAttachment,
   onRemoveHistory,
-  onRemoveAgent,
-  onRemoveBookReference,
-  onRemoveReadingReference,
-  onRemoveNotebook,
-  onRemoveQuestion,
   onDragEnter,
   onDragLeave,
   onDragOver,
@@ -262,26 +202,12 @@ export default memo(function ChatComposer({
   dragCounter: RefObject<number>;
   dragging: boolean;
   capMenuOpen: boolean;
-  /* Course binding. Absent on the standalone composers (Mastery Path,
-     Immersive Reading), which are already inside one subject's surface and
-     have no course to choose. */
-  courses?: StudyCourse[];
-  courseId?: string;
-  onSelectCourse?: (courseId: string) => void;
   spaceMenuOpen: boolean;
   hasMessages: boolean;
   attachments: PendingAttachment[];
   attachmentError: string | null;
   activeCap: CapabilityDef;
   knowledgeBases: KnowledgeBase[];
-  /** Connected local subagents (Claude Code / Codex) selectable for this turn. */
-  connectedAgents?: { name: string; kind?: string }[];
-  /** The connected agent selected for this turn, if any (single-select). */
-  selectedAgent?: string | null;
-  onSelectAgent?: (name: string | null) => void;
-  /** Max times DeepMentor may consult the selected agent this turn. */
-  subagentBudget?: number | null;
-  onSubagentBudgetChange?: (budget: number) => void;
   llmOptions: LLMOption[];
   activeLLMDefault: LLMSelection | null;
   llmSelection: LLMSelection | null;
@@ -290,77 +216,36 @@ export default memo(function ChatComposer({
   onRefreshLLMOptions?: () => void;
   /**
    * Context-window breakdown measured on the last turn that reported one.
-   * Omitted by surfaces that don't track it (quiz follow-up) and null until
-   * the first turn completes — the chip is skipped entirely in both cases.
+   * Null until the first turn completes — the chip is skipped entirely
+   * in that case.
    */
   contextBudget?: ContextBudget | null;
-  selectedNotebookRecords: SelectedRecord[];
-  selectedBookReferences: SelectedBookReference[];
-  selectedReadingReferences?: SelectedReadingReference[];
   selectedHistorySessions: SelectedHistorySession[];
-  selectedAgentSessions: SelectedHistorySession[];
-  selectedQuestionEntries: SelectedQuestionEntry[];
-  notebookReferenceGroups: Array<{
-    notebookId: string;
-    notebookName: string;
-    count: number;
-  }>;
-  selectedPersona: string | null;
-  selectedMemoryFiles: SpaceMemoryFile[];
   selectedKnowledgeBases: string[];
   isStreaming: boolean;
   /** The live turn is paused on an ask_user card and needs an answer. */
   awaitingUserReply?: boolean;
-  isVisualizeMode: boolean;
-  /**
-   * True when the active capability (e.g. Quiz / Visualize / Research)
-   * requires explicit configuration before sending. When true, `canSend`
-   * is gated on `capabilityConfigConfirmed`.
-   */
-  capabilityNeedsConfig: boolean;
-  capabilityConfigConfirmed: boolean;
-  /**
-   * Called when the user clicks the send button while config is required
-   * but not yet confirmed. The page uses this to surface the config card
-   * (open the Activity panel, scroll to it, etc.).
-   */
-  onRequestConfigConfirm: () => void;
   capabilities: CapabilityDef[];
   onSetCapMenuOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   onSetSpaceMenuOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   onToggleKB: (name: string) => void;
   onSelectLLM: (selection: LLMSelection | null) => void;
-  onSelectNotebookPicker: () => void;
-  onSelectBookPicker: () => void;
-  onSelectReadingPicker?: () => void;
   onSelectHistoryPicker: () => void;
-  onSelectAgentsPicker: () => void;
-  onSelectQuestionBankPicker: () => void;
   onSelectPersonaPicker: () => void;
-  onSelectMemoryPicker: () => void;
   onClearPersona: () => void;
   /**
    * Session-persona wiring (main chat only). When `onPersonaSelectionChange`
    * is provided, the toolbar shows a PersonaSelector chip and the composer
-   * accepts the `/persona` slash command. The quiz follow-up surface omits
-   * these and keeps its per-turn persona picker flow.
+   * accepts the `/persona` slash command.
    */
   personaSelection?: string;
   onPersonaSelectionChange?: (persona: string) => void;
   personaSelectorOpen?: boolean;
   onPersonaSelectorOpenChange?: (open: boolean) => void;
-  /** Hide the My Agents reference entry (e.g. the quiz follow-up surface). */
-  agentsAvailable?: boolean;
-  onToggleMemoryFile: (file: SpaceMemoryFile) => void;
   onSend: (content: string) => void;
   onRemoveAttachment: (index: number) => void;
   onPreviewAttachment?: (index: number) => void;
   onRemoveHistory: (sessionId: string) => void;
-  onRemoveAgent: (sessionId: string) => void;
-  onRemoveBookReference: (bookId: string) => void;
-  onRemoveReadingReference?: (materialId: string) => void;
-  onRemoveNotebook: (notebookId: string) => void;
-  onRemoveQuestion: (entryId: number) => void;
   onDragEnter: (event: React.DragEvent) => void;
   onDragLeave: (event: React.DragEvent) => void;
   onDragOver: (event: React.DragEvent) => void;
@@ -376,7 +261,7 @@ export default memo(function ChatComposer({
    * without owning the composer's imperative handle directly.
    */
   prefillInputRef?: React.MutableRefObject<((text: string) => void) | null>;
-  /** Override the composer placeholder (e.g. quiz follow-up). */
+  /** Override the composer placeholder. */
   inputPlaceholder?: string;
   /** A line Tab accepts while the composer is empty. See ComposerInput. */
   inputPlaceholderCompletion?: string;
@@ -520,57 +405,30 @@ export default memo(function ChatComposer({
 
   const hasReferences =
     !!attachments.length ||
-    !!selectedBookReferences.length ||
-    !!selectedReadingReferences.length ||
-    !!selectedNotebookRecords.length ||
-    !!selectedHistorySessions.length ||
-    !!selectedAgentSessions.length ||
-    !!selectedQuestionEntries.length ||
-    !!selectedPersona ||
-    !!selectedMemoryFiles.length;
+    !!selectedHistorySessions.length;
 
-  // `capabilityNeedsConfig && !capabilityConfigConfirmed` blocks send so the
-  // user has to click *Confirm* in the right-side Activity panel first.
-  // Clicking the send button while in this state surfaces the config card
-  // (via `onRequestConfigConfirm`) instead of silently doing nothing.
-  const isConfigBlocked = capabilityNeedsConfig && !capabilityConfigConfirmed;
+  // The capability-config confirmation gate (Quiz / Visualize / Research)
+  // was removed with those capabilities: no remaining capability needs
+  // explicit configuration, so send is never config-gated.
   const hasIntent = hasContent || hasReferences;
   // A turn paused on a question is technically still streaming, but the only
   // thing that can move it forward is the user's answer. Locking the composer
   // there made the interactive card the ONLY way to answer — and left the
   // learner with no way out at all if the card failed to render.
   const streamingBlocksSend = isStreaming && !awaitingUserReply;
-  const canSend = hasIntent && !streamingBlocksSend && !isConfigBlocked;
+  const canSend = hasIntent && !streamingBlocksSend;
 
-  // `blocked` only exists once there is intent: without it the button stays
-  // `idle` so an empty composer doesn't present a live send affordance. That
-  // makes intent — not `canSend` — the thing that decides interactivity, so
-  // the `blocked` state can stay clickable and surface the config card.
   const sendState: SendState = streamingBlocksSend
     ? "streaming"
     : !hasIntent
       ? "idle"
-      : isConfigBlocked
-        ? "blocked"
-        : "ready";
+      : "ready";
 
   const spaceSelectionCounts: SpaceSelectionCounts = {
     attachments: attachments.length,
     knowledge: selectedKnowledgeBases.length,
     chatHistory: selectedHistorySessions.length,
-    myAgents: selectedAgentSessions.length,
-    books: selectedBookReferences.reduce(
-      (total, ref) => total + ref.pages.length,
-      0,
-    ),
-    reading: selectedReadingReferences.reduce(
-      (total, reference) => total + reference.units.length,
-      0,
-    ),
-    notebooks: selectedNotebookRecords.length,
-    questionBank: selectedQuestionEntries.length,
-    persona: selectedPersona ? 1 : 0,
-    memory: selectedMemoryFiles.length,
+    persona: 0,
   };
   // Badge on the "+" button = how many things are selected through the
   // "+" menu. Knowledge is excluded: it no longer lives in this menu —
@@ -581,45 +439,16 @@ export default memo(function ChatComposer({
     0,
   );
 
-  // Unified reference tree above the textarea: Space references, persona
-  // and memory render as quiet monochrome rows, collapsed behind a count
-  // by default. File attachments intentionally stay OUT of the tree —
-  // they keep their preview cards below the textarea.
+  // Unified reference tree above the textarea: Space references render as
+  // quiet monochrome rows, collapsed behind a count by default. File
+  // attachments intentionally stay OUT of the tree — they keep their preview
+  // cards below the textarea.
   // Knowledge bases are intentionally NOT in this tree: they are a
   // session-level retrieval SCOPE (sticky, persisted), not a one-shot
   // reference like the rows below. That sticky state lives in the
   // toolbar KnowledgeSelector chip instead — same lifecycle class as
   // the persona selector.
   const contextTreeItems: ContextTreeItem[] = [
-    ...selectedBookReferences.map(
-      (book): ContextTreeItem => ({
-        key: `book-${book.bookId}`,
-        icon: BookOpen,
-        kind: t("Book"),
-        label: `${book.bookTitle} (${book.pages.length})`,
-        onRemove: () => onRemoveBookReference(book.bookId),
-      }),
-    ),
-    ...selectedReadingReferences.map(
-      (material): ContextTreeItem => ({
-        key: `reading-${material.materialId}-r${material.revision}`,
-        icon: BookMarked,
-        kind: t("Reading"),
-        label: `${material.materialTitle} (${material.units.length})`,
-        onRemove: onRemoveReadingReference
-          ? () => onRemoveReadingReference(material.materialId)
-          : undefined,
-      }),
-    ),
-    ...notebookReferenceGroups.map(
-      (group): ContextTreeItem => ({
-        key: `nb-${group.notebookId}`,
-        icon: BookOpen,
-        kind: t("Notebook"),
-        label: `${group.notebookName} (${group.count})`,
-        onRemove: () => onRemoveNotebook(group.notebookId),
-      }),
-    ),
     ...selectedHistorySessions.map(
       (session): ContextTreeItem => ({
         key: `hist-${session.sessionId}`,
@@ -629,57 +458,13 @@ export default memo(function ChatComposer({
         onRemove: () => onRemoveHistory(session.sessionId),
       }),
     ),
-    ...selectedAgentSessions.map(
-      (session): ContextTreeItem => ({
-        key: `agent-${session.sessionId}`,
-        icon: Bot,
-        kind: t("My Agents"),
-        label: session.title,
-        onRemove: () => onRemoveAgent(session.sessionId),
-      }),
-    ),
-    ...selectedQuestionEntries.map(
-      (entry): ContextTreeItem => ({
-        key: `q-${entry.id}`,
-        icon: ClipboardList,
-        kind: t("Question Bank"),
-        label: entry.question,
-        onRemove: () => onRemoveQuestion(entry.id),
-      }),
-    ),
-    ...(selectedPersona
-      ? [
-          {
-            key: "persona",
-            icon: UserRound,
-            kind: t("Persona"),
-            label: selectedPersona,
-            onRemove: onClearPersona,
-          } satisfies ContextTreeItem,
-        ]
-      : []),
-    ...selectedMemoryFiles.map(
-      (file): ContextTreeItem => ({
-        key: `mem-${file}`,
-        icon: Brain,
-        kind: t("Memory"),
-        label: file === "summary" ? t("Summary") : t("Profile"),
-        onRemove: () => onToggleMemoryFile(file),
-      }),
-    ),
   ];
 
   const handleManualSend = useCallback(() => {
-    if (isConfigBlocked) {
-      // Don't silently fail — surface the config card so the user knows
-      // they need to confirm settings first.
-      onRequestConfigConfirm();
-      return;
-    }
     if (!canSend) return;
     const content = inputHandleRef.current?.getValue() || "";
     doSend(content);
-  }, [canSend, doSend, isConfigBlocked, onRequestConfigConfirm]);
+  }, [canSend, doSend]);
 
   // One button, so one handler: mid-turn the same control cancels — except
   // while the turn is waiting on the user, where sending IS how it continues.
@@ -697,10 +482,7 @@ export default memo(function ChatComposer({
       : awaitingUserReply
         ? t("Send answer")
         : t("Send");
-  const sendTitle =
-    sendState === "blocked"
-      ? t("Confirm settings on the right to send.")
-      : sendLabel;
+  const sendTitle = sendLabel;
 
   return (
     <div
@@ -772,28 +554,17 @@ export default memo(function ChatComposer({
           <ComposerInput
             ref={inputHandleRef}
             textareaRef={textareaRef}
-            isVisualizeMode={isVisualizeMode}
             isStreaming={isStreaming}
             canSendEmpty={hasReferences}
             onSend={doSend}
             onInputChange={handleInputChange}
             onPaste={onPaste}
-            connectedAgents={connectedAgents}
-            selectedAgent={selectedAgent}
-            onSelectAgent={onSelectAgent}
             selectedCounts={spaceSelectionCounts}
             knowledgeAvailable={false}
             personaAvailable={!onPersonaSelectionChange}
             onSelectAttach={handlePickFiles}
-            agentsAvailable={agentsAvailable}
-            onSelectNotebookPicker={onSelectNotebookPicker}
-            onSelectBookPicker={onSelectBookPicker}
-            onSelectReadingPicker={onSelectReadingPicker}
             onSelectHistoryPicker={onSelectHistoryPicker}
-            onSelectAgentsPicker={onSelectAgentsPicker}
-            onSelectQuestionBankPicker={onSelectQuestionBankPicker}
             onSelectPersonaPicker={onSelectPersonaPicker}
-            onSelectMemoryPicker={onSelectMemoryPicker}
             onOpenPersonaSelector={
               onPersonaSelectionChange && onPersonaSelectorOpenChange
                 ? () => onPersonaSelectorOpenChange(true)
@@ -1040,20 +811,6 @@ export default memo(function ChatComposer({
                 </div>
               )}
 
-              {/* Which course this conversation belongs to. Sits beside the
-                  mode because the two are chosen together: Course Study
-                  without a course is an inert mode, and the learner should be
-                  able to see that from the composer rather than from a reply. */}
-              {onSelectCourse ? (
-                <CoursePill
-                  courses={courses}
-                  courseId={courseId}
-                  onSelect={onSelectCourse}
-                  needsCourse={activeCap.value === "course_study"}
-                  compact={composerCompact}
-                />
-              ) : null}
-
               <div className="relative flex min-w-0 flex-1 items-center">
                 <button
                   ref={spaceBtnRef}
@@ -1090,22 +847,11 @@ export default memo(function ChatComposer({
                         selectedCounts={spaceSelectionCounts}
                         knowledgeAvailable={false}
                         personaAvailable={!onPersonaSelectionChange}
-                        agentsAvailable={agentsAvailable}
-                        readingAvailable={Boolean(onSelectReadingPicker)}
                         onSelectItem={(key) => {
                           onSetSpaceMenuOpen(false);
                           if (key === "attach") handlePickFiles();
-                          else if (key === "chat_history")
-                            onSelectHistoryPicker();
-                          else if (key === "my_agents") onSelectAgentsPicker();
-                          else if (key === "books") onSelectBookPicker();
-                          else if (key === "reading") onSelectReadingPicker?.();
-                          else if (key === "notebooks")
-                            onSelectNotebookPicker();
-                          else if (key === "question_bank")
-                            onSelectQuestionBankPicker();
+                          else if (key === "chat_history") onSelectHistoryPicker();
                           else if (key === "persona") onSelectPersonaPicker();
-                          else if (key === "memory") onSelectMemoryPicker();
                         }}
                       />
                     </motion.div>
@@ -1114,15 +860,6 @@ export default memo(function ChatComposer({
               </div>
 
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                {connectedAgents.length > 0 && onSelectAgent ? (
-                  <AgentSelector
-                    agents={connectedAgents}
-                    selected={selectedAgent}
-                    onSelect={onSelectAgent}
-                    budget={subagentBudget}
-                    onBudgetChange={onSubagentBudgetChange}
-                  />
-                ) : null}
                 {knowledgeBases.length > 0 ? (
                   <KnowledgeSelector
                     knowledgeBases={knowledgeBases}

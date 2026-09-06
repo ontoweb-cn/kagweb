@@ -1,17 +1,18 @@
 "use client";
 
 /**
- * Multi-select picker for the three asset classes a partner can be equipped
+ * Multi-select picker for the knowledge bases a partner can be equipped
  * with. Selected items are COPIED into the partner workspace on submit —
  * the copy is the partner's own; later edits to the source don't propagate.
+ *
+ * The skills/notebooks asset classes were removed with those features; the
+ * selection shape keeps their keys so existing call sites stay compatible.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpen, Database, NotebookPen } from "lucide-react";
+import { Database } from "lucide-react";
 import { listKnowledgeBases } from "@/features/knowledge/api/catalog";
-import { listSkills } from "@/lib/skills-api";
-import { listNotebooks } from "@/lib/notebook-api";
 
 export interface AssetSelection {
   knowledge_bases: string[];
@@ -85,32 +86,21 @@ export default function AssetPicker({
   value,
   onChange,
   excluded,
-  preselectAllSkills = false,
 }: {
   value: AssetSelection;
   onChange: (next: AssetSelection) => void;
   /** Asset ids already provisioned (hidden from the picker). */
   excluded?: Partial<AssetSelection>;
-  /** Select every skill once loaded (creation-wizard default). */
-  preselectAllSkills?: boolean;
 }) {
   const { t } = useTranslation();
   const [kbs, setKbs] = useState<Option[]>([]);
-  const [skills, setSkills] = useState<Option[]>([]);
-  const [notebooks, setNotebooks] = useState<Option[]>([]);
   const [loading, setLoading] = useState(true);
-  const latest = useRef({ value, onChange });
-  latest.current = { value, onChange };
 
   useEffect(() => {
     void (async () => {
       setLoading(true);
       try {
-        const [kbList, skillList, notebookList] = await Promise.all([
-          listKnowledgeBases().catch(() => []),
-          listSkills().catch(() => []),
-          listNotebooks().catch(() => []),
-        ]);
+        const kbList = await listKnowledgeBases().catch(() => []);
         setKbs(
           kbList.map((kb) => ({
             id: kb.id || kb.name,
@@ -118,31 +108,10 @@ export default function AssetPicker({
             hint: kb.provenance_label,
           })),
         );
-        setSkills(
-          skillList.map((skill) => ({
-            id: skill.name,
-            label: skill.name,
-            hint: skill.description,
-          })),
-        );
-        setNotebooks(
-          notebookList.map((nb) => ({
-            id: nb.id,
-            label: nb.name,
-            hint: nb.description,
-          })),
-        );
-        if (preselectAllSkills && latest.current.value.skills.length === 0) {
-          latest.current.onChange({
-            ...latest.current.value,
-            skills: skillList.map((skill) => skill.name),
-          });
-        }
       } finally {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {
@@ -179,22 +148,6 @@ export default function AssetPicker({
         selected={value.knowledge_bases}
         onToggle={(id) => toggle("knowledge_bases", id)}
         emptyText={t("No knowledge bases available.")}
-      />
-      <ChipGroup
-        icon={BookOpen}
-        title={t("Skills")}
-        options={visible(skills, excluded?.skills)}
-        selected={value.skills}
-        onToggle={(id) => toggle("skills", id)}
-        emptyText={t("No skills available.")}
-      />
-      <ChipGroup
-        icon={NotebookPen}
-        title={t("Notebooks")}
-        options={visible(notebooks, excluded?.notebooks)}
-        selected={value.notebooks}
-        onToggle={(id) => toggle("notebooks", id)}
-        emptyText={t("No notebooks available.")}
       />
       <p className="text-[12px] text-[var(--muted-foreground)]">
         {t("Selected items are copied into the partner's private workspace.")}

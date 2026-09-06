@@ -2,10 +2,8 @@
 
 import {
   AudioLines,
-  Bot,
   Boxes,
   Brain,
-  BrainCircuit,
   Clapperboard,
   Database,
   FileScan,
@@ -28,17 +26,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import {
-  ClaudeGlyph,
-  CodexGlyph,
-  DeepSeekGlyph,
-  GeminiGlyph,
-  HermesGlyph,
-  KimiGlyph,
-  MimoGlyph,
-  OpenClawGlyph,
-  OpencodeGlyph,
-} from "@/components/agents/agent-icons";
 import type { ServiceName } from "@/features/settings/store/SettingsStore";
 import type { SettingsAccess } from "@/features/settings/navigation/settings-access";
 
@@ -277,119 +264,6 @@ const CHAT_CHILDREN: SettingsLeaf[] = [
   },
 ];
 
-const AGENT_CHILDREN: SettingsLeaf[] = [
-  {
-    key: "agent-claude-code",
-    href: "/settings#agent-claude-code",
-    label: { zh: "Claude Code", en: "Claude Code" },
-    blurb: {
-      zh: "DeepMentor 调用本机 Claude Code 时的模型、推理强度与运行参数。",
-      en: "Model, reasoning effort, and run params for the local Claude Code.",
-    },
-    // Brand glyph shares the lucide call signature (size/className).
-    icon: ClaudeGlyph as unknown as LucideIcon,
-    tile: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-    adminOnly: true,
-  },
-  {
-    key: "agent-codex",
-    href: "/settings#agent-codex",
-    label: { zh: "Codex", en: "Codex" },
-    blurb: {
-      zh: "DeepMentor 调用本机 Codex 时的模型、推理强度与运行参数。",
-      en: "Model, reasoning effort, and run params for the local Codex.",
-    },
-    icon: CodexGlyph as unknown as LucideIcon,
-    tile: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-    adminOnly: true,
-  },
-  {
-    // Gemini CLI's supported replacement.
-    key: "agent-antigravity",
-    href: "/settings#agent-antigravity",
-    label: { zh: "Antigravity CLI", en: "Antigravity CLI" },
-    blurb: {
-      zh: "DeepMentor 调用本机 Antigravity CLI 时的模型与运行参数。",
-      en: "Model and run params for the local Antigravity CLI.",
-    },
-    icon: GeminiGlyph as unknown as LucideIcon,
-    tile: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-    adminOnly: true,
-  },
-  {
-    key: "agent-kimi",
-    href: "/settings#agent-kimi",
-    label: { zh: "Kimi CLI", en: "Kimi CLI" },
-    blurb: {
-      zh: "DeepMentor 调用本机 Kimi CLI 时的模型与运行参数。",
-      en: "Model and run params for the local Kimi CLI.",
-    },
-    icon: KimiGlyph as unknown as LucideIcon,
-    tile: "bg-zinc-500/10 text-zinc-700 dark:text-zinc-300",
-    adminOnly: true,
-  },
-  {
-    key: "agent-opencode",
-    href: "/settings#agent-opencode",
-    label: { zh: "opencode", en: "opencode" },
-    blurb: {
-      zh: "DeepMentor 调用本机 opencode 时的模型、推理强度与运行参数。",
-      en: "Model, reasoning effort, and run params for the local opencode.",
-    },
-    icon: OpencodeGlyph as unknown as LucideIcon,
-    tile: "bg-neutral-500/10 text-neutral-700 dark:text-neutral-300",
-    adminOnly: true,
-  },
-  {
-    key: "agent-mimo",
-    href: "/settings#agent-mimo",
-    label: { zh: "MiMo Code", en: "MiMo Code" },
-    blurb: {
-      zh: "DeepMentor 调用本机 MiMo Code 时的模型、推理强度与运行参数。",
-      en: "Model, reasoning effort, and run params for the local MiMo Code.",
-    },
-    icon: MimoGlyph as unknown as LucideIcon,
-    tile: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-    adminOnly: true,
-  },
-  {
-    key: "agent-hermes",
-    href: "/settings#agent-hermes",
-    label: { zh: "Hermes Agent", en: "Hermes Agent" },
-    blurb: {
-      zh: "DeepMentor 调用本机 Hermes Agent 时的模型、推理强度与运行参数。",
-      en: "Model, reasoning effort, and run params for the local Hermes Agent.",
-    },
-    icon: HermesGlyph as unknown as LucideIcon,
-    tile: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-    adminOnly: true,
-  },
-  {
-    key: "agent-openclaw",
-    href: "/settings#agent-openclaw",
-    label: { zh: "OpenClaw", en: "OpenClaw" },
-    blurb: {
-      zh: "DeepMentor 通过 Gateway 或本地模式调用 OpenClaw 的运行参数。",
-      en: "Gateway or local-mode run params for the local OpenClaw agent.",
-    },
-    icon: OpenClawGlyph as unknown as LucideIcon,
-    tile: "bg-red-500/10 text-red-600 dark:text-red-400",
-    adminOnly: true,
-  },
-  {
-    key: "agent-deepseek-harness",
-    href: "/settings#agent-deepseek-harness",
-    label: { zh: "DeepSeek Harness", en: "DeepSeek Harness" },
-    blurb: {
-      zh: "DeepMentor 通过 Python SDK 或 headless CLI 调用 DeepSeek Harness。",
-      en: "Python SDK or headless CLI settings for DeepSeek Harness.",
-    },
-    icon: DeepSeekGlyph as unknown as LucideIcon,
-    tile: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-    adminOnly: true,
-  },
-];
-
 export const SETTINGS_CATEGORIES: SettingsCategory[] = [
   {
     key: "appearance",
@@ -438,17 +312,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     children: CHAT_CHILDREN,
   },
   {
-    key: "agents",
-    label: { zh: "伙伴和智能体", en: "Partners & Agents" },
-    blurb: {
-      zh: "配置可在对话中调用的子智能体",
-      en: "Configure the subagents you can call on in chat",
-    },
-    icon: Bot,
-    href: "/settings#agents",
-    children: AGENT_CHILDREN,
-  },
-  {
     key: "learner-profile",
     learnerOnly: true,
     label: { zh: "学习档案", en: "Learner profile" },
@@ -469,16 +332,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     },
     icon: ShieldCheck,
     href: "/settings#guardian",
-  },
-  {
-    key: "memory",
-    label: { zh: "记忆", en: "Memory" },
-    blurb: {
-      zh: "分块、预算、去重与引用策略",
-      en: "Chunking, budget, dedup, and reference policies",
-    },
-    icon: BrainCircuit,
-    href: "/settings#memory",
   },
   {
     key: "about",
@@ -517,7 +370,6 @@ const STORAGE_PATHS: Record<string, string> = {
   "/settings#video": "data/user/settings/model_catalog.json",
   "/settings#video-learning": "data/user/settings/video_learning.json",
   "/settings#document-parsing": "data/user/settings/document_parsing.json",
-  "/settings#memory": "data/user/settings/main.yaml",
   appearance: "data/user/settings/interface.json",
   network: "data/user/settings/system.json",
   connections: "data/user/settings/model_catalog.json",
@@ -525,7 +377,6 @@ const STORAGE_PATHS: Record<string, string> = {
   knowledge: "data/user/settings/document_parsing.json",
   "video-learning": "data/user/settings/video_learning.json",
   starters: "data/user/settings/interface.json",
-  memory: "data/user/settings/main.yaml",
   llm: "data/user/settings/model_catalog.json",
   embedding: "data/user/settings/model_catalog.json",
   search: "data/user/settings/model_catalog.json",
@@ -535,13 +386,7 @@ const STORAGE_PATHS: Record<string, string> = {
   videogen: "data/user/settings/model_catalog.json",
   tools: "data/user/settings/interface.json",
   attachments: "data/user/settings/system.json",
-  capabilities: "data/user/settings/main.yaml · agents.yaml",
-  "agent-claude-code": "data/user/settings/subagent.json",
-  "agent-codex": "data/user/settings/subagent.json",
-  "agent-antigravity": "data/user/settings/subagent.json",
-  "agent-kimi": "data/user/settings/subagent.json",
-  "agent-opencode": "data/user/settings/subagent.json",
-  "agent-mimo": "data/user/settings/subagent.json",
+  capabilities: "data/user/settings/main.yaml",
 };
 
 export function storagePathFor(

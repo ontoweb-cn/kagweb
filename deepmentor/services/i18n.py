@@ -65,6 +65,11 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "sandbox.command_blocked": "Error: command blocked by safety guard (dangerous pattern).",
         "sandbox.disabled_for_account": "Code execution is disabled for your account.",
         "sandbox.no_backend": "no sandbox backend available",
+        "chat.stub_notice": (
+            "KAGWeb is running as a framework shell — the conversation backend is not "
+            "connected yet. Model providers, sessions, settings and Partners are ready; "
+            "the chat capability will be provided by the KAG integration."
+        ),
     },
     "zh": {
         "api.content_required": "content 不能为空",
@@ -106,6 +111,10 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "sandbox.command_blocked": "错误：命令被安全防护拦截（匹配危险模式）。",
         "sandbox.disabled_for_account": "你的账号已禁用代码执行。",
         "sandbox.no_backend": "没有可用的沙箱后端",
+        "chat.stub_notice": (
+            "KAGWeb 目前以框架壳模式运行，对话后端尚未接入。模型服务、会话、设置与 "
+            "Partners 均已就绪，对话能力将由 KAG 集成提供。"
+        ),
     },
 }
 

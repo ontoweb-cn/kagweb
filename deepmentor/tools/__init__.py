@@ -38,5 +38,3 @@ def __getattr__(name: str):
     return value
 
 
-# Question generation tools (lazy import to avoid circular dependencies)
-# Access via: from deepmentor.tools.question import parse_pdf_with_mineru, etc.

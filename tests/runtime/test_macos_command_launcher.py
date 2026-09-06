@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+import sys
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="macOS .command launcher"
+)
+
+
+
 from pathlib import Path
 import shutil
 import subprocess

@@ -128,8 +128,6 @@ class ConfigTestRunner:
                 asyncio.run(self._test_stt(run, catalog))
             elif service == "imagegen":
                 asyncio.run(self._test_imagegen(run, catalog))
-            elif service == "videogen":
-                asyncio.run(self._test_videogen(run, catalog))
             else:
                 raise ValueError(f"Unsupported service: {service}")
             if not run.cancelled and run.status == "running":
@@ -546,31 +544,6 @@ class ConfigTestRunner:
             content_type=content_type,
             bytes=len(image_bytes),
         )
-
-    async def _test_videogen(self, run: TestRun, catalog: dict[str, Any]) -> None:
-        from deepmentor.services.config.provider_runtime import resolve_videogen_runtime_config
-        from deepmentor.services.videogen import probe_video
-
-        run.emit("info", "Loading video-generation config from the active catalog selection.")
-        resolved = resolve_videogen_runtime_config(catalog=catalog)
-        run.emit(
-            "info",
-            f"Resolved model `{resolved.model}` (provider `{resolved.provider_name}`, "
-            f"adapter `{resolved.adapter}`).",
-        )
-        run.emit("info", f"Request target: {resolved.base_url}")
-        run.emit(
-            "info",
-            "Submitting a probe task to validate endpoint + auth + model. "
-            "The render is not awaited (it is slow and billable).",
-        )
-        task_id = await probe_video("A short test clip of a calm ocean wave.", catalog=catalog)
-        run.emit(
-            "response",
-            "Video task accepted — connection is valid.",
-            task_id=task_id,
-        )
-
 
 def get_config_test_runner() -> ConfigTestRunner:
     return ConfigTestRunner.get_instance()

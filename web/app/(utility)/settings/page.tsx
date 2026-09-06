@@ -34,20 +34,12 @@ const ChatSettingsPage = dynamic(
   () => import("@/features/settings/sections/ChatSettingsSection"),
   { loading: sectionLoading },
 );
-const AgentsSettingsPage = dynamic(
-  () => import("@/features/settings/sections/AgentsSettingsSection"),
-  { loading: sectionLoading },
-);
 const LearnerProfileSettingsPage = dynamic(
   () => import("@/features/settings/sections/LearnerProfileSettingsSection"),
   { loading: sectionLoading },
 );
 const GuardianSettingsPage = dynamic(
   () => import("@/features/settings/sections/GuardianSettingsSection"),
-  { loading: sectionLoading },
-);
-const MemorySettingsPage = dynamic(
-  () => import("@/features/settings/sections/MemorySettingsSection"),
   { loading: sectionLoading },
 );
 const AboutSettingsPage = dynamic(
@@ -75,14 +67,8 @@ const SETTINGS_SECTIONS = [
     Component: ChatSettingsPage,
     activationKeys: childKeys("chat"),
   },
-  {
-    key: "agents",
-    Component: AgentsSettingsPage,
-    activationKeys: childKeys("agents"),
-  },
   { key: "learner-profile", Component: LearnerProfileSettingsPage },
   { key: "guardian", Component: GuardianSettingsPage },
-  { key: "memory", Component: MemorySettingsPage },
   { key: "about", Component: AboutSettingsPage },
 ] as const;
 

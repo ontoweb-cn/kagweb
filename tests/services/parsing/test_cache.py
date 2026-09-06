@@ -3,6 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import sys
+
+import pytest
+
 from deepmentor.services.parsing import cache
 
 
@@ -55,6 +59,7 @@ def test_load_ir_reads_markdown_blocks_images(tmp_path: Path) -> None:
     assert asset_dir == workdir / "images"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX path expectations")
 def test_load_ir_absolutizes_relative_img_paths(tmp_path: Path) -> None:
     workdir = tmp_path / "wd"
     workdir.mkdir()

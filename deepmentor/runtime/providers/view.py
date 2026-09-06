@@ -107,8 +107,7 @@ async def _build(
 
     shared_pool = list(base_registry.deferred_tools())
     owned_pool = await _owned_tools(manager, scope)
-    cli_pool = _cli_app_tools(scope)
-    if not shared_pool and not owned_pool and not cli_pool and not overlay_tools:
+    if not shared_pool and not owned_pool and not overlay_tools:
         return ProviderToolView.empty(base_registry)
 
     allowed = authorize_mcp_tools(
@@ -119,18 +118,13 @@ async def _build(
         # it here would make self-service configuration silently useless.
         owned_names=[tool.get_definition().name for tool in owned_pool],
     )
-    # CLI apps are authorised by *app id*, not by tool name, and by a different
-    # grant field — so their decision is made in ``cli_apps.provider`` and the
-    # names it approved are widened in here. Widening an unrestricted allowlist
-    # is identity, so an administrator is unaffected.
-    allowed = allowed.widen(tool.get_definition().name for tool in cli_pool)
     # Resource-bound overlays (including PageIndex SDK tools) are authorised by
     # possession of the selected resource and live only in this turn's registry.
     allowed = allowed.widen(tool.get_definition().name for tool in overlay_tools)
 
     pool = tuple(
         tool
-        for tool in (*shared_pool, *owned_pool, *cli_pool, *overlay_tools)
+        for tool in (*shared_pool, *owned_pool, *overlay_tools)
         if allowed.allows(tool.get_definition().name)
     )
     registry = ScopedToolRegistry(
@@ -138,7 +132,7 @@ async def _build(
         # Owner-scoped tools live only in this turn's overlay — they are never
         # published to the process registry, so two accounts whose servers share
         # a name cannot resolve to each other's session.
-        overlay=[*owned_pool, *cli_pool, *overlay_tools],
+        overlay=[*owned_pool, *overlay_tools],
         allowed=allowed,
         refusal_message=refusal_message,
     )
@@ -192,34 +186,6 @@ async def _owned_tools(manager: Any, scope: ToolScope) -> list[BaseTool]:
         return []
     except Exception:
         logger.warning("per-user MCP scope for %s failed", scope.owner_id, exc_info=True)
-        return []
-
-
-def _cli_app_tools(scope: ToolScope) -> list[BaseTool]:
-    """Installed CLI apps this caller may invoke, as tools.
-
-    Synchronous and cheap on purpose — it reads two small JSON files. Unlike the
-    MCP side there is nothing to connect, so there is no timeout to bound and no
-    reason for this to be on the turn's critical path as an awaited task.
-
-    An exclusive knowledge capability replaces the tool surface entirely, so it
-    gets none of these (the same rule ``authorize_mcp_tools`` applies to MCP).
-    """
-    if scope.exclusive_capability:
-        return []
-    try:
-        from deepmentor.multi_user.tool_access import allowed_cli_apps, exec_override
-        from deepmentor.services.cli_apps.provider import authorized_apps, build_app_tools
-
-        access = authorized_apps(
-            owner_id=scope.owner_id,
-            is_partner=scope.is_partner,
-            granted=allowed_cli_apps(),
-            exec_allowed=exec_override(),
-        )
-        return build_app_tools(access.apps)
-    except Exception:
-        logger.warning("CLI app tools unavailable this turn; continuing", exc_info=True)
         return []
 
 

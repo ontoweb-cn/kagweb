@@ -32,9 +32,7 @@ class ChatState:
     session_id: str | None = None
     capability: str = "chat"
     tools: list[str] = field(default_factory=list)
-    knowledge_bases: list[str] = field(default_factory=list)
     language: str = "en"
-    notebook_references: list[dict[str, Any]] = field(default_factory=list)
     history_references: list[str] = field(default_factory=list)
     config: dict[str, Any] = field(default_factory=dict)
 
@@ -46,8 +44,6 @@ def register(app: typer.Typer) -> None:
         session: str | None = typer.Option(None, "--session", help="Resume an existing session."),
         tool: list[str] = typer.Option([], "--tool", "-t", help="Pre-enable tool(s)."),
         capability: str = typer.Option("chat", "--capability", "-c", help="Initial capability."),
-        kb: list[str] = typer.Option([], "--kb", help="Pre-attach knowledge base(s)."),
-        notebook_ref: list[str] = typer.Option([], "--notebook-ref", help="Notebook references."),
         history_ref: list[str] = typer.Option([], "--history-ref", help="Referenced session ids."),
         language: str = typer.Option("en", "--language", "-l", help="Response language."),
         config: list[str] = typer.Option([], "--config", help="Initial config key=value."),
@@ -69,9 +65,7 @@ def register(app: typer.Typer) -> None:
             session_id=session,
             capability=capability,
             tools=list(tool),
-            knowledge_bases=list(kb),
             language=language,
-            notebook_references=_parse_notebook_refs(notebook_ref),
             history_references=[item.strip() for item in history_ref if item.strip()],
             config=initial_config,
         )
@@ -80,14 +74,6 @@ def register(app: typer.Typer) -> None:
 
 async def _chat_repl(state: ChatState) -> None:
     client = DeepMentorApp()
-    cron_service = None
-    try:
-        from deepmentor.services.cron import get_cron_service
-
-        cron_service = get_cron_service()
-        await cron_service.start()
-    except Exception:
-        cron_service = None
 
     if state.session_id:
         existing = await client.get_session(state.session_id)
@@ -97,11 +83,7 @@ async def _chat_repl(state: ChatState) -> None:
         preferences = existing.get("preferences", {}) or {}
         state.capability = str(preferences.get("capability") or state.capability or "chat")
         state.tools = list(preferences.get("tools") or state.tools)
-        state.knowledge_bases = list(preferences.get("knowledge_bases") or state.knowledge_bases)
         state.language = str(preferences.get("language") or state.language)
-        state.notebook_references = list(
-            preferences.get("notebook_references") or state.notebook_references
-        )
         state.history_references = list(
             preferences.get("history_references") or state.history_references
         )
@@ -114,9 +96,7 @@ async def _chat_repl(state: ChatState) -> None:
             "  /regenerate (alias /retry) — re-run the last user message\n"
             "  /tool on|off <name>\n"
             "  /cap <name>\n"
-            "  /kb <name>|none\n"
             "  /history add <id> | /history clear\n"
-            "  /notebook add <ref> | /notebook clear\n"
             "  /show last|<n> — expand a tool result or captured thinking\n"
             "  /refs  /config show|set|clear",
             title="deepmentor chat",
@@ -166,18 +146,14 @@ async def _chat_repl(state: ChatState) -> None:
                 capability=state.capability,
                 session_id=state.session_id,
                 tools=list(state.tools),
-                knowledge_bases=list(state.knowledge_bases),
                 language=state.language,
                 config=dict(state.config),
-                notebook_references=list(state.notebook_references),
                 history_references=list(state.history_references),
             )
             session, _turn = await run_turn_and_render(app=client, request=request, fmt="rich")
             state.session_id = str(session["id"])
     finally:
-        if cron_service is not None:
-            with suppress(Exception):
-                await cron_service.stop()
+        pass
 
 
 def _apply_command(raw: str, state: ChatState) -> bool:
@@ -216,23 +192,11 @@ def _apply_command(raw: str, state: ChatState) -> bool:
         state.capability = parts[1]
         _print_state(state)
         return True
-    if command == "/kb" and len(parts) >= 2:
-        value = parts[1]
-        state.knowledge_bases = [] if value == "none" else [value]
-        _print_state(state)
-        return True
     if command == "/history" and len(parts) >= 2:
         if parts[1] == "clear":
             state.history_references = []
         elif parts[1] == "add" and len(parts) >= 3:
             state.history_references.append(parts[2])
-        _print_state(state)
-        return True
-    if command == "/notebook" and len(parts) >= 2:
-        if parts[1] == "clear":
-            state.notebook_references = []
-        elif parts[1] == "add" and len(parts) >= 3:
-            state.notebook_references.extend(_parse_notebook_refs([parts[2]]))
         _print_state(state)
         return True
     if command == "/show":
@@ -289,9 +253,7 @@ def _print_state(state: ChatState) -> None:
         f"session={state.session_id or '(new)'} "
         f"capability={state.capability} "
         f"tools={_format_list(state.tools)} "
-        f"kb={_format_list(state.knowledge_bases)} "
         f"history={_format_list(state.history_references)} "
-        f"notebook_refs={_format_notebook_refs(state.notebook_references)} "
         f"language={state.language} "
         f"config={_format_config(state.config)}",
         style="dim",
@@ -304,9 +266,7 @@ def _print_refs(state: ChatState) -> None:
         ("session", state.session_id or "(new)"),
         ("capability", state.capability),
         ("tools", _format_list(state.tools)),
-        ("kb", _format_list(state.knowledge_bases)),
         ("history", _format_list(state.history_references)),
-        ("notebooks", _format_notebook_refs(state.notebook_references)),
         ("language", state.language),
         ("config", _format_config(state.config)),
     )
@@ -324,17 +284,6 @@ def _format_list(items: list[str]) -> str:
     return "[" + ", ".join(items) + "]" if items else "[]"
 
 
-def _format_notebook_refs(refs: list[dict[str, Any]]) -> str:
-    if not refs:
-        return "[]"
-    rendered = []
-    for ref in refs:
-        notebook_id = str(ref.get("notebook_id") or "")
-        record_ids = [str(item) for item in ref.get("record_ids") or []]
-        rendered.append(f"{notebook_id}:{','.join(record_ids)}" if record_ids else notebook_id)
-    return "[" + ", ".join(rendered) + "]"
-
-
 def _format_config(config: dict[str, Any]) -> str:
     return json.dumps(config, ensure_ascii=False, sort_keys=True)
 
@@ -350,17 +299,6 @@ def _parse_config_assignment(parts: list[str]) -> tuple[str, str] | None:
         return (key, value) if key and value else None
     return None
 
-
-def _parse_notebook_refs(values: list[str]) -> list[dict[str, Any]]:
-    refs = []
-    for value in values:
-        notebook_id, _, record_ids_part = value.partition(":")
-        notebook_id = notebook_id.strip()
-        if not notebook_id:
-            raise typer.BadParameter(f"Invalid notebook reference `{value}`.")
-        record_ids = [item.strip() for item in record_ids_part.split(",") if item.strip()]
-        refs.append({"notebook_id": notebook_id, "record_ids": record_ids})
-    return refs
 
 
 def _parse_config_value(raw_value: str) -> Any:

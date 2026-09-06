@@ -6,7 +6,6 @@ from dataclasses import dataclass
 import json
 from typing import Any, Awaitable, Callable
 
-from deepmentor.agents.base_agent import BaseAgent
 from deepmentor.core.stream import StreamEvent, StreamEventType
 from deepmentor.core.trace import build_trace_metadata, merge_trace_metadata, new_call_id
 from deepmentor.services.llm.config import LLMConfig
@@ -140,20 +139,6 @@ class ContextBuildResult:
     budget: int
 
 
-class _ContextSummaryAgent(BaseAgent):
-    """Small helper agent for compressing older conversation turns."""
-
-    def __init__(self, language: str = "en") -> None:
-        super().__init__(
-            module_name="chat",
-            agent_name="context_summary_agent",
-            language=language,
-        )
-
-    async def process(self, *_args, **_kwargs) -> dict[str, Any]:
-        raise NotImplementedError
-
-
 class ContextBuilder:
     """Construct history against a bounded plan plus optional summary trace.
 
@@ -270,7 +255,6 @@ class ContextBuilder:
         if not source_text.strip():
             return "", events
 
-        agent = _ContextSummaryAgent(language=language)
         trace_meta = build_trace_metadata(
             call_id=new_call_id("context-summary"),
             phase="summarize_context",
@@ -347,7 +331,6 @@ class ContextBuilder:
                     on_event,
                 )
 
-        agent.set_trace_callback(_trace_bridge)
         await self._append_event(
             events,
             StreamEvent(
@@ -398,16 +381,28 @@ class ContextBuilder:
                 f"请基于下面的材料更新摘要，总长度不超过 {target_tokens} tokens。\n\n{source_text}"
             )
         try:
+            from deepmentor.services.llm import stream as llm_stream
+
+            await _trace_bridge(
+                {"event": "llm_call", "state": "running", **trace_meta}
+            )
             _chunks: list[str] = []
-            async for _c in agent.stream_llm(
-                user_prompt=user_prompt,
-                system_prompt=system_prompt,
-                max_tokens=summary_budget,
-                stage="summarize_context",
-                trace_meta=trace_meta,
-            ):
-                _chunks.append(_c)
+            try:
+                async for _c in llm_stream(
+                    user_prompt,
+                    system_prompt=system_prompt,
+                    max_tokens=summary_budget,
+                ):
+                    _chunks.append(_c)
+            except Exception as exc:
+                await _trace_bridge(
+                    {"event": "llm_call", "state": "error", "response": str(exc), **trace_meta}
+                )
+                raise
             summary = "".join(_chunks).strip()
+            await _trace_bridge(
+                {"event": "llm_call", "state": "complete", "response": summary, **trace_meta}
+            )
             if count_tokens(summary) >= int(summary_budget * TRUNCATION_GUARD_RATIO):
                 summary = trim_incomplete_tail(summary)
             return summary, events

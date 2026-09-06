@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from collections.abc import Callable
 from pathlib import Path
 
@@ -173,6 +175,7 @@ def test_path_traversal_is_rejected(output_app) -> None:
     assert "outside public allowlist" not in response.text
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="requires POSIX symlinks")
 def test_symlink_outside_user_root_is_rejected(output_app, tmp_path: Path) -> None:
     relative_path = "workspace/chat/chat/session-1/code_runs/escape.pdf"
     alice = TokenPayload(username="alice", role="user", user_id="u_alice")
@@ -191,6 +194,7 @@ def test_symlink_outside_user_root_is_rejected(output_app, tmp_path: Path) -> No
     assert "other user's data" not in response.text
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="requires POSIX symlinks")
 def test_absolute_parent_and_symlink_escapes_are_rejected(tmp_path: Path) -> None:
     workspace_root = tmp_path / "data" / "users" / "u_alice"
     service = PathService(workspace_root=workspace_root)

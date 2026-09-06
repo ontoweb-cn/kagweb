@@ -34,7 +34,6 @@ import hashlib
 import logging
 from typing import Any, Sequence
 
-from deepmentor.reading.references import resolve_reading_sources
 from deepmentor.services.session.protocol import SessionStoreProtocol
 
 logger = logging.getLogger(__name__)
@@ -53,7 +52,7 @@ class SourceEntry:
     """One row in the per-turn Attached Sources manifest."""
 
     sid: str
-    kind: str  # notebook | book | reading | history | partner_group | question | attachment
+    kind: str  # attachment | history | partner_group
     name: str
     full_text: str
     fresh: bool
@@ -114,36 +113,24 @@ async def build_inventory(
     leaf_message_id: int | None,
     current_turn_ordinal: int,
     fresh_attachment_records: Sequence[dict[str, Any]],
-    fresh_notebook_records: Sequence[dict[str, Any]],
-    fresh_book_context_text: str,
-    fresh_book_references: Sequence[dict[str, Any]],
     fresh_history_session_ids: Sequence[Any],
-    fresh_question_entry_ids: Sequence[Any],
     fresh_partner_group_references: Sequence[Any] = (),
-    fresh_reading_references: Sequence[dict[str, Any]] = (),
     language: str = "en",
 ) -> SourceInventory:
     """Compose the session-cumulative inventory for one chat turn.
 
     Fresh refs are added first (so they shadow historical entries on the
     same sid); historical refs are then collected from the active branch's
-    ancestor messages. The caller passes already-resolved notebook records
-    and the already-rendered book context — keeping side-effects (LLM
-    summarisation, file I/O) under the caller's control rather than buried
-    inside this module.
+    ancestor messages.
     """
     inv = SourceInventory()
     _add_fresh(
         inv,
         current_turn_ordinal=current_turn_ordinal,
         attachment_records=fresh_attachment_records,
-        notebook_records=fresh_notebook_records,
-        book_context_text=fresh_book_context_text,
-        book_references=fresh_book_references,
-        reading_references=fresh_reading_references,
     )
-    # History + question entries are async (per-id store fetches), keep them
-    # in a separate phase so the sync fresh additions don't block.
+    # History sessions are async (per-id store fetches), keep them in a
+    # separate phase so the sync fresh additions don't block.
     await _add_fresh_history(
         inv,
         store=store,
@@ -156,12 +143,6 @@ async def build_inventory(
         references=fresh_partner_group_references,
         current_turn_ordinal=current_turn_ordinal,
         language=language,
-    )
-    await _add_fresh_questions(
-        inv,
-        store=store,
-        question_entry_ids=fresh_question_entry_ids,
-        current_turn_ordinal=current_turn_ordinal,
     )
     await _add_historical(
         inv,
@@ -247,73 +228,18 @@ def _add_fresh(
     *,
     current_turn_ordinal: int,
     attachment_records: Sequence[dict[str, Any]],
-    notebook_records: Sequence[dict[str, Any]],
-    book_context_text: str,
-    book_references: Sequence[dict[str, Any]],
-    reading_references: Sequence[dict[str, Any]],
 ) -> None:
-    """Add the synchronously-available fresh sources (notebook records,
-    book pages, attachments)."""
-    for rec in notebook_records:
-        rid = str(rec.get("id", "") or "").strip()
-        full = str(rec.get("output", "") or "")
-        if not rid or not full.strip():
-            continue
-        inv.add(
+    """Add the synchronously-available fresh sources (attachments)."""
+    for rec in attachment_records:
+        filename = str(rec.get("filename") or "file")
+        extracted = str(rec.get("extracted_text") or "")
+        inv.entries.append(
             SourceEntry(
-                sid=f"nb-{rid}",
-                kind="notebook",
-                name=str(rec.get("title") or rec.get("name") or "Untitled record"),
-                full_text=full,
-                fresh=True,
-                first_seen_turn=current_turn_ordinal,
-            )
-        )
-
-    # Books: split the cumulative ``build_book_context`` output by the
-    # ``---`` section separator so each book gets its own ``bk-{book_id}``
-    # sid. The order in ``book_references`` matches the order
-    # ``build_book_context`` produces sections in, so we can zip them.
-    book_sections = _split_book_sections(book_context_text)
-    for ref, section in zip(book_references, book_sections, strict=False):
-        book_id = str(ref.get("book_id") or "").strip()
-        if not book_id or not section.strip():
-            continue
-        inv.add(
-            SourceEntry(
-                sid=f"bk-{book_id}",
-                kind="book",
-                name=_extract_book_title(section, fallback=f"Book {book_id}"),
-                full_text=section,
-                fresh=True,
-                first_seen_turn=current_turn_ordinal,
-            )
-        )
-
-    _add_reading_sources(
-        inv,
-        references=reading_references,
-        fresh=True,
-        turn_ordinal=current_turn_ordinal,
-    )
-
-    for record in attachment_records:
-        if str(record.get("type", "")).lower() == "image":
-            continue
-        mime = str(record.get("mime_type", "")).lower()
-        if mime.startswith(_IMAGE_MIME_PREFIX):
-            continue
-        text = str(record.get("extracted_text", "") or "")
-        att_id = str(record.get("id", "") or "").strip()
-        if not text.strip() or not att_id:
-            continue
-        inv.add(
-            SourceEntry(
-                sid=f"at-{att_id}",
+                sid=f"att-{hashlib.sha1(filename.encode('utf-8')).hexdigest()[:12]}",
                 kind="attachment",
-                name=str(record.get("filename") or "Untitled file"),
-                full_text=text,
-                fresh=True,
+                name=filename,
+                preview=_clip_preview(extracted or filename),
+                full_text=extracted,
                 first_seen_turn=current_turn_ordinal,
             )
         )
@@ -340,36 +266,6 @@ async def _add_fresh_history(
                 kind="history",
                 name=name,
                 full_text=text,
-                fresh=True,
-                first_seen_turn=current_turn_ordinal,
-            )
-        )
-
-
-async def _add_fresh_questions(
-    inv: SourceInventory,
-    *,
-    store: SessionStoreProtocol,
-    question_entry_ids: Sequence[Any],
-    current_turn_ordinal: int,
-) -> None:
-    get_entry = getattr(store, "get_notebook_entry", None)
-    if not callable(get_entry):
-        return
-    for raw in question_entry_ids:
-        try:
-            eid = int(raw)
-        except (TypeError, ValueError):
-            continue
-        block, stem = await _load_question_entry(store, eid)
-        if not block:
-            continue
-        inv.add(
-            SourceEntry(
-                sid=f"qb-{eid}",
-                kind="question",
-                name=stem,
-                full_text=block,
                 fresh=True,
                 first_seen_turn=current_turn_ordinal,
             )
@@ -471,67 +367,6 @@ async def _collect_from_user_message(
     if not isinstance(snap, dict):
         return
 
-    # Notebook records — re-resolve through the notebook service.
-    notebook_refs = snap.get("notebookReferences") or []
-    if notebook_refs:
-        from deepmentor.services.notebook import get_notebook_manager
-
-        try:
-            records = get_notebook_manager().get_records_by_references(list(notebook_refs))
-        except Exception:
-            records = []
-        for rec in records:
-            rid = str(rec.get("id", "") or "").strip()
-            if not rid:
-                continue
-            sid = f"nb-{rid}"
-            if sid in inv:
-                continue
-            full = str(rec.get("output", "") or "")
-            if not full.strip():
-                continue
-            inv.add(
-                SourceEntry(
-                    sid=sid,
-                    kind="notebook",
-                    name=str(rec.get("title") or rec.get("name") or "Untitled record"),
-                    full_text=full,
-                    fresh=False,
-                    first_seen_turn=turn_ordinal,
-                )
-            )
-
-    # Books — one source per book_id (union of page ranges across all
-    # turns is implicit because we always pull the *current* book reference
-    # to render).
-    for ref in snap.get("bookReferences") or []:
-        book_id = str((ref or {}).get("book_id") or "").strip()
-        if not book_id:
-            continue
-        sid = f"bk-{book_id}"
-        if sid in inv:
-            continue
-        section_text, name = _resolve_book_section(ref)
-        if not section_text.strip():
-            continue
-        inv.add(
-            SourceEntry(
-                sid=sid,
-                kind="book",
-                name=name,
-                full_text=section_text,
-                fresh=False,
-                first_seen_turn=turn_ordinal,
-            )
-        )
-
-    _add_reading_sources(
-        inv,
-        references=snap.get("readingReferences") or [],
-        fresh=False,
-        turn_ordinal=turn_ordinal,
-    )
-
     # History sessions — async, one store fetch per id.
     for raw in snap.get("historyReferences") or []:
         hs_id = str(raw or "").strip()
@@ -578,30 +413,6 @@ async def _collect_from_user_message(
             )
         )
 
-    # Question-bank entries.
-    for raw in snap.get("questionNotebookReferences") or []:
-        try:
-            eid = int(raw)
-        except (TypeError, ValueError):
-            continue
-        sid = f"qb-{eid}"
-        if sid in inv:
-            continue
-        block, stem = await _load_question_entry(store, eid)
-        if not block:
-            continue
-        inv.add(
-            SourceEntry(
-                sid=sid,
-                kind="question",
-                name=stem,
-                full_text=block,
-                fresh=False,
-                first_seen_turn=turn_ordinal,
-            )
-        )
-
-
 # ----- Lineage walker (branch-safe, store-protocol-compatible) ------------
 
 
@@ -642,85 +453,6 @@ async def _load_lineage(
 
 
 # ----- Per-type resolvers shared by fresh + historical paths --------------
-
-
-def _add_reading_sources(
-    inv: SourceInventory,
-    *,
-    references: Sequence[dict[str, Any]],
-    fresh: bool,
-    turn_ordinal: int,
-) -> None:
-    """Resolve reading locators from the active user's store.
-
-    Persisted chat metadata never supplies source text. Re-resolution here
-    preserves user isolation and makes a deleted material disappear from later
-    turns instead of leaving a stale or spoofable copy in session metadata.
-    """
-
-    for source in resolve_reading_sources(list(references)):
-        if source.source_id in inv and not fresh:
-            continue
-        inv.add(
-            SourceEntry(
-                sid=source.source_id,
-                kind="reading",
-                name=source.name,
-                full_text=source.full_text,
-                fresh=fresh,
-                first_seen_turn=turn_ordinal,
-            )
-        )
-
-
-def _split_book_sections(book_context_text: str) -> list[str]:
-    """Split the output of ``build_book_context`` back into per-book
-    sections. ``build_book_context`` joins sections with ``"\\n\\n---\\n\\n"``;
-    we split on the same separator. Returns an empty list when input is
-    empty."""
-    if not book_context_text.strip():
-        return []
-    return [seg for seg in book_context_text.split("\n\n---\n\n") if seg.strip()]
-
-
-def _extract_book_title(section: str, *, fallback: str) -> str:
-    """``_serialize_book_header`` prefixes every section with
-    ``# Book: <title>`` — extract that here for the manifest's name field."""
-    first_line = section.lstrip().split("\n", 1)[0]
-    prefix = "# Book: "
-    if first_line.startswith(prefix):
-        return first_line[len(prefix) :].strip() or fallback
-    return fallback
-
-
-def _resolve_book_section(book_reference: dict[str, Any]) -> tuple[str, str]:
-    """Resolve a single book reference into its serialized section + title.
-
-    Used by the historical-collection path where each past turn's book
-    reference is rendered independently (so the per-book ``bk-{book_id}``
-    source id stays stable). Returns ``("", "")`` on failure.
-    """
-    from deepmentor.book.context import build_book_context
-
-    try:
-        result = build_book_context([book_reference])
-    except Exception:
-        logger.debug("Failed to resolve historical book reference", exc_info=True)
-        return "", ""
-    text = (result.text or "").strip()
-    if not text:
-        return "", ""
-    name = _extract_book_title(text, fallback=f"Book {book_reference.get('book_id', '?')}")
-    return text, name
-
-
-# Human labels for the external agents a session can be imported from. The
-# import source is recorded at import time in ``preferences["import"]["source"]``
-# (see ``deepmentor/api/routers/imports.py``).
-_EXTERNAL_AGENT_LABELS: dict[str, str] = {
-    "claude_code": "Claude Code",
-    "codex": "Codex",
-}
 
 
 def _imported_agent_label(meta: dict[str, Any], lang: str) -> str | None:
@@ -931,31 +663,6 @@ async def _load_history_session(
     name = str(meta.get("title", "") or "Untitled session")
     return transcript, name
 
-
-async def _load_question_entry(store: SessionStoreProtocol, entry_id: int) -> tuple[str, str]:
-    """Fetch and render one question-bank entry into a markdown block +
-    short stem (used as the manifest name). Returns ``("", "")`` on
-    missing entry. Imports the renderer lazily to avoid pulling
-    ``turn_runtime``'s import surface into modules that consume this one."""
-    get_entry = getattr(store, "get_notebook_entry", None)
-    if not callable(get_entry):
-        return "", ""
-    try:
-        entry = await get_entry(entry_id)
-    except Exception:
-        entry = None
-    if not entry:
-        return "", ""
-    # Use the existing turn_runtime helper for consistency with fresh-path
-    # formatting. Imported here to keep this module's static deps minimal.
-    from deepmentor.services.session.turn_runtime import _format_question_bank_entry
-
-    block = _format_question_bank_entry(entry)
-    if not block.strip():
-        return "", ""
-    stem_source = str(entry.get("question", "") or "Untitled question")
-    stem = stem_source[:60].rstrip() or "Untitled question"
-    return block, stem
 
 
 __all__ = [

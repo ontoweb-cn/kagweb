@@ -23,7 +23,6 @@ from deepmentor.services.provider_registry import (
     wire_api_for_provider,
     wire_api_from_api_format,
 )
-from deepmentor.services.videogen.config import VideogenConfig
 from deepmentor.services.voice.config import (
     AUTH_API_KEY_HEADER,
     AUTH_BEARER,
@@ -1208,46 +1207,6 @@ def resolve_imagegen_runtime_config(
     )
 
 
-def resolve_videogen_runtime_config(
-    catalog: dict[str, Any] | None = None,
-    *,
-    service: ModelCatalogService | None = None,
-) -> VideogenConfig:
-    """Resolve the active text-to-video config from the model catalog."""
-    catalog_service = service or get_model_catalog_service()
-    loaded = _load_catalog(catalog)
-    profile, model = _active_profile_and_model(loaded, catalog_service, "videogen")
-    resolved_model = _as_str((model or {}).get("model"))
-    if not resolved_model:
-        raise ValueError(
-            "No active video-generation model is configured. "
-            "Set it in Settings > Media Generation > Video Generation."
-        )
-
-    provider = _canonical_generation_provider(
-        _as_str((profile or {}).get("binding")), VIDEOGEN_PROVIDERS
-    )
-    spec = VIDEOGEN_PROVIDERS[provider]
-    api_base = _as_str((profile or {}).get("base_url")) or spec.default_api_base
-    api_key = _as_str((profile or {}).get("api_key"))
-    if not api_key and spec.is_local:
-        api_key = "sk-no-key-required"
-
-    return VideogenConfig(
-        model=resolved_model,
-        provider_name=provider,
-        adapter=spec.adapter,
-        auth_style=spec.auth_style,
-        api_key=api_key,
-        base_url=api_base,
-        api_version=_as_str((profile or {}).get("api_version")) or None,
-        extra_headers=_to_headers((profile or {}).get("extra_headers")),
-        aspect_ratio=_as_str((model or {}).get("aspect_ratio")),
-        duration=_as_str((model or {}).get("duration")),
-        resolution=_as_str((model or {}).get("resolution")),
-    )
-
-
 def _resolve_search_max_results(catalog: dict[str, Any], default: int = 5) -> int:
     profile = get_model_catalog_service().get_active_profile(catalog, "search") or {}
     raw = profile.get("max_results")
@@ -1453,7 +1412,6 @@ __all__ = [
     "IMAGEGEN_PROVIDERS",
     "VIDEOGEN_PROVIDERS",
     "resolve_imagegen_runtime_config",
-    "resolve_videogen_runtime_config",
     "EMBEDDING_PROVIDER_ALIASES",
     "embedding_endpoint_validation_error",
     "normalize_embedding_endpoint_for_display",

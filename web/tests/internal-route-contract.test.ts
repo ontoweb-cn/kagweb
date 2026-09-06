@@ -35,7 +35,7 @@ function pagePattern(pageFile: string): RegExp {
 }
 
 const pagePatterns = walk(APP_ROOT)
-  .filter((file) => /\/page\.(?:ts|tsx|js|jsx)$/.test(file))
+  .filter((file) => /[\\/]page\.(?:ts|tsx|js|jsx)$/.test(file))
   .map(pagePattern);
 
 function isPagePath(value: string): boolean {
@@ -87,16 +87,6 @@ test("literal frontend navigation targets resolve to real pages", () => {
 test("session URLs accept zero or one session id, never extra segments", () => {
   for (const [indexPath, sessionPath, invalidPath] of [
     ["/chat", "/chat/session-1", "/chat/session-1/extra"],
-    [
-      "/mastery/path-1/sessions",
-      "/mastery/path-1/sessions/session-1",
-      "/mastery/path-1/sessions/session-1/extra",
-    ],
-    [
-      "/reading/workspace-1/sessions",
-      "/reading/workspace-1/sessions/session-1",
-      "/reading/workspace-1/sessions/session-1/extra",
-    ],
   ]) {
     assert.equal(isPagePath(indexPath), true, indexPath);
     assert.equal(isPagePath(sessionPath), true, sessionPath);

@@ -5,9 +5,9 @@ import {
   visibleGroups,
 } from "../components/space/SpaceDashboard";
 
-// #963: /whisper ships its pages here but its capability comes from an
-// out-of-tree plugin, so a stock install offered a room the backend could not
-// start and answered "Unknown capability: whisper_visitor".
+// #963: a tile whose capability comes from an out-of-tree plugin must not
+// render on a stock install — the backend could not start the room and
+// answered "Unknown capability".
 
 const groups = [
   {
@@ -55,15 +55,14 @@ test("gated tiles stay hidden while the probe is still in flight", () => {
   assert.equal(shown.length, 1);
 });
 
-test("the real dashboard gates whisper and nothing else", () => {
+test("no real dashboard tile is capability-gated", () => {
+  // The whisper room (the last gated tile) shipped with the out-of-tree
+  // plugin that served it; every remaining tile is served by this repo.
   const gated = DASHBOARD_GROUPS.flatMap((g) => g.items).filter(
     (i) => i.requiresCapability,
   );
 
-  assert.deepEqual(
-    gated.map((i) => i.requiresCapability),
-    ["whisper_visitor"],
-  );
+  assert.deepEqual(gated, []);
 });
 
 test("the standalone Mastery Path is not duplicated in Learning Space", () => {
@@ -72,9 +71,8 @@ test("the standalone Mastery Path is not duplicated in Learning Space", () => {
   assert.ok(!dashboardItems.some((item) => item.href === "/mastery"));
 });
 
-test("with whisper absent the real dashboard drops More Projects entirely", () => {
+test("the real dashboard survives the gate with every group intact", () => {
   const shown = visibleGroups(DASHBOARD_GROUPS, () => false);
 
-  assert.ok(!shown.some((g) => g.items.some((i) => i.key === "whisper")));
   assert.ok(shown.length > 0, "the ungated groups must survive");
 });

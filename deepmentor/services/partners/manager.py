@@ -1240,12 +1240,6 @@ class PartnerManager:
         forget_partner_stores(partner_id)
         forget_partner_links(partner_id)
         get_partner_runtime_status_repository().delete(partner_id)
-        try:
-            from deepmentor.services.cron import get_cron_service
-
-            get_cron_service().remove_owner_jobs(f"partner:{partner_id}")
-        except Exception:
-            logger.warning("Failed to clear cron jobs for '%s'", partner_id, exc_info=True)
         partner_dir = self._partner_dir(partner_id)
         if not partner_dir.exists():
             return False

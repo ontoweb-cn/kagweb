@@ -9,7 +9,7 @@ export type Capability = "llm";
  * Single source of truth mapping a workspace feature route to the model
  * capability it needs in order to function. Features absent from this list
  * require no per-user model and are always available (Knowledge, Space,
- * Memory, Notebook, Settings, …).
+ * Settings, …).
  *
  * Both the sidebar (to lock nav items) and the route-level CapabilityGate
  * (to lock the page itself) read from here, so a new gated feature only has
@@ -21,10 +21,6 @@ export const ROUTE_CAPABILITIES: ReadonlyArray<{
 }> = [
   { prefix: "/chat", capability: "llm" },
   { prefix: "/partners", capability: "llm" },
-  { prefix: "/co-writer", capability: "llm" },
-  { prefix: "/books", capability: "llm" },
-  { prefix: "/reading", capability: "llm" },
-  { prefix: "/mastery", capability: "llm" }, // Mastery Path
 ];
 
 /**

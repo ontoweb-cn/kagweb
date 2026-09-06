@@ -3,14 +3,9 @@
 import dynamic from 'next/dynamic'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  BookMarked,
-  BookOpen,
-  Bot,
-  Brain,
   Check,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   Coins,
   Copy,
   AlertCircle,
@@ -27,8 +22,6 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { SelectedHistorySession } from '@/components/chat/HistorySessionPicker'
-import type { SelectedQuestionEntry } from '@/components/chat/QuestionBankPicker'
 import AssistantResponse from '@/components/common/AssistantResponse'
 import { InlineFileCardProvider, mergeGeneratedFiles } from '@/components/common/InlineFileCard'
 import Tooltip from '@/components/common/Tooltip'
@@ -36,21 +29,12 @@ import type { MessageAttachment, MessageRequestSnapshot } from '@/features/chat/
 import { apiFetch, apiUrl } from '@/lib/api'
 import { docIconFor } from '@/lib/doc-attachments'
 import { useVoiceAutoplay } from '@/hooks/useVoiceAutoplay'
-import { extractMathAnimatorResult } from '@/lib/math-animator-types'
-import {
-  extractQuizQuestions,
-  extractQuizTurnId,
-  extractStreamingQuizQuestions,
-} from '@/lib/quiz-types'
-import { extractVisualizeResult } from '@/lib/visualize-types'
 import type { StreamEvent } from '@/features/chat/model/protocol'
 import { hasVisibleMarkdownContent } from '@/lib/markdown-display'
-import type { SelectedBookReference } from '@/lib/book-references'
 import { buildVisiblePath, type SiblingInfo } from '@/lib/message-branches'
 import { turnAnchorKey } from '@/lib/chat-outline'
 import { shouldSubmitOnEnter } from '@/lib/composer-keyboard'
 import { useImeComposing } from '@/lib/use-ime-composing'
-import type { SpaceMemoryFile } from '@/lib/space-items'
 import {
   AskUserOptions,
   extractAskUserPayload,
@@ -61,35 +45,10 @@ import { SetupCredentialCard } from '@/components/chat/home/SetupCredentialCard'
 import { extractSetupCredential } from '@/lib/setup-signals'
 import { PartnerDraftCard } from '@/components/chat/home/PartnerDraftCard'
 import { extractPartnerDraft } from '@/lib/partner-draft'
-import { CourseHandoffCards } from '@/components/chat/home/CourseHandoffCard'
-import { MasteryHandoffCards } from '@/components/chat/home/MasteryHandoffCard'
-import { extractCourseHandoffs, stripLeakedHandoffJson } from '@/lib/course-handoff'
-import { extractMasteryHandoffs } from '@/lib/mastery-handoff'
 import ContextReferenceTree, {
   type ContextTreeItem,
 } from '@/components/chat/home/ContextReferenceTree'
 import { AssistantActivity, NestedTraceFlow } from '@/features/chat/trace/TracePresentation'
-import { agentGlyph } from '@/components/agents/agent-icons'
-import { useConnectedAgentKinds } from '@/hooks/useConnectedAgentKinds'
-import {
-  authoritativeResearchReport,
-  isConfirmedResearchFollowup,
-  researchFollowupStatus,
-} from '@/lib/deep-research-report'
-
-const MathAnimatorViewer = dynamic(() => import('@/components/math-animator/MathAnimatorViewer'), {
-  ssr: false,
-})
-const QuizViewer = dynamic(() => import('@/components/quiz/QuizViewer'), {
-  ssr: false,
-})
-
-const ResearchOutlineEditor = dynamic(() => import('@/components/research/ResearchOutlineEditor'), {
-  ssr: false,
-})
-const VisualizationViewer = dynamic(() => import('@/components/visualize/VisualizationViewer'), {
-  ssr: false,
-})
 
 interface ChatMessageItem {
   id?: number
@@ -102,22 +61,8 @@ interface ChatMessageItem {
   parentMessageId?: number | null
 }
 
-interface NotebookReferenceGroup {
-  notebookId: string
-  notebookName: string
-  count: number
-}
-
 const MODE_BADGE_LABELS: Record<string, string> = {
   chat: 'Chat',
-  ask_questions: 'Ask Questions',
-  deep_solve: 'Deep Solve',
-  deep_question: 'Quiz Generation',
-  deep_research: 'Deep Research',
-  math_animator: 'Math Animator',
-  visualize: 'Visualize',
-  mastery_path: 'Mastery Path',
-  immersive_reading: 'Immersive Reading',
 }
 
 // Returns the i18n key (and a sensible fallback) for the capability badge
@@ -301,25 +246,10 @@ export function GeneratedFileCards({
 export const AssistantMessage = memo(function AssistantMessage({
   msg,
   isStreaming,
-  outlineStatus,
-  sessionId,
-  language,
-  onConfirmOutline,
   onSubmitUserReply,
-  researchRequestSnapshot,
 }: {
   msg: { content: string; capability?: string; events?: StreamEvent[] }
   isStreaming?: boolean
-  outlineStatus?: 'editing' | 'researching' | 'done' | 'failed'
-  sessionId?: string | null
-  language?: string
-  researchRequestSnapshot?: MessageRequestSnapshot | null
-  onConfirmOutline?: (
-    outline: Array<{ title: string; overview: string }>,
-    topic: string,
-    researchConfig?: Record<string, unknown> | null,
-    requestSnapshot?: MessageRequestSnapshot | null
-  ) => void
   /**
    * Submit a reply for a turn that is paused on ``ask_user``. Wired
    * through from the page so the card's option-buttons / free-text
@@ -338,55 +268,6 @@ export const AssistantMessage = memo(function AssistantMessage({
   ) => void
 }) {
   const events = useMemo(() => msg.events ?? [], [msg.events])
-  const readingMaterialId = researchRequestSnapshot?.readingMaterialId
-  const readingMaterialRevision = researchRequestSnapshot?.readingMaterialRevision
-  const resultEvent = useMemo(
-    () => msg.events?.find(event => event.type === 'result') ?? null,
-    [msg.events]
-  )
-
-  const outlinePreview = useMemo(() => {
-    if (msg.capability !== 'deep_research' || !resultEvent) return null
-    const meta = resultEvent.metadata as Record<string, unknown> | undefined
-    if (!meta?.outline_preview) return null
-    return {
-      sub_topics: (meta.sub_topics ?? []) as Array<{
-        title: string
-        overview: string
-      }>,
-      topic: String(meta.topic ?? ''),
-      research_config: (meta.research_config ?? null) as Record<string, unknown> | null,
-    }
-  }, [msg.capability, resultEvent])
-
-  const quizQuestions = useMemo(() => {
-    if (msg.capability !== 'deep_question') return null
-    // Once the final result event lands, it's authoritative — it carries
-    // the canonical summary.results[]. Until then, accumulate questions
-    // from the live ``quiz_question_emitted`` content events so the
-    // QuizViewer can render each card the moment it's generated.
-    if (resultEvent) return extractQuizQuestions(resultEvent.metadata)
-    return extractStreamingQuizQuestions(msg.events ?? [])
-  }, [msg.capability, msg.events, resultEvent])
-
-  // Turn identity for the quiz card. Derived from the streamed events, not
-  // just the final result event — during generation the result hasn't landed
-  // yet, and a null turn id would let the QuizViewer fall back to
-  // session-wide notebook state from a previous quiz (issue #677).
-  const quizTurnId = useMemo(() => {
-    if (msg.capability !== 'deep_question') return null
-    return extractQuizTurnId(msg.events)
-  }, [msg.capability, msg.events])
-
-  const mathAnimatorResult = useMemo(() => {
-    if (msg.capability !== 'math_animator' || !resultEvent) return null
-    return extractMathAnimatorResult(resultEvent.metadata)
-  }, [msg.capability, resultEvent])
-
-  const visualizeResult = useMemo(() => {
-    if (msg.capability !== 'visualize' || !resultEvent) return null
-    return extractVisualizeResult(resultEvent.metadata)
-  }, [msg.capability, resultEvent])
 
   // Detect the ``ask_user`` terminator payload: when the assistant turn
   // ended via the ``ask_user`` tool, this is the question the user is
@@ -399,44 +280,11 @@ export const AssistantMessage = memo(function AssistantMessage({
 
   const partnerDraft = useMemo(() => extractPartnerDraft(msg.events), [msg.events])
 
-  // Set by ``course_handoff`` when Course Study has decided what is worth doing
-  // next. A turn may propose more than one, so this is a list.
-  const courseHandoffs = useMemo(() => extractCourseHandoffs(msg.events), [msg.events])
-
-  // Set by the mastery navigation tools when the learner asked to be taken
-  // back to something they are studying. Same shape of offer as above — a
-  // destination, a reason, an editable opening line — for the surface that
-  // actually teaches it.
-  const masteryHandoffs = useMemo(() => extractMasteryHandoffs(msg.events), [msg.events])
-
-  // Some models write the hand-off out as literal JSON *and* call the tool, so
-  // the card's own contents appear above it as raw arguments. Only stripped
-  // once the turn is finished — mid-stream the text is still arriving and a
-  // partial object would not match anyway — and only from a message that really
-  // produced a card.
-  const body = useMemo(
-    () =>
-      courseHandoffs.length && !isStreaming ? stripLeakedHandoffJson(msg.content) : msg.content,
-    [courseHandoffs.length, isStreaming, msg.content]
-  )
-
   // Interleaved segments for the default chat surface — text emitted
   // before the ask_user call renders above the card; text emitted by
-  // the resumed iteration renders below it. Only walked when this
-  // message will actually render through the default branch (the
-  // research / quiz / animator / visualize branches have their own
-  // layout and pin the card elsewhere).
-  const useInlineAskUserSegments =
-    !outlinePreview &&
-    !mathAnimatorResult &&
-    !visualizeResult &&
-    !(quizQuestions && quizQuestions.length > 0)
-  const messageSegments = useMemo(
-    () => (useInlineAskUserSegments ? extractMessageSegments(msg.events) : []),
-    [useInlineAskUserSegments, msg.events]
-  )
-  const hasInlineAskUser =
-    useInlineAskUserSegments && messageSegments.some(seg => seg.kind === 'ask_user')
+  // the resumed iteration renders below it.
+  const messageSegments = useMemo(() => extractMessageSegments(msg.events), [msg.events])
+  const hasInlineAskUser = messageSegments.some(seg => seg.kind === 'ask_user')
   // The activity block is pinned to the top of the message, so it can only
   // show the rounds that ran BEFORE the first card. What the resumed rounds
   // reason about renders below the card they answer, in stream order.
@@ -444,10 +292,6 @@ export const AssistantMessage = memo(function AssistantMessage({
     () => (hasInlineAskUser ? leadingTraceEvents(events, messageSegments) : undefined),
     [hasInlineAskUser, messageSegments, events]
   )
-
-  const researchInProgress =
-    outlineStatus === 'researching' || outlineStatus === 'done' || outlineStatus === 'failed'
-  const showResearchBody = Boolean(outlinePreview) && researchInProgress && Boolean(msg.content)
 
   return (
     <>
@@ -462,82 +306,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         content={msg.content}
         className="mb-3"
       />
-      {outlinePreview && outlinePreview.sub_topics.length > 0 ? (
-        <>
-          {/* Layout for the merged research bubble:
-                1. trace rows (above, via TraceFlow)
-                2. ask_user Q&A summary (collapsible once research starts)
-                3. Outline editor (auto-collapses once locked)
-                4. Final report body (only after research is underway)
-              The Q&A intentionally sits ABOVE the outline so the user
-              sees the path that produced the outline before the outline
-              itself. */}
-          {askUserPayload ? (
-            <AskUserOptions
-              data={askUserPayload}
-              onSubmit={reply => {
-                if (!onSubmitUserReply) return
-                onSubmitUserReply(reply)
-              }}
-              collapsible={researchInProgress}
-              defaultCollapsed={researchInProgress}
-            />
-          ) : null}
-          <ResearchOutlineEditor
-            outline={outlinePreview.sub_topics}
-            topic={outlinePreview.topic}
-            onConfirm={items =>
-              onConfirmOutline?.(
-                items,
-                outlinePreview.topic,
-                outlinePreview.research_config,
-                researchRequestSnapshot
-              )
-            }
-            status={outlineStatus}
-          />
-          {showResearchBody ? (
-            <AssistantResponse
-              content={msg.content}
-              isStreaming={isStreaming}
-              readingMaterialId={readingMaterialId}
-              readingMaterialRevision={readingMaterialRevision}
-              events={events}
-            />
-          ) : null}
-        </>
-      ) : mathAnimatorResult ? (
-        <MathAnimatorViewer result={mathAnimatorResult} />
-      ) : visualizeResult ? (
-        <VisualizationViewer result={visualizeResult} />
-      ) : quizQuestions && quizQuestions.length > 0 ? (
-        <>
-          {/* The quiz preface (the "I researched X, now let me quiz you on Y"
-              sentence the user watched stream in) rides along ABOVE the quiz
-              card. Without this, the streamed text
-              vanishes from the bubble the moment the first card appears
-              because the branch above is mutually exclusive with
-              <AssistantResponse>. The body is already free of the
-              per-question markdown — the pipeline trims that out of
-              ``msg.content`` since the QuizViewer renders the cards
-              themselves. */}
-          {msg.content ? (
-            <AssistantResponse
-              content={msg.content}
-              isStreaming={isStreaming}
-              readingMaterialId={readingMaterialId}
-              readingMaterialRevision={readingMaterialRevision}
-              events={events}
-            />
-          ) : null}
-          <QuizViewer
-            questions={quizQuestions}
-            sessionId={sessionId}
-            turnId={quizTurnId}
-            language={language}
-          />
-        </>
-      ) : hasInlineAskUser ? (
+      {hasInlineAskUser ? (
         // Default chat surface with one or more ask_user calls: render
         // text and cards in the exact order they were streamed, so the
         // pre-ask_user narration sits above the card and the resumed
@@ -548,8 +317,6 @@ export const AssistantMessage = memo(function AssistantMessage({
               key={seg.key}
               content={seg.text}
               isStreaming={isStreaming}
-              readingMaterialId={readingMaterialId}
-              readingMaterialRevision={readingMaterialRevision}
               events={events}
             />
           ) : seg.kind === 'trace' ? (
@@ -568,19 +335,9 @@ export const AssistantMessage = memo(function AssistantMessage({
           )
         )
       ) : (
-        <AssistantResponse
-          content={body}
-          isStreaming={isStreaming}
-          readingMaterialId={readingMaterialId}
-          readingMaterialRevision={readingMaterialRevision}
-          events={events}
-        />
+        <AssistantResponse content={msg.content} isStreaming={isStreaming} events={events} />
       )}
-      {/* Non-default branches (quiz, math animator, visualize) keep
-          ask_user below the body. The default branch inlines the card
-          via ``messageSegments``; the research branch renders its own
-          card above the outline editor — both skip this fallback. */}
-      {!outlinePreview && !hasInlineAskUser && askUserPayload ? (
+      {hasInlineAskUser ? null : askUserPayload ? (
         <AskUserOptions
           data={askUserPayload}
           onSubmit={reply => {
@@ -594,10 +351,6 @@ export const AssistantMessage = memo(function AssistantMessage({
           replacing it, and applies to every branch. */}
       {setupCredential ? <SetupCredentialCard data={setupCredential} /> : null}
       {partnerDraft ? <PartnerDraftCard data={partnerDraft} /> : null}
-      {/* Course Study's hand-offs sit last: they are what to do *after* reading
-          the answer, so they belong below it rather than competing with it. */}
-      <CourseHandoffCards handoffs={courseHandoffs} />
-      <MasteryHandoffCards handoffs={masteryHandoffs} />
     </>
   )
 })
@@ -948,11 +701,6 @@ export const UserMessage = memo(function UserMessage({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(msg.content)
   const { isComposingRef, onCompositionStart, onCompositionEnd } = useImeComposing()
-  // Connected subagents ride in knowledge_bases (same selection path) but are
-  // agents, not KBs — this maps a selected name to its backend kind so the
-  // reference chip can badge it with the agent's brand icon.
-  const agentKinds = useConnectedAgentKinds()
-  if (msg.content.startsWith('[Quiz Performance]')) return null
   // ``msg.id`` can be a negative client-side sentinel for optimistic
   // (just-sent, not yet reconciled with the server) rows. We still allow
   // the Edit button to surface — ``editMessage`` in the context handles
@@ -998,73 +746,20 @@ export const UserMessage = memo(function UserMessage({
       }
     }),
     ...(snap?.knowledgeBases ?? [])
-      .filter(name => !availableKbNames || availableKbNames.has(name) || agentKinds[name])
-      .map((name): ContextTreeItem => {
-        const agentKind = agentKinds[name]
-        if (agentKind) {
-          return {
-            key: `agent-${name}`,
-            // Brand SVG marks share the lucide call signature (size/strokeWidth/
-            // className); cast bridges the structural-variance gap.
-            icon: (agentGlyph(agentKind) ?? Bot) as unknown as LucideIcon,
-            kind: t('Agent'),
-            label: name,
-          }
-        }
-        return {
-          key: `kb-${name}`,
-          icon: Database,
-          kind: t('Knowledge'),
-          label: name,
-        }
-      }),
-    ...(snap?.bookReferences ?? []).map((ref): ContextTreeItem => ({
-      key: `book-${ref.book_id}`,
-      icon: BookOpen,
-      kind: t('Book'),
-      label: `${ref.page_ids.length} ${t('chapters')}`,
-    })),
-    ...(snap?.readingReferences ?? []).map((ref): ContextTreeItem => ({
-      key: `reading-${ref.material_id}-r${ref.revision}`,
-      icon: BookMarked,
-      kind: t('Reading'),
-      label: `${ref.locators.length} ${t('reading sections')}`,
-    })),
-    ...(snap?.notebookReferences ?? []).map((ref): ContextTreeItem => ({
-      key: `nb-${ref.notebook_id}`,
-      icon: BookOpen,
-      kind: t('Notebook'),
-      label: `${ref.record_ids.length} ${t('records')}`,
-    })),
-    // Imported agent conversations are folded into the same history_references
-    // payload but carry the `imported_` id prefix — split them back out so they
-    // read as "My Agents" rather than "Chat History" (mirrors the composer).
-    ...(snap?.historyReferences ?? [])
-      .filter(sid => !sid.startsWith('imported_'))
-      .map((sid): ContextTreeItem => ({
-        key: `hist-${sid}`,
-        icon: MessageSquare,
-        kind: t('Chat History'),
-        label: '',
+      .filter(name => !availableKbNames || availableKbNames.has(name))
+      .map((name): ContextTreeItem => ({
+        key: `kb-${name}`,
+        icon: Database,
+        kind: t('Knowledge'),
+        label: name,
       })),
-    ...(snap?.historyReferences ?? [])
-      .filter(sid => sid.startsWith('imported_'))
-      .map((sid): ContextTreeItem => ({
-        key: `agent-${sid}`,
-        icon: Bot,
-        kind: t('My Agents'),
-        label: '',
-      })),
-    ...(snap?.questionNotebookReferences?.length
-      ? [
-          {
-            key: 'qb',
-            icon: ClipboardList,
-            kind: t('Question Bank'),
-            label: `${snap.questionNotebookReferences.length} ${t('items')}`,
-          } satisfies ContextTreeItem,
-        ]
-      : []),
+    // Chat-history references (session ids referenced as context).
+    ...(snap?.historyReferences ?? []).map((sid): ContextTreeItem => ({
+      key: `hist-${sid}`,
+      icon: MessageSquare,
+      kind: t('Chat History'),
+      label: '',
+    })),
     ...(snap?.persona
       ? [
           {
@@ -1075,12 +770,6 @@ export const UserMessage = memo(function UserMessage({
           } satisfies ContextTreeItem,
         ]
       : []),
-    ...(snap?.memoryReferences ?? []).map((file): ContextTreeItem => ({
-      key: `mem-${file}`,
-      icon: Brain,
-      kind: t('Memory'),
-      label: file === 'summary' ? t('Summary') : t('Profile'),
-    })),
   ]
 
   return (
@@ -1187,10 +876,8 @@ export const ChatMessageList = memo(function ChatMessageList({
   messages,
   isStreaming,
   sessionId,
-  language,
   onCopyAssistantMessage,
   onRegenerateMessage,
-  onConfirmOutline,
   onPreviewAttachment,
   onDeleteTurn,
   selectedBranches,
@@ -1203,15 +890,8 @@ export const ChatMessageList = memo(function ChatMessageList({
   messages: ChatMessageItem[]
   isStreaming: boolean
   sessionId?: string | null
-  language?: string
   onCopyAssistantMessage: (content: string) => void | Promise<void>
   onRegenerateMessage: () => void
-  onConfirmOutline?: (
-    outline: Array<{ title: string; overview: string }>,
-    topic: string,
-    researchConfig?: Record<string, unknown> | null,
-    requestSnapshot?: MessageRequestSnapshot | null
-  ) => void
   onPreviewAttachment?: (attachment: MessageAttachment) => void
   onDeleteTurn?: (messageId: number) => void
   /** Edit-branching: selected sibling at each branch point. */
@@ -1250,106 +930,17 @@ export const ChatMessageList = memo(function ChatMessageList({
     [messages, selectedBranches]
   )
 
-  // Deep-research two-turn merge.
-  //
-  // The capability runs in two BE turns: turn-1 emits rephrase +
-  // decompose + an outline-preview result; turn-2 (after the user
-  // confirms the outline) emits the research blocks + the final
-  // report. The user wants both turns to live in ONE assistant
-  // bubble so the rephrase trace, the Q&A summary, the (collapsed)
-  // outline editor, and the research / reporting traces are all
-  // visually contiguous instead of split across two bubbles.
-  //
-  // For each parent (outline-preview) msg with a followup
-  // deep_research msg, we synthesise a merged msg with:
-  //
-  // * events  — parent.events ++ followup.events (preserving order
-  //   so TraceFlow's call_id grouping keeps working).
-  // * content — followup.content (the report). The parent's
-  //   rephrase preface is already represented inside the trace card,
-  //   so concatenating again would duplicate it above the report.
-  //
-  // The followup is dropped from the visible row list so only the
-  // merged bubble renders.
-  const deepResearchMergeMap = useMemo(() => {
-    const map = new Map<number, { mergedEvents: StreamEvent[]; mergedContent: string }>()
-    const followupIndices = new Set<number>()
-    for (let i = 0; i < visibleMessages.length; i++) {
-      const msg = visibleMessages[i]
-      if (msg.role !== 'assistant' || msg.capability !== 'deep_research') continue
-      const resultEv = msg.events?.find(e => e.type === 'result')
-      const meta = resultEv?.metadata as Record<string, unknown> | undefined
-      if (!meta?.outline_preview) continue
-      const nextResearchAssistantIdx = visibleMessages
-        .slice(i + 1)
-        .findIndex(m => m.role === 'assistant' && m.capability === 'deep_research')
-      if (nextResearchAssistantIdx === -1) continue
-      const absoluteFollowupIdx = i + 1 + nextResearchAssistantIdx
-      const followup = visibleMessages[absoluteFollowupIdx]
-      if (!isConfirmedResearchFollowup(followup.events)) continue
-      const mergedEvents = [...(msg.events ?? []), ...(followup.events ?? [])]
-      const mergedContent = authoritativeResearchReport(
-        followup.events,
-        followup.content || msg.content
-      )
-      map.set(i, { mergedEvents, mergedContent })
-      followupIndices.add(absoluteFollowupIdx)
-    }
-    return { mergedByParent: map, followupIndices }
-  }, [visibleMessages])
-
-  const outlineStatusByIndex = useMemo(() => {
-    const map = new Map<number, 'editing' | 'researching' | 'done' | 'failed'>()
-    for (let i = 0; i < visibleMessages.length; i++) {
-      const msg = visibleMessages[i]
-      if (msg.role !== 'assistant' || msg.capability !== 'deep_research') continue
-      const resultEv = msg.events?.find(e => e.type === 'result')
-      const meta = resultEv?.metadata as Record<string, unknown> | undefined
-      if (!meta?.outline_preview) continue
-      const followup = visibleMessages
-        .slice(i + 1)
-        .find(m => m.role === 'assistant' && m.capability === 'deep_research')
-      if (followup && isConfirmedResearchFollowup(followup.events)) {
-        map.set(i, researchFollowupStatus(followup.events))
-      } else {
-        // The first deep_research turn only plans/rephrases/decomposes and
-        // returns an outline preview. While that turn is still flushing
-        // post-result events, the outline must already be editable; only the
-        // hidden follow-up turn created by "Start Research" means research is
-        // actually underway.
-        map.set(i, 'editing')
-      }
-    }
-    return map
-  }, [visibleMessages])
-
   const messageRows = useMemo(() => {
     // System messages are backend grounding (e.g. quiz follow-up context) and
     // must never be rendered as a chat bubble. Filter them out defensively in
     // addition to the hydration-time filter in UnifiedChatContext.
     return visibleMessages
       .map((msg, index) => ({ msg, originalIndex: index }))
-      .filter(({ msg, originalIndex }) => {
-        if (msg.role === 'system') return false
-        // Drop deep_research followup msgs — their events were merged
-        // into the parent (outline-preview) bubble.
-        if (deepResearchMergeMap.followupIndices.has(originalIndex)) return false
-        return true
-      })
+      .filter(({ msg }) => msg.role !== 'system')
       .map(({ msg, originalIndex }) => {
-        // Splice in the merged event stream when this row owns a
-        // deep_research two-turn pair.
-        const merged = deepResearchMergeMap.mergedByParent.get(originalIndex)
-        const effectiveMsg: ChatMessageItem = merged
-          ? {
-              ...msg,
-              events: merged.mergedEvents,
-              content: merged.mergedContent,
-            }
-          : msg
-        if (effectiveMsg.role === 'user') {
+        if (msg.role === 'user') {
           return {
-            msg: effectiveMsg,
+            msg,
             originalIndex,
             pairedUserMessage: null as ChatMessageItem | null,
           }
@@ -1358,9 +949,9 @@ export const ChatMessageList = memo(function ChatMessageList({
           [...visibleMessages.slice(0, originalIndex)]
             .reverse()
             .find(previous => previous.role === 'user') ?? null
-        return { msg: effectiveMsg, originalIndex, pairedUserMessage }
+        return { msg, originalIndex, pairedUserMessage }
       })
-  }, [visibleMessages, deepResearchMergeMap])
+  }, [visibleMessages])
 
   const lastRenderedAssistantIndex = useMemo(() => {
     for (let idx = messageRows.length - 1; idx >= 0; idx -= 1) {
@@ -1466,16 +1057,7 @@ export const ChatMessageList = memo(function ChatMessageList({
               events={msg.events}
               onOpen={onPreviewAttachment}
             >
-              <AssistantMessage
-                msg={msg}
-                isStreaming={isActiveAssistant}
-                outlineStatus={outlineStatusByIndex.get(i)}
-                sessionId={sessionId}
-                language={language}
-                onConfirmOutline={onConfirmOutline}
-                onSubmitUserReply={onSubmitUserReply}
-                researchRequestSnapshot={pairedUserMessage?.requestSnapshot ?? null}
-              />
+              <AssistantMessage msg={msg} isStreaming={isActiveAssistant} onSubmitUserReply={onSubmitUserReply} />
             </InlineFileCardProvider>
             <GeneratedFileCards
               attachments={msg.attachments ?? []}

@@ -41,12 +41,12 @@ async def build_tool_options(
     policy: callers that need a restricted view pass it explicitly, while the
     multi-user grant editor keeps seeing the complete assignable catalog.
     """
-    from deepmentor.agents._shared.tool_composition import (
-        default_optional_tools,
-    )
     from deepmentor.runtime.registry.deferred_tools import provider_identity
     from deepmentor.runtime.registry.tool_registry import get_tool_registry
-    from deepmentor.tools.builtin import CONFIGURABLE_BUILTIN_TOOL_NAMES
+    from deepmentor.tools.builtin import (
+        CONFIGURABLE_BUILTIN_TOOL_NAMES,
+        default_optional_tools,
+    )
 
     exclude = exclude_builtin or set()
 

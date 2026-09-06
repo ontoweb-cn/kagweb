@@ -104,10 +104,7 @@ class CodeBuddyAuthService:
         # web endpoint would sign the operator out of their editor too — and on
         # a shared host, out of whoever else is on that login. Drop our cached
         # clients and report where the session actually lives.
-        from deepmentor.runtime.agentic.client import reset_agentic_client_pool
         from deepmentor.services.codebuddy_credentials import load_credentials
-
-        reset_agentic_client_pool()
         async with self._lock:
             if load_credentials() is not None:
                 self._connection = "connected"

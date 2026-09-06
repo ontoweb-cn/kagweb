@@ -1,42 +1,17 @@
 "use client";
 
 import { Fragment, memo, useEffect, useRef, useState } from "react";
-import {
-  BookMarked,
-  BookOpen,
-  Bot,
-  ChevronRight,
-  Database,
-  Paperclip,
-  UserRound,
-} from "lucide-react";
+import { ChevronRight, Database, History, Paperclip, UserRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { SPACE_ITEMS } from "@/lib/space-items";
 import { setPickerOrigin } from "@/lib/picker-origin";
 
-type SelectableSpaceKey =
-  | "attach"
-  | "knowledge"
-  | "chat_history"
-  | "my_agents"
-  | "books"
-  | "reading"
-  | "notebooks"
-  | "question_bank"
-  | "persona"
-  | "memory";
+type SelectableSpaceKey = "attach" | "knowledge" | "chat_history" | "persona";
 
 export interface ChatSpaceSelectionCounts {
   attachments: number;
   knowledge: number;
   chatHistory: number;
-  myAgents: number;
-  books: number;
-  reading: number;
-  notebooks: number;
-  questionBank: number;
   persona: number;
-  memory: number;
 }
 
 interface ChatSpaceMenuProps {
@@ -47,14 +22,9 @@ interface ChatSpaceMenuProps {
   /**
    * Hide the Persona entry. The main chat sets this to false — its
    * persona lives in the standalone toolbar selector (and `/persona`),
-   * not in this menu. The quiz follow-up keeps the entry: this menu is
-   * its only persona entry point.
+   * not in this menu.
    */
   personaAvailable?: boolean;
-  /** Hide the My Agents entry (e.g. the quiz follow-up surface). */
-  agentsAvailable?: boolean;
-  /** Show imported Reading materials on surfaces that wire its picker. */
-  readingAvailable?: boolean;
   onSelectItem: (key: SelectableSpaceKey) => void;
 }
 
@@ -62,13 +32,7 @@ const ITEM_ORDER: SelectableSpaceKey[] = [
   "attach",
   "knowledge",
   "chat_history",
-  "my_agents",
-  "books",
-  "reading",
-  "notebooks",
-  "question_bank",
   "persona",
-  "memory",
 ];
 
 function countFor(
@@ -82,20 +46,8 @@ function countFor(
       return counts.knowledge;
     case "chat_history":
       return counts.chatHistory;
-    case "my_agents":
-      return counts.myAgents;
-    case "books":
-      return counts.books;
-    case "reading":
-      return counts.reading;
-    case "notebooks":
-      return counts.notebooks;
-    case "question_bank":
-      return counts.questionBank;
     case "persona":
       return counts.persona;
-    case "memory":
-      return counts.memory;
     default:
       return 0;
   }
@@ -106,8 +58,6 @@ export default memo(function ChatSpaceMenu({
   selectedCounts,
   knowledgeAvailable = true,
   personaAvailable = true,
-  agentsAvailable = true,
-  readingAvailable = false,
   onSelectItem,
 }: ChatSpaceMenuProps) {
   const { t } = useTranslation();
@@ -115,68 +65,45 @@ export default memo(function ChatSpaceMenu({
   const isMention = variant === "mention";
 
   // Render the items in a fixed, hand-tuned order so the menu always reads
-  // the same regardless of how SPACE_ITEMS may be reordered for navigation.
+  // the same regardless of how it may be reordered.
   const items = ITEM_ORDER.filter((key) => {
     if (key === "knowledge") return knowledgeAvailable;
     if (key === "persona") return personaAvailable;
-    if (key === "my_agents") return agentsAvailable;
-    if (key === "reading") return readingAvailable;
     return true;
-  })
-    .map((key) => {
-      // The first two entries are composer-only concepts (not Space pages),
-      // so they are defined here rather than in SPACE_ITEMS.
-      if (key === "attach") {
-        return {
-          key,
-          label: "Attach files",
-          description: "Upload images, Office docs, code & text.",
-          icon: Paperclip,
-        };
-      }
-      if (key === "knowledge") {
-        return {
-          key,
-          label: "Knowledge",
-          description: "Search the selected knowledge bases.",
-          icon: Database,
-        };
-      }
-      if (key === "my_agents") {
-        return {
-          key,
-          label: "My Agents",
-          description: "Reference imported Claude Code / Codex conversations.",
-          icon: Bot,
-        };
-      }
-      if (key === "books") {
-        return {
-          key,
-          label: "Books",
-          description: "Reference generated book chapters in chat.",
-          icon: BookOpen,
-        };
-      }
-      if (key === "reading") {
-        return {
-          key,
-          label: "Reading",
-          description: "Reference imported reading sections in chat.",
-          icon: BookMarked,
-        };
-      }
-      if (key === "persona") {
-        return {
-          key,
-          label: "Persona",
-          description: "Apply a behavior persona for this turn.",
-          icon: UserRound,
-        };
-      }
-      return SPACE_ITEMS.find((it) => it.key === key)!;
-    })
-    .filter(Boolean);
+  }).map((key) => {
+    // Composer-only concepts (not Space pages) are defined here rather
+    // than in any shared nav registry.
+    if (key === "attach") {
+      return {
+        key,
+        label: "Attach files",
+        description: "Upload images, Office docs, code & text.",
+        icon: Paperclip,
+      };
+    }
+    if (key === "knowledge") {
+      return {
+        key,
+        label: "Knowledge",
+        description: "Search the selected knowledge bases.",
+        icon: Database,
+      };
+    }
+    if (key === "persona") {
+      return {
+        key,
+        label: "Persona",
+        description: "Apply a behavior persona for this turn.",
+        icon: UserRound,
+      };
+    }
+    return {
+      key,
+      label: "Chat History",
+      description: "Reference previous conversations in chat.",
+      icon: History,
+    };
+  });
 
   // Active row index for keyboard navigation. Only meaningful in the
   // mention variant — the toolbar variant is mouse/click driven.
@@ -197,11 +124,6 @@ export default memo(function ChatSpaceMenu({
   useEffect(() => {
     onSelectItemRef.current = onSelectItem;
   }, [onSelectItem]);
-
-  // Reset to the top whenever the menu first mounts (i.e. user typed `@`
-  // and the popup appeared). The parent unmounts/remounts this component
-  // on each open, so a fresh `useState(0)` initial value already gives us
-  // the right behavior — no extra effect needed.
 
   // Attach a document-level keydown so Arrow/Enter while the textarea
   // still has focus drive the menu. The textarea's own handleKeyDown

@@ -6,24 +6,21 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Bot, Check, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import ChatSpaceMenu, {
   type ChatSpaceSelectionCounts,
 } from "@/components/chat/space/ChatSpaceMenu";
-import { agentGlyph } from "@/components/agents/agent-icons";
 import { shouldSubmitOnEnter } from "@/lib/composer-keyboard";
 import { useAutoSizedTextarea } from "@/lib/use-auto-sized-textarea";
 import { useImeComposing } from "@/lib/use-ime-composing";
 
 interface ComposerInputProps {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
-  isVisualizeMode: boolean;
   isStreaming?: boolean;
   // When true, parent has attachments/references queued and will accept a
   // send even if the text body is empty. Without this, Enter would silently
@@ -41,47 +38,30 @@ interface ComposerInputProps {
   knowledgeAvailable: boolean;
   /** Hide the Persona entry (main chat: persona has its own selector). */
   personaAvailable: boolean;
-  /**
-   * Connected subagents selectable via the ``@`` mention. When provided, ``@``
-   * opens an agent picker (the main-chat behavior) instead of the Space menu;
-   * surfaces that omit this (e.g. the quiz follow-up) keep the Space menu on @.
-   */
-  connectedAgents?: { name: string; kind?: string }[];
-  selectedAgent?: string | null;
-  onSelectAgent?: (name: string | null) => void;
   onSelectAttach: () => void;
   onSelectKnowledge?: () => void;
-  onSelectNotebookPicker: () => void;
-  onSelectBookPicker: () => void;
-  onSelectReadingPicker?: () => void;
   onSelectHistoryPicker: () => void;
-  onSelectAgentsPicker?: () => void;
-  /** Hide the My Agents entry (e.g. the quiz follow-up surface). */
-  agentsAvailable?: boolean;
-  onSelectQuestionBankPicker: () => void;
   onSelectPersonaPicker: () => void;
-  onSelectMemoryPicker: () => void;
   /**
    * Wires the `/persona` slash command. Typing "/" (then any prefix of
    * "persona") at the start of an empty composer pops a command hint;
    * selecting it clears the input and invokes this callback to open the
    * session persona selector. Omitted on surfaces without session
-   * personas (e.g. the quiz follow-up), which disables the slash popup.
+   * personas, which disables the slash popup.
    */
   onOpenPersonaSelector?: () => void;
   /**
-   * Override the default placeholder. When unset, falls back to the
-   * main chat ("How can I help you today?") / visualize defaults.
+   * Override the default placeholder.
    */
   placeholder?: string;
   /**
    * A line Tab accepts into the empty composer.
    *
-   * The mastery study screen offers a question the learner could ask; reading
-   * it and then retyping it is exactly the work the offer was meant to save,
-   * so Tab takes it. Only while the composer is empty — past the first
-   * character the learner is writing their own question, and stealing Tab
-   * there would break moving focus out of the box.
+   * Reading an offered question and then retyping it is exactly the work
+   * the offer was meant to save, so Tab takes it. Only while the composer
+   * is empty — past the first character the user is writing their own
+   * question, and stealing Tab there would break moving focus out of the
+   * box.
    */
   placeholderCompletion?: string;
   /**
@@ -113,12 +93,6 @@ export function stripTrailingAtMention(value: string): string {
   return value.replace(/(^|\s)@[^\s]*$/, "$1").replace(/\s+$/, "");
 }
 
-/** The text typed after a trailing ``@`` (the agent-mention query), or "". */
-export function atMentionQuery(value: string, cursorPos: number): string {
-  const match = /(^|\s)@([^\s]*)$/.exec(value.slice(0, cursorPos));
-  return match ? match[2] : "";
-}
-
 /**
  * `/persona` slash-command detection (Codex-style: command position is the
  * very start of the input, not mid-text like @ mentions). Active while the
@@ -139,7 +113,6 @@ export const ComposerInput = memo(
   forwardRef<ComposerInputHandle, ComposerInputProps>(function ComposerInput(
     {
       textareaRef,
-      isVisualizeMode,
       isStreaming = false,
       canSendEmpty,
       onSend,
@@ -148,20 +121,10 @@ export const ComposerInput = memo(
       selectedCounts,
       knowledgeAvailable,
       personaAvailable,
-      connectedAgents = [],
-      selectedAgent = null,
-      onSelectAgent,
       onSelectAttach,
       onSelectKnowledge,
-      onSelectNotebookPicker,
-      onSelectBookPicker,
-      onSelectReadingPicker,
       onSelectHistoryPicker,
-      onSelectAgentsPicker,
-      agentsAvailable = true,
-      onSelectQuestionBankPicker,
       onSelectPersonaPicker,
-      onSelectMemoryPicker,
       onOpenPersonaSelector,
       placeholder,
       placeholderCompletion,
@@ -173,20 +136,7 @@ export const ComposerInput = memo(
     const [input, setInput] = useState("");
     const [showAtPopup, setShowAtPopup] = useState(false);
     const [showSlashPopup, setShowSlashPopup] = useState(false);
-    const [atQuery, setAtQuery] = useState("");
     const slashEnabled = Boolean(onOpenPersonaSelector);
-    // Main chat passes ``onSelectAgent`` → ``@`` picks a connected agent. Other
-    // surfaces (quiz follow-up) omit it and keep the @ Space menu.
-    const agentMentionMode = Boolean(onSelectAgent);
-    const filteredAgents = useMemo(
-      () =>
-        agentMentionMode
-          ? connectedAgents.filter((agent) =>
-              agent.name.toLowerCase().includes(atQuery.toLowerCase()),
-            )
-          : [],
-      [agentMentionMode, atQuery, connectedAgents],
-    );
 
     // Latest text mirrored into a ref by the change handlers (never updated
     // during render). The @space handlers and the imperative handle read
@@ -236,9 +186,7 @@ export const ComposerInput = memo(
         const cursorPos = e.target.selectionStart ?? value.length;
         setInputBoth(value);
         onInputChange(value);
-        const atOpen = shouldOpenAtPopup(value, cursorPos);
-        setShowAtPopup(atOpen);
-        setAtQuery(atOpen ? atMentionQuery(value, cursorPos) : "");
+        setShowAtPopup(shouldOpenAtPopup(value, cursorPos));
         setShowSlashPopup(
           slashEnabled && shouldOpenSlashPopup(value, cursorPos),
         );
@@ -250,9 +198,7 @@ export const ComposerInput = memo(
       (e: React.MouseEvent<HTMLTextAreaElement>) => {
         const target = e.currentTarget;
         const cursorPos = target.selectionStart ?? target.value.length;
-        const atOpen = shouldOpenAtPopup(target.value, cursorPos);
-        setShowAtPopup(atOpen);
-        setAtQuery(atOpen ? atMentionQuery(target.value, cursorPos) : "");
+        setShowAtPopup(shouldOpenAtPopup(target.value, cursorPos));
         setShowSlashPopup(
           slashEnabled && shouldOpenSlashPopup(target.value, cursorPos),
         );
@@ -287,16 +233,6 @@ export const ComposerInput = memo(
       onInputChange(next);
     }, [setInputBoth, onInputChange]);
 
-    const handleSelectAgentMention = useCallback(
-      (name: string) => {
-        clearTrailingMention();
-        setShowAtPopup(false);
-        setAtQuery("");
-        onSelectAgent?.(name);
-      },
-      [clearTrailingMention, onSelectAgent],
-    );
-
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         // With the slash popup open, Enter/Tab confirm the command instead
@@ -308,18 +244,6 @@ export const ComposerInput = memo(
         ) {
           e.preventDefault();
           handleSelectSlashPersona();
-          return;
-        }
-        // With the agent-mention popup open, Enter/Tab confirm the first match.
-        if (
-          showAtPopup &&
-          agentMentionMode &&
-          filteredAgents.length > 0 &&
-          !isComposingRef.current &&
-          (e.key === "Enter" || e.key === "Tab")
-        ) {
-          e.preventDefault();
-          handleSelectAgentMention(filteredAgents[0].name);
           return;
         }
         // Tab takes the offered question — but only into an empty composer, so
@@ -348,10 +272,6 @@ export const ComposerInput = memo(
         isStreaming,
         showSlashPopup,
         handleSelectSlashPersona,
-        showAtPopup,
-        agentMentionMode,
-        filteredAgents,
-        handleSelectAgentMention,
         isComposingRef,
         onInputChange,
         placeholderCompletion,
@@ -360,44 +280,20 @@ export const ComposerInput = memo(
     );
 
     const handleSelectSpaceItem = useCallback(
-      (
-        key:
-          | "attach"
-          | "knowledge"
-          | "chat_history"
-          | "my_agents"
-          | "books"
-          | "reading"
-          | "notebooks"
-          | "question_bank"
-          | "persona"
-          | "memory",
-      ) => {
+      (key: "attach" | "knowledge" | "chat_history" | "persona") => {
         clearTrailingMention();
         setShowAtPopup(false);
         if (key === "attach") onSelectAttach();
         else if (key === "knowledge") onSelectKnowledge?.();
         else if (key === "chat_history") onSelectHistoryPicker();
-        else if (key === "my_agents") onSelectAgentsPicker?.();
-        else if (key === "books") onSelectBookPicker();
-        else if (key === "reading") onSelectReadingPicker?.();
-        else if (key === "notebooks") onSelectNotebookPicker();
-        else if (key === "question_bank") onSelectQuestionBankPicker();
         else if (key === "persona") onSelectPersonaPicker();
-        else if (key === "memory") onSelectMemoryPicker();
       },
       [
         clearTrailingMention,
         onSelectAttach,
         onSelectKnowledge,
         onSelectHistoryPicker,
-        onSelectAgentsPicker,
-        onSelectBookPicker,
-        onSelectReadingPicker,
-        onSelectNotebookPicker,
-        onSelectQuestionBankPicker,
         onSelectPersonaPicker,
-        onSelectMemoryPicker,
       ],
     );
 
@@ -423,13 +319,7 @@ export const ComposerInput = memo(
       return () => document.removeEventListener("mousedown", handler);
     }, [showAtPopup, showSlashPopup, textareaRef]);
 
-    const basePlaceholder =
-      placeholder ??
-      (isVisualizeMode
-        ? t(
-            "Describe the chart, diagram, or animation you want to visualize...",
-          )
-        : t("How can I help you today?"));
+    const basePlaceholder = placeholder ?? t("How can I help you today?");
     // The Tab hint used to be a separate pill under the textarea — its own
     // block that appeared and disappeared as the offer came and went,
     // nudging the composer's height around it. Rendered as an overlay over
@@ -443,63 +333,7 @@ export const ComposerInput = memo(
 
     return (
       <div className="px-4 pt-3.5 pb-2">
-        {showAtPopup && agentMentionMode && (
-          <div
-            ref={popupRef}
-            className="absolute bottom-full left-0 z-[70] mb-2"
-          >
-            <div
-              role="listbox"
-              aria-label={t("Talk to an agent")}
-              className="w-[300px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--popover)] py-1 shadow-lg backdrop-blur-md"
-            >
-              <div className="px-3 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-[0.05em] text-[var(--muted-foreground)]">
-                {t("Talk to an agent")}
-              </div>
-              {filteredAgents.length === 0 ? (
-                <div className="px-3 py-2 text-[12px] text-[var(--muted-foreground)]">
-                  {connectedAgents.length === 0
-                    ? t("No connected agents — connect one in My Agents.")
-                    : t("No matching agent")}
-                </div>
-              ) : (
-                <div className="max-h-[260px] overflow-y-auto">
-                  {filteredAgents.map((agent) => {
-                    const Glyph = agentGlyph(agent.kind) ?? Bot;
-                    const active = selectedAgent === agent.name;
-                    return (
-                      <button
-                        key={agent.name}
-                        type="button"
-                        role="option"
-                        aria-selected={active}
-                        onClick={() => handleSelectAgentMention(agent.name)}
-                        className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left transition-colors active:bg-[var(--muted)]/70 ${
-                          active
-                            ? "bg-[var(--primary)]/[0.06]"
-                            : "hover:bg-[var(--muted)]/45"
-                        }`}
-                      >
-                        <Glyph size={15} className="shrink-0" />
-                        <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-[var(--foreground)]">
-                          {agent.name}
-                        </span>
-                        {active && (
-                          <Check
-                            size={14}
-                            strokeWidth={2}
-                            className="shrink-0 text-[var(--primary)]"
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        {showAtPopup && !agentMentionMode && (
+        {showAtPopup && (
           <div
             ref={popupRef}
             className="absolute bottom-full left-0 z-[70] mb-2"
@@ -509,8 +343,6 @@ export const ComposerInput = memo(
               selectedCounts={selectedCounts}
               knowledgeAvailable={knowledgeAvailable}
               personaAvailable={personaAvailable}
-              agentsAvailable={agentsAvailable}
-              readingAvailable={Boolean(onSelectReadingPicker)}
               onSelectItem={handleSelectSpaceItem}
             />
           </div>

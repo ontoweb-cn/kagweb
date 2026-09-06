@@ -31,16 +31,13 @@ import {
   Activity,
   AlertCircle,
   ArrowRight,
-  Compass,
   Download,
   ExternalLink,
   FileText,
   FileUp,
   Globe,
-  GraduationCap,
   LocateFixed,
   Loader2,
-  MessageSquarePlus,
   NotebookPen,
   Network,
   Paperclip,
@@ -62,20 +59,10 @@ import {
   type SessionSourceEntry,
   type ToolOutputTraceTarget,
 } from '@/lib/session-activity'
-import QuizFollowupTabBody from '@/components/quiz/QuizFollowupTabBody'
-import SubagentTabBody from '@/components/chat/home/SubagentTabBody'
-import type { QuizFollowupTabContext } from '@/context/QuizFollowupContext'
-import type { GeogebraTabPayload } from '@/context/GeogebraTabContext'
 import { apiUrl } from '@/lib/api'
 import type { MessageAttachment } from '@/features/chat/ChatStateAdapter'
 import { listKnowledgeBaseFiles, type KnowledgeBaseFile } from '@/features/knowledge/api/files'
 import { knowledgeBaseFileRoute } from '@/lib/resource-routes'
-import type { StreamEvent } from '@/features/chat/model/protocol'
-import {
-  normalizeSelectedText,
-  selectionTutorKey,
-  type SelectionTutorContext,
-} from '@/lib/selection-tutor'
 
 const PdfPreview = dynamic(() => import('@/components/chat/preview/previewers/PdfPreview'))
 const ImagePreview = dynamic(() => import('@/components/chat/preview/previewers/ImagePreview'))
@@ -96,9 +83,6 @@ const ChatMarkdownNoteTabBody = dynamic(
   () => import('@/components/chat/home/ChatMarkdownNoteTab'),
   { ssr: false }
 )
-const Geogebra = dynamic(() => import('@/components/Geogebra'), {
-  ssr: false,
-})
 
 const ANIM_MS = 220
 
@@ -137,45 +121,12 @@ type ViewerTab =
   | { kind: 'file'; id: string; label: string; source: FilePreviewSource }
   | { kind: 'web'; id: string; label: string; url: string }
   | { kind: 'markdown-note'; id: string; label: string }
-  | {
-      kind: 'quiz-followup'
-      id: string
-      label: string
-      context: QuizFollowupTabContext
-    }
-  | {
-      kind: 'selection-tutor'
-      id: string
-      label: string
-      context: QuizFollowupTabContext
-    }
-  | {
-      kind: 'geogebra'
-      id: string
-      label: string
-      script: string
-    }
-  | {
-      kind: 'subagent'
-      id: string
-      label: string
-      callId: string
-      events: StreamEvent[]
-    }
 
 export interface SessionViewerPanelHandle {
   openFileTab(a: MessageAttachment): void
   openWebTab(url: string): void
   /** Opens the session-scoped inline Markdown editor tab. */
   openMarkdownNoteTab(): void
-  /** Opens (or focuses) the follow-up chat tab for a quiz question. */
-  openQuizFollowupTab(context: QuizFollowupTabContext): void
-  /** Opens an independent Little Tutor thread grounded in selected chat text. */
-  openSelectionTutorTab(selection: SelectionTutorContext, language: string): void
-  /** Opens (or focuses) an interactive GeoGebra applet tab. */
-  openGeogebraTab(payload: GeogebraTabPayload): void
-  /** Opens (first time) or live-updates a connected subagent's run tab. */
-  openSubagentTab(callId: string, label: string, events: StreamEvent[]): void
   /** Opens the panel and switches to the Activity home (where the
    *  capability-config card lives). */
   focusActivityHome(): void;
@@ -190,8 +141,6 @@ interface SessionViewerPanelProps {
   onAutoOpen: () => void
   /** Aggregated session activity, shown on the Activity home view. */
   activity: SessionActivity
-  /** Optional capability-config card appended below the activity sections. */
-  configSection?: ReactNode;
   sessionDag?: ReactNode;
   sessionDagActive?: boolean;
   onSessionDagActiveChange?: (active: boolean) => void;
@@ -208,22 +157,6 @@ function webTabIdFor(url: string): string {
 }
 
 const markdownNoteTabId = 'markdown-note'
-
-function quizFollowupTabIdFor(questionKey: string): string {
-  return `quiz-followup:${questionKey}`
-}
-
-function selectionTutorTabIdFor(questionKey: string): string {
-  return `selection-tutor:${questionKey}`
-}
-
-function geogebraTabIdFor(payloadId: string): string {
-  return `geogebra:${payloadId}`
-}
-
-function subagentTabIdFor(callId: string): string {
-  return `subagent:${callId}`
-}
 
 function hostnameFor(url: string): string {
   try {
@@ -256,7 +189,6 @@ function SessionViewerPanelInner(
     onClose,
     onAutoOpen,
     activity,
-    configSection,
     sessionDag,
     sessionDagActive,
     onSessionDagActiveChange,
@@ -389,155 +321,6 @@ function SessionViewerPanelInner(
     onAutoOpen()
   }, [onAutoOpen, t])
 
-  const openQuizFollowupTab = useCallback(
-    (context: QuizFollowupTabContext) => {
-      setTabs(prev => {
-        const id = quizFollowupTabIdFor(context.questionKey)
-        const existingIdx = prev.findIndex(tab => tab.id === id)
-        // When the tab already exists, refresh its pinned context (answer
-        // text, judgment, etc.) since the learner may have updated it
-        // since the tab was first opened.
-        if (existingIdx >= 0) {
-          const refreshed: ViewerTab = {
-            kind: 'quiz-followup',
-            id,
-            label: context.tabLabel,
-            context,
-          }
-          const next = [...prev]
-          next[existingIdx] = refreshed
-          setActiveTabId(id)
-          return next
-        }
-        const next: ViewerTab = {
-          kind: 'quiz-followup',
-          id,
-          label: context.tabLabel,
-          context,
-        }
-        setActiveTabId(id)
-        return [...prev, next]
-      })
-      onAutoOpen()
-    },
-    [onAutoOpen]
-  )
-
-  const openSelectionTutorTab = useCallback(
-    (selection: SelectionTutorContext, language: string) => {
-      const selectedText = normalizeSelectedText(selection.selectedText)
-      if (!selectedText) return
-      const questionKey = selectionTutorKey(selectedText, sessionId, selection.sourceMessageId)
-      const id = selectionTutorTabIdFor(questionKey)
-      const context: QuizFollowupTabContext = {
-        questionKey,
-        question: {
-          question_id: questionKey,
-          question: selectedText,
-          question_type: 'concept',
-          correct_answer: '',
-          explanation: '',
-        },
-        userAnswer: '',
-        isCorrect: null,
-        answerImages: [],
-        aiJudgment: '',
-        parentQuizSessionId: null,
-        notebookEntryId: null,
-        followupSessionId: null,
-        language,
-        tabLabel: t('Little Tutor'),
-        tutorSelection: {
-          selectedText,
-          parentSessionId: sessionId,
-          sourceMessageId: selection.sourceMessageId,
-          sourceMessageText: selection.sourceMessageText,
-          sourceMessageRole: selection.sourceMessageRole,
-        },
-      }
-
-      setTabs(prev => {
-        const existingIdx = prev.findIndex(tab => tab.id === id)
-        const tab: ViewerTab = {
-          kind: 'selection-tutor',
-          id,
-          label: t('Little Tutor'),
-          context,
-        }
-        if (existingIdx >= 0) {
-          const next = [...prev]
-          next[existingIdx] = tab
-          setActiveTabId(id)
-          return next
-        }
-        setActiveTabId(id)
-        return [...prev, tab]
-      })
-      onAutoOpen()
-    },
-    [onAutoOpen, sessionId, t]
-  )
-
-  const openGeogebraTab = useCallback(
-    (payload: GeogebraTabPayload) => {
-      setTabs(prev => {
-        const id = geogebraTabIdFor(payload.id)
-        const existingIdx = prev.findIndex(tab => tab.id === id)
-        if (existingIdx >= 0) {
-          // Refresh the script in case the assistant produced an updated
-          // version under the same payload id (e.g. a refined figure).
-          const refreshed: ViewerTab = {
-            kind: 'geogebra',
-            id,
-            label: payload.title || 'GeoGebra',
-            script: payload.script,
-          }
-          const next = [...prev]
-          next[existingIdx] = refreshed
-          setActiveTabId(id)
-          return next
-        }
-        const next: ViewerTab = {
-          kind: 'geogebra',
-          id,
-          label: payload.title || 'GeoGebra',
-          script: payload.script,
-        }
-        setActiveTabId(id)
-        return [...prev, next]
-      })
-      onAutoOpen()
-    },
-    [onAutoOpen]
-  )
-
-  // A connected subagent's run streams into its own tab. The first call (when
-  // the consult starts) reveals + focuses the tab; later calls only refresh its
-  // events, so live streaming never yanks the user off whatever they're viewing.
-  const subagentSeenRef = useRef<Set<string>>(new Set())
-  const openSubagentTab = useCallback(
-    (callId: string, label: string, events: StreamEvent[]) => {
-      const id = subagentTabIdFor(callId)
-      const isNew = !subagentSeenRef.current.has(callId)
-      subagentSeenRef.current.add(callId)
-      setTabs(prev => {
-        const existingIdx = prev.findIndex(tab => tab.id === id)
-        const tab: ViewerTab = { kind: 'subagent', id, label, callId, events }
-        if (existingIdx >= 0) {
-          const next = [...prev]
-          next[existingIdx] = tab
-          return next
-        }
-        return [...prev, tab]
-      })
-      if (isNew) {
-        setActiveTabId(id)
-        onAutoOpen()
-      }
-    },
-    [onAutoOpen]
-  )
-
   // Open the panel and return to the Activity home (where the
   // capability-config card surfaces). Used by the send-gate.
   const focusActivityHome = useCallback(() => {
@@ -558,10 +341,6 @@ function SessionViewerPanelInner(
       openFileTab,
       openWebTab,
       openMarkdownNoteTab,
-      openQuizFollowupTab,
-      openSelectionTutorTab,
-      openGeogebraTab,
-      openSubagentTab,
       focusActivityHome,
       focusSessionDag,
     }),
@@ -569,10 +348,6 @@ function SessionViewerPanelInner(
       openFileTab,
       openWebTab,
       openMarkdownNoteTab,
-      openQuizFollowupTab,
-      openSelectionTutorTab,
-      openGeogebraTab,
-      openSubagentTab,
       focusActivityHome,
       focusSessionDag,
     ],
@@ -691,25 +466,12 @@ function SessionViewerPanelInner(
             key={`${activeTab.id}:${sessionId ?? 'pending'}`}
             sessionId={sessionId}
           />
-        ) : activeTab?.kind === 'quiz-followup' ? (
-          <QuizFollowupTabBody key={activeTab.context.questionKey} context={activeTab.context} />
-        ) : activeTab?.kind === 'selection-tutor' ? (
-          <QuizFollowupTabBody key={activeTab.context.questionKey} context={activeTab.context} />
-        ) : activeTab?.kind === 'geogebra' ? (
-          <GeogebraTabBody key={activeTab.id} script={activeTab.script} />
-        ) : activeTab?.kind === "subagent" ? (
-          <SubagentTabBody
-            key={activeTab.id}
-            tabEvents={activeTab.events}
-            sessionId={sessionId}
-          />
         ) : sessionDagActive ? (
           sessionDag
         ) : (
           <ActivityHome
             activity={activity}
             open={visible}
-            configSection={configSection}
             onOpenAttachment={openFileTab}
             onOpenWebTab={openWebTab}
             onOpenLocalFile={openLocalFile}
@@ -796,13 +558,7 @@ function TabBar({
               ? Globe
               : tab.kind === 'markdown-note'
                 ? NotebookPen
-                : tab.kind === 'selection-tutor'
-                  ? GraduationCap
-                  : tab.kind === 'quiz-followup'
-                    ? MessageSquarePlus
-                    : tab.kind === 'geogebra'
-                      ? Compass
-                      : Paperclip
+                : Paperclip
           return (
             <div
               key={tab.id}
@@ -862,7 +618,6 @@ function TabBar({
 function ActivityHome({
   activity,
   open,
-  configSection,
   onOpenAttachment,
   onOpenWebTab,
   onOpenLocalFile,
@@ -870,7 +625,6 @@ function ActivityHome({
 }: {
   activity: SessionActivity
   open: boolean
-  configSection?: ReactNode
   onOpenAttachment: (a: MessageAttachment) => void
   onOpenWebTab: (url: string) => void
   onOpenLocalFile: (file: File) => void
@@ -882,7 +636,6 @@ function ActivityHome({
         activity={activity}
         open={open}
         onOpenAttachment={onOpenAttachment}
-        configSection={configSection}
         onTraceToolOutput={onTraceToolOutput}
       />
       <ActivityDock
@@ -1447,20 +1200,3 @@ function WebTabBody({ url }: { url: string }) {
   )
 }
 
-/* ------------------------------------------------------------------ */
-/*  Geogebra tab body                                                  */
-/* ------------------------------------------------------------------ */
-
-/**
- * Renders an interactive GeoGebra applet for a ggbscript payload. The
- * heavy lifting (deployggb.js load + applet mount + evalCommand loop)
- * lives in the shared ``Geogebra`` component; this body just gives it
- * the right size and chrome inside the tab.
- */
-function GeogebraTabBody({ script }: { script: string }) {
-  return (
-    <div className="h-full w-full overflow-auto bg-[var(--card)] p-3">
-      <Geogebra script={script} width={560} height={520} className="m-0 border-0 bg-transparent" />
-    </div>
-  )
-}

@@ -6,24 +6,16 @@ import { useTranslation } from "react-i18next";
 import { useCapabilityFilter } from "@/features/capabilities/useCapabilityCatalog";
 import {
   ArrowUpRight,
-  ClipboardList,
-  Ear,
   Github,
   History,
-  NotebookPen,
   Plug,
-  Terminal,
   UserRound,
-  Wand2,
   type LucideIcon,
 } from "lucide-react";
 
 import { SPACE_MCP_SURFACE, loadMcpSurface } from "@/components/mcp/surface";
-import { getCliApps } from "@/lib/cli-apps-api";
 import { listSessions } from "@/lib/session-api";
-import { listNotebooks, listNotebookEntries } from "@/lib/notebook-api";
 import { listPersonas } from "@/lib/personas-api";
-import { listSkills } from "@/lib/skills-api";
 
 /**
  * Learning Space dashboard — the hub of `/space`.
@@ -36,15 +28,7 @@ import { listSkills } from "@/lib/skills-api";
 
 type Lang = { zh: string; en: string };
 
-type DashKey =
-  | "chat_history"
-  | "notebooks"
-  | "question_bank"
-  | "personas"
-  | "skills"
-  | "mcp"
-  | "cli_apps"
-  | "whisper";
+type DashKey = "chat_history" | "personas" | "mcp";
 
 interface DashboardItem {
   key: DashKey;
@@ -98,32 +82,6 @@ const GROUPS: DashboardGroup[] = [
         tile: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
         load: async () => (await listSessions(200, 0, { force: true })).length,
       },
-      {
-        key: "notebooks",
-        href: "/notebooks",
-        icon: NotebookPen,
-        title: { zh: "笔记本", en: "Notebooks" },
-        blurb: {
-          zh: "整理来自对话、研究、智能写作等的产出。",
-          en: "Organize saved outputs from chat, research, Co-Writer, and more.",
-        },
-        unit: { zh: "个笔记本", en: "notebooks" },
-        tile: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-        load: async () => (await listNotebooks()).length,
-      },
-      {
-        key: "question_bank",
-        href: "/space/questions",
-        icon: ClipboardList,
-        title: { zh: "题库", en: "Question Bank" },
-        blurb: {
-          zh: "跨会话回顾和整理测验题目。",
-          en: "Review and organize quiz questions across sessions.",
-        },
-        unit: { zh: "道题", en: "questions" },
-        tile: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-        load: async () => (await listNotebookEntries({ limit: 1 })).total,
-      },
     ],
   },
   {
@@ -143,19 +101,6 @@ const GROUPS: DashboardGroup[] = [
         load: async () => (await listPersonas()).length,
       },
       {
-        key: "skills",
-        href: "/space/skills",
-        icon: Wand2,
-        title: { zh: "技能", en: "Skills" },
-        blurb: {
-          zh: "模型按需读取的能力手册。",
-          en: "Capability playbooks the model reads on demand.",
-        },
-        unit: { zh: "个技能", en: "skills" },
-        tile: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-        load: async () => (await listSkills()).length,
-      },
-      {
         key: "mcp",
         href: "/space/mcp",
         icon: Plug,
@@ -170,42 +115,6 @@ const GROUPS: DashboardGroup[] = [
         // but are not this reader's to count.
         load: async () =>
           Object.keys((await loadMcpSurface(SPACE_MCP_SURFACE)).servers).length,
-      },
-      {
-        key: "cli_apps",
-        href: "/space/cli-apps",
-        icon: Terminal,
-        title: { zh: "CLI 应用", en: "CLI Apps" },
-        blurb: {
-          zh: "来自 CLI-Anything 目录的命令行工具，启用后对话可直接调用。",
-          en: "Command-line tools from the CLI-Anything catalog, callable from chat.",
-        },
-        unit: { zh: "个应用", en: "apps" },
-        tile: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-        // What this reader can actually use, not what the deployment installed:
-        // an app they were not granted is visible on the page but is not theirs.
-        load: async () =>
-          (await getCliApps()).apps.filter((app) => app.granted && app.enabled)
-            .length,
-      },
-    ],
-  },
-  {
-    label: { zh: "更多项目", en: "More Projects" },
-    items: [
-      {
-        key: "whisper",
-        href: "/whisper",
-        icon: Ear,
-        title: { zh: "密语", en: "Whisper" },
-        blurb: {
-          zh: "双席位咨询练习房间：督导只对受训者耳语。",
-          en: "Dual-seat practice room — the supervisor whispers to the trainee only.",
-        },
-        tile: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
-        credit: "alanguan73",
-        // Served by the out-of-tree psych-academy plugin, not by this repo.
-        requiresCapability: "whisper_visitor",
       },
     ],
   },

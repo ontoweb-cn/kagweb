@@ -419,11 +419,7 @@ export default function NewPartnerPage() {
           )}
 
           {step === "library" && (
-            <AssetPicker
-              value={assets}
-              onChange={setAssets}
-              preselectAllSkills
-            />
+            <AssetPicker value={assets} onChange={setAssets} />
           )}
 
           {step === "review" && (

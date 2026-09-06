@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import shlex
 from typing import Any, Callable
 
-from deepmentor.agents._shared.tool_composition import default_optional_tools
+from deepmentor.tools.builtin import default_optional_tools
 from deepmentor.partners.bus.events import InboundMessage
 from deepmentor.services.partners.sessions import PartnerSessionStore
 

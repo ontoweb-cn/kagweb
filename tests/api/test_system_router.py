@@ -119,6 +119,10 @@ async def test_managed_update_refuses_live_conversation(
 
     monkeypatch.setattr(system_router, "get_runtime_settings_service", _UpdateSettings)
     monkeypatch.setattr(system_router, "launcher_available", lambda: True)
+    monkeypatch.setattr(system_router, "get_update_installation", _pypi_installation)
+    monkeypatch.setattr(
+        system_router, "get_version_check_service", lambda: _VersionService(_update_result())
+    )
     monkeypatch.setattr(system_router, "get_turn_activity", _Activity)
 
     with pytest.raises(Exception) as raised:

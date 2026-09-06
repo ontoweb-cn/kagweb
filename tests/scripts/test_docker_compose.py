@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 import importlib.util
 import json
 from pathlib import Path
@@ -165,6 +167,7 @@ def test_dockerfile_is_json_driven_without_bundle_sed() -> None:
     assert "export_runtime_settings_to_env" in content
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="uses POSIX sed pipeline")
 def test_supervisord_runs_as_root_with_unprivileged_children() -> None:
     """supervisord itself must run as root so it can open the container's
     stdout/stderr (``/dev/fd/1,2`` — root-owned pipes under a rootful daemon

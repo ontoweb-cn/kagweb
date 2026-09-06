@@ -509,31 +509,6 @@ class TurnLifecycle:
         async for item in self.subscribe_turn(active_turn["id"], after_seq=after_seq):
             yield item
 
-    async def _publish_mastery_path_change(
-        self,
-        execution: _TurnExecution,
-        *,
-        capability_name: str,
-        started_on: str,
-        ended_on: str,
-        mastery_mode: bool = False,
-    ) -> None:
-        """Announce a path the turn moved onto, so the client stops lying."""
-        if (
-            not (capability_name == "mastery_path" or mastery_mode)
-            or not ended_on
-            or ended_on == started_on
-        ):
-            return
-        await self._publish_live_event(
-            execution,
-            StreamEvent(
-                type=StreamEventType.SESSION_META,
-                source="turn_runtime",
-                metadata={"mastery_path_id": ended_on},
-            ),
-        )
-
     async def _publish_live_event(
         self,
         execution: _TurnExecution,

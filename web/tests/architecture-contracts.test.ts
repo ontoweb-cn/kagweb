@@ -33,14 +33,14 @@ const allSources = sourceRoots.flatMap(sourceFiles);
 
 test("browser storage methods stay behind the shared boundary", () => {
   const violations = allSources
-    .filter((file) => !file.endsWith("components/ThemeScript.tsx"))
+    .map((file) => path.relative(root, file).split(path.sep).join("/"))
+    .filter((file) => file !== "components/ThemeScript.tsx")
     .filter((file) => !file.includes("shared/storage/"))
     .filter((file) =>
       /(?:window\.)?(?:localStorage|sessionStorage)\.(?:getItem|setItem|removeItem)/.test(
-        fs.readFileSync(file, "utf8"),
+        fs.readFileSync(path.join(root, file), "utf8"),
       ),
-    )
-    .map((file) => path.relative(root, file));
+    );
   assert.deepEqual(violations, []);
 });
 
@@ -50,8 +50,8 @@ test("raw fetch is limited to the shared API client and media preview", () => {
     "components/chat/preview/FilePreviewDrawer.tsx",
   ]);
   const violations = allSources
-    .filter((file) => /\bfetch\(/.test(fs.readFileSync(file, "utf8")))
-    .map((file) => path.relative(root, file))
+    .map((file) => path.relative(root, file).split(path.sep).join("/"))
+    .filter((file) => /\bfetch\(/.test(fs.readFileSync(path.join(root, file), "utf8")))
     .filter((file) => !allow.has(file));
   assert.deepEqual(violations, []);
 });

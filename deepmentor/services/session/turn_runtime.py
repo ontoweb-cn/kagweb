@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from . import _turn_runtime_shared as _shared
 from .turns import (
-    LearningTurnAdapter,
     SessionTitleService,
     TurnContextAssembler,
     TurnExecutor,
@@ -26,7 +25,6 @@ def __getattr__(name: str):
 class TurnRuntimeManager(
     TurnRequestPreparer,
     TurnContextAssembler,
-    LearningTurnAdapter,
     TurnExecutor,
     TurnLifecycle,
     SessionTitleService,

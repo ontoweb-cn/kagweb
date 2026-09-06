@@ -39,7 +39,6 @@ from deepmentor.multi_user.device_credentials import (
     revoke_device_credential,
 )
 from deepmentor.multi_user.identity import get_user_by_id
-from deepmentor.multi_user.learning_access import learning_policy_for_user
 from deepmentor.multi_user.models import AccountPreset
 from deepmentor.multi_user.paths import local_admin_user
 from deepmentor.services.auth import (
@@ -185,7 +184,6 @@ class AuthStatusResponse(BaseModel):
     is_admin: bool = False
     avatar: str = ""
     preset: AccountPreset | None = None
-    learning_policy: dict | None = None
 
 
 class UserInfo(BaseModel):
@@ -401,31 +399,18 @@ async def require_admin(
     return payload
 
 
-def _learning_surface_for_path(path: str) -> str:
-    normalized = "/" + str(path or "").lstrip("/")
-    for root, surface in (
-        ("/api/reading", "reading"),
-        ("/api/chat", "chat"),
-        ("/api/question", "chat"),
-        ("/api/question-notebook", "chat"),
-        ("/api/sessions", "chat"),
-    ):
-        if normalized == root or normalized.startswith(f"{root}/"):
-            return surface
-    return ""
-
-
 async def require_learning_surface(
     request: Request,
     _: TokenPayload | None = Depends(require_auth),
 ) -> None:
-    """Second-stage default-deny guard for configured learning accounts."""
-    from deepmentor.multi_user.learning_access import assert_learning_surface
+    """Default auth dependency for API routers.
 
-    try:
-        assert_learning_surface(_learning_surface_for_path(request.url.path))
-    except PermissionError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    Learning surfaces were removed with the capability layer, so the former
+    per-surface learner gate has nothing left to enforce. The dependency stays
+    as the single auth seam for routers (it still validates the session token
+    through ``require_auth``).
+    """
+    return None
 
 
 def _local_admin_token_payload() -> TokenPayload:
@@ -500,7 +485,6 @@ async def auth_status(
     payload = decode_token(token) if token else None
     avatar = ""
     preset: AccountPreset | None = None
-    learning_policy = None
     if payload is not None:
         info = get_user_info(payload.username)
         if info:
@@ -512,10 +496,6 @@ async def auth_status(
                 preset = "custom"
             else:
                 preset = "standard"
-        learning_policy = learning_policy_for_user(
-            payload.user_id,
-            is_admin=payload.role == "admin",
-        )
     return AuthStatusResponse(
         enabled=True,
         authenticated=payload is not None,
@@ -525,7 +505,6 @@ async def auth_status(
         is_admin=payload.role == "admin" if payload else False,
         avatar=avatar,
         preset=preset,
-        learning_policy=learning_policy,
     )
 
 

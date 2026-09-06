@@ -11,7 +11,6 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
-from deepmentor.learning.storage import LearningStore
 from deepmentor.services.session import get_session_store, get_sqlite_session_store
 from deepmentor.services.session.organization import (
     list_all_sessions_snapshot,
@@ -46,7 +45,7 @@ class SessionOrganizationRequest(BaseModel):
 
     course_id: str | None = None
     parent_session_id: str | None = None
-    session_kind: Literal["chat", "selection_tutor", "immersive_reading"] | None = None
+    session_kind: Literal["chat", "selection_tutor"] | None = None
     pinned: bool | None = None
     archived: bool | None = None
 
@@ -204,14 +203,6 @@ async def get_session_trace(
     return doc
 
 
-@router.get("/{session_id}/ask-hint")
-async def get_session_ask_hint(session_id: str) -> dict[str, Any]:
-    """One line the user is likely to type next, for the home composer placeholder."""
-    from deepmentor.services.chat_hints import get_ask_hint
-
-    return await get_ask_hint(session_id)
-
-
 @router.patch("/{session_id}")
 async def rename_session(session_id: str, payload: SessionRenameRequest):
     store = get_session_store()
@@ -231,16 +222,6 @@ async def update_session_organization(session_id: str, payload: SessionOrganizat
 
     updates: dict[str, Any] = {}
     fields = payload.model_fields_set
-    if "course_id" in fields:
-        course_id = str(payload.course_id or "").strip()
-        if course_id:
-            from deepmentor.services.courses import CourseNotFoundError, get_course_service
-
-            try:
-                get_course_service().get(course_id)
-            except CourseNotFoundError as exc:
-                raise HTTPException(status_code=404, detail="Course not found") from exc
-        updates["course_id"] = course_id
     if "parent_session_id" in fields:
         parent_id = str(payload.parent_session_id or "").strip()
         if parent_id == session_id:
@@ -266,7 +247,7 @@ async def update_session_organization(session_id: str, payload: SessionOrganizat
 
     if updates:
         await store.update_session_preferences(session_id, updates)
-        cascade_updates = {key: updates[key] for key in ("course_id", "archived") if key in updates}
+        cascade_updates = {key: updates[key] for key in ("archived",) if key in updates}
         if cascade_updates:
             # Selected-text tutor threads stay with their source conversation.
             candidates = await list_all_sessions_snapshot(store)
@@ -291,10 +272,6 @@ async def delete_session(session_id: str):
     deleted = await store.delete_session(session_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Session not found")
-    try:
-        await asyncio.to_thread(LearningStore().detach_session, session_id)
-    except Exception:
-        logger.exception("failed to detach mastery paths for session %s", session_id)
     try:
         await get_attachment_store().delete_session(session_id)
     except Exception:

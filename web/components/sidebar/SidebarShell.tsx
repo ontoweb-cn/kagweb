@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppShell } from "@/context/AppShellContext";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import OrganizedSessionList from "@/components/courses/OrganizedSessionList";
 import SessionList from "@/components/SessionList";
 import { useSidebarDrawer } from "@/components/layout/AppShell";
 import {
@@ -16,64 +14,37 @@ import {
   useOrderedGroups,
 } from "@/components/layout/TopBanner";
 import { useDevice } from "@/hooks/useDevice";
-import type {
-  SessionOrganizationPatch,
-  SessionSummary,
-} from "@/lib/session-api";
-import type { MasteryTopicLabel } from "@/lib/learning-api";
-import type { ReadingCollectionLabel } from "@/lib/reading-workspace-api";
-import type { StudyCourse } from "@/lib/courses-api";
+import type { SessionSummary } from "@/lib/session-api";
 import {
   SECONDARY_NAV,
   isEntryActive,
   isNavActive,
 } from "@/components/sidebar/nav-entries";
-import {
-  mergeManualOrder,
-  readSessionOrder,
-  writeSessionOrder,
-} from "@/lib/sidebar-layout";
 
 interface SidebarShellProps {
   sessions?: SessionSummary[];
   activeSessionId?: string | null;
-  /** Conversations the caller is streaming right now; they sort to the top. */
-  liveSessionIds?: ReadonlySet<string>;
   loadingSessions?: boolean;
   showSessions?: boolean;
   onSelectSession?: (sessionId: string) => void | Promise<void>;
   onRenameSession?: (sessionId: string, title: string) => void | Promise<void>;
   onDeleteSession?: (sessionId: string) => void | Promise<void>;
-  courses?: StudyCourse[];
-  /** Topic labels for grouping mastery study conversations under their path. */
-  masteryTopics?: MasteryTopicLabel[];
-  /** Collection labels for grouping reading conversations under their shelf. */
-  readingCollections?: ReadingCollectionLabel[];
-  onOrganizeSession?: (
-    sessionId: string,
-    patch: SessionOrganizationPatch,
-  ) => void | Promise<void>;
 }
 
 export function SidebarShell({
   sessions = [],
   activeSessionId = null,
-  liveSessionIds,
   loadingSessions = false,
   showSessions = false,
   onSelectSession,
   onRenameSession,
   onDeleteSession,
-  masteryTopics = [],
-  readingCollections = [],
-  onOrganizeSession,
 }: SidebarShellProps) {
   const pathname = usePathname();
   const { t } = useTranslation();
   const { sidebarCollapsed, setSidebarCollapsed: setCollapsed } = useAppShell();
   const { isMobile } = useDevice();
   const drawer = useSidebarDrawer();
-  const recentsScrollRef = useRef<HTMLDivElement>(null);
 
   // The menu group owning the current route — derived, not stored: the panel
   // and the banner highlight can never drift apart, and navigating across
@@ -96,35 +67,6 @@ export function SidebarShell({
       return;
     drawer?.close();
   };
-
-  // The order the learner dragged the history region into — conversation ids
-  // and group ids in one list, since the two are peers there. Like the
-  // collapse preference above it is per-machine view state, hydrated after
-  // mount.
-  const [sessionOrder, setSessionOrder] = useState<string[]>([]);
-  const sessionOrderRef = useRef<string[]>([]);
-
-  useEffect(() => {
-    const stored = readSessionOrder();
-    sessionOrderRef.current = stored;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSessionOrder(stored);
-  }, []);
-
-  // A drag only ever speaks for the entries on screen, so it is merged into
-  // the stored order rather than replacing it.
-  const handleReorderSessions = useCallback((nextIds: string[]) => {
-    const merged = mergeManualOrder(sessionOrderRef.current, nextIds);
-    sessionOrderRef.current = merged;
-    setSessionOrder(merged);
-    writeSessionOrder(merged);
-  }, []);
-
-  const handleResetSessionOrder = useCallback(() => {
-    sessionOrderRef.current = [];
-    setSessionOrder([]);
-    writeSessionOrder([]);
-  }, []);
 
   // Everything the learner has, minus the archived and minus the tutor threads
   // that render nested under the conversation that spawned them.
@@ -245,10 +187,7 @@ export function SidebarShell({
       {/* Chat history — its own region below the nav, takes remaining height */}
       {showSessions && onSelectSession && onRenameSession && onDeleteSession ? (
         <section className="mt-3 flex min-h-0 flex-1 flex-col">
-          <div
-            ref={recentsScrollRef}
-            className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 pt-0.5"
-          >
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 pt-0.5">
             {loadingSessions ? (
               <SessionList
                 sessions={[]}
@@ -258,29 +197,6 @@ export function SidebarShell({
                 onRename={onRenameSession}
                 onDelete={onDeleteSession}
                 compact
-              />
-            ) : onOrganizeSession ? (
-              <OrganizedSessionList
-                sessions={visibleSessions}
-                // Course grouping temporarily hidden pending further product
-                // work; passing [] keeps the list flat without touching the
-                // course data callers still fetch.
-                courses={[]}
-                masteryTopics={masteryTopics}
-                readingCollections={readingCollections}
-                activeSessionId={activeSessionId}
-                liveSessionIds={liveSessionIds}
-                manualOrder={sessionOrder}
-                onReorder={handleReorderSessions}
-                onResetOrder={handleResetSessionOrder}
-                scrollRef={recentsScrollRef}
-                onSelect={(sessionId) => {
-                  drawer?.close();
-                  return onSelectSession(sessionId);
-                }}
-                onRename={onRenameSession}
-                onDelete={onDeleteSession}
-                onOrganize={onOrganizeSession}
               />
             ) : (
               <SessionList

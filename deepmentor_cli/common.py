@@ -112,20 +112,6 @@ def parse_json_object(raw: str | None) -> dict[str, Any]:
     return value
 
 
-def parse_notebook_references(items: list[str]) -> list[dict[str, Any]]:
-    refs: list[dict[str, Any]] = []
-    for item in items:
-        notebook_id, _, record_part = item.partition(":")
-        resolved_notebook_id = notebook_id.strip()
-        if not resolved_notebook_id:
-            raise ValueError(f"Invalid notebook reference `{item}`.")
-        record_ids = [
-            record_id.strip() for record_id in record_part.split(",") if record_id.strip()
-        ]
-        refs.append({"notebook_id": resolved_notebook_id, "record_ids": record_ids})
-    return refs
-
-
 async def run_turn_and_render(
     *,
     app: DeepMentorApp,
@@ -832,11 +818,9 @@ def build_turn_request(
     capability: str,
     session_id: str | None,
     tools: list[str],
-    knowledge_bases: list[str],
     language: str,
     config_items: list[str],
     config_json: str | None,
-    notebook_refs: list[str],
     history_refs: list[str],
 ) -> TurnRequest:
     config = parse_json_object(config_json)
@@ -846,10 +830,8 @@ def build_turn_request(
         capability=capability,
         session_id=session_id,
         tools=tools,
-        knowledge_bases=knowledge_bases,
         language=language,
         config=config,
-        notebook_references=parse_notebook_references(notebook_refs),
         history_references=[item.strip() for item in history_refs if item.strip()],
     )
 
