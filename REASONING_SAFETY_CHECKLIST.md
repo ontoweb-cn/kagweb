@@ -45,7 +45,7 @@ Check the patterns that best describe the observed behavior:
 
 Before opening an issue, prepare a minimal and privacy-safe report:
 
-- DeepMentor version, operating system, Python and Node versions, and installation mode.
+- KAGWeb version, operating system, Python and Node versions, and installation mode.
 - Capability and model used, including whether reasoning effort or a model-specific setting was changed.
 - Selected knowledge bases, attachments, Reading material, Book, or partner workspace, without uploading private documents unless they are safe to share.
 - The relevant user request and assistant answer, with personal data removed.
@@ -61,10 +61,10 @@ Avoid sharing credentials, private student work, personal identifiers, or confid
 ```markdown
 Capability:
 Model:
-DeepMentor version:
+KAGWeb version:
 
 What the learner asked:
-What DeepMentor answered:
+What KAGWeb answered:
 Why the answer looks wrong:
 
 Selected sources:

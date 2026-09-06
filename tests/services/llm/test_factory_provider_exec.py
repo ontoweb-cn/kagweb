@@ -6,9 +6,9 @@ from typing import Any
 
 import pytest
 
-from deepmentor.services.llm.config import LLMConfig
-from deepmentor.services.llm.factory import complete, stream
-from deepmentor.services.llm.provider_core.base import LLMResponse
+from kagweb.services.llm.config import LLMConfig
+from kagweb.services.llm.factory import complete, stream
+from kagweb.services.llm.provider_core.base import LLMResponse
 
 
 class _FakeProvider:
@@ -63,14 +63,14 @@ async def test_complete_merges_config_and_caller_extra_headers(monkeypatch) -> N
     provider = _FakeProvider()
     captured_config: dict[str, Any] = {}
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.get_llm_config", lambda: cfg)
+    monkeypatch.setattr("kagweb.services.llm.factory.get_llm_config", lambda: cfg)
 
     def _fake_get_runtime_provider(config: LLMConfig):
         captured_config["config"] = config
         return provider
 
     monkeypatch.setattr(
-        "deepmentor.services.llm.factory.get_runtime_provider", _fake_get_runtime_provider
+        "kagweb.services.llm.factory.get_runtime_provider", _fake_get_runtime_provider
     )
 
     result = await complete("hello", extra_headers={"X-Caller": "from-caller"})
@@ -85,9 +85,9 @@ async def test_complete_honors_explicit_image_fallback_override(monkeypatch) -> 
     cfg = _make_cfg(model="unknown-model", binding="custom", provider_name="custom")
     provider = _FakeProvider()
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.get_llm_config", lambda: cfg)
+    monkeypatch.setattr("kagweb.services.llm.factory.get_llm_config", lambda: cfg)
     monkeypatch.setattr(
-        "deepmentor.services.llm.factory.get_runtime_provider",
+        "kagweb.services.llm.factory.get_runtime_provider",
         lambda _config: provider,
     )
 
@@ -101,14 +101,14 @@ async def test_stream_merges_config_and_caller_extra_headers(monkeypatch) -> Non
     provider = _FakeProvider(stream_chunk="A")
     captured_config: dict[str, Any] = {}
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.get_llm_config", lambda: cfg)
+    monkeypatch.setattr("kagweb.services.llm.factory.get_llm_config", lambda: cfg)
 
     def _fake_get_runtime_provider(config: LLMConfig):
         captured_config["config"] = config
         return provider
 
     monkeypatch.setattr(
-        "deepmentor.services.llm.factory.get_runtime_provider", _fake_get_runtime_provider
+        "kagweb.services.llm.factory.get_runtime_provider", _fake_get_runtime_provider
     )
 
     chunks = []
@@ -125,20 +125,20 @@ async def test_explicit_call_inherits_matching_profile_headers_and_reasoning(
     monkeypatch,
 ) -> None:
     cfg = _make_cfg(
-        extra_headers={"User-Agent": "DeepMentor-Test"},
+        extra_headers={"User-Agent": "KAGWeb-Test"},
         reasoning_effort="minimal",
     )
     provider = _FakeProvider()
     captured_config: dict[str, LLMConfig] = {}
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.get_llm_config", lambda: cfg)
+    monkeypatch.setattr("kagweb.services.llm.factory.get_llm_config", lambda: cfg)
 
     def _fake_get_runtime_provider(config: LLMConfig):
         captured_config["config"] = config
         return provider
 
     monkeypatch.setattr(
-        "deepmentor.services.llm.factory.get_runtime_provider", _fake_get_runtime_provider
+        "kagweb.services.llm.factory.get_runtime_provider", _fake_get_runtime_provider
     )
 
     result = await complete(
@@ -150,7 +150,7 @@ async def test_explicit_call_inherits_matching_profile_headers_and_reasoning(
     )
 
     assert result == "ok"
-    assert captured_config["config"].extra_headers == {"User-Agent": "DeepMentor-Test"}
+    assert captured_config["config"].extra_headers == {"User-Agent": "KAGWeb-Test"}
     assert captured_config["config"].reasoning_effort == "minimal"
     assert provider.complete_kwargs["reasoning_effort"] == "minimal"
 
@@ -167,9 +167,9 @@ async def test_stream_does_not_replay_reasoning_as_final_content(monkeypatch) ->
         ),
     )
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.get_llm_config", lambda: cfg)
+    monkeypatch.setattr("kagweb.services.llm.factory.get_llm_config", lambda: cfg)
     monkeypatch.setattr(
-        "deepmentor.services.llm.factory.get_runtime_provider",
+        "kagweb.services.llm.factory.get_runtime_provider",
         lambda _config: provider,
     )
 
@@ -185,9 +185,9 @@ async def test_complete_injects_openai_image_parts(monkeypatch) -> None:
     cfg = _make_cfg(model="gpt-4o-mini", binding="openai", provider_name="openai")
     provider = _FakeProvider()
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.get_llm_config", lambda: cfg)
+    monkeypatch.setattr("kagweb.services.llm.factory.get_llm_config", lambda: cfg)
     monkeypatch.setattr(
-        "deepmentor.services.llm.factory.get_runtime_provider",
+        "kagweb.services.llm.factory.get_runtime_provider",
         lambda _config: provider,
     )
 
@@ -214,9 +214,9 @@ async def test_complete_injects_anthropic_image_parts(monkeypatch) -> None:
     )
     provider = _FakeProvider()
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.get_llm_config", lambda: cfg)
+    monkeypatch.setattr("kagweb.services.llm.factory.get_llm_config", lambda: cfg)
     monkeypatch.setattr(
-        "deepmentor.services.llm.factory.get_runtime_provider",
+        "kagweb.services.llm.factory.get_runtime_provider",
         lambda _config: provider,
     )
 
@@ -242,9 +242,9 @@ async def test_complete_injects_custom_anthropic_image_parts(monkeypatch) -> Non
     )
     provider = _FakeProvider()
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.get_llm_config", lambda: cfg)
+    monkeypatch.setattr("kagweb.services.llm.factory.get_llm_config", lambda: cfg)
     monkeypatch.setattr(
-        "deepmentor.services.llm.factory.get_runtime_provider",
+        "kagweb.services.llm.factory.get_runtime_provider",
         lambda _config: provider,
     )
 
@@ -270,9 +270,9 @@ async def test_complete_strips_unsupported_response_format(monkeypatch) -> None:
     )
     provider = _FakeProvider()
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.get_llm_config", lambda: cfg)
+    monkeypatch.setattr("kagweb.services.llm.factory.get_llm_config", lambda: cfg)
     monkeypatch.setattr(
-        "deepmentor.services.llm.factory.get_runtime_provider",
+        "kagweb.services.llm.factory.get_runtime_provider",
         lambda _config: provider,
     )
 
@@ -290,9 +290,9 @@ async def test_complete_passes_retry_delays(monkeypatch) -> None:
     cfg = _make_cfg()
     provider = _FakeProvider()
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.get_llm_config", lambda: cfg)
+    monkeypatch.setattr("kagweb.services.llm.factory.get_llm_config", lambda: cfg)
     monkeypatch.setattr(
-        "deepmentor.services.llm.factory.get_runtime_provider",
+        "kagweb.services.llm.factory.get_runtime_provider",
         lambda _config: provider,
     )
 

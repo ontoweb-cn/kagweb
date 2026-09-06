@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx
 
-from deepmentor.services.llm.request_compat import (
+from kagweb.services.llm.request_compat import (
     error_text,
     is_image_input_unsupported,
     is_stream_options_unsupported,
@@ -78,7 +78,7 @@ def test_logged_error_text_is_bounded() -> None:
     unbounded body would put the request — tool schemas, sometimes the
     messages — into a file headed for a public issue.
     """
-    from deepmentor.services.llm.request_compat import (
+    from kagweb.services.llm.request_compat import (
         _MAX_LOGGED_ERROR_CHARS,
         logged_error_text,
     )

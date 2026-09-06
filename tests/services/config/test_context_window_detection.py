@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import asyncio
 
-from deepmentor.services.config import context_window_detection as detection_module
-from deepmentor.services.config.context_window_detection import (
+from kagweb.services.config import context_window_detection as detection_module
+from kagweb.services.config.context_window_detection import (
     detect_context_window,
 )
-from deepmentor.services.llm.config import LLMConfig
+from kagweb.services.llm.config import LLMConfig
 
 
 def _config(**overrides):
@@ -37,7 +37,7 @@ async def _metadata_none(*_args, **_kwargs):
 
 def test_detect_context_window_prefers_provider_metadata(monkeypatch) -> None:
     monkeypatch.setattr(
-        "deepmentor.services.config.context_window_detection._detect_from_models_endpoint",
+        "kagweb.services.config.context_window_detection._detect_from_models_endpoint",
         _metadata_128k,
     )
     result = asyncio.run(detect_context_window(_config(model="kimi-k2.6")))
@@ -50,7 +50,7 @@ def test_detect_context_window_uses_runtime_default_when_metadata_missing(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
-        "deepmentor.services.config.context_window_detection._detect_from_models_endpoint",
+        "kagweb.services.config.context_window_detection._detect_from_models_endpoint",
         _metadata_none,
     )
     result = asyncio.run(detect_context_window(_config(model="unknown-model", max_tokens=5000)))
@@ -63,7 +63,7 @@ def test_detect_context_window_uses_known_model_metadata_when_provider_omits_win
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
-        "deepmentor.services.config.context_window_detection._detect_from_models_endpoint",
+        "kagweb.services.config.context_window_detection._detect_from_models_endpoint",
         _metadata_none,
     )
     result = asyncio.run(detect_context_window(_config(model="deepseek-v4-flash")))
@@ -76,7 +76,7 @@ def test_detect_context_window_uses_known_minimax_m3_window(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
-        "deepmentor.services.config.context_window_detection._detect_from_models_endpoint",
+        "kagweb.services.config.context_window_detection._detect_from_models_endpoint",
         _metadata_none,
     )
     result = asyncio.run(detect_context_window(_config(model="MiniMax-M3")))

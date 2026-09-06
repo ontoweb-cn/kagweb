@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from deepmentor.api.routers import space_mcp
+from kagweb.api.routers import space_mcp
 
 
 @pytest.fixture(autouse=True)
@@ -26,13 +26,13 @@ def _offline_dns(monkeypatch: pytest.MonkeyPatch) -> None:
         addr = "127.0.0.1" if loopback else "93.184.216.34"
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (addr, 0))]
 
-    monkeypatch.setattr("deepmentor.services.mcp.network.socket.getaddrinfo", _getaddrinfo)
+    monkeypatch.setattr("kagweb.services.mcp.network.socket.getaddrinfo", _getaddrinfo)
 
 
 @pytest.fixture
 def owner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     """Redirect the data roots and make the acting owner switchable."""
-    from deepmentor.multi_user import paths
+    from kagweb.multi_user import paths
 
     admin_root = (tmp_path / "data").resolve()
     monkeypatch.setattr(paths, "ADMIN_WORKSPACE_ROOT", admin_root)
@@ -43,7 +43,7 @@ def owner(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     acting = {"id": "u_ada"}
     monkeypatch.setattr(space_mcp, "current_owner_id", lambda: acting["id"])
     monkeypatch.setattr(
-        "deepmentor.services.mcp.config.mcp_config_path", lambda: tmp_path / "admin-mcp.json"
+        "kagweb.services.mcp.config.mcp_config_path", lambda: tmp_path / "admin-mcp.json"
     )
     return acting
 
@@ -151,7 +151,7 @@ def test_deleting_a_server_also_drops_its_credentials(client: TestClient, tmp_pa
     )
     client.delete("/api/space/mcp/servers/svc")
 
-    from deepmentor.services.mcp.secrets import configured_fields
+    from kagweb.services.mcp.secrets import configured_fields
 
     assert configured_fields("u_ada", "svc") == set()
 
@@ -174,7 +174,7 @@ def test_every_category_chip_opens_to_something(client: TestClient) -> None:
 
 
 def test_installing_an_admin_only_entry_is_refused(client: TestClient) -> None:
-    from deepmentor.services.mcp.catalog import load_catalog
+    from kagweb.services.mcp.catalog import load_catalog
 
     stdio = next(entry for entry in load_catalog() if not entry.self_service)
     response = client.post(f"/api/space/mcp/catalog/{stdio.id}/install", json={"secrets": {}})
@@ -188,7 +188,7 @@ def test_installing_an_unknown_entry_is_a_404(client: TestClient) -> None:
 
 
 def test_installing_without_a_required_credential_is_refused(client: TestClient) -> None:
-    from deepmentor.services.mcp.catalog import load_catalog
+    from kagweb.services.mcp.catalog import load_catalog
 
     needs_key = next(
         entry
@@ -203,7 +203,7 @@ def test_installing_without_a_required_credential_is_refused(client: TestClient)
 def test_installing_a_catalog_entry_stores_its_credential_out_of_the_config(
     client: TestClient, tmp_path: Path
 ) -> None:
-    from deepmentor.services.mcp.catalog import load_catalog
+    from kagweb.services.mcp.catalog import load_catalog
 
     entry = next(
         item
@@ -223,7 +223,7 @@ def test_installing_a_catalog_entry_stores_its_credential_out_of_the_config(
 
 def _first_free_entry() -> Any:
     """A self-service catalog entry that needs no credential to install."""
-    from deepmentor.services.mcp.catalog import load_catalog
+    from kagweb.services.mcp.catalog import load_catalog
 
     return next(
         entry
@@ -350,7 +350,7 @@ def test_resaving_a_server_keeps_a_credential_it_did_not_re_enter(
         },
     )
 
-    from deepmentor.services.mcp.secrets import resolve_references, secret_reference
+    from kagweb.services.mcp.secrets import resolve_references, secret_reference
 
     assert resolve_references("u_ada", secret_reference("svc", "header.X-Key")) == "sk-1"
     stored = (tmp_path / "data" / "system" / "user-mcp" / "u_ada.json").read_text(encoding="utf-8")
@@ -374,7 +374,7 @@ def test_testing_a_draft_writes_nothing(client: TestClient, tmp_path: Path) -> N
     Storing the draft's credentials would both surprise the caller and, for a
     name the store itself refuses, raise where a probe result was expected.
     """
-    import deepmentor.services.mcp.manager as manager_module
+    import kagweb.services.mcp.manager as manager_module
 
     async def _probe(cfg: Any, **kwargs: Any) -> dict[str, Any]:
         return {"ok": True, "tools": [], "error": ""}

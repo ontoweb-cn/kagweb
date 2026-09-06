@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import string
 
-from deepmentor.services.partners.manager import slugify_partner_id, slugify_soul_id
+from kagweb.services.partners.manager import slugify_partner_id, slugify_soul_id
 
 _ALLOWED = set(string.ascii_lowercase + string.digits + "-")
 

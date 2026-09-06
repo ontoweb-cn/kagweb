@@ -1,4 +1,4 @@
-"""Tests for the neutral deepmentor.plugins.loader entry-point discovery."""
+"""Tests for the neutral kagweb.plugins.loader entry-point discovery."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from deepmentor.core.capability_protocol import CapabilityManifest, TurnCapability
-from deepmentor.core.context import UnifiedContext
-import deepmentor.core.entry_points as ep_module
-from deepmentor.runtime.stream_bus import StreamBus
+from kagweb.core.capability_protocol import CapabilityManifest, TurnCapability
+from kagweb.core.context import UnifiedContext
+import kagweb.core.entry_points as ep_module
+from kagweb.runtime.stream_bus import StreamBus
 
 
 class _DemoCapability(TurnCapability):
@@ -28,10 +28,10 @@ def _ep(name: str, load):
 
 
 def test_discover_plugins_from_capability_class(monkeypatch):
-    from deepmentor.plugins import loader
+    from kagweb.plugins import loader
 
     def fake_entry_points(*, group: str):
-        assert group == "deepmentor.plugins"
+        assert group == "kagweb.plugins"
         return [_ep("demo_cap", lambda: _DemoCapability)]
 
     monkeypatch.setattr(ep_module, "entry_points", fake_entry_points)
@@ -47,7 +47,7 @@ def test_discover_plugins_from_capability_class(monkeypatch):
 
 
 def test_discover_skips_broken_entry_points(monkeypatch):
-    from deepmentor.plugins import loader
+    from kagweb.plugins import loader
 
     def boom():
         raise RuntimeError("boom")
@@ -64,7 +64,7 @@ def test_discover_skips_broken_entry_points(monkeypatch):
 
 
 def test_load_plugin_capability_instantiates(monkeypatch):
-    from deepmentor.plugins import loader
+    from kagweb.plugins import loader
 
     monkeypatch.setattr(
         ep_module,
@@ -78,7 +78,7 @@ def test_load_plugin_capability_instantiates(monkeypatch):
 
 
 def test_load_plugin_capability_skips_tool_entry():
-    from deepmentor.plugins.loader import PluginManifest, load_plugin_capability
+    from kagweb.plugins.loader import PluginManifest, load_plugin_capability
 
     manifest = PluginManifest(
         name="some_tool",
@@ -90,8 +90,8 @@ def test_load_plugin_capability_skips_tool_entry():
 
 
 def test_discover_from_manifest_factory(monkeypatch):
-    from deepmentor.plugins import loader
-    from deepmentor.plugins.loader import PluginManifest
+    from kagweb.plugins import loader
+    from kagweb.plugins.loader import PluginManifest
 
     def factory():
         return PluginManifest(
@@ -114,8 +114,8 @@ def test_discover_from_manifest_factory(monkeypatch):
 
 
 def test_capability_registry_loads_plugins(monkeypatch):
-    from deepmentor.plugins import loader
-    from deepmentor.runtime.registry import capability_registry as cr
+    from kagweb.plugins import loader
+    from kagweb.runtime.registry import capability_registry as cr
 
     monkeypatch.setattr(
         ep_module,

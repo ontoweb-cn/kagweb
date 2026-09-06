@@ -1,6 +1,6 @@
 """Tests for LLM capability helpers."""
 
-from deepmentor.services.llm.capabilities import (
+from kagweb.services.llm.capabilities import (
     get_capability,
     get_effective_temperature,
     has_thinking_tags,

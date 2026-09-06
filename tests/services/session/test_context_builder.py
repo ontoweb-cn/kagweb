@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from deepmentor.services.session.context_builder import (
+from kagweb.services.session.context_builder import (
     MAX_HISTORY_PLAN_TOKENS,
     MAX_RAW_REBUILD_TOKENS,
     MAX_SUMMARY_OUTPUT_TOKENS,
@@ -467,7 +467,7 @@ class TestContextBuilderBuild:
             return 100
 
         with patch(
-            "deepmentor.services.session.context_builder.count_tokens",
+            "kagweb.services.session.context_builder.count_tokens",
             side_effect=_fake_count_tokens,
         ):
             result = await builder.build(session_id="s1", llm_config=cfg)
@@ -510,7 +510,7 @@ class TestContextBuilderSummarize:
         builder = ContextBuilder(store=MagicMock())
 
         with patch(
-            "deepmentor.services.llm.stream",
+            "kagweb.services.llm.stream",
             _stream_llm,
         ):
             summary, _events = await builder._summarize(

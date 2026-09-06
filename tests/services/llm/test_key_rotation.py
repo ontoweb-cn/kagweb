@@ -10,7 +10,7 @@ import pytest
 async def test_openai_compatible_llm_retries_429_with_next_api_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepmentor.services.llm.provider_core import openai_compat_provider as provider_module
+    from kagweb.services.llm.provider_core import openai_compat_provider as provider_module
 
     seen_auth: list[str] = []
 

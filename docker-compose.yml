@@ -1,7 +1,7 @@
 # ============================================
-# DeepMentor Docker Compose Configuration
+# KAGWeb Docker Compose Configuration
 # ============================================
-# This file provides orchestration for DeepMentor services
+# This file provides orchestration for KAGWeb services
 #
 # Usage:
 #   Production:  python scripts/docker_compose.py up -d
@@ -24,7 +24,7 @@ services:
   # remains in SQLite/PocketBase.
   redis:
     image: redis:7.4-alpine
-    container_name: deepmentor-redis
+    container_name: kagweb-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
@@ -35,7 +35,7 @@ services:
       timeout: 3s
       retries: 10
     networks:
-      - deepmentor-network
+      - kagweb-network
 
   # ============================================
   # PocketBase — optional auth + storage sidecar
@@ -51,7 +51,7 @@ services:
       # single-user mode, so publishing on 0.0.0.0 would expose it to the
       # whole LAN (same posture as compose.yaml). Drop the 127.0.0.1: prefix
       # deliberately when you want the deployment reachable from other hosts.
-      - "127.0.0.1:${DEEPMENTOR_DOCKER_POCKETBASE_PORT:-8090}:8090"
+      - "127.0.0.1:${KAGWEB_DOCKER_POCKETBASE_PORT:-8090}:8090"
     volumes:
       # The upstream pocketbase image's entrypoint uses absolute paths
       # (no /pb/ prefix): --dir=/pb_data --publicDir=/pb_public
@@ -62,7 +62,7 @@ services:
       - ./data/pocketbase/public:/pb_public
       - ./data/pocketbase/hooks:/pb_hooks
     networks:
-      - deepmentor-network
+      - kagweb-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/api/health"]
       interval: 10s
@@ -71,14 +71,14 @@ services:
       start_period: 10s
 
   # ============================================
-  # All-in-One DeepMentor Service
+  # All-in-One KAGWeb Service
   # ============================================
-  deepmentor:
+  kagweb:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
-    container_name: deepmentor
+    container_name: kagweb
     restart: unless-stopped
     # A root process (supervisord as PID 1) dropping its own children to an
     # unprivileged user is not a privilege gain, so this is safe with the
@@ -87,11 +87,11 @@ services:
       - no-new-privileges:true
     ports:
       # Loopback-only by default — see the note on the pocketbase service.
-      - "127.0.0.1:${DEEPMENTOR_DOCKER_BACKEND_PORT:-8001}:${DEEPMENTOR_DOCKER_BACKEND_PORT:-8001}"
-      - "127.0.0.1:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}"
+      - "127.0.0.1:${KAGWEB_DOCKER_BACKEND_PORT:-8001}:${KAGWEB_DOCKER_BACKEND_PORT:-8001}"
+      - "127.0.0.1:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}"
 
     volumes:
-      # Everything DeepMentor persists lives under ./data — one tree to mount
+      # Everything KAGWeb persists lives under ./data — one tree to mount
       # and back up: admin workspace + runtime settings (data/user), per-user
       # workspaces (data/users), partners (data/partners), accounts/grants/
       # audit (data/system), knowledge bases, memory.
@@ -104,11 +104,11 @@ services:
     environment:
       # Route untrusted shell exec to the runner sidecar (SYSTEM isolation).
       # When this is set, the main app NEVER runs untrusted code in its own
-      # process — see deepmentor/services/sandbox/config.py:build_backend().
+      # process — see kagweb/services/sandbox/config.py:build_backend().
       # On bare-metal / macOS deployments where the runner is not started, leave
       # this unset: the app degrades to bwrap (Linux, if installed) or, only when
-      # DEEPMENTOR_SANDBOX_ALLOW_SUBPROCESS=1, a restricted subprocess.
-      - DEEPMENTOR_SANDBOX_RUNNER_URL=http://sandbox-runner:8900
+      # KAGWEB_SANDBOX_ALLOW_SUBPROCESS=1, a restricted subprocess.
+      - KAGWEB_SANDBOX_RUNNER_URL=http://sandbox-runner:8900
 
       # Optional dependencies, re-applied on every start (#762). Installing
       # these with `docker exec` does not survive `compose down`, so declare
@@ -116,13 +116,13 @@ services:
       # lives on the data volume, so a rebuild reuses what it already fetched.
       # Extras come from pyproject.toml — preview one with
       # `python scripts/install_extras.py --dry-run "<name>"`.
-      # - DEEPMENTOR_EXTRAS=math-animator,partners
-      # - DEEPMENTOR_APT_PACKAGES=ffmpeg
+      # - KAGWEB_EXTRAS=math-animator,partners
+      # - KAGWEB_APT_PACKAGES=ffmpeg
 
     # No compose healthcheck override: the image's own HEALTHCHECK
     # (/app/healthcheck.py) reads the backend port from
     # data/user/settings/system.json, so it stays correct when the port is
-    # changed in settings without this file's ${DEEPMENTOR_DOCKER_*} vars
+    # changed in settings without this file's ${KAGWEB_DOCKER_*} vars
     # being re-rendered by scripts/docker_compose.py.
 
     depends_on:
@@ -134,24 +134,24 @@ services:
         condition: service_healthy
 
     networks:
-      - deepmentor-network
+      - kagweb-network
 
   # ============================================
   # Sandbox Runner Sidecar
   # ============================================
   # Executes untrusted shell commands in an isolated, least-privileged
   # container so the main app never has to. Rationale for the sidecar shape:
-  #   * the main `deepmentor` container keeps minimal privileges and does NOT
+  #   * the main `kagweb` container keeps minimal privileges and does NOT
   #     mount the docker socket or run untrusted code in its own process;
   #   * a sandbox escape here lands in a stripped, unprivileged container with
   #     no app secrets, not in the main app.
   # Not exposed to the host: it is reachable only on the internal
-  # deepmentor-network at http://sandbox-runner:8900.
+  # kagweb-network at http://sandbox-runner:8900.
   sandbox-runner:
     build:
       context: .
       dockerfile: Dockerfile.runner
-    container_name: deepmentor-sandbox-runner
+    container_name: kagweb-sandbox-runner
     restart: unless-stopped
 
     # Share the task workspaces at the SAME paths as the main app so the mount
@@ -210,11 +210,11 @@ services:
       start_period: 5s
 
     networks:
-      - deepmentor-network
+      - kagweb-network
 
 # ============================================
 # Networks
 # ============================================
 networks:
-  deepmentor-network:
+  kagweb-network:
     driver: bridge

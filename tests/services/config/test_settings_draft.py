@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from deepmentor.services.config.model_catalog import CATALOG_SECRET_MASK
-from deepmentor.services.config.settings_draft import (
+from kagweb.services.config.model_catalog import CATALOG_SECRET_MASK
+from kagweb.services.config.settings_draft import (
     SettingsDraftService,
     is_empty_draft,
     merge_draft_secrets,

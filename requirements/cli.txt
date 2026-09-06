@@ -1,10 +1,10 @@
 # ============================================
-# DeepMentor CLI — Full Dependencies
+# KAGWeb CLI — Full Dependencies
 # ============================================
 # Mirrors pyproject.toml `[project.optional-dependencies].cli` plus core deps.
 # Keep in sync with pyproject.toml when adding/updating dependencies.
 #
-# Public install: pip install deepmentor-cli
+# Public install: pip install kagweb-cli
 # Source compatibility: pip install -e ".[cli]"
 # Use this file for Docker/CI when pyproject.toml/source code aren't yet available.
 

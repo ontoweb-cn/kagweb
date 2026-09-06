@@ -13,13 +13,13 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 import pytest
 
-from deepmentor.api.routers import imports as imports_router
-from deepmentor.api.routers.imports import (
+from kagweb.api.routers import imports as imports_router
+from kagweb.api.routers.imports import (
     ChatHistoryImportRequest,
     import_chat_history,
     list_imported_chat_history,
 )
-from deepmentor.services.session.sqlite_store import SQLiteSessionStore
+from kagweb.services.session.sqlite_store import SQLiteSessionStore
 
 
 @pytest.fixture

@@ -12,8 +12,8 @@
 repos:
   - repo: local
     hooks:
-      - id: deepmentor-repo-hygiene
-        name: DeepMentor repository hygiene
+      - id: kagweb-repo-hygiene
+        name: KAGWeb repository hygiene
         entry: python3 scripts/check_repo_hygiene.py
         language: system
         pass_filenames: false
@@ -114,7 +114,7 @@ repos:
     hooks:
       - id: mypy
         args: [--ignore-missing-imports, --no-error-summary, --no-strict-optional]
-        exclude: ^(tests/|scripts/|deepmentor/agents/|deepmentor/services/rag/|deepmentor/api/routers/)
+        exclude: ^(tests/|scripts/|kagweb/agents/|kagweb/services/rag/|kagweb/api/routers/)
         additional_dependencies:
           - types-PyYAML
           - types-requests

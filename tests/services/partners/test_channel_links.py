@@ -1,4 +1,4 @@
-"""Linking a chat-channel account to a DeepMentor account.
+"""Linking a chat-channel account to a KAGWeb account.
 
 The point of a link is that a channel message stops being anonymous: it lands
 in the sender's own thread pool instead of the partner's shared one, and the
@@ -11,12 +11,12 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from deepmentor.partners.bus.events import InboundMessage
-from deepmentor.partners.bus.queue import MessageBus
-from deepmentor.services.partners import links
-from deepmentor.services.partners.interaction import session_store_for
-from deepmentor.services.partners.manager import PartnerConfig
-from deepmentor.services.partners.runtime import PartnerRunner
+from kagweb.partners.bus.events import InboundMessage
+from kagweb.partners.bus.queue import MessageBus
+from kagweb.services.partners import links
+from kagweb.services.partners.interaction import session_store_for
+from kagweb.services.partners.manager import PartnerConfig
+from kagweb.services.partners.runtime import PartnerRunner
 from tests.services.partners.scripts import finish
 
 
@@ -30,8 +30,8 @@ def alice(partners_root):
     make "her private history" and "the shared pool" the same directory, and
     every assertion that they differ would pass or fail on account order.
     """
-    from deepmentor.multi_user import identity
-    from deepmentor.services.partners.interaction import actor_for_account
+    from kagweb.multi_user import identity
+    from kagweb.services.partners.interaction import actor_for_account
 
     identity.save_user("root", "hash", "admin")
     record = identity.save_user("alice", "hash", "user")
@@ -149,7 +149,7 @@ def _group(content: str = "hello", *, sender: str = "90210") -> InboundMessage:
 async def test_a_linked_sender_gets_their_own_private_history(
     partners_root, fake_orchestrator, alice
 ):
-    from deepmentor.services.partners.manager import PartnerConfig
+    from kagweb.services.partners.manager import PartnerConfig
 
     fake_orchestrator.script = finish("ok")
     runner = PartnerRunner("ada", PartnerConfig(name="Ada"), MessageBus())
@@ -168,7 +168,7 @@ async def test_a_linked_sender_gets_their_own_private_history(
 
 @pytest.mark.asyncio
 async def test_an_unlinked_sender_stays_in_the_shared_pool(partners_root, fake_orchestrator):
-    from deepmentor.services.partners.manager import PartnerConfig
+    from kagweb.services.partners.manager import PartnerConfig
 
     fake_orchestrator.script = finish("ok")
     runner = PartnerRunner("ada", PartnerConfig(name="Ada"), MessageBus())
@@ -185,7 +185,7 @@ async def test_an_unlinked_sender_stays_in_the_shared_pool(partners_root, fake_o
 async def test_group_traffic_stays_shared_even_from_a_linked_sender(
     partners_root, fake_orchestrator, alice
 ):
-    from deepmentor.services.partners.manager import PartnerConfig
+    from kagweb.services.partners.manager import PartnerConfig
 
     fake_orchestrator.script = finish("ok")
     runner = PartnerRunner("ada", PartnerConfig(name="Ada"), MessageBus())
@@ -202,7 +202,7 @@ async def test_group_traffic_stays_shared_even_from_a_linked_sender(
 
 @pytest.mark.asyncio
 async def test_link_command_binds_the_sender_mid_conversation(partners_root, fake_orchestrator):
-    from deepmentor.multi_user import identity
+    from kagweb.multi_user import identity
 
     identity.save_user("alice", "hash", "user")
     user_id = identity.get_user("alice")["id"]
@@ -228,7 +228,7 @@ async def test_link_command_refuses_a_group_chat(partners_root, fake_orchestrato
 
 @pytest.mark.asyncio
 async def test_a_deleted_account_does_not_speak_for_anyone(partners_root, fake_orchestrator):
-    from deepmentor.services.partners.manager import PartnerConfig
+    from kagweb.services.partners.manager import PartnerConfig
 
     fake_orchestrator.script = finish("ok")
     runner = PartnerRunner("ada", PartnerConfig(name="Ada"), MessageBus())

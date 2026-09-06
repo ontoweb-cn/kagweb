@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor_cli.common import parse_json_object
+from kagweb_cli.common import parse_json_object
 
 
 def test_parse_json_object_whitespace_is_empty_dict() -> None:

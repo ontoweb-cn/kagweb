@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from deepmentor.multi_user.context import reset_current_user, set_current_user
-from deepmentor.multi_user.models import CurrentUser, UserScope
+from kagweb.multi_user.context import reset_current_user, set_current_user
+from kagweb.multi_user.models import CurrentUser, UserScope
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def mu_isolated_root(tmp_path, monkeypatch) -> Path:
     Also clears the ``_path_services`` cache so ``get_path_service()`` can be
     re-resolved per test without leaking instances created in earlier tests.
     """
-    from deepmentor.multi_user import (
+    from kagweb.multi_user import (
         audit,
         device_credentials,
         grants,
@@ -74,7 +74,7 @@ def mu_isolated_root(tmp_path, monkeypatch) -> Path:
     # path, and it now takes part in the first-user promotion decision (#849).
     # Clear it so a developer with real credentials configured sees the same
     # results as CI; tests that need one patch these back explicitly.
-    from deepmentor.services import auth as auth_service
+    from kagweb.services import auth as auth_service
 
     monkeypatch.setattr(auth_service, "AUTH_USERNAME", "")
     monkeypatch.setattr(auth_service, "AUTH_PASSWORD_HASH", "")
@@ -88,7 +88,7 @@ def make_user(mu_isolated_root):
     """Build a ``CurrentUser`` rooted under the isolated tmp_path."""
 
     def _make(uid: str, *, role: str = "user", username: str | None = None) -> CurrentUser:
-        from deepmentor.multi_user.paths import admin_scope
+        from kagweb.multi_user.paths import admin_scope
 
         if role == "admin":
             scope = admin_scope()
@@ -133,8 +133,8 @@ def seed_user(mu_isolated_root):
     """Create a user record on disk and return the resulting record dict."""
 
     def _seed(username: str, password: str = "password1234", role: str = "user") -> dict:
-        from deepmentor.multi_user.identity import save_user
-        from deepmentor.services.auth import hash_password
+        from kagweb.multi_user.identity import save_user
+        from kagweb.services.auth import hash_password
 
         return save_user(username, hash_password(password), role=role)  # type: ignore[arg-type]
 

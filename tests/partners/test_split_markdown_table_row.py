@@ -7,7 +7,7 @@ column. All three partner channels now split rows through this one primitive.
 
 from __future__ import annotations
 
-from deepmentor.partners.helpers import (
+from kagweb.partners.helpers import (
     convert_markdown_table_to_labeled_rows,
     split_markdown_table_row,
 )

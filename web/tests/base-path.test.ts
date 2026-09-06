@@ -23,13 +23,13 @@ test("no prefix configured: everything is a pass-through", () => {
   withPrefix(undefined, () => {
     assert.equal(getBasePath(), "");
     assert.equal(withBasePath("/api/x"), "/api/x");
-    assert.equal(stripBasePath("/deepmentor/x"), "/deepmentor/x");
+    assert.equal(stripBasePath("/kagweb/x"), "/kagweb/x");
   });
 });
 
 test("prefix normalization: leading slash added, trailing slashes dropped", () => {
-  withPrefix("deepmentor", () => assert.equal(getBasePath(), "/deepmentor"));
-  withPrefix("/deepmentor///", () => assert.equal(getBasePath(), "/deepmentor"));
+  withPrefix("kagweb", () => assert.equal(getBasePath(), "/kagweb"));
+  withPrefix("/kagweb///", () => assert.equal(getBasePath(), "/kagweb"));
   withPrefix("/", () => assert.equal(getBasePath(), ""));
 });
 

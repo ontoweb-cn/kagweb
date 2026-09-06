@@ -1,6 +1,6 @@
-# DeepMentor on Kubernetes
+# KAGWeb on Kubernetes
 
-Component-split stack from a single image: `DEEPMENTOR_COMPONENT`
+Component-split stack from a single image: `KAGWEB_COMPONENT`
 (`backend` / `frontend`) selects which supervisord program a container runs,
 so each container carries exactly one concern while sharing one entrypoint
 (settings loading, extras install, env re-export). `apply -k` brings up:
@@ -15,7 +15,7 @@ so each container carries exactly one concern while sharing one entrypoint
 
 ```bash
 # 沙箱 runner 镜像不在 GHCR,先本地构建(入 kind/minikube 需 load):
-docker build -f Dockerfile.runner -t deepmentor-sandbox-runner:local .
+docker build -f Dockerfile.runner -t kagweb-sandbox-runner:local .
 kubectl apply -k deploy/k8s
 ```
 
@@ -32,24 +32,24 @@ Secret 挂载替换该子目录(不要提交到仓库)。
   `/health/ready` 正常返回 200。
 - runner 与 backend 同 Pod 共享卷,`host_path == sandbox_path` 契约天然
   成立;`cli-apps` 只读挂载(可执行、不可改),`data/system` 不挂载。
-- 全 Pod 强制 `runAsNonRoot`(UID/GID 1000,与镜像内 `deepmentor` 用户
+- 全 Pod 强制 `runAsNonRoot`(UID/GID 1000,与镜像内 `kagweb` 用户
   一致)+ `seccompProfile: RuntimeDefault`;runner 额外
   `readOnlyRootFilesystem` + `capabilities.drop: [ALL]`。
 - 生产环境请在 `kustomization.yaml` 中把 `:latest` pin 到具体版本 tag。
 
-## 子目录部署(如 `ai.wust.edu.cn/deepmentor`)
+## 子目录部署(如 `ai.wust.edu.cn/kagweb`)
 
 应用支持挂在域名子目录下,前缀在**构建期**烧入:
 
 ```bash
-docker build --build-arg NEXT_PUBLIC_BASE_PATH=/deepmentor \
-  -t deepmentor:subpath .
+docker build --build-arg NEXT_PUBLIC_BASE_PATH=/kagweb \
+  -t kagweb:subpath .
 ```
 
 要点:
-- Ingress 只做前缀路由(`path: /deepmentor`),**不要**配置 strip-prefix
+- Ingress 只做前缀路由(`path: /kagweb`),**不要**配置 strip-prefix
   rewrite——Next basePath 自己处理前缀,改写会造成双前缀/资源 404;
 - WebSocket 需要 Ingress 的 upgrade 注解(nginx:`nginx.ingress.kubernetes.io/proxy-http-version: "1.1"` 等);
 - 后端配套:`system.json` 的 `cors_origins` 加入前端完整 origin;若启用
-  Codex OAuth,redirect_uri 注册为 `https://<host>/deepmentor/api/auth/openai-codex/callback`。
+  Codex OAuth,redirect_uri 注册为 `https://<host>/kagweb/api/auth/openai-codex/callback`。
 

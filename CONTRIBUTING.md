@@ -1,10 +1,10 @@
-# Contributing to DeepMentor
+# Contributing to KAGWeb
 
-Thank you for your interest in contributing to DeepMentor! We welcome developers of all skill levels to help build the next-generation intelligent learning companion.
+Thank you for your interest in contributing to KAGWeb! We welcome developers of all skill levels to help build the next-generation intelligent learning companion.
 
 <p align="center">
 <a href="https://discord.gg/eRsjPgMU4t"><img src="https://img.shields.io/badge/Discord-Join_Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>&nbsp;
-<a href="https://github.com/HKUDS/DeepMentor/issues/78"><img src="https://img.shields.io/badge/WeChat-Join_Group-07C160?style=for-the-badge&logo=wechat&logoColor=white" alt="WeChat"></a>&nbsp;
+<a href="https://github.com/HKUDS/KAGWeb/issues/78"><img src="https://img.shields.io/badge/WeChat-Join_Group-07C160?style=for-the-badge&logo=wechat&logoColor=white" alt="WeChat"></a>&nbsp;
 <a href="./Communication.md"><img src="https://img.shields.io/badge/Feishu-Join_Group-00D4AA?style=for-the-badge&logo=feishu&logoColor=white" alt="Feishu"></a>
 </p>
 
@@ -86,7 +86,7 @@ pre-commit run --all-files
 6. **Submit** your Pull Request to the correct target branch (not `main` unless it's a hotfix or docs-only change).
 
 > [!TIP]
-> Browse our [Issues](https://github.com/HKUDS/DeepMentor/issues) for tasks labeled `good first issue` to find a great starting point. Comment on the issue to let others know you're working on it.
+> Browse our [Issues](https://github.com/HKUDS/KAGWeb/issues) for tasks labeled `good first issue` to find a great starting point. Comment on the issue to let others know you're working on it.
 
 ---
 
@@ -162,10 +162,10 @@ git config core.hooksPath scripts/hooks
 
 The hook also blocks accidental direct commits on `main`. Release maintainers who
 deliberately need a local `main` commit may opt in once with
-`git config deepmentor.allowMainCommit true`, then remove the setting immediately
+`git config kagweb.allowMainCommit true`, then remove the setting immediately
 afterward.
 
-Use a separate Git worktree for each feature (`git worktree add ../DeepMentor-<task>
+Use a separate Git worktree for each feature (`git worktree add ../KAGWeb-<task>
 -b <branch> dev`) and keep the primary checkout clean. This lets builds, tests,
 and long-running agents operate independently without rewriting one another's
 outputs. Before removing a worktree, commit or explicitly preserve its changes;

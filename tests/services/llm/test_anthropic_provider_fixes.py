@@ -16,7 +16,7 @@ import pytest
 # extra) — skip cleanly where it isn't installed (e.g. the CI python-tests job).
 pytest.importorskip("anthropic")
 
-from deepmentor.services.llm.provider_core.anthropic_provider import AnthropicProvider
+from kagweb.services.llm.provider_core.anthropic_provider import AnthropicProvider
 
 
 def _provider(model: str = "claude-opus-4-8", api_base: str | None = None) -> AnthropicProvider:

@@ -10,11 +10,11 @@ from urllib.parse import parse_qs
 import httpx
 import pytest
 
-from deepmentor.services.partners.channel_onboarding import (
+from kagweb.services.partners.channel_onboarding import (
     ChannelOnboardingError,
     ChannelOnboardingManager,
 )
-from deepmentor.services.partners.manager import PartnerConfig
+from kagweb.services.partners.manager import PartnerConfig
 
 
 class FakeClock:
@@ -414,7 +414,7 @@ def test_start_reuses_active_session_and_cancel_is_terminal() -> None:
 def test_qr_data_url_falls_back_to_none(monkeypatch: pytest.MonkeyPatch) -> None:
     import sys
 
-    from deepmentor.services.partners import channel_onboarding
+    from kagweb.services.partners import channel_onboarding
 
     monkeypatch.setitem(sys.modules, "qrcode", None)
     assert channel_onboarding._qr_data_url("https://example") is None
@@ -422,7 +422,7 @@ def test_qr_data_url_falls_back_to_none(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_qr_data_url_uses_png_when_dependency_is_available() -> None:
     pytest.importorskip("qrcode")
-    from deepmentor.services.partners.channel_onboarding import _qr_data_url
+    from kagweb.services.partners.channel_onboarding import _qr_data_url
 
     assert _qr_data_url("https://example").startswith("data:image/png;base64,")
 

@@ -30,7 +30,7 @@ def test_chat_repl_handles_utf8_backspace_and_restores_terminal_mode() -> None:
             sys.executable,
             "-c",
             (
-                "from deepmentor_cli.chat import _read_repl_input; "
+                "from kagweb_cli.chat import _read_repl_input; "
                 "print('RESULT=' + repr(_read_repl_input()))"
             ),
         ],

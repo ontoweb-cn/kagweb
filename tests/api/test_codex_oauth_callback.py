@@ -4,9 +4,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from deepmentor.api.routers import auth as auth_router
-from deepmentor.services.codex_auth.contracts import CodexAuthError
-from deepmentor.services.codex_auth.oauth import oauth_state_matches
+from kagweb.api.routers import auth as auth_router
+from kagweb.services.codex_auth.contracts import CodexAuthError
+from kagweb.services.codex_auth.oauth import oauth_state_matches
 
 
 class FakeCodexOAuthService:
@@ -71,7 +71,7 @@ def test_codex_callback_endpoint_delivers_without_echoing_secrets(
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["content-type"].startswith("text/html")
-    assert "Authentication received. You can return to DeepMentor." in response.text
+    assert "Authentication received. You can return to KAGWeb." in response.text
     assert service.received == [
         ("private-code", "private-state", "private-error"),
     ]

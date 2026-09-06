@@ -10,8 +10,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import yaml
 
-from deepmentor.services.config import loader as loader_module
-from deepmentor.services.config.loader import get_agent_params
+from kagweb.services.config import loader as loader_module
+from kagweb.services.config.loader import get_agent_params
 
 # ---------------------------------------------------------------------------
 # get_agent_params("llm_probe") — reads diagnostics.llm_probe from agents.yaml
@@ -101,9 +101,9 @@ class TestLlmProbeUsesAgentsYaml:
     @pytest.mark.asyncio
     @pytest.mark.usefixtures("_patch_project_root")
     async def test_probe_passes_configured_max_tokens(self, monkeypatch):
-        from deepmentor.services import llm as llm_module
-        from deepmentor.services.config import test_runner as test_runner_module
-        from deepmentor.services.config.test_runner import ConfigTestRunner, TestRun
+        from kagweb.services import llm as llm_module
+        from kagweb.services.config import test_runner as test_runner_module
+        from kagweb.services.config.test_runner import ConfigTestRunner, TestRun
 
         captured_kwargs: dict[str, Any] = {}
 
@@ -144,9 +144,9 @@ class TestLlmProbeUsesAgentsYaml:
         project_root = _write_agents_yaml(tmp_path, {"capabilities": {}})
         monkeypatch.setattr(loader_module, "PROJECT_ROOT", project_root)
 
-        from deepmentor.services import llm as llm_module
-        from deepmentor.services.config import test_runner as test_runner_module
-        from deepmentor.services.config.test_runner import ConfigTestRunner, TestRun
+        from kagweb.services import llm as llm_module
+        from kagweb.services.config import test_runner as test_runner_module
+        from kagweb.services.config.test_runner import ConfigTestRunner, TestRun
 
         captured_kwargs: dict[str, Any] = {}
 
@@ -179,9 +179,9 @@ class TestLlmProbeUsesAgentsYaml:
 
     @pytest.mark.asyncio
     async def test_probe_passes_runtime_api_version_and_reasoning_effort(self, monkeypatch):
-        from deepmentor.services import llm as llm_module
-        from deepmentor.services.config import test_runner as test_runner_module
-        from deepmentor.services.config.test_runner import ConfigTestRunner, TestRun
+        from kagweb.services import llm as llm_module
+        from kagweb.services.config import test_runner as test_runner_module
+        from kagweb.services.config.test_runner import ConfigTestRunner, TestRun
 
         captured_kwargs: dict[str, Any] = {}
 
@@ -217,10 +217,10 @@ class TestLlmProbeUsesAgentsYaml:
     async def test_probe_reports_detected_context_window_without_persisting_catalog(
         self, tmp_path, monkeypatch
     ):
-        from deepmentor.services import llm as llm_module
-        from deepmentor.services.config import test_runner as test_runner_module
-        from deepmentor.services.config.model_catalog import ModelCatalogService
-        from deepmentor.services.config.test_runner import ConfigTestRunner, TestRun
+        from kagweb.services import llm as llm_module
+        from kagweb.services.config import test_runner as test_runner_module
+        from kagweb.services.config.model_catalog import ModelCatalogService
+        from kagweb.services.config.test_runner import ConfigTestRunner, TestRun
 
         catalog = {
             "version": 1,
@@ -303,7 +303,7 @@ class TestLlmProbeUsesAgentsYaml:
 
 def _stub_resolved_llm(**overrides: Any):
     """Return a minimal resolved LLM config stub."""
-    from deepmentor.services.config.provider_runtime import ResolvedLLMConfig
+    from kagweb.services.config.provider_runtime import ResolvedLLMConfig
 
     values = {
         "model": "gpt-4o-mini",
@@ -325,7 +325,7 @@ def _stub_resolved_llm(**overrides: Any):
 
 def _real_get_token_limit_kwargs(model: str, max_tokens: int) -> dict[str, int]:
     """Inline reimplementation to avoid importing the full LLM stack in tests."""
-    from deepmentor.services.llm.config import uses_max_completion_tokens
+    from kagweb.services.llm.config import uses_max_completion_tokens
 
     if uses_max_completion_tokens(model):
         return {"max_completion_tokens": max_tokens}
@@ -333,7 +333,7 @@ def _real_get_token_limit_kwargs(model: str, max_tokens: int) -> dict[str, int]:
 
 
 async def _stub_context_window_detection(*_args, **_kwargs):
-    from deepmentor.services.config.context_window_detection import (
+    from kagweb.services.config.context_window_detection import (
         ContextWindowDetectionResult,
     )
 
@@ -346,7 +346,7 @@ async def _stub_context_window_detection(*_args, **_kwargs):
 
 
 async def _stub_metadata_context_window_detection(*_args, **_kwargs):
-    from deepmentor.services.config.context_window_detection import (
+    from kagweb.services.config.context_window_detection import (
         ContextWindowDetectionResult,
     )
 

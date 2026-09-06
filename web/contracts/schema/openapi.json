@@ -9107,7 +9107,7 @@
         "title": "YouTubeSettings",
         "type": "object"
       },
-      "deepmentor__api__routers__book__ProgressRequest": {
+      "kagweb__api__routers__book__ProgressRequest": {
         "properties": {
           "book_id": {
             "title": "Book Id",
@@ -9122,7 +9122,7 @@
         "title": "ProgressRequest",
         "type": "object"
       },
-      "deepmentor__api__routers__video_learning__ProgressRequest": {
+      "kagweb__api__routers__video_learning__ProgressRequest": {
         "properties": {
           "duration_seconds": {
             "default": 0,
@@ -9145,7 +9145,7 @@
     }
   },
   "info": {
-    "title": "DeepMentor API",
+    "title": "KAGWeb API",
     "version": "1.0.0"
   },
   "openapi": "3.1.0",
@@ -12021,7 +12021,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/deepmentor__api__routers__book__ProgressRequest"
+                "$ref": "#/components/schemas/kagweb__api__routers__book__ProgressRequest"
               }
             }
           },
@@ -12097,7 +12097,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/deepmentor__api__routers__book__ProgressRequest"
+                "$ref": "#/components/schemas/kagweb__api__routers__book__ProgressRequest"
               }
             }
           },
@@ -14486,7 +14486,7 @@
     },
     "/api/dashboard/suggestions": {
       "get": {
-        "description": "The three starting points for the home composer.\n\nReturns immediately, even when the set is stale — regeneration happens\nbehind the response. An empty ``suggestions`` list means there is nothing\nin memory to ground a suggestion in, and the client renders nothing.\n\nNo language parameter: the output language is the learner's own\nmodel-output setting, resolved server-side. See\n:mod:`deepmentor.services.suggestions`.",
+        "description": "The three starting points for the home composer.\n\nReturns immediately, even when the set is stale — regeneration happens\nbehind the response. An empty ``suggestions`` list means there is nothing\nin memory to ground a suggestion in, and the client renders nothing.\n\nNo language parameter: the output language is the learner's own\nmodel-output setting, resolved server-side. See\n:mod:`kagweb.services.suggestions`.",
         "operationId": "get_starter_suggestions_api_dashboard_suggestions_get",
         "parameters": [
           {
@@ -20718,7 +20718,7 @@
     },
     "/api/marginnote4/pair": {
       "post": {
-        "description": "Pair a new MN4 device. Requires a DeepMentor session.\n\nReturns a one-time token the Add-on stores and presents on every sync.",
+        "description": "Pair a new MN4 device. Requires a KAGWeb session.\n\nReturns a one-time token the Add-on stores and presents on every sync.",
         "operationId": "pair_device_api_marginnote4_pair_post",
         "parameters": [
           {
@@ -24855,7 +24855,7 @@
     },
     "/api/multi-user/admin/skills/install": {
       "post": {
-        "description": "Install a hub skill into the admin catalog (``<hub>:<slug>[@version]``).\n\nThe skill lands in the admin workspace — the same pool ``/admin/resources``\nlists — so it stays invisible to non-admin users until a grant assigns it.\nThe install pipeline (verdict gate, safe extraction, ``always`` stripping)\nlives in :func:`deepmentor.services.skill.hub.install_from_hub`; this\nendpoint only chooses the target root and audits the action.",
+        "description": "Install a hub skill into the admin catalog (``<hub>:<slug>[@version]``).\n\nThe skill lands in the admin workspace — the same pool ``/admin/resources``\nlists — so it stays invisible to non-admin users until a grant assigns it.\nThe install pipeline (verdict gate, safe extraction, ``always`` stripping)\nlives in :func:`kagweb.services.skill.hub.install_from_hub`; this\nendpoint only chooses the target root and audits the action.",
         "operationId": "admin_install_skill_api_multi_user_admin_skills_install_post",
         "parameters": [
           {
@@ -35174,7 +35174,7 @@
     },
     "/api/reading/materials/{material_id}/export": {
       "get": {
-        "description": "Download the material with its annotations applied.\n\n``pdf`` writes real PDF annotations into a copy of the original, so the\nexport keeps working outside DeepMentor; ``markdown`` returns the marks as\ntext, which is what every non-PDF format gets.",
+        "description": "Download the material with its annotations applied.\n\n``pdf`` writes real PDF annotations into a copy of the original, so the\nexport keeps working outside KAGWeb; ``markdown`` returns the marks as\ntext, which is what every non-PDF format gets.",
         "operationId": "export_api_reading_materials__material_id__export_get",
         "parameters": [
           {
@@ -43065,7 +43065,7 @@
     },
     "/api/skills/hub/catalog": {
       "get": {
-        "description": "Proxy a skill hub's public catalog for the in-app browser.\n\nThe web \"Import from EduHub\" panel renders these rows in DeepMentor's own\nUI — no embedded iframe, no login — so users can browse, search, and\none-click download skills. Returns ``web_url`` (the hub's site origin) so\nthe panel can offer a \"view on EduHub\" link out.",
+        "description": "Proxy a skill hub's public catalog for the in-app browser.\n\nThe web \"Import from EduHub\" panel renders these rows in KAGWeb's own\nUI — no embedded iframe, no login — so users can browse, search, and\none-click download skills. Returns ``web_url`` (the hub's site origin) so\nthe panel can offer a \"view on EduHub\" link out.",
         "operationId": "hub_catalog_api_skills_hub_catalog_get",
         "parameters": [
           {
@@ -43246,7 +43246,7 @@
     },
     "/api/skills/install": {
       "post": {
-        "description": "Import a hub skill (e.g. from EduHub) into the caller's own skill layer.\n\nLands the package in the same per-user dir that ``/create`` writes to, so\nthe imported skill shows up in this user's Skills list. The install gate\n(``suspicious`` verdict abort, safe extraction, ``always`` stripping)\nlives in :func:`deepmentor.services.skill.hub.install_from_hub`.",
+        "description": "Import a hub skill (e.g. from EduHub) into the caller's own skill layer.\n\nLands the package in the same per-user dir that ``/create`` writes to, so\nthe imported skill shows up in this user's Skills list. The install gate\n(``suspicious`` verdict abort, safe extraction, ``always`` stripping)\nlives in :func:`kagweb.services.skill.hub.install_from_hub`.",
         "operationId": "install_skill_api_skills_install_post",
         "parameters": [
           {
@@ -45223,7 +45223,7 @@
         "tags": ["subagents"]
       },
       "post": {
-        "description": "Connect a subagent (a local CLI, or one of the user's partners) as a selectable KB.\n\nA partner connection (``agent_kind == \"partner\"``) binds a ``partner_id``\ninstead of a working directory: consulting it opens a fresh session on that\npartner, exactly as if the user started one from the partner page. Every\nconsult within one DeepMentor chat lands in that one partner session.",
+        "description": "Connect a subagent (a local CLI, or one of the user's partners) as a selectable KB.\n\nA partner connection (``agent_kind == \"partner\"``) binds a ``partner_id``\ninstead of a working directory: consulting it opens a fresh session on that\npartner, exactly as if the user started one from the partner page. Every\nconsult within one KAGWeb chat lands in that one partner session.",
         "operationId": "create_connection_api_subagents_connections_post",
         "parameters": [
           {
@@ -45366,7 +45366,7 @@
     },
     "/api/subagents/connections/{name}/message": {
       "post": {
-        "description": "Send a message straight to a connected subagent and stream its run.\n\nThis is the sidebar's \"talk to the agent directly\" path: it resumes the same\nlive session DeepMentor consults (shared via the cross-turn registry, keyed by\nchat session + connection), so the agent keeps full context. Streams the\nnative run as newline-delimited JSON, in the same channel shape the chat WS\nuses, so the sidebar transcript renders it identically.",
+        "description": "Send a message straight to a connected subagent and stream its run.\n\nThis is the sidebar's \"talk to the agent directly\" path: it resumes the same\nlive session KAGWeb consults (shared via the cross-turn registry, keyed by\nchat session + connection), so the agent keeps full context. Streams the\nnative run as newline-delimited JSON, in the same channel shape the chat WS\nuses, so the sidebar transcript renders it identically.",
         "operationId": "message_connection_api_subagents_connections__name__message_post",
         "parameters": [
           {
@@ -45703,7 +45703,7 @@
     },
     "/api/system/memory": {
       "get": {
-        "description": "Resident memory of the running DeepMentor process tree.\n\nDeliberately separate from ``/status``: that snapshot resolves the LLM,\nembedding and search configs and is fetched once per settings mount, while\nthis one is cheap enough for the status strip to poll.\n\nAdmin-only, for the same reason ``/status`` strips model names from\nnon-admins — process composition and host memory are operational detail a\ntenant has no need for.",
+        "description": "Resident memory of the running KAGWeb process tree.\n\nDeliberately separate from ``/status``: that snapshot resolves the LLM,\nembedding and search configs and is fetched once per settings mount, while\nthis one is cheap enough for the status strip to poll.\n\nAdmin-only, for the same reason ``/status`` strips model names from\nnon-admins — process composition and host memory are operational detail a\ntenant has no need for.",
         "operationId": "get_memory_usage_api_system_memory_get",
         "parameters": [
           {
@@ -47031,7 +47031,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/deepmentor__api__routers__video_learning__ProgressRequest"
+                "$ref": "#/components/schemas/kagweb__api__routers__video_learning__ProgressRequest"
               }
             }
           },
@@ -48301,5 +48301,5 @@
       }
     }
   },
-  "x-deepmentor-web-protocol-version": "2.0"
+  "x-kagweb-web-protocol-version": "2.0"
 }

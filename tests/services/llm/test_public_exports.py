@@ -1,4 +1,4 @@
-from deepmentor.services import llm
+from kagweb.services import llm
 
 
 def test_llm_module_exports_cache_helpers():

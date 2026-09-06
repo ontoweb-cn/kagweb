@@ -1,5 +1,5 @@
 # ============================================
-# DeepMentor Matrix E2EE Add-on — Dependencies
+# KAGWeb Matrix E2EE Add-on — Dependencies
 # ============================================
 # Mirrors pyproject.toml `[project.optional-dependencies].matrix-e2e`.
 # Keep in sync with pyproject.toml when adding/updating dependencies.

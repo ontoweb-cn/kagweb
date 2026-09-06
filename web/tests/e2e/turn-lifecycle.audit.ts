@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { assistantActivity, sendPrompt } from "./fixtures/runtime";
 
 const integrationFixtureAvailable =
-  process.env.DEEPMENTOR_TURN_E2E_FIXTURE === "1";
+  process.env.KAGWEB_TURN_E2E_FIXTURE === "1";
 
 test.describe("v2 turn lifecycle", () => {
   test.skip(
@@ -18,13 +18,13 @@ test.describe("v2 turn lifecycle", () => {
 
     const activity = assistantActivity(page);
     await expect(activity.last()).toContainText(
-      /DeepMentor (?:Exploring|Reasoning|Planning|Quizzing|Reflecting)/i,
+      /KAGWeb (?:Exploring|Reasoning|Planning|Quizzing|Reflecting)/i,
     );
 
     await page.getByRole("textbox", { name: /answer/i }).fill("Continue");
     await page.getByRole("button", { name: /answer|submit/i }).click();
     await expect(activity.last()).toContainText(
-      /DeepMentor (?:Exploring|Reasoning|Planning|responded)/i,
+      /KAGWeb (?:Exploring|Reasoning|Planning|responded)/i,
     );
   });
 
@@ -37,7 +37,7 @@ test.describe("v2 turn lifecycle", () => {
     const activity = assistantActivity(page);
     await expect(activity.last()).toBeVisible();
     await page.getByRole("button", { name: /drop connection/i }).click();
-    await expect(activity.last()).toContainText(/DeepMentor/i);
+    await expect(activity.last()).toContainText(/KAGWeb/i);
     await expect(page.getByRole("button", { name: /retry/i })).toHaveCount(0);
   });
 

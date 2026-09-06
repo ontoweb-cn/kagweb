@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.services.config.provider_runtime import ResolvedSearchConfig
-from deepmentor.services.search import web_search
-from deepmentor.services.search.source_filter import filter_web_search_response
-from deepmentor.services.search.types import Citation, SearchResult, WebSearchResponse
+from kagweb.services.config.provider_runtime import ResolvedSearchConfig
+from kagweb.services.search import web_search
+from kagweb.services.search.source_filter import filter_web_search_response
+from kagweb.services.search.types import Citation, SearchResult, WebSearchResponse
 
 
 class _FakeProvider:
@@ -35,23 +35,23 @@ def _patch_runtime(
 ) -> None:
     """Pin the resolved config and keep the fallback chain off the real catalog."""
     monkeypatch.setattr(
-        "deepmentor.services.search._get_web_search_config",
+        "kagweb.services.search._get_web_search_config",
         lambda: {"enabled": True, **(config or {})},
     )
     monkeypatch.setattr(
-        "deepmentor.services.search.load_system_settings",
+        "kagweb.services.search.load_system_settings",
         lambda: {"web_search_source_filtering": (config or {}).get("source_filtering", {})},
     )
     monkeypatch.setattr(
-        "deepmentor.services.search.resolve_search_runtime_config",
+        "kagweb.services.search.resolve_search_runtime_config",
         lambda: resolved,
     )
     monkeypatch.setattr(
-        "deepmentor.services.search.search_fallback_candidates",
+        "kagweb.services.search.search_fallback_candidates",
         lambda _provider: list(kwargs.get("candidates", [])),
     )
     monkeypatch.setattr(
-        "deepmentor.services.search.search_provider_credentials",
+        "kagweb.services.search.search_provider_credentials",
         lambda provider: kwargs.get("credentials", {}).get(provider, ("", "")),
     )
 
@@ -122,7 +122,7 @@ def test_web_search_missing_key_falls_back_to_duckduckgo(monkeypatch) -> None:
             proxy="http://127.0.0.1:7890",
         ),
     )
-    monkeypatch.setattr("deepmentor.services.search.get_provider", _fake_get_provider)
+    monkeypatch.setattr("kagweb.services.search.get_provider", _fake_get_provider)
     result = web_search("hello")
     assert captured["provider"] == "duckduckgo"
     assert result["provider"] == "duckduckgo"
@@ -148,7 +148,7 @@ def test_web_search_searxng_uses_base_url(monkeypatch) -> None:
             max_results=4,
         ),
     )
-    monkeypatch.setattr("deepmentor.services.search.get_provider", _fake_get_provider)
+    monkeypatch.setattr("kagweb.services.search.get_provider", _fake_get_provider)
     result = web_search("hello")
     assert captured["provider"] == "searxng"
     assert captured["kwargs"]["base_url"] == "https://searx.example.com"
@@ -174,7 +174,7 @@ def test_web_search_runtime_failure_falls_through_the_chain(monkeypatch) -> None
         candidates=["tavily", "duckduckgo"],
         credentials={"tavily": ("tavily-key", "")},
     )
-    monkeypatch.setattr("deepmentor.services.search.get_provider", _fake_get_provider)
+    monkeypatch.setattr("kagweb.services.search.get_provider", _fake_get_provider)
     result = web_search("hello")
 
     assert [name for name, _ in seen] == ["serper", "tavily"]
@@ -207,7 +207,7 @@ def test_web_search_fallback_drops_request_credentials_for_previous_provider(mon
         candidates=["tavily"],
         credentials={"tavily": ("tavily-key", "https://tavily.example")},
     )
-    monkeypatch.setattr("deepmentor.services.search.get_provider", _fake_get_provider)
+    monkeypatch.setattr("kagweb.services.search.get_provider", _fake_get_provider)
 
     result = web_search(
         "hello",
@@ -234,7 +234,7 @@ def test_web_search_raises_when_every_candidate_fails(monkeypatch) -> None:
         candidates=["duckduckgo"],
     )
     monkeypatch.setattr(
-        "deepmentor.services.search.get_provider",
+        "kagweb.services.search.get_provider",
         lambda name, **kwargs: _FailingProvider(name),
     )
     with pytest.raises(Exception, match="brave: 202 Ratelimit; duckduckgo: 202 Ratelimit"):
@@ -259,7 +259,7 @@ def test_web_search_explicit_provider_uses_its_own_key(monkeypatch) -> None:
         ),
         credentials={"tavily": ("tavily-key", "")},
     )
-    monkeypatch.setattr("deepmentor.services.search.get_provider", _fake_get_provider)
+    monkeypatch.setattr("kagweb.services.search.get_provider", _fake_get_provider)
     web_search("hello", provider="tavily")
     assert captured["provider"] == "tavily"
     assert captured["kwargs"]["api_key"] == "tavily-key"
@@ -351,7 +351,7 @@ def test_web_search_filters_provider_results_before_consolidation(monkeypatch) -
         },
     )
     monkeypatch.setattr(
-        "deepmentor.services.search.get_provider",
+        "kagweb.services.search.get_provider",
         lambda name, **kwargs: _UnsafeProvider(name),
     )
 
@@ -406,7 +406,7 @@ def test_web_search_filters_answer_provider_citations_without_renumbering(monkey
         },
     )
     monkeypatch.setattr(
-        "deepmentor.services.search.get_provider",
+        "kagweb.services.search.get_provider",
         lambda name, **kwargs: _AnswerProvider(name),
     )
 

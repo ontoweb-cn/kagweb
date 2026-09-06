@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from deepmentor.services.config.model_catalog import ModelCatalogService
+from kagweb.services.config.model_catalog import ModelCatalogService
 
 
 def _write_env(path: Path, lines: list[str]) -> None:

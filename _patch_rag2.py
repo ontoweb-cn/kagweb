@@ -4,7 +4,7 @@ import re
 
 import py_compile
 
-p = "deepmentor/services/config/provider_runtime.py"
+p = "kagweb/services/config/provider_runtime.py"
 s = io.open(p, encoding="utf-8").read()
 if "resolve_embedding_runtime_config" not in s:
     print("already patched")

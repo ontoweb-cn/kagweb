@@ -54,7 +54,7 @@ def _resolve_from_import(
 
 
 def collect_import_edges(project_root: Path) -> list[ImportEdge]:
-    package_root = project_root / "deepmentor"
+    package_root = project_root / "kagweb"
     edges: list[ImportEdge] = []
     for path in sorted(package_root.rglob("*.py")):
         if "__pycache__" in path.parts or "tests" in path.parts:
@@ -72,7 +72,7 @@ def collect_import_edges(project_root: Path) -> list[ImportEdge]:
                     node=node,
                 )
             for imported in imported_names:
-                if imported == "deepmentor" or imported.startswith("deepmentor."):
+                if imported == "kagweb" or imported.startswith("kagweb."):
                     edges.append(
                         ImportEdge(
                             importer=importer,

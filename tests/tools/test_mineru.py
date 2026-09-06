@@ -8,10 +8,10 @@ import zipfile
 import httpx as real_httpx
 import pytest
 
-from deepmentor.services.parsing.engines.mineru import backend as mineru_backend
-from deepmentor.services.parsing.engines.mineru import cloud as mineru_cloud
-from deepmentor.services.parsing.engines.mineru import config as mineru_config
-from deepmentor.services.parsing.engines.mineru.config import MinerUConfig, MinerUError
+from kagweb.services.parsing.engines.mineru import backend as mineru_backend
+from kagweb.services.parsing.engines.mineru import cloud as mineru_cloud
+from kagweb.services.parsing.engines.mineru import config as mineru_config
+from kagweb.services.parsing.engines.mineru.config import MinerUConfig, MinerUError
 
 # ---------------------------------------------------------------------------
 # Config resolution
@@ -68,7 +68,7 @@ def test_resolve_mineru_config_preserves_token_array(monkeypatch: pytest.MonkeyP
 def test_parse_pdf_to_workdir_dispatches_local(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepmentor.services.parsing.engines.mineru import local as pdf_parser
+    from kagweb.services.parsing.engines.mineru import local as pdf_parser
 
     pdf = tmp_path / "exam.pdf"
     pdf.write_bytes(b"%PDF-1.4")
@@ -87,7 +87,7 @@ def test_parse_pdf_to_workdir_dispatches_local(
 def test_parse_pdf_to_workdir_local_failure_raises(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepmentor.services.parsing.engines.mineru import local as pdf_parser
+    from kagweb.services.parsing.engines.mineru import local as pdf_parser
 
     pdf = tmp_path / "exam.pdf"
     pdf.write_bytes(b"%PDF-1.4")
@@ -183,7 +183,7 @@ def test_cloud_pdf_over_page_limit_is_split_and_merged(
 def test_parse_document_to_workdir_dispatches_office_local(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepmentor.services.parsing.engines.mineru import local as local_parser
+    from kagweb.services.parsing.engines.mineru import local as local_parser
 
     docx = tmp_path / "lesson.docx"
     docx.write_bytes(b"office")
@@ -204,7 +204,7 @@ def test_parse_document_to_workdir_dispatches_office_local(
 
 
 def test_pdf_compatibility_wrapper_rejects_non_pdf(tmp_path: Path) -> None:
-    from deepmentor.services.parsing.engines.mineru import local as local_parser
+    from kagweb.services.parsing.engines.mineru import local as local_parser
 
     docx = tmp_path / "lesson.docx"
     docx.write_bytes(b"office")
@@ -281,7 +281,7 @@ def test_parse_local_rejects_bad_configured_path(
 def test_parse_local_explains_legacy_cli_limit_for_office(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepmentor.services.parsing.engines.mineru import local as local_parser
+    from kagweb.services.parsing.engines.mineru import local as local_parser
 
     source = tmp_path / "lesson.docx"
     source.write_bytes(b"office")
@@ -314,7 +314,7 @@ def test_local_cli_version_rejects_unknown_command() -> None:
 
 
 def test_pdf_parser_streams_output_lines(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from deepmentor.services.parsing.engines.mineru import local as pdf_parser
+    from kagweb.services.parsing.engines.mineru import local as pdf_parser
 
     pdf = tmp_path / "exam.pdf"
     pdf.write_bytes(b"%PDF-1.4")
@@ -346,7 +346,7 @@ def test_pdf_parser_streams_output_lines(tmp_path: Path, monkeypatch: pytest.Mon
 def test_document_parser_passes_docx_to_current_mineru_cli(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepmentor.services.parsing.engines.mineru import local as local_parser
+    from kagweb.services.parsing.engines.mineru import local as local_parser
 
     source = tmp_path / "lesson.docx"
     source.write_bytes(b"office")
@@ -374,7 +374,7 @@ def test_document_parser_passes_docx_to_current_mineru_cli(
 def test_document_parser_rejects_legacy_magic_pdf_for_office(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from deepmentor.services.parsing.engines.mineru import local as local_parser
+    from kagweb.services.parsing.engines.mineru import local as local_parser
 
     source = tmp_path / "lesson.docx"
     source.write_bytes(b"office")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from deepmentor.runtime.providers.allowlist import Allowlist
+from kagweb.runtime.providers.allowlist import Allowlist
 
 
 def test_none_is_unrestricted_but_empty_is_not() -> None:

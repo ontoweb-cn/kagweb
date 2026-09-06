@@ -109,10 +109,10 @@ browser workspace inference from `capability == "mastery_path"`.
 
 **Files:**
 
-- Modify: `deepmentor/core/turn_request.py`
-- Modify: `deepmentor/app/contracts.py`
-- Modify: `deepmentor/api/contracts/turn_protocol.py`
-- Modify: `deepmentor/api/contracts/export.py`
+- Modify: `kagweb/core/turn_request.py`
+- Modify: `kagweb/app/contracts.py`
+- Modify: `kagweb/api/contracts/turn_protocol.py`
+- Modify: `kagweb/api/contracts/export.py`
 - Test: `tests/api/test_frontend_contract_export.py`
 
 1. Add typed nested request value objects to `core`.
@@ -126,7 +126,7 @@ browser workspace inference from `capability == "mastery_path"`.
 
 **Files:**
 
-- Modify: `deepmentor/api/routers/unified_ws.py`
+- Modify: `kagweb/api/routers/unified_ws.py`
 - Test: `tests/api/test_unified_ws_turn_runtime.py`
 
 1. Write tests for missing/future version rejection and v2 responses.
@@ -158,10 +158,10 @@ browser workspace inference from `capability == "mastery_path"`.
 
 **Files:**
 
-- Modify: `deepmentor/api/routers/capabilities.py`
-- Modify: `deepmentor/runtime/bootstrap/builtin_capabilities.py`
-- Modify: `deepmentor/runtime/request_contracts.py`
-- Modify: `deepmentor_cli/main.py`
+- Modify: `kagweb/api/routers/capabilities.py`
+- Modify: `kagweb/runtime/bootstrap/builtin_capabilities.py`
+- Modify: `kagweb/runtime/request_contracts.py`
+- Modify: `kagweb_cli/main.py`
 - Modify: `web/features/capabilities/presentation.tsx`
 - Modify: `web/lib/mastery-session.ts`
 - Test: `tests/api/test_capabilities_router.py`
@@ -182,7 +182,7 @@ browser workspace inference from `capability == "mastery_path"`.
 
 **Files:**
 
-- Modify: `deepmentor/api/main.py`
+- Modify: `kagweb/api/main.py`
 - Modify: API clients under `web/lib`, `web/features`, and `web/hooks`
 - Modify: API and browser tests under `tests` and `web/tests`
 - Modify: `web/lib/proxy-policy.ts` and `web/proxy.ts`
@@ -217,7 +217,7 @@ browser workspace inference from `capability == "mastery_path"`.
 
 ## Task 8: Normalize resource namespaces without compatibility aliases
 
-**Files:** `deepmentor/api/main.py`, affected routers, typed clients, and tests.
+**Files:** `kagweb/api/main.py`, affected routers, typed clients, and tests.
 
 1. Freeze the old-to-new route matrix from the running OpenAPI document.
 2. Normalize top-level nouns: `/api/books`, `/api/notebooks`,

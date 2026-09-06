@@ -6,7 +6,7 @@ import stat
 
 import pytest
 
-from deepmentor.services.path_service import PathService
+from kagweb.services.path_service import PathService
 
 
 def test_public_output_filter_allows_only_whitelisted_artifacts(tmp_path: Path) -> None:

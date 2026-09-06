@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Compatibility wrapper for ``deepmentor start``."""
+"""Compatibility wrapper for ``kagweb start``."""
 
 from __future__ import annotations
 
@@ -11,11 +11,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from deepmentor.runtime.launcher import start  # noqa: E402
+from kagweb.runtime.launcher import start  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Start DeepMentor Web.")
+    parser = argparse.ArgumentParser(description="Start KAGWeb Web.")
     parser.add_argument(
         "--home",
         type=Path,

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from deepmentor.api.routers import auth, unified_ws
+from kagweb.api.routers import auth, unified_ws
 
 
 class _Turns:

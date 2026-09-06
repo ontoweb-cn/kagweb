@@ -2,8 +2,8 @@
 
 from fastapi.routing import APIWebSocketRoute
 
-from deepmentor.api.routers import partner_groups, partners, unified_ws
-from deepmentor.api.routers.auth import require_learning_surface
+from kagweb.api.routers import partner_groups, partners, unified_ws
+from kagweb.api.routers.auth import require_learning_surface
 
 
 def test_websocket_routes_share_one_canonical_namespace() -> None:

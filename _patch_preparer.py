@@ -2,7 +2,7 @@
 import io
 import py_compile
 
-path = "deepmentor/services/session/turns/request_preparer.py"
+path = "kagweb/services/session/turns/request_preparer.py"
 with io.open(path, "r", encoding="utf-8") as f:
     src = f.read()
 
@@ -21,10 +21,10 @@ def cut(src, start, end):
 # ── imports ──
 src = rep(
     src,
-    """from deepmentor.core.stream import StreamEvent, StreamEventType
-from deepmentor.core.turn_request import TurnRequest
-from deepmentor.runtime.capability_routing import route_explicit_quiz_request
-from deepmentor.services.session.workspace_preferences import (
+    """from kagweb.core.stream import StreamEvent, StreamEventType
+from kagweb.core.turn_request import TurnRequest
+from kagweb.runtime.capability_routing import route_explicit_quiz_request
+from kagweb.services.session.workspace_preferences import (
     WORKSPACE_MODE_MASTERY,
     WORKSPACE_MODE_READING,
 )
@@ -47,8 +47,8 @@ from .._turn_runtime_shared import (
     _TurnExecution,
     _workspace_mode,
 )""",
-    """from deepmentor.core.stream import StreamEvent, StreamEventType
-from deepmentor.core.turn_request import TurnRequest
+    """from kagweb.core.stream import StreamEvent, StreamEventType
+from kagweb.core.turn_request import TurnRequest
 
 from .._turn_runtime_shared import (
     _coerce_bool,
@@ -93,7 +93,7 @@ src = rep(
         ).strip()
         bound_course = None
         if requested_course_id:
-            from deepmentor.services.courses import (
+            from kagweb.services.courses import (
                 CourseNotFoundError,
                 get_course_service,
             )
@@ -122,7 +122,7 @@ src = rep(
             capability_route.capability if capability_route is not None else requested_capability
         )
         try:
-            from deepmentor.multi_user.learning_access import apply_learning_policy
+            from kagweb.multi_user.learning_access import apply_learning_policy
 
             payload = apply_learning_policy({**payload, "capability": capability})
         except PermissionError as exc:
@@ -177,7 +177,7 @@ src = rep(
             payload.get("reading_material_revision")
         )
         if workspace_mode == WORKSPACE_MODE_READING and reading_workspace_id:
-            from deepmentor.reading import ReadingCatalogStore
+            from kagweb.reading import ReadingCatalogStore
 
             reading_catalog = ReadingCatalogStore()
             reading_workspace = reading_catalog.get_workspace(reading_workspace_id)
@@ -213,7 +213,7 @@ src = rep(
         )
         mastery_binding = None
         if workspace_mode == WORKSPACE_MODE_MASTERY:
-            from deepmentor.learning.identity import resolve_mastery_path_binding
+            from kagweb.learning.identity import resolve_mastery_path_binding
 
             mastery_binding = resolve_mastery_path_binding(
                 configured_path_id=configured_mastery_path_id,
@@ -265,7 +265,7 @@ src = rep(
 src = rep(
     src,
     """        if capability_route is not None and capability_route.auto_routed:
-            from deepmentor.runtime.registry.capability_registry import (
+            from kagweb.runtime.registry.capability_registry import (
                 get_capability_registry,
             )
 
@@ -348,12 +348,12 @@ src = rep(
 # ── brand string (Phase 3 will do global, but fix message text now) ──
 src = rep(
     src,
-    '''                    error="DeepMentor is preparing an update; try again after it reconnects",''',
+    '''                    error="KAGWeb is preparing an update; try again after it reconnects",''',
     '''                    error="The server is preparing an update; try again after it reconnects",''',
 )
 src = rep(
     src,
-    '''            raise RuntimeError("DeepMentor is preparing an update; try again after it reconnects")''',
+    '''            raise RuntimeError("KAGWeb is preparing an update; try again after it reconnects")''',
     '''            raise RuntimeError("The server is preparing an update; try again after it reconnects")''',
 )
 
@@ -386,7 +386,7 @@ src = rep(
                 # An administrative reset/delete can cancel the placeholder
                 # while lease acquisition is in flight. Never launch a task
                 # after that cancellation has already become durable.
-                from deepmentor.learning.storage import LearningStore
+                from kagweb.learning.storage import LearningStore
 
                 async with self._lock:
                     self._executions.pop(turn["id"], None)
@@ -416,7 +416,7 @@ src = rep(
             async with self._lock:
                 self._executions.pop(turn["id"], None)
             if mastery_binding is not None and mastery_lease_acquired:
-                from deepmentor.learning.storage import LearningStore
+                from kagweb.learning.storage import LearningStore
 
                 with contextlib.suppress(Exception):
                     await asyncio.to_thread(

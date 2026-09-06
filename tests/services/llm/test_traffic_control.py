@@ -2,7 +2,7 @@
 
 import pytest
 
-from deepmentor.services.llm.traffic_control import TrafficController
+from kagweb.services.llm.traffic_control import TrafficController
 
 
 @pytest.mark.asyncio

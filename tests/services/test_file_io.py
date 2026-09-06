@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from deepmentor.services import file_io
-from deepmentor.services.file_io import atomic_write_json, atomic_write_text
+from kagweb.services import file_io
+from kagweb.services.file_io import atomic_write_json, atomic_write_text
 
 
 def test_atomic_write_json_creates_parent_and_replaces_content(tmp_path: Path) -> None:

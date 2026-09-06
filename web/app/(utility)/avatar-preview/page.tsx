@@ -10,11 +10,11 @@ import {
 } from "@/components/sidebar/SessionAvatar";
 
 const TITLES = [
-  "DeepMentor 模型配置工作台",
-  "DeepMentor 侧边栏聊天历史重组",
-  "Thinking-orbs 集成到 DeepMentor",
-  "DeepMentor 模型配置集成逻辑",
-  "deepmentor.info 文档审查",
+  "KAGWeb 模型配置工作台",
+  "KAGWeb 侧边栏聊天历史重组",
+  "Thinking-orbs 集成到 KAGWeb",
+  "KAGWeb 模型配置集成逻辑",
+  "kagweb.info 文档审查",
   "New session",
 ];
 

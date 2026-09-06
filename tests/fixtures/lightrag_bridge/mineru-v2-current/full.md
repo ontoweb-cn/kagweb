@@ -1,4 +1,4 @@
-## DeepMentor LightRAG Bridge Fixture
+## KAGWeb LightRAG Bridge Fixture
 
 A short paragraph preserves text and heading hierarchy.
 

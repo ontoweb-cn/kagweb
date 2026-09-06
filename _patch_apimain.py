@@ -2,7 +2,7 @@
 import io
 import py_compile
 
-path = "deepmentor/api/main.py"
+path = "kagweb/api/main.py"
 with io.open(path, "r", encoding="utf-8") as f:
     src = f.read()
 
@@ -21,9 +21,9 @@ def rep(src, old, new, count=1):
 # 1) knowledge progress ports install
 src = rep(
     src,
-    """    from deepmentor.api.utils.progress_broadcaster import ProgressBroadcaster
-    from deepmentor.api.utils.task_log_stream import get_task_stream_manager
-    from deepmentor.knowledge.progress_events import install_progress_ports
+    """    from kagweb.api.utils.progress_broadcaster import ProgressBroadcaster
+    from kagweb.api.utils.task_log_stream import get_task_stream_manager
+    from kagweb.knowledge.progress_events import install_progress_ports
 
     install_progress_ports(
         broadcast=ProgressBroadcaster.get_instance().broadcast,
@@ -37,42 +37,42 @@ src = rep(
 src = rep(
     src,
     """    async def _start_cron() -> None:
-        from deepmentor.services.cron import get_cron_service
+        from kagweb.services.cron import get_cron_service
 
         await get_cron_service().start()
 
     async def _stop_cron() -> None:
-        from deepmentor.services.cron import get_cron_service
+        from kagweb.services.cron import get_cron_service
 
         await get_cron_service().stop()
 
     async def _start_github_sync() -> None:
-        from deepmentor.services.github_source.sync_service import get_sync_service
+        from kagweb.services.github_source.sync_service import get_sync_service
 
         await get_sync_service().start()
 
     async def _stop_github_sync() -> None:
-        from deepmentor.services.github_source.sync_service import get_sync_service
+        from kagweb.services.github_source.sync_service import get_sync_service
 
         await get_sync_service().stop()
 
-    from deepmentor.runtime.coordination import BackgroundCommandKind
+    from kagweb.runtime.coordination import BackgroundCommandKind
 
     async def _handle_background_command(command) -> None:
         kind = str(command.kind)
         if kind == BackgroundCommandKind.CRON_RELOAD:
-            from deepmentor.services.cron import get_cron_service
+            from kagweb.services.cron import get_cron_service
 
             get_cron_service().reload()
             return
 
-        from deepmentor.services.partners import get_partner_manager""",
-    """    from deepmentor.runtime.coordination import BackgroundCommandKind
+        from kagweb.services.partners import get_partner_manager""",
+    """    from kagweb.runtime.coordination import BackgroundCommandKind
 
     async def _handle_background_command(command) -> None:
         kind = str(command.kind)
 
-        from deepmentor.services.partners import get_partner_manager""",
+        from kagweb.services.partners import get_partner_manager""",
 )
 
 # 3) cron change notifier wiring
@@ -80,8 +80,8 @@ src = cut(
     src,
     """    cron_service = None
     try:
-        from deepmentor.services.cron import get_cron_service""",
-    """    from deepmentor.runtime.background_leader import BackgroundLeaderSupervisor""",
+        from kagweb.services.cron import get_cron_service""",
+    """    from kagweb.runtime.background_leader import BackgroundLeaderSupervisor""",
 )
 src = rep(
     src,
@@ -97,11 +97,11 @@ src = rep(
     """    # Migrate any v1 memory files (PROFILE.md / SOUL.md / SUMMARY.md) into a
     # backup folder so the v2 three-layer subsystem starts clean.
     try:
-        from deepmentor.services.memory import (
+        from kagweb.services.memory import (
             migrate_partner_surface_if_needed,
             migrate_v1_if_needed,
         )
-        from deepmentor.services.path_service import get_path_service
+        from kagweb.services.path_service import get_path_service
 
         get_path_service().migrate_legacy_memory_markdown()
         backup = migrate_v1_if_needed()
@@ -133,7 +133,7 @@ src = rep(
 # 6) router imports
 src = rep(
     src,
-    """from deepmentor.api.routers import (
+    """from kagweb.api.routers import (
     agent_config,
     attachments,
     auth,
@@ -171,7 +171,7 @@ src = rep(
     visualizers,
     voice,
 )""",
-    """from deepmentor.api.routers import (
+    """from kagweb.api.routers import (
     attachments,
     auth,
     capabilities,

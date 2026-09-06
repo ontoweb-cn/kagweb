@@ -6,10 +6,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from deepmentor.services.llm.provider_core.openai_compat_provider import (
+from kagweb.services.llm.provider_core.openai_compat_provider import (
     OpenAICompatProvider as ServicesOpenAICompatProvider,
 )
-from deepmentor.services.provider_registry import find_by_name as find_service_provider
+from kagweb.services.provider_registry import find_by_name as find_service_provider
 
 
 def _response_with_reasoning_only():

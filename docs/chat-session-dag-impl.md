@@ -419,20 +419,20 @@ export function parseSessionDsl(text: string): DslDocument;
 - #51（低）：branch trace 的 raw id（msg:N）与主 trace 天然不重合（消息树无重入），但 normalize 模式前缀 `b1:` sanitize 后为 `b1_turn_1`，与主 trace `turn_1` 不撞——dedupe 集合兜底即可
 - #52（低）：中文/Unicode label 在 mermaid 引号内合法——测试覆盖
 
-## 模块 10：`deepmentor/services/session/dsl_export.py` + CLI `session trace`
+## 模块 10：`kagweb/services/session/dsl_export.py` + CLI `session trace`
 
-主方案 V2 落地要点第 4 条："`deepmentor session trace <id> --format dsl` 直接从 SQLite 重建导出，后端复用同一推导规则"。
+主方案 V2 落地要点第 4 条："`kagweb session trace <id> --format dsl` 直接从 SQLite 重建导出，后端复用同一推导规则"。
 
 关键事实（已核实）：
 - `messages` 表已内嵌 `events_json`（`_serialize_message` L1617-1631 返回 `events`/`parent_message_id`/`capability`），`get_session` 直接可得——**无需 join `turn_events`**（那是运行时 journal）
-- CLI 模式：`session_cmd.py` 经 `DeepMentorApp.get_session(session_id)` 取数（`_show_session` 同款）
+- CLI 模式：`session_cmd.py` 经 `KAGWebApp.get_session(session_id)` 取数（`_show_session` 同款）
 - Python 测试落位 `tests/services/session/`（已有 test_sqlite_store.py 等）
 
 设计：
 - `build_session_dsl(messages, *, stable=False, normalize_ids=False, include_text=True) -> dict`：移植 web 侧推导（`groupTraceEvents` call_id 分组 → `walkCallGroups` 分类 → 可见路径 `buildVisiblePath` 端口 → 单层 branches）
 - 分类规则逐条对齐：skip `llm_final_response`/`absorbed_into_final`/无实质组；`tool_planning|tool_call` → tool_call；`trace_role=retrieve` → retrieve；其余 round；subagent distinct `(name, consult_index)`；tool name/tool state/query/min-max duration/clip 140
 - 可见路径端口：childrenByParent 按 id 升序（持久化行无负 id），默认选末位（最新）；branch info = 1-based 位置/总数/sibling ids/parent id；branch 前缀 `b{K}:`（K = siblingIds 位置，与 web D2 修复一致）
-- CLI：`deepmentor session trace <id> --format dsl [--stable] [--normalize-ids] [--text/--no-text] [--out FILE]`
+- CLI：`kagweb session trace <id> --format dsl [--stable] [--normalize-ids] [--text/--no-text] [--out FILE]`
 - **跨语言 parity 测试**：TS 侧（tsx 直调）从 fixture 生成 `tests/services/session/fixtures/session_dsl_expected.json`（stable+normalizeIds），Python 测试从同款 fixture 构建并断言 JSON 全等——推导规则漂移的护栏
 
 **细化评审（模块 10）**：
@@ -452,9 +452,9 @@ export function parseSessionDsl(text: string): DslDocument;
 
 **模块 9 交付**：`web/features/chat/dag/dsl-mermaid.ts`（`dslToMermaid` 纯函数：id sanitize+dedupe、label 清洗截 48、branch 虚线边）、dsl.ts 抽出 `buildSessionDslDocument`、面板 "Export Mermaid" 按钮（下载 .mmd）、`web/tests/session-dag-mermaid.test.ts` 7 用例（结构/branch/清洗/截断/dedupe/空文档/Unicode）。
 
-**模块 10 交付**：`deepmentor/services/session/dsl_export.py`（`build_session_dsl`：分组/分类/实质过滤/嵌套规则/可见路径/单层 branch 全量移植）、CLI `deepmentor session trace <id> [--format dsl] [--stable] [--normalize-ids] [--text/--no-text] [--out]`、parity fixture（tsx 生成 `tests/services/session/fixtures/session_dsl_expected.json`，含输入 + stable_normalized + raw 两期望）、`tests/services/session/test_dsl_export.py` 12 用例。
+**模块 10 交付**：`kagweb/services/session/dsl_export.py`（`build_session_dsl`：分组/分类/实质过滤/嵌套规则/可见路径/单层 branch 全量移植）、CLI `kagweb session trace <id> [--format dsl] [--stable] [--normalize-ids] [--text/--no-text] [--out]`、parity fixture（tsx 生成 `tests/services/session/fixtures/session_dsl_expected.json`，含输入 + stable_normalized + raw 两期望）、`tests/services/session/test_dsl_export.py` 12 用例。
 
-**验证**：web test:node 1043/1043 ✔ · typecheck ✔ · eslint ✔ · architecture:check ✔（732 模块）· i18n parity ✔；Python tests/cli + tests/services/session 341 passed ✔；**E2E**：fixture 种子入 SQLite → `deepmentor session trace --stable --normalize-ids` 输出与 TS fixture 全等（已清理种子会话）。
+**验证**：web test:node 1043/1043 ✔ · typecheck ✔ · eslint ✔ · architecture:check ✔（732 模块）· i18n parity ✔；Python tests/cli + tests/services/session 341 passed ✔；**E2E**：fixture 种子入 SQLite → `kagweb session trace --stable --normalize-ids` 输出与 TS fixture 全等（已清理种子会话）。
 
 ## 模块 11–15 细化设计（V3 扩展，2026-09-03 圈定 D/E/A/B/F）
 
@@ -477,7 +477,7 @@ export function parseSessionDsl(text: string): DslDocument;
 - **#66（评审）**：与 TS **字节级 parity**——fixture 由 tsx 生成期望 .mmd，Python 测试断言全等（sanitize 正则与 join("\n")+"\n" 必须逐字符对齐）；推翻 #56"不做 Python 端口"的决策（用户圈定 E，理由：CLI 用户无需 web 即可出图）。
 
 ### 模块 15：DSL diff
-CLI `deepmentor session diff <a.json> <b.json>`：对两份导出的 DSL 文档做结构 diff。配对策略：按 trace 位置索引配对（同长度精确对位；不同长度时前 min(n) 对位、多出/缺失整段报 added/removed）；每对 entry 比较 kind/capability/text_preview + calls 树（按 (kind, tool, round_index) 指纹多集比较）报 tool 增删；`--json` 输出机器可读摘要，默认 rich 表格。
+CLI `kagweb session diff <a.json> <b.json>`：对两份导出的 DSL 文档做结构 diff。配对策略：按 trace 位置索引配对（同长度精确对位；不同长度时前 min(n) 对位、多出/缺失整段报 added/removed）；每对 entry 比较 kind/capability/text_preview + calls 树（按 (kind, tool, round_index) 指纹多集比较）报 tool 增删；`--json` 输出机器可读摘要，默认 rich 表格。
 - **#67（评审）**：不做 LCS 对齐（过度工程）——文档限制：位置配对在两份导出插入/删除中间轮次时会错位，建议配合 --normalize-ids + --stable 导出使用；此限制写入 --help。纯读文件操作，无 store 依赖。
 
 ## V3 实施记录（模块 11–15，2026-09-03）
@@ -500,7 +500,7 @@ CLI `deepmentor session diff <a.json> <b.json>`：对两份导出的 DSL 文档�
 - **模块 12（deep_research 合并）**：aggregate.ts 导出 `visibleMessagesForDag`（buildVisiblePath **之后**应用 mergeDeepResearchPairs），computeSessionDag 与 dsl.ts convertTrace 共用；Python `_merge_deep_research_pairs` 同步移植；parity fixture 重生成（含配对用例）。实施修复：测试断言未计 ack 用户消息、Python 合并逻辑与 TS 配对规则对齐后 parity 通过。
 - **模块 13（dagre 布局）**：`cytoscape-dagre@4.0.1` 依赖；CytoscapeDag 注册扩展 + `DagLayoutName` + `buildLayoutOptions`（dagre: `rankDir TB / nodeSep 40 / edgeSep 12 / rankSep 60`）；面板布局切换按钮（默认 dagre，Network/ListTree 图标，aria-pressed）；i18n 三键（en/zh）。
 - **模块 14（Python mermaid）**：`dsl_export.py` 新增 `dsl_to_mermaid`（逐行为移植 dsl-mermaid.ts：sanitize 正则/label 清洗/LABEL_LIMIT=48/branch 虚线边/尾换行）；CLI `session trace --format mermaid`（帮助与错误信息同步 dsl | mermaid）；fixture `session_dsl_expected.mmd`（tsx 生成）+ 4 新测试（字节级 parity/空文档/清洗截断/id 去重），原"mermaid 非法格式"用例参数修正。fixture 再生成需在 web 目录运行 tsx（`@/` alias 解析）。
-- **模块 15（DSL diff）**：`deepmentor/services/session/dsl_diff.py`（`diff_session_dsl` 纯函数：位置配对、`(kind, tool, round_index)` 递归扁平指纹 Counter 多集比较、modified/added/removed + identical_turns 摘要）；CLI `deepmentor session diff <a> <b> [--json]`（rich 表格默认、--json 机器可读、--help 写明位置配对限制与 --stable --normalize-ids 建议）；`tests/services/session/test_dsl_diff.py` 11 用例。E2E 冒烟：改问题文本 + 加 reason 工具的两份导出 → 表格与 JSON 输出均正确。
+- **模块 15（DSL diff）**：`kagweb/services/session/dsl_diff.py`（`diff_session_dsl` 纯函数：位置配对、`(kind, tool, round_index)` 递归扁平指纹 Counter 多集比较、modified/added/removed + identical_turns 摘要）；CLI `kagweb session diff <a> <b> [--json]`（rich 表格默认、--json 机器可读、--help 写明位置配对限制与 --stable --normalize-ids 建议）；`tests/services/session/test_dsl_diff.py` 11 用例。E2E 冒烟：改问题文本 + 加 reason 工具的两份导出 → 表格与 JSON 输出均正确。
 
 ### 验证
 
@@ -513,7 +513,7 @@ web：test:node **1051/1051** ✔（Node 22）· typecheck ✔ · eslint ✔ · 
 | # | 问题 | 严重性 | 修复 |
 |---|------|--------|------|
 | 75-1 | DSL 导入校验不足：`calls:"xy"`、`trace:[42]` 等类型混淆字段通过 parseSessionDsl（注释声称校验 kinds 实未实现），在渲染期 useMemo 抛 TypeError，web 无 ErrorBoundary → **整页崩溃** | major | parseSessionDsl 增加递归结构校验（node 非空字符串、kind 枚举、calls/branches/branch 形状），异常落入 handleImportDsl 的 catch 转为错误横幅。**唯一性校验被主动放弃**：非 normalizeIds 导出本身合法地在主链/分支链复用相同 call id（计数器按消息重置），拒绝重复 id 会破坏合法导出（实施中发现，2 个既有测试证伪初版方案）；改为 dsl-import nodeKey 带去重后缀（`~N`），导入视图不再静默丢节点 |
-| 75-2 | CLI `--format mermaid` 输出经 rich markup 解析：用户文本含 `[/b]` 等闭合标签 → MarkupError 崩溃（端到端复现）；不崩溃时 `[red]` 等字面量被吞也破坏 #66 字节级 parity。dsl JSON 路径与 diff `--json` 同病（前者为既有代码） | major | 三处 `console.print` 增加 `markup=False`；CLI 回归测试（stub DeepMentorApp，含 `[/b]` 的 mermaid 输出 exit 0） |
+| 75-2 | CLI `--format mermaid` 输出经 rich markup 解析：用户文本含 `[/b]` 等闭合标签 → MarkupError 崩溃（端到端复现）；不崩溃时 `[red]` 等字面量被吞也破坏 #66 字节级 parity。dsl JSON 路径与 diff `--json` 同病（前者为既有代码） | major | 三处 `console.print` 增加 `markup=False`；CLI 回归测试（stub KAGWebApp，含 `[/b]` 的 mermaid 输出 exit 0） |
 | 75-3 | 导入视图中带调用树的 assistant 节点 tap 被路由到 no-op 的 toggle（dag memo 忽略 expandedMessages）→ 详情面板对这些节点不可达 | medium | dslToDag 不再填充 expandable（调用树已全量物化，无展开语义），tap 落到 select；测试改为断言 expandable 为空 |
 | 75-4 | 导入视图元数据必现错误：messageIndex=nodes.length（含 root+前序调用节点）→ 同一会话 live 显示 Q1/Q3、导入显示 Q2/Q6；branchSeq 同源漂移；branchInfo.total 排除选中支少算 1；fork 节点自身 branch 字段未映射 | minor | messageIndex 改为链内序号（分支链从 fork 位置续编）；branchInfo 逐字映射 DSL 的 `entry.branch`（total 含选中支）；实测对照断言锁死 |
 
@@ -529,7 +529,7 @@ web：test:node **1051/1051** ✔（Node 22）· typecheck ✔ · eslint ✔ · 
 
 - **滚动/闪光锚点已存在**：`ChatMessageList.tsx` L1183-1246 为每 turn 渲染 `data-turn-key={turnAnchorKey(msg, index)}`（`m{id}`/`i{index}`，`web/lib/chat-outline.ts` L57）与 `data-turn-bubble`；`PartnerGroupChat.tsx` L95-116 `jumpToRound` 已实现 scroll+`turn-flash` class 闪烁模式，可直接移植。
 - **持久化模式已存在**：`ChatWorkspace.tsx` L373-389 面板开关用 `browserStorage.readRaw/writeRaw("local", "dt:chat:xxx")` + post-mount effect（SSR 首渲染恒 false 防 hydration mismatch）。
-- **API 模式已存在**：`deepmentor/api/routers/sessions.py` L157-165 `GET /api/sessions/{id}` 走 `store.get_session_with_messages`；`main.py` L526-593 各 router 经 `_auth=[Depends(require_learning_surface)]` 注册。
+- **API 模式已存在**：`kagweb/api/routers/sessions.py` L157-165 `GET /api/sessions/{id}` 走 `store.get_session_with_messages`；`main.py` L526-593 各 router 经 `_auth=[Depends(require_learning_surface)]` 注册。
 - **护栏缺口已确认**：`dsl-import.ts` materializeCallNodes 递归无深度限制（深嵌套 calls 数组可栈溢出，#75 校验只查形状不查深度）；computeSessionDag/dslToDag 无节点数上限；applyToCanvas 全量 remove+add，1000+ 节点 dagre 布局明显卡顿。
 
 ## 模块 16：DAG → 聊天消息定位联动
@@ -551,8 +551,8 @@ web：test:node **1051/1051** ✔（Node 22）· typecheck ✔ · eslint ✔ · 
 ## 模块 18：DSL 导出 REST 端点
 
 `GET /api/sessions/{session_id}/trace?format=dsl|mermaid&stable=true&normalize_ids=true&include_text=true`
-- **实现**：`deepmentor/api/routers/sessions.py` 新增端点，`_auth` 随 router 注册已有；服务层复用 `build_session_dsl`/`dsl_to_mermaid`（模块 14），消息来源 `get_session_with_messages`。响应：dsl → `application/json`（JSONResponse）；mermaid → `text/plain; charset=utf-8`（非 text/html，防 mermaid 文本注入渲染）。404 语义与既有端点一致。
-- **facade**：`DeepMentorApp` 增加 `export_session_trace(session_id, fmt, **opts)`（SDK 用户直取；CLI 未来可切换到同一路径）。
+- **实现**：`kagweb/api/routers/sessions.py` 新增端点，`_auth` 随 router 注册已有；服务层复用 `build_session_dsl`/`dsl_to_mermaid`（模块 14），消息来源 `get_session_with_messages`。响应：dsl → `application/json`（JSONResponse）；mermaid → `text/plain; charset=utf-8`（非 text/html，防 mermaid 文本注入渲染）。404 语义与既有端点一致。
+- **facade**：`KAGWebApp` 增加 `export_session_trace(session_id, fmt, **opts)`（SDK 用户直取；CLI 未来可切换到同一路径）。
 - **评审 #78**：`include_text` 经 GET query 暴露——默认 true 与面板导出一致（面板导出本身就是用户自己的数据），不视为隐私放大；但端点必须过 `require_learning_surface`（同会话详情端点的授权边界，未授权用户不得读取他人 trace）。mermaid 输出用 `PlainTextResponse` 且禁用 `media_type=text/html`。query 参数用 FastAPI `Query` 校验枚举（dsl|mermaid），非法值 422。测试：TestClient + fixture 会话，断言 DSL JSON 结构、mermaid 首行 `flowchart TD`、404、422。
 
 ## 模块 19：DAG 面板搜索过滤

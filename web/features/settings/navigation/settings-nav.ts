@@ -126,8 +126,8 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
     href: "/settings#task-models",
     label: { zh: "任务模型", en: "Task models" },
     blurb: {
-      zh: "DeepMentor 自己发起的调用使用的模型。",
-      en: "The model behind the calls DeepMentor makes on its own.",
+      zh: "KAGWeb 自己发起的调用使用的模型。",
+      en: "The model behind the calls KAGWeb makes on its own.",
     },
     icon: ListChecks,
     tile: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",

@@ -1,4 +1,4 @@
-# DeepMentor v2 Frontend Acceptance Record
+# KAGWeb v2 Frontend Acceptance Record
 
 **Recorded:** 2026-09-01
 
@@ -62,7 +62,7 @@ Future size work should split these by interaction path without recreating cross
 
 The browser audit covers semantic landmark/accessibility rules, keyboard-reachable controls, focus return, reduced motion, responsive Reading annotations, and the complete video-learning flow. The release UI matrix checks all six primary surfaces across Snow/Cream/Dark/Glass, English/Chinese, 390 px mobile, tablet, desktop, and a 200%-zoom-equivalent layout viewport. Every matrix case checks horizontal overflow, keyboard focus where controls are present, empty credential fields, and secret-shaped DOM text. CI starts the built production frontend and runs this browser gate after `npm run check`. The critical turn browser suite covers reconnect, cancellation acknowledgement, waiting input, retryable worker loss, reload replay, and foreign observation. Desktop and iPhone 13 reduced-motion projects are registered.
 
-The multi-worker suite defines six scenarios across two browser projects (12 cases) and refuses to run unless its fixture reports exactly four workers plus healthy Redis. CI runs it on schedule or manual dispatch when `DEEPMENTOR_MULTI_WORKER_E2E_URL` is configured, and uploads JSON evidence.
+The multi-worker suite defines six scenarios across two browser projects (12 cases) and refuses to run unless its fixture reports exactly four workers plus healthy Redis. CI runs it on schedule or manual dispatch when `KAGWEB_MULTI_WORKER_E2E_URL` is configured, and uploads JSON evidence.
 
 ## Recorded verification
 
@@ -87,7 +87,7 @@ The i18n audit is a heuristic report and its current candidate list includes cod
 Before declaring the combined frontend/backend release ready:
 
 1. expose the deterministic fixture controls used by `tests/e2e/fixtures/runtime.ts` from an isolated test deployment;
-2. set `DEEPMENTOR_MULTI_WORKER_E2E_URL` and `DEEPMENTOR_MULTI_WORKER_E2E=1`;
+2. set `KAGWEB_MULTI_WORKER_E2E_URL` and `KAGWEB_MULTI_WORKER_E2E=1`;
 3. run `npm run test:e2e:multi-worker` and retain the evidence artifact;
 4. canary the compatibility window and confirm no v1 browser requests, sequence gaps, duplicate events, or credential-bearing logs;
 5. remove any backend compatibility window only after the canary remains clean.

@@ -1,5 +1,5 @@
 /**
- * Subpath deployment support (e.g. `https://ai.wust.edu.cn/deepmentor`).
+ * Subpath deployment support (e.g. `https://ai.wust.edu.cn/kagweb`).
  *
  * The deployment prefix is a BUILD-time input: Next bakes `basePath` into
  * the bundle from `NEXT_PUBLIC_BASE_PATH` (see the mirrored normalization

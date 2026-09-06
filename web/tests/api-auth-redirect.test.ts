@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 // 401 → /login redirect is gated by a flag set via setRuntimeAuthEnabled (which
 // web/lib/auth.ts → fetchAuthStatus calls once the backend reports the real
 // state). The frontend uses relative paths; URL forwarding happens in proxy.ts
-// at request time, reading DEEPMENTOR_API_BASE_URL set by the launcher / Docker
+// at request time, reading KAGWEB_API_BASE_URL set by the launcher / Docker
 // entrypoint from data/user/settings.
 
 let apiModulePromise: Promise<typeof import("../lib/api")> | null = null;

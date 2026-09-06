@@ -5,8 +5,8 @@ from typing import Any
 import pytest
 import pytest_asyncio
 
-from deepmentor.services.llm import provider_factory
-from deepmentor.services.llm.config import LLMConfig
+from kagweb.services.llm import provider_factory
+from kagweb.services.llm.config import LLMConfig
 
 
 class _FakeProvider:

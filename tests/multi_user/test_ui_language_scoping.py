@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from deepmentor.services.settings.interface_settings import (
+from kagweb.services.settings.interface_settings import (
     get_response_language,
     get_ui_language,
     get_ui_settings,

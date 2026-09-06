@@ -28,7 +28,7 @@ def _msg(
 
 @pytest.fixture()
 def client(monkeypatch) -> TestClient:
-    from deepmentor.api.routers import sessions as sessions_router
+    from kagweb.api.routers import sessions as sessions_router
 
     class _Store:
         async def get_session_with_messages(self, session_id: str):

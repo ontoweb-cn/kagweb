@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from deepmentor.core.capability_protocol import CapabilityManifest, TurnCapability
-from deepmentor.core.context import UnifiedContext
-from deepmentor.core.stream import StreamEvent, StreamEventType
-from deepmentor.runtime.orchestrator import ChatOrchestrator
-from deepmentor.runtime.stream_bus import StreamBus
+from kagweb.core.capability_protocol import CapabilityManifest, TurnCapability
+from kagweb.core.context import UnifiedContext
+from kagweb.core.stream import StreamEvent, StreamEventType
+from kagweb.runtime.orchestrator import ChatOrchestrator
+from kagweb.runtime.stream_bus import StreamBus
 
 
 @pytest.fixture(autouse=True)
@@ -19,9 +19,9 @@ def _patch_event_bus():
     """Prevent EventBus background processor from running during tests."""
     mock_bus = MagicMock()
     mock_bus.publish = AsyncMock()
-    with patch("deepmentor.runtime.orchestrator.get_event_bus", return_value=mock_bus):
+    with patch("kagweb.runtime.orchestrator.get_event_bus", return_value=mock_bus):
         yield
-    from deepmentor.events.event_bus import EventBus
+    from kagweb.events.event_bus import EventBus
 
     EventBus.reset()
 
@@ -258,7 +258,7 @@ class TestOrchestratorHelpers:
 
 class TestCompletionEventFields:
     def test_reads_agent_output_and_declared_event_metadata(self) -> None:
-        from deepmentor.runtime.orchestrator import completion_event_fields
+        from kagweb.runtime.orchestrator import completion_event_fields
 
         ctx = UnifiedContext(
             user_message="hi",
@@ -283,7 +283,7 @@ class TestCompletionEventFields:
         EventBus fans out to the Partner channels, and a JSON-serialising
         subscriber cannot encode a function anyway.
         """
-        from deepmentor.runtime.orchestrator import completion_event_fields
+        from kagweb.runtime.orchestrator import completion_event_fields
 
         ctx = UnifiedContext(
             user_message="hi",
@@ -300,7 +300,7 @@ class TestCompletionEventFields:
         assert "ask_user_answers" not in meta
 
     def test_capability_and_ids_cannot_be_spoofed(self) -> None:
-        from deepmentor.runtime.orchestrator import completion_event_fields
+        from kagweb.runtime.orchestrator import completion_event_fields
 
         ctx = UnifiedContext(
             user_message="hi",
@@ -320,7 +320,7 @@ class TestCompletionEventFields:
         assert meta["turn_id"] == "t1"
 
     def test_non_dict_event_metadata_is_ignored(self) -> None:
-        from deepmentor.runtime.orchestrator import completion_event_fields
+        from kagweb.runtime.orchestrator import completion_event_fields
 
         ctx = UnifiedContext(
             user_message="hi",
@@ -331,7 +331,7 @@ class TestCompletionEventFields:
         assert meta == {"capability": "chat", "session_id": "s", "turn_id": ""}
 
     def test_empty_agent_output_when_unset(self) -> None:
-        from deepmentor.runtime.orchestrator import completion_event_fields
+        from kagweb.runtime.orchestrator import completion_event_fields
 
         ctx = UnifiedContext(user_message="hi", session_id="s", metadata={})
         output, meta = completion_event_fields(ctx, "chat")

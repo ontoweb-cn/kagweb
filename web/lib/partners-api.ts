@@ -545,7 +545,7 @@ export async function branchPartnerSession(
 
 // ── Channel account links ─────────────────────────────────────
 //
-// Connecting a chat account (QQ, Telegram, …) to your DeepMentor account, so
+// Connecting a chat account (QQ, Telegram, …) to your KAGWeb account, so
 // messages you send the partner there are yours: private history you can read
 // back here, answered out of your own library and memory.
 

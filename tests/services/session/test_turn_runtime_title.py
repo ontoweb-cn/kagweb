@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deepmentor.services.session.turn_runtime import _sanitize_session_title
+from kagweb.services.session.turn_runtime import _sanitize_session_title
 
 
 def test_sanitize_session_title_removes_reasoning_block() -> None:
@@ -23,7 +23,7 @@ def test_provider_errors_do_not_become_session_titles() -> None:
     and follows the session into every list that shows it. Routing these to the
     existing "no title" fallback is what makes that impossible.
     """
-    from deepmentor.services.session.turn_runtime import _looks_like_error_payload
+    from kagweb.services.session.turn_runtime import _looks_like_error_payload
 
     assert _looks_like_error_payload(
         "Error: {'message': 'Authentication Fails, Your api key: *** is invalid'}"
@@ -35,7 +35,7 @@ def test_provider_errors_do_not_become_session_titles() -> None:
 
 def test_real_titles_survive_the_error_guard() -> None:
     """A false positive silently replaces a good title with a truncated question."""
-    from deepmentor.services.session.turn_runtime import _looks_like_error_payload
+    from kagweb.services.session.turn_runtime import _looks_like_error_payload
 
     for title in (
         "操作系统概述",

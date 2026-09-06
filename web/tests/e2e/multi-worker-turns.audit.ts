@@ -9,7 +9,7 @@ import {
 test.describe("four-worker v2 turn acceptance", () => {
   test.skip(
     !multiWorkerFixtureAvailable,
-    "Set DEEPMENTOR_MULTI_WORKER_E2E=1 and connect the deterministic four-worker fixture.",
+    "Set KAGWEB_MULTI_WORKER_E2E=1 and connect the deterministic four-worker fixture.",
   );
 
   test.beforeEach(async ({ page }) => {

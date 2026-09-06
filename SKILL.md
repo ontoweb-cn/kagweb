@@ -1,29 +1,29 @@
 ---
-name: deepmentor-cli
-description: Configure, manage, and use DeepMentor through its CLI, including capabilities, knowledge bases, partners, memory, sessions, notebooks, providers, skills, and the server or Web app.
+name: kagweb-cli
+description: Configure, manage, and use KAGWeb through its CLI, including capabilities, knowledge bases, partners, memory, sessions, notebooks, providers, skills, and the server or Web app.
 ---
 
-# DeepMentor CLI Skill
+# KAGWeb CLI Skill
 
-> Teach your AI agent to configure, manage, and use DeepMentor — an intelligent learning platform — entirely through the command line.
+> Teach your AI agent to configure, manage, and use KAGWeb — an intelligent learning platform — entirely through the command line.
 
 ## When to Use
 
 Use this skill when the user wants to:
-- Set up or configure DeepMentor
-- Chat with DeepMentor or run a capability (deep solve, quiz generation, deep research, visualize, math animation, mastery path)
+- Set up or configure KAGWeb
+- Chat with KAGWeb or run a capability (deep solve, quiz generation, deep research, visualize, math animation, mastery path)
 - Create, manage, or search knowledge bases
 - Create, manage, or run Partners (IM-connected companions)
 - Search, install, or manage skills from a hub (ClawHub)
 - Inspect or maintain interactive Books
 - View or manage learning memory, sessions, or notebooks
-- Start the DeepMentor API server or the full Web app
+- Start the KAGWeb API server or the full Web app
 
 ## Prerequisites
 
 - Python 3.11+
-- DeepMentor installed: `pip install deepmentor` for the full Web app, `pip install deepmentor-cli` for CLI-only, or `pip install -e .` from a source checkout
-- Run `deepmentor init` for first-time interactive setup. It walks a guided wizard (ports → LLM → embedding → search → review) and writes the same settings as the Web Settings page under `data/user/settings`. Add `--cli` to skip the ports step for CLI-only use, or `--home <path>` to target a specific workspace.
+- KAGWeb installed: `pip install kagweb` for the full Web app, `pip install kagweb-cli` for CLI-only, or `pip install -e .` from a source checkout
+- Run `kagweb init` for first-time interactive setup. It walks a guided wizard (ports → LLM → embedding → search → review) and writes the same settings as the Web Settings page under `data/user/settings`. Add `--cli` to skip the ports step for CLI-only use, or `--home <path>` to target a specific workspace.
 
 ## Commands
 
@@ -31,16 +31,16 @@ Use this skill when the user wants to:
 
 ```bash
 # Interactive REPL
-deepmentor chat
-deepmentor chat --capability deep_solve --kb my-kb --tool rag --tool web_search
+kagweb chat
+kagweb chat --capability deep_solve --kb my-kb --tool rag --tool web_search
 
 # One-shot capability execution
-deepmentor run chat "Explain Fourier transform"
-deepmentor run deep_solve "Solve x^2 = 4" --tool rag --kb textbook
-deepmentor run deep_question "Linear algebra" --config num_questions=5
-deepmentor run deep_research "Attention mechanisms" --kb papers --config mode=report --config depth=standard
-deepmentor run visualize "Plot the unit circle"
-deepmentor run math_animator "Visualize a Fourier series"
+kagweb run chat "Explain Fourier transform"
+kagweb run deep_solve "Solve x^2 = 4" --tool rag --kb textbook
+kagweb run deep_question "Linear algebra" --config num_questions=5
+kagweb run deep_research "Attention mechanisms" --kb papers --config mode=report --config depth=standard
+kagweb run visualize "Plot the unit circle"
+kagweb run math_animator "Visualize a Fourier series"
 
 # Capabilities accepted by `run` / `chat -c`:
 #   chat, deep_solve, deep_question, deep_research, visualize, math_animator, mastery_path
@@ -57,21 +57,21 @@ deepmentor run math_animator "Visualize a Fourier series"
 #   --format/-f <fmt>      Output format: rich | json (default: rich)
 ```
 
-`deepmentor chat` accepts the same `--session / --tool / --kb / --notebook-ref / --history-ref / --language / --config / --config-json` options, plus `--capability/-c <name>` to set the initial capability.
+`kagweb chat` accepts the same `--session / --tool / --kb / --notebook-ref / --history-ref / --language / --config / --config-json` options, plus `--capability/-c <name>` to set the initial capability.
 
-**Tools** for `--tool` / `-t`: user-toggleable tools are `brainstorm`, `web_search`, `paper_search`, `reason`, `geogebra_analysis`, `imagegen`, and `videogen`. Context-gated tools (`rag`, `code_execution`, `read_source`, `web_fetch`, `github`, `ask_user`, …) auto-mount when their context is present, but can also be force-enabled with `--tool`. Run `deepmentor plugin list` for the full registered set.
+**Tools** for `--tool` / `-t`: user-toggleable tools are `brainstorm`, `web_search`, `paper_search`, `reason`, `geogebra_analysis`, `imagegen`, and `videogen`. Context-gated tools (`rag`, `code_execution`, `read_source`, `web_fetch`, `github`, `ask_user`, …) auto-mount when their context is present, but can also be force-enabled with `--tool`. Run `kagweb plugin list` for the full registered set.
 
 ### Knowledge Bases
 
 ```bash
-deepmentor kb list [--format rich|json]              # List all knowledge bases
-deepmentor kb info <name>                            # Show knowledge base details (JSON)
-deepmentor kb create <name> --doc file.pdf           # Create from documents (--doc/-d repeatable)
-deepmentor kb create <name> --docs-dir ./papers      # ...or from a directory of documents
-deepmentor kb add <name> --doc more.pdf              # Add documents incrementally
-deepmentor kb search <name> "query text" [--mode hybrid] [--format rich|json]
-deepmentor kb set-default <name>                     # Set as default KB
-deepmentor kb delete <name> [--force]                # Delete a knowledge base
+kagweb kb list [--format rich|json]              # List all knowledge bases
+kagweb kb info <name>                            # Show knowledge base details (JSON)
+kagweb kb create <name> --doc file.pdf           # Create from documents (--doc/-d repeatable)
+kagweb kb create <name> --docs-dir ./papers      # ...or from a directory of documents
+kagweb kb add <name> --doc more.pdf              # Add documents incrementally
+kagweb kb search <name> "query text" [--mode hybrid] [--format rich|json]
+kagweb kb set-default <name>                     # Set as default KB
+kagweb kb delete <name> [--force]                # Delete a knowledge base
 ```
 
 ### Partners
@@ -79,13 +79,13 @@ deepmentor kb delete <name> [--force]                # Delete a knowledge base
 Partners are IM-connected learning companions (the former "TutorBot").
 
 ```bash
-deepmentor partner list                              # List all partners
-deepmentor partner create <id> -n "My Tutor"         # Create and start a new partner
+kagweb partner list                              # List all partners
+kagweb partner create <id> -n "My Tutor"         # Create and start a new partner
 #   -n/--name <text>   Display name
 #   -s/--soul <md>     Soul markdown (the persona)
 #   -m/--model <id>    Model override
-deepmentor partner start <id>                        # Start a partner
-deepmentor partner stop <id>                         # Stop a running partner
+kagweb partner start <id>                        # Start a partner
+kagweb partner stop <id>                         # Stop a running partner
 ```
 
 ### Skills
@@ -94,10 +94,10 @@ Install and manage skills, including packages from external hubs (ClawHub).
 Hub refs use `<hub>:<slug>[@version]` (the hub prefix defaults to `clawhub`).
 
 ```bash
-deepmentor skill search "flashcards" [--hub clawhub] [--limit 10]
-deepmentor skill install clawhub:some-skill[@1.2.0] [--name local-name] [--force] [--allow-unverified]
-deepmentor skill list                                # List local skills (with hub provenance)
-deepmentor skill remove <name>                       # Remove a user-layer skill
+kagweb skill search "flashcards" [--hub clawhub] [--limit 10]
+kagweb skill install clawhub:some-skill[@1.2.0] [--name local-name] [--force] [--allow-unverified]
+kagweb skill list                                # List local skills (with hub provenance)
+kagweb skill remove <name>                       # Remove a user-layer skill
 ```
 
 ### Books
@@ -105,61 +105,61 @@ deepmentor skill remove <name>                       # Remove a user-layer skill
 Maintenance commands for the BookEngine (authoring/reading is via the Web app).
 
 ```bash
-deepmentor book list                                 # List all books (flags stale pages)
-deepmentor book health <book_id>                     # Inspect KB drift + log.md health
-deepmentor book refresh-fingerprints <book_id>       # Re-snapshot KB fingerprints
+kagweb book list                                 # List all books (flags stale pages)
+kagweb book health <book_id>                     # Inspect KB drift + log.md health
+kagweb book refresh-fingerprints <book_id>       # Re-snapshot KB fingerprints
 ```
 
 ### Memory
 
 ```bash
-deepmentor memory show [<target>]    # target: L3 (all global docs, default) | L2 (all surfaces) | a doc name (e.g. profile, chat)
-deepmentor memory clear [<target>]   # target: all (default) | trace (all L1) | a surface name (clears that surface's L1)
+kagweb memory show [<target>]    # target: L3 (all global docs, default) | L2 (all surfaces) | a doc name (e.g. profile, chat)
+kagweb memory clear [<target>]   # target: all (default) | trace (all L1) | a surface name (clears that surface's L1)
 #   --force/-f   Skip confirmation
 ```
 
 ### Sessions
 
 ```bash
-deepmentor session list [--limit 20]                 # List sessions
-deepmentor session show <id> [--format rich|json]    # View session messages
-deepmentor session open <id>                         # Resume session in the REPL
-deepmentor session rename <id> --title "..."         # Rename a session
-deepmentor session delete <id>                       # Delete a session
+kagweb session list [--limit 20]                 # List sessions
+kagweb session show <id> [--format rich|json]    # View session messages
+kagweb session open <id>                         # Resume session in the REPL
+kagweb session rename <id> --title "..."         # Rename a session
+kagweb session delete <id>                       # Delete a session
 ```
 
 ### Notebooks
 
 ```bash
-deepmentor notebook list                             # List notebooks
-deepmentor notebook create <name> [--description "..."]
-deepmentor notebook show <notebook_id> [--format rich|json]
-deepmentor notebook add-md <notebook_id> <file.md> [--title "..."] [--type chat|question|research|solve]
-deepmentor notebook replace-md <notebook_id> <record_id> <file.md>
-deepmentor notebook remove-record <notebook_id> <record_id>
+kagweb notebook list                             # List notebooks
+kagweb notebook create <name> [--description "..."]
+kagweb notebook show <notebook_id> [--format rich|json]
+kagweb notebook add-md <notebook_id> <file.md> [--title "..."] [--type chat|question|research|solve]
+kagweb notebook replace-md <notebook_id> <record_id> <file.md>
+kagweb notebook remove-record <notebook_id> <record_id>
 ```
 
 ### Providers
 
 ```bash
-deepmentor provider login openai-codex               # OAuth login for OpenAI Codex
-deepmentor provider login github-copilot             # Validate an existing Copilot auth session
+kagweb provider login openai-codex               # OAuth login for OpenAI Codex
+kagweb provider login github-copilot             # Validate an existing Copilot auth session
 ```
 
 ### System
 
 ```bash
-deepmentor config show                               # Print resolved configuration
-deepmentor plugin list                               # List registered tools and capabilities
-deepmentor plugin info <name>                         # Show a tool/capability's schema + availability
-deepmentor serve [--host 0.0.0.0] [--port 8001] [--reload]   # Start the API server
-deepmentor start [--home <path>]                     # Launch backend + frontend together
-deepmentor init [--cli] [--home <path>]              # Create/update workspace settings
+kagweb config show                               # Print resolved configuration
+kagweb plugin list                               # List registered tools and capabilities
+kagweb plugin info <name>                         # Show a tool/capability's schema + availability
+kagweb serve [--host 0.0.0.0] [--port 8001] [--reload]   # Start the API server
+kagweb start [--home <path>]                     # Launch backend + frontend together
+kagweb init [--cli] [--home <path>]              # Create/update workspace settings
 ```
 
 ## REPL Slash Commands
 
-Inside `deepmentor chat`, use these:
+Inside `kagweb chat`, use these:
 
 | Command | Effect |
 |:---|:---|
@@ -181,28 +181,28 @@ Inside `deepmentor chat`, use these:
 
 **First-time setup:**
 ```bash
-cd DeepMentor
+cd KAGWeb
 pip install -e .
-deepmentor init        # Interactive guided setup (add --cli for CLI-only)
+kagweb init        # Interactive guided setup (add --cli for CLI-only)
 ```
 
 **Daily learning:**
 ```bash
-deepmentor chat --kb textbook --tool rag --tool web_search
+kagweb chat --kb textbook --tool rag --tool web_search
 ```
 
 **Build a knowledge base from documents:**
 ```bash
-deepmentor kb create physics --doc ch1.pdf --doc ch2.pdf
-deepmentor run chat "Explain Newton's third law" --kb physics --tool rag
+kagweb kb create physics --doc ch1.pdf --doc ch2.pdf
+kagweb run chat "Explain Newton's third law" --kb physics --tool rag
 ```
 
 **Generate quiz questions:**
 ```bash
-deepmentor run deep_question "Thermodynamics" --kb physics --config num_questions=5
+kagweb run deep_question "Thermodynamics" --kb physics --config num_questions=5
 ```
 
 **Run the full Web app locally:**
 ```bash
-deepmentor start       # backend + frontend; Ctrl+C to stop
+kagweb start       # backend + frontend; Ctrl+C to stop
 ```

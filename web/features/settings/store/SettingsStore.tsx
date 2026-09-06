@@ -34,7 +34,7 @@ import { browserStorage } from "@/shared/storage";
 
 export type ServiceName =
   | "llm"
-  /** Same shape as `llm`; stands in for it on the calls DeepMentor makes itself. */
+  /** Same shape as `llm`; stands in for it on the calls KAGWeb makes itself. */
   | "task"
   | "search"
   | "tts"
@@ -44,7 +44,7 @@ export type ServiceName =
 
 /**
  * What the user declared about a model, overriding the built-in capability
- * tables. A missing key means "let DeepMentor decide".
+ * tables. A missing key means "let KAGWeb decide".
  */
 export type ModelCapabilities = {
   tools?: boolean;
@@ -290,7 +290,7 @@ type SettingsPayload = {
   connection_targets?: ConnectionTarget[];
 };
 
-const DIAGNOSTICS_RESULTS_KEY = "deepmentor.settings.diagnosticsResults.v1";
+const DIAGNOSTICS_RESULTS_KEY = "kagweb.settings.diagnosticsResults.v1";
 
 // ─── Tour ──────────────────────────────────────────────────────────────────
 //

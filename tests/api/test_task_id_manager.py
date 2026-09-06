@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from deepmentor.api.utils.task_id_manager import TaskIDManager
+from kagweb.api.utils.task_id_manager import TaskIDManager
 
 
 def _manager() -> TaskIDManager:

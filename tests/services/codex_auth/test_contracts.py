@@ -5,14 +5,14 @@ import json
 
 import pytest
 
-from deepmentor.services.codex_auth.constants import (
+from kagweb.services.codex_auth.constants import (
     CODEX_CALLBACK_PORTS,
     CODEX_CLIENT_VERSION,
     CODEX_DEFAULT_MODEL,
     CODEX_MODELS_URL,
     CODEX_OAUTH_CLIENT_ID,
 )
-from deepmentor.services.codex_auth.contracts import (
+from kagweb.services.codex_auth.contracts import (
     CatalogSnapshot,
     CodexAuthError,
     CodexCredentials,

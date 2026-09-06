@@ -1,6 +1,6 @@
-# DeepMentor 记忆体与记忆图谱实现机制
+# KAGWeb 记忆体与记忆图谱实现机制
 
-> 代码锚点：后端 `deepmentor/services/memory/` · API `deepmentor/api/routers/memory.py`（挂载于 `/api/memory`，`api/main.py:579`）· 前端 `web/components/memory/` + `web/lib/memory-graph.ts`
+> 代码锚点：后端 `kagweb/services/memory/` · API `kagweb/api/routers/memory.py`（挂载于 `/api/memory`，`api/main.py:579`）· 前端 `web/components/memory/` + `web/lib/memory-graph.ts`
 > 本文所有行号以 main 分支（f8a6a26a，2026-09-04）为准。
 
 ## 目录
@@ -137,7 +137,7 @@ L1 有两套互补机制——**trace 回答"做过什么"，snapshot 回答"存
 
 ## 7. API 端点清单
 
-路由 `deepmentor/api/routers/memory.py`（27 个端点），按功能分组：
+路由 `kagweb/api/routers/memory.py`（27 个端点），按功能分组：
 
 | 组 | 端点 | 说明 |
 |----|------|------|

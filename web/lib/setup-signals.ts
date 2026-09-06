@@ -8,7 +8,7 @@ import type { StreamEvent } from "@/features/chat/model/protocol";
  * count and how they are deduplicated, and that deserves tests that do not need
  * a DOM.
  *
- * Mirrors the metadata written by `deepmentor/capabilities/setup/tools.py`.
+ * Mirrors the metadata written by `kagweb/capabilities/setup/tools.py`.
  */
 
 /** Hand-off card shown when a step needs a credential the assistant must not touch. */

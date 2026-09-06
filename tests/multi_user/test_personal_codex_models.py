@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from deepmentor.multi_user import model_access, personal_models
+from kagweb.multi_user import model_access, personal_models
 
 CODEX_PROFILE = "llm-profile-openai-codex-managed"
 SHARED_PROFILE = "llm-profile-shared-key"

@@ -221,9 +221,9 @@ test("settings-context: backend values override localStorage values during sync"
 
   // Simulate localStorage having different (old/stale) values
   mockLocalStorage = {
-    "deepmentor.codeBlockShowLineNumbers": "false",
-    "deepmentor.codeBlockWrapLongLines": "false",
-    "deepmentor.codeBlockTheme": "oneDark",
+    "kagweb.codeBlockShowLineNumbers": "false",
+    "kagweb.codeBlockWrapLongLines": "false",
+    "kagweb.codeBlockTheme": "oneDark",
   };
 
   // Backend returns true values

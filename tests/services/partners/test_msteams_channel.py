@@ -8,17 +8,17 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from deepmentor.partners.bus.events import OutboundMessage
-from deepmentor.partners.bus.queue import MessageBus
-from deepmentor.partners.channels import msteams as msteams_mod
-from deepmentor.partners.channels.msteams import (
+from kagweb.partners.bus.events import OutboundMessage
+from kagweb.partners.bus.queue import MessageBus
+from kagweb.partners.channels import msteams as msteams_mod
+from kagweb.partners.channels.msteams import (
     MSTEAMS_REF_FILENAME,
     MSTEAMS_REF_META_FILENAME,
     ConversationRef,
     MSTeamsChannel,
     MSTeamsConfig,
 )
-from deepmentor.partners.config import paths as partner_paths
+from kagweb.partners.config import paths as partner_paths
 
 
 @pytest.fixture
@@ -162,7 +162,7 @@ class TestSanitizeInboundText:
 
     def test_strips_bot_mention_markup(self, state_dir):
         ch = _make_channel()
-        out = ch._sanitize_inbound_text(_activity(text="<at>DeepMentor</at> explain entropy"))
+        out = ch._sanitize_inbound_text(_activity(text="<at>KAGWeb</at> explain entropy"))
         assert out == "explain entropy"
 
     def test_normalizes_html_entities(self, state_dir):
@@ -259,7 +259,7 @@ class TestHandleActivity:
     @pytest.mark.asyncio
     async def test_mention_only_text_uses_fallback_response(self, state_dir):
         ch = _make_channel()
-        await ch._handle_activity(_activity(text="<at>DeepMentor</at>"))
+        await ch._handle_activity(_activity(text="<at>KAGWeb</at>"))
         msg = ch.bus.publish_inbound.call_args[0][0]
         assert msg.content == ch.config.mention_only_response
 

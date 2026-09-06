@@ -16,9 +16,9 @@ import re
 
 import pytest
 
-from deepmentor.multi_user.context import reset_current_user, set_current_user
-from deepmentor.multi_user.models import CurrentUser, UserScope
-from deepmentor.services.session.pocketbase_store import PocketBaseSessionStore
+from kagweb.multi_user.context import reset_current_user, set_current_user
+from kagweb.multi_user.models import CurrentUser, UserScope
+from kagweb.services.session.pocketbase_store import PocketBaseSessionStore
 
 pytestmark = pytest.mark.asyncio
 
@@ -107,7 +107,7 @@ class _FakeClient:
 def fake_pb(monkeypatch):
     client = _FakeClient()
     monkeypatch.setattr(
-        "deepmentor.services.pocketbase_client.get_pb_client", lambda: client, raising=True
+        "kagweb.services.pocketbase_client.get_pb_client", lambda: client, raising=True
     )
     return client
 

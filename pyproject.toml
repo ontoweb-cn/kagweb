@@ -1,4 +1,4 @@
-# Python project configuration for DeepMentor
+# Python project configuration for KAGWeb
 # This file configures Black, Ruff, and other Python tools
 
 [build-system]
@@ -6,7 +6,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "deepmentor"
+name = "kagweb"
 dynamic = ["version"]
 description = "An agent-native intelligent learning companion with multi-agent collaboration and RAG"
 # Python 3.14 is supported by the core app now that compiled base dependencies
@@ -67,26 +67,19 @@ dependencies = [
     "json-repair>=0.57.0,<1.0.0",
     "croniter>=6.0.0,<7.0.0",
     # Process-tree memory readings for /api/system/memory. Soft dependency:
-    # deepmentor.runtime.memory_probe imports it lazily and falls back to /proc,
+    # kagweb.runtime.memory_probe imports it lazily and falls back to /proc,
     # so a missing wheel costs the settings strip, not the app.
     "psutil>=5.9.0,<8.0.0",
 ]
 
 [project.scripts]
-deepmentor = "deepmentor_cli.main:main"
-deepmentor-export-frontend-contracts = "deepmentor.api.contracts.export:main"
-
-[project.entry-points."deepmentor.reading_extensions"]
-read_aloud = "deepmentor.reading.read_aloud:ReadAloudExtension"
-guided_learning = "deepmentor.reading.study_guidance:StudyGuidanceExtension"
-vocabulary = "deepmentor.reading.vocabulary:VocabularyExtension"
-quiz = "deepmentor.reading.quiz:ReadingQuizExtension"
-translation = "deepmentor.reading.translation:TranslationExtension"
+kagweb = "kagweb_cli.main:main"
+kagweb-export-frontend-contracts = "kagweb.api.contracts.export:main"
 
 [project.optional-dependencies]
 # Compatibility extra for source installs and older docs. These packages are
-# already included in the public `deepmentor` wheel; the local CLI-only project
-# under `packaging/deepmentor-cli` uses the same list without Web assets/server deps.
+# already included in the public `kagweb` wheel; the local CLI-only project
+# under `packaging/kagweb-cli` uses the same list without Web assets/server deps.
 cli = [
     # LLM provider SDKs
     "anthropic>=0.30.0",
@@ -124,9 +117,9 @@ codebuddy = ["codebuddy-agent-sdk>=0.3,<0.4"]
 video-learning = ["youtube-transcript-api>=1.0.0,<2.0.0"]
 
 # Compatibility extra for source installs and older docs. These packages are
-# already included in the public `deepmentor` wheel.
+# already included in the public `kagweb` wheel.
 server = [
-    "deepmentor[cli]",
+    "kagweb[cli]",
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.24.0",
     "websockets>=12.0",
@@ -146,7 +139,7 @@ server = [
 # IM platform SDKs. The MCP client used for deferred tools is a core dependency
 # (see `mcp` above), not a partners-only one.
 partners = [
-    "deepmentor[server]",
+    "kagweb[server]",
     "python-telegram-bot[socks]>=22.6,<23.0",
     "wecom-aibot-sdk>=1.0.8,<2.0.0",
     "lark-oapi>=1.5.0,<2.0.0",
@@ -172,12 +165,12 @@ partners = [
 ]
 
 # Optional document-parsing engines for the shared parse layer
-# (deepmentor/services/parsing). MinerU is an external CLI / hosted API and is
+# (kagweb/services/parsing). MinerU is an external CLI / hosted API and is
 # not a pip dependency. Engines import lazily, so these stay opt-in and an
 # absent engine simply reports unavailable in Settings → Document Parsing.
 parse-markitdown = ["markitdown[all]>=0.1.7"]
 # Docling's base package intentionally leaves some format backends as extras.
-# Install all input-format dependencies so DeepMentor can honor the complete
+# Install all input-format dependencies so KAGWeb can honor the complete
 # upstream format list. Legacy Office needs LibreOffice and video needs ffmpeg
 # on the host in addition to these Python packages.
 parse-docling = [
@@ -186,18 +179,18 @@ parse-docling = [
 ]
 # Current PyMuPDF4LLM includes CPU-only layout/OCR and image extraction on its
 # public conversion path. Keep it upgradeable so format and layout gains land
-# without a DeepMentor-side major-version ceiling.
+# without a KAGWeb-side major-version ceiling.
 parse-pymupdf4llm = ["pymupdf4llm>=1.28.2"]
 parse-liteparse = ["liteparse>=2.14.2"]
 parse = [
-    "deepmentor[parse-markitdown]",
-    "deepmentor[parse-docling]",
-    "deepmentor[parse-pymupdf4llm]",
-    "deepmentor[parse-liteparse]",
+    "kagweb[parse-markitdown]",
+    "kagweb[parse-docling]",
+    "kagweb[parse-pymupdf4llm]",
+    "kagweb[parse-liteparse]",
 ]
 
-# Legacy alias kept for one release: `pip install deepmentor[tutorbot]`.
-tutorbot = ["deepmentor[partners]"]
+# Legacy alias kept for one release: `pip install kagweb[tutorbot]`.
+tutorbot = ["kagweb[partners]"]
 
 # Matrix (Element) channel for partners. Mirrors requirements/matrix.txt.
 # Default Matrix install is non-E2EE so it works without libolm/python-olm.
@@ -209,7 +202,7 @@ matrix = [
 
 # Optional Matrix E2EE addon. Mirrors requirements/matrix-e2e.txt and requires libolm.
 matrix-e2e = [
-    "deepmentor[matrix]",
+    "kagweb[matrix]",
     "matrix-nio[e2e]>=0.25.2,<1.0.0",
 ]
 
@@ -219,7 +212,7 @@ math-animator = ["manim>=0.19.0"]
 
 # Dev/test tooling. Mirrors requirements/dev.txt.
 dev = [
-    "deepmentor[server]",
+    "kagweb[server]",
     "pytest>=7.0.0",
     "pytest-asyncio>=0.23.0",
     "pre-commit>=3.0.0",
@@ -237,30 +230,30 @@ dev = [
 
 # Everything: server + partners + non-E2EE matrix + math-animator + dev tools.
 all = [
-    "deepmentor[partners]",
-    "deepmentor[matrix]",
-    "deepmentor[math-animator]",
-    "deepmentor[dev]",
-    "deepmentor[video-learning]",
+    "kagweb[partners]",
+    "kagweb[matrix]",
+    "kagweb[math-animator]",
+    "kagweb[dev]",
+    "kagweb[video-learning]",
 ]
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.dynamic]
-version = {attr = "deepmentor.__version__.__version__"}
+version = {attr = "kagweb.__version__.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["deepmentor*", "deepmentor_cli*"]
+include = ["kagweb*", "kagweb_cli*"]
 
 [tool.setuptools.package-data]
-# Runtime data shipped inside the deepmentor package: prompt YAMLs (loaded by
-# PromptManager from PACKAGE_ROOT/deepmentor/.../prompts/*.yaml), markdown
+# Runtime data shipped inside the kagweb package: prompt YAMLs (loaded by
+# PromptManager from PACKAGE_ROOT/kagweb/.../prompts/*.yaml), markdown
 # templates (builtin SKILL.md files, vision_solver prompts), and helper shell
-# scripts. Without these, ``pip install deepmentor`` ships a wheel missing
+# scripts. Without these, ``pip install kagweb`` ships a wheel missing
 # every agent prompt and capability fails at first use.
-deepmentor = [
+kagweb = [
     "**/*.yaml",
     "**/*.yml",
     "**/*.md",
@@ -269,8 +262,8 @@ deepmentor = [
     "**/*.j2",
     "**/*.jinja",
 ]
-deepmentor_cli = ["**/*.md"]
-deepmentor_web = ["**/*", ".next/**/*"]
+kagweb_cli = ["**/*.md"]
+kagweb_web = ["**/*", ".next/**/*"]
 
 # ============================================
 # Black code formatter configuration
@@ -400,7 +393,7 @@ line-ending = "auto"
 # Ruff import sorting (isort replacement)
 # ============================================
 [tool.ruff.lint.isort]
-known-first-party = ["deepmentor", "deepmentor_cli", "scripts"]
+known-first-party = ["kagweb", "kagweb_cli", "scripts"]
 force-sort-within-sections = true
 split-on-trailing-comma = true
 
@@ -423,11 +416,11 @@ max-complexity = 10
 # Pytest configuration
 # ============================================
 [tool.pytest.ini_options]
-testpaths = ["tests", "deepmentor/learning/tests"]
+testpaths = ["tests", "kagweb/learning/tests"]
 pythonpath = ["."]
 markers = [
     "asyncio: mark async tests that require pytest-asyncio",
-    "redis_integration: requires DEEPMENTOR_TEST_REDIS_URL",
+    "redis_integration: requires KAGWEB_TEST_REDIS_URL",
 ]
 asyncio_default_fixture_loop_scope = "function"
 addopts = [
@@ -463,7 +456,7 @@ module = "tests.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "deepmentor.tools.*"
+module = "kagweb.tools.*"
 ignore_errors = true  # Some tools may have dynamic imports
 
 # ============================================

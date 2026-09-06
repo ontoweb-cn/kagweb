@@ -1,4 +1,4 @@
-from deepmentor.services.provider_registry import find_by_name, find_gateway
+from kagweb.services.provider_registry import find_by_name, find_gateway
 
 
 def test_nvidia_nim_gateway_detection_by_key_and_base() -> None:

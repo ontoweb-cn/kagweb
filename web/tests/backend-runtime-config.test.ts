@@ -6,7 +6,7 @@ import { resolveBackendApiBase } from "../lib/backend-runtime-config";
 test("backend proxy prefers the private server-side origin", () => {
   assert.equal(
     resolveBackendApiBase({
-      DEEPMENTOR_API_BASE_URL: "http://backend.internal:9000",
+      KAGWEB_API_BASE_URL: "http://backend.internal:9000",
       BACKEND_PORT: "8123",
       NEXT_PUBLIC_API_BASE: "https://api.example.com",
     }),

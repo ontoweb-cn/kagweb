@@ -1,6 +1,6 @@
 """All-empty markdown table rows are not separators."""
 
-from deepmentor.partners.helpers import is_markdown_table_separator_row
+from kagweb.partners.helpers import is_markdown_table_separator_row
 
 
 def test_empty_row_is_not_separator() -> None:

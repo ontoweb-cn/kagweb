@@ -13,7 +13,7 @@ import {
 } from "@/components/settings/shared";
 import { useSettings } from "@/features/settings/store/SettingsStore";
 
-// ── Shape mirrors deepmentor/services/config/capabilities_settings.py ──────
+// ── Shape mirrors kagweb/services/config/capabilities_settings.py ──────
 
 interface SimpleLLMBlock {
   temperature: number;

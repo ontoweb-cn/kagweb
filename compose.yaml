@@ -1,5 +1,5 @@
 # ============================================
-# DeepMentor — Podman Compose (rootless, read-only rootfs)
+# KAGWeb — Podman Compose (rootless, read-only rootfs)
 # ============================================
 # Requires:
 #   * podman 4.1+ (rootless)
@@ -14,7 +14,7 @@
 #   cp .env.example .env       # then edit
 #   podman compose -f compose.yaml up -d
 #   podman compose -f compose.yaml ps
-#   podman compose -f compose.yaml logs -f deepmentor
+#   podman compose -f compose.yaml logs -f kagweb
 #
 #   Tip: alias it for the session —  alias dc='podman compose -f compose.yaml'
 #   or export COMPOSE_FILE=compose.yaml so the default `podman compose`
@@ -33,49 +33,49 @@
 #     Files you create on the host are visible as your own user inside.
 #   * Host-side port bindings are LOOPBACK ONLY (127.0.0.1:). Drop the
 #     `127.0.0.1:` prefix to expose on all interfaces.
-#   * Two services: `deepmentor` (backend+frontend in one GHCR image, run
+#   * Two services: `kagweb` (backend+frontend in one GHCR image, run
 #     under supervisord) and `pocketbase` (optional auth/storage sidecar).
 #     The sandbox-runner sidecar from docker-compose.yml is intentionally
 #     NOT included: the main app falls back to bwrap (Linux, if installed
 #     in the image) or the restricted subprocess backend controlled by
 #     the `sandbox_allow_subprocess` setting in system.json. See
-#     deepmentor/services/sandbox/config.py:build_backend().
-#   * The backend and frontend run as a non-root `deepmentor` user (UID
+#     kagweb/services/sandbox/config.py:build_backend().
+#   * The backend and frontend run as a non-root `kagweb` user (UID
 #     1000). supervisord runs as root (PID 1), the entrypoint chowns
-#     `/app/data`, and each program is dropped to `deepmentor` via its
+#     `/app/data`, and each program is dropped to `kagweb` via its
 #     per-program `user=` directive, so the app processes are UID 1000
 #     inside the container. Under `userns_mode: keep-id` that maps to the
 #     host user.
 #   * URL knowledge lives in `data/user/settings/system.json` (in-network
 #     `next_public_api_base` for the typical case, or
 #     `next_public_api_base_external` for cloud/external). The entrypoint
-#     reads the JSON on every start and exports `DEEPMENTOR_API_BASE_URL`,
+#     reads the JSON on every start and exports `KAGWEB_API_BASE_URL`,
 #     which `web/proxy.ts` reads to rewrite `/api/*` and `/ws/*` to the
 #     configured backend at request time. There is no build-time
 #     placeholder, no runtime `sed -i` on the bundle, and no compose env
 #     var for the API base.
 #   * Runtime settings (ports, auth, model catalog, integrations) live in
-#     data/user/settings/*.json INSIDE the deepmentor-data volume. The
+#     data/user/settings/*.json INSIDE the kagweb-data volume. The
 #     entrypoint unsets BACKEND_PORT, FRONTEND_PORT, NEXT_PUBLIC_API_BASE,
 #     NEXT_PUBLIC_API_BASE_EXTERNAL, AUTH_ENABLED, POCKETBASE_URL, etc.
 #     and re-exports them from the JSONs on every start. So: edit JSONs
-#     + `podman compose restart deepmentor`, NOT compose env vars.
+#     + `podman compose restart kagweb`, NOT compose env vars.
 # ============================================
 
-name: deepmentor
+name: kagweb
 
 services:
   # Internal-only coordination service for multi-worker mode.
   redis:
     image: docker.io/library/redis:7.4-alpine
-    container_name: deepmentor-redis
+    container_name: kagweb-redis
     restart: unless-stopped
     userns_mode: keep-id
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
       - ./data/redis:/data:U
     networks:
-      - deepmentor
+      - kagweb
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -90,7 +90,7 @@ services:
   # Leave blank to run with the SQLite fallback (single-user / invite-only).
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
-    container_name: deepmentor-pocketbase
+    container_name: kagweb-pocketbase
     # Third-party image: do NOT auto-float on every `up` (was pull_policy:
     # always). `missing` pulls only on first use; refresh deliberately via
     # `podman compose -f compose.yaml pull pocketbase`. For production, pin
@@ -119,7 +119,7 @@ services:
       - ./data/pocketbase/public:/pb_public:U
       - ./data/pocketbase/hooks:/pb_hooks:U
     networks:
-      - deepmentor
+      - kagweb
     healthcheck:
       test:
         - CMD
@@ -134,16 +134,16 @@ services:
       start_period: 10s
 
   # ----------------------------------------------------------
-  # DeepMentor — backend (FastAPI :8001) + frontend (Next.js :3782)
+  # KAGWeb — backend (FastAPI :8001) + frontend (Next.js :3782)
   # ----------------------------------------------------------
   # Both run inside the same image, supervised by supervisord under the
-  # unprivileged `deepmentor` user (UID 1000). The image's entrypoint loads
+  # unprivileged `kagweb` user (UID 1000). The image's entrypoint loads
   # runtime settings from data/user/settings/*.json and exports them into
   # the supervisord children's environment, so changing ports/auth/providers
   # means editing JSONs + `podman compose restart`.
-  deepmentor:
-    image: ghcr.io/hkuds/deepmentor:latest
-    container_name: deepmentor
+  kagweb:
+    image: ghcr.io/hkuds/kagweb:latest
+    container_name: kagweb
     pull_policy: always
     restart: unless-stopped
     userns_mode: keep-id
@@ -199,7 +199,7 @@ services:
       pocketbase:
         condition: service_healthy
     networks:
-      - deepmentor
+      - kagweb
     # Optional hardening — supervisord runs as root (PID 1) and setuids each
     # program down to UID 1000, which needs CAP_SETUID/CAP_SETGID — so do
     # NOT `cap_drop: ALL` here, it would stop the backend/frontend from
@@ -214,7 +214,7 @@ services:
     # cpus: 4.0
 
 networks:
-  deepmentor:
+  kagweb:
     driver: bridge
 
 # Named volumes intentionally not used: with userns_mode: keep-id the

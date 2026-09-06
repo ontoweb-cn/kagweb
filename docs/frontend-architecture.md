@@ -1,4 +1,4 @@
-# DeepMentor 前端架构
+# KAGWeb 前端架构
 
 > 适用版本：Next.js 16.2.3 · React 19 · TypeScript 5 · Tailwind CSS 3.4（`web/package.json` 为准）
 > 代码根目录：`web/`；本文所有路径均相对 `web/`。
@@ -103,7 +103,7 @@ app/ components/ context/ hooks/   UI 层
 
 ## 5. 关键机制
 
-- **配置单一真源**：`next.config.js` 启动时读取 `../data/user/settings/*.json`（backend_port、api_base、auth 开关）；环境变量仅作 Docker/CI 显式覆盖。应用版本从 `deepmentor/__version__.py` 正则解析，避免双源漂移。
+- **配置单一真源**：`next.config.js` 启动时读取 `../data/user/settings/*.json`（backend_port、api_base、auth 开关）；环境变量仅作 Docker/CI 显式覆盖。应用版本从 `kagweb/__version__.py` 正则解析，避免双源漂移。
 - **契约驱动类型**：`contracts/schema/` 下的 `openapi.json` 与 `turn-protocol.json` 分别经 openapi-typescript、json-schema-to-typescript 生成 `contracts/generated/`（`api.ts`、`turn-protocol.ts`），前端不得手写 API 类型。
 - **领域模块可测性**：`features/<域>/model` 为纯 TypeScript（无 DOM 依赖），可在 Node 下直接测试（`test:node`，截至 2026-09-04 实测 1059 例全过）。
 - **i18n 守护**：`keySeparator: false`（英文原文即键）；en 打进首屏包、zh 经 `ensureLanguage` 动态 import；`i18n:check` = parity（en/zh 键集一致）+ audit（t() 字面量均有条目、UI 字面量扫描）。
@@ -142,7 +142,7 @@ npm run test:e2e:critical / test:e2e:multi-worker
 
 - **颜色全部令牌化**：`globals.css`（约 1100 行）定义 CSS 变量，`tailwind.config.js` 把 `background/foreground/card/popover/primary/secondary/muted/accent/destructive/border/input/ring/success/warning/info` 等逐个映射为 Tailwind 颜色——组件里写 `bg-background`、`text-muted-foreground`，即是在消费变量，不写死色值。`--overlay` 统一弹层遮罩色（取代各组件硬编码的 `bg-black/40`）。
 - **4 套主题族**：`.theme-snow`（默认，纯白 + 蓝强调）、`:root` Cream（暖白 + 陶土）、`.dark`（暖近黑 + 陶土）、`.theme-glass`（近黑 + 半透明紫玻璃）。Tailwind `darkMode: "class"`，主题类挂在 `<html>`；每套主题必须发布全部令牌（见 `globals.css` 头部注释的令牌清单）。
-- **防主题闪烁**：`components/ThemeScript.tsx` 是 Server Component，把恢复逻辑内联进 SSR HTML——hydration 前就从 localStorage（`deepmentor-theme`）恢复主题类；无存储偏好时跟随 `prefers-color-scheme` 并回写。
+- **防主题闪烁**：`components/ThemeScript.tsx` 是 Server Component，把恢复逻辑内联进 SSR HTML——hydration 前就从 localStorage（`kagweb-theme`）恢复主题类；无存储偏好时跟随 `prefers-color-scheme` 并回写。
 - **中英混排字体确定性**：Geist/Lora 只覆盖拉丁文，Tailwind 字体栈在其后显式列 CJK face（PingFang SC / 宋体系 / Noto 系列），保证 serif 标题在任意机器上都是「Lora + 宋体」，而非浏览器随机兜底。
 
 ### 7.3 布局外壳与响应式

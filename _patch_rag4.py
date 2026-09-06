@@ -21,7 +21,7 @@ def rep(src, old, new, path=""):
 
 
 # ── init_cmd.py ──
-p = "deepmentor_cli/init_cmd.py"
+p = "kagweb_cli/init_cmd.py"
 s = load(p)
 # remove _embedding_default_endpoint + _embedding_step (up to the next top-level def after _embedding_step)
 i = s.index("def _embedding_default_endpoint(")
@@ -61,8 +61,8 @@ s = s.replace("embedding → review) that writes the same files as the Web Setti
 save(p, s)
 
 # ── init_wizard.py: EmbeddingChoice + featured providers + step renderer ──
-p = "deepmentor_cli/init_wizard.py"
+p = "kagweb_cli/init_wizard.py"
 s = load(p)
 print("--- wizard embedding surface:")
 import subprocess
-print(subprocess.run(["grep", "-n", "EmbeddingChoice\\|embedding\\|FEATURED_EMBEDDING\\|EMBEDDING_FALLBACK", "deepmentor_cli/init_wizard.py"], capture_output=True, text=True).stdout)
+print(subprocess.run(["grep", "-n", "EmbeddingChoice\\|embedding\\|FEATURED_EMBEDDING\\|EMBEDDING_FALLBACK", "kagweb_cli/init_wizard.py"], capture_output=True, text=True).stdout)

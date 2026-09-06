@@ -1,14 +1,14 @@
 # ============================================
-# DeepMentor Docker Compose — Pre-built GHCR Image
+# KAGWeb Docker Compose — Pre-built GHCR Image
 # ============================================
-# Run DeepMentor using the official pre-built image from GitHub Container Registry.
+# Run KAGWeb using the official pre-built image from GitHub Container Registry.
 # No local build required — the image is pulled automatically.
 #
 # Usage:
 #   python scripts/docker_compose.py -f docker-compose.ghcr.yml up -d
 #
 # To pin a specific version:
-#   Edit the image tag below, e.g. ghcr.io/hkuds/deepmentor:1.0.0
+#   Edit the image tag below, e.g. ghcr.io/hkuds/kagweb:1.0.0
 #
 # Prerequisites:
 #   1. Configure providers in data/user/settings/model_catalog.json or the UI
@@ -41,7 +41,7 @@ services:
   # not published to the host; configure redis_url as redis://redis:6379/0.
   redis:
     image: redis:7.4-alpine
-    container_name: deepmentor-redis
+    container_name: kagweb-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
@@ -52,12 +52,12 @@ services:
       timeout: 3s
       retries: 10
     networks:
-      - deepmentor-network
+      - kagweb-network
 
-  deepmentor:
-    image: ghcr.io/hkuds/deepmentor:latest
+  kagweb:
+    image: ghcr.io/hkuds/kagweb:latest
     pull_policy: always
-    container_name: deepmentor
+    container_name: kagweb
     restart: unless-stopped
     # A root process (supervisord as PID 1) dropping its own children to an
     # unprivileged user is not a privilege gain, so this is safe with the
@@ -68,8 +68,8 @@ services:
       # Loopback-only by default: the backend runs unauthenticated in
       # single-user mode. Remove the 127.0.0.1: prefix only when the
       # deployment must be reachable from other hosts (and turn auth on).
-      - "127.0.0.1:${DEEPMENTOR_DOCKER_BACKEND_PORT:-8001}:${DEEPMENTOR_DOCKER_BACKEND_PORT:-8001}"
-      - "127.0.0.1:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}"
+      - "127.0.0.1:${KAGWEB_DOCKER_BACKEND_PORT:-8001}:${KAGWEB_DOCKER_BACKEND_PORT:-8001}"
+      - "127.0.0.1:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}"
 
     volumes:
       # Persist every workspace and deployment secret across recreation.
@@ -94,13 +94,13 @@ services:
     # `python scripts/install_extras.py --dry-run "<name>"`. Uncomment the
     # `environment:` key together with the entries under it.
     # environment:
-    #   - DEEPMENTOR_EXTRAS=math-animator,partners
-    #   - DEEPMENTOR_APT_PACKAGES=ffmpeg
+    #   - KAGWEB_EXTRAS=math-animator,partners
+    #   - KAGWEB_APT_PACKAGES=ffmpeg
 
     # No compose healthcheck override: the image's own HEALTHCHECK
     # (/app/healthcheck.py) reads the backend port from
     # data/user/settings/system.json, so it stays correct when the port is
-    # changed in settings without this file's ${DEEPMENTOR_DOCKER_*} vars
+    # changed in settings without this file's ${KAGWEB_DOCKER_*} vars
     # being re-rendered by scripts/docker_compose.py.
 
     depends_on:
@@ -108,8 +108,8 @@ services:
         condition: service_healthy
 
     networks:
-      - deepmentor-network
+      - kagweb-network
 
 networks:
-  deepmentor-network:
+  kagweb-network:
     driver: bridge

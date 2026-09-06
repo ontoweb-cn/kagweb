@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from deepmentor.services.config.model_catalog import ModelCatalogService
+from kagweb.services.config.model_catalog import ModelCatalogService
 
 
 def _service(tmp_path: Path) -> ModelCatalogService:

@@ -4,10 +4,10 @@ import asyncio
 
 import pytest
 
-from deepmentor.runtime.coordination import MemoryCoordinator
-from deepmentor.runtime.coordination.journal import TurnEventJournal
-from deepmentor.runtime.coordination.recovery import TurnRecoveryService
-from deepmentor.services.session.sqlite_store import SQLiteSessionStore
+from kagweb.runtime.coordination import MemoryCoordinator
+from kagweb.runtime.coordination.journal import TurnEventJournal
+from kagweb.runtime.coordination.recovery import TurnRecoveryService
+from kagweb.services.session.sqlite_store import SQLiteSessionStore
 
 
 @pytest.mark.asyncio

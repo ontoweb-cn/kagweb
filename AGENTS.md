@@ -1,8 +1,8 @@
-# DeepMentor — Agent-Native Architecture
+# KAGWeb — Agent-Native Architecture
 
 ## Overview
 
-DeepMentor is an **agent-native** intelligent learning companion organized
+KAGWeb is an **agent-native** intelligent learning companion organized
 around a two-layer plugin model — single-shot **Tools** invoked by the
 LLM, and multi-stage **Capabilities** that take over a turn — exposed
 through three entry points: CLI, WebSocket API, and Python SDK.
@@ -66,7 +66,7 @@ Multi-stage pipelines that own the turn:
 | `math_animator`  | concept_analysis → concept_design → code_generation → code_retry → summary → render_output |
 
 All capabilities converge on `emit_capability_result()` in
-`deepmentor/capabilities/_shared.py` so every turn emits the same envelope
+`kagweb/capabilities/_shared.py` so every turn emits the same envelope
 (response payload + `cost_summary` from `UsageTracker`). Status copy and
 prompts are i18n'd via `capabilities/prompts/{en,zh}/<name>.yaml`.
 
@@ -74,47 +74,47 @@ prompts are i18n'd via `capabilities/prompts/{en,zh}/<name>.yaml`.
 
 ```bash
 # Install
-pip install deepmentor      # Full app (CLI + Web/API + packaged Web assets)
-pip install deepmentor-cli  # CLI-only
+pip install kagweb      # Full app (CLI + Web/API + packaged Web assets)
+pip install kagweb-cli  # CLI-only
 
 # Run any capability
-deepmentor run chat "Explain Fourier transform"
-deepmentor run deep_solve "Solve x^2=4" -t rag --kb my-kb
-deepmentor run visualize "Animate sine wave" --config render_mode=manim_video
+kagweb run chat "Explain Fourier transform"
+kagweb run deep_solve "Solve x^2=4" -t rag --kb my-kb
+kagweb run visualize "Animate sine wave" --config render_mode=manim_video
 
 # Interactive REPL
-deepmentor chat
+kagweb chat
 # (inside the REPL: /regenerate or /retry re-runs the last user message)
 
 # Partners (IM-connected companions)
-deepmentor partner list
+kagweb partner list
 
 # Knowledge bases, memory, server
-deepmentor kb list
-deepmentor kb create my-kb --doc textbook.pdf
-deepmentor memory show
-deepmentor serve --port 8001       # API server only
-deepmentor start                   # backend + frontend together
+kagweb kb list
+kagweb kb create my-kb --doc textbook.pdf
+kagweb memory show
+kagweb serve --port 8001       # API server only
+kagweb start                   # backend + frontend together
 ```
 
 ## Key Files
 
 | Path                                       | Purpose                              |
 | ------------------------------------------ | ------------------------------------ |
-| `deepmentor/runtime/orchestrator.py`        | `ChatOrchestrator` — unified entry   |
-| `deepmentor/runtime/launcher.py`            | Backend + frontend lifecycle / port discovery |
-| `deepmentor/runtime/registry/`              | Tool + Capability registries         |
-| `deepmentor/runtime/bootstrap/builtin_capabilities.py` | Built-in capability class paths |
-| `deepmentor/services/config/runtime_settings.py` | JSON settings + process-env overrides |
-| `deepmentor/core/stream.py`, `stream_bus.py` | StreamEvent protocol + async fan-out |
-| `deepmentor/core/tool_protocol.py`          | `BaseTool` + `ToolDefinition`         |
-| `deepmentor/core/capability_protocol.py`    | `BaseCapability` + `CapabilityManifest` |
-| `deepmentor/core/context.py`                | `UnifiedContext` dataclass            |
-| `deepmentor/tools/builtin/__init__.py`      | All built-in tool wrappers           |
-| `deepmentor/capabilities/`                  | Built-in capability implementations  |
-| `deepmentor/app.py`                         | `DeepMentorApp` — Python SDK facade    |
-| `deepmentor_cli/main.py`                    | Typer CLI entry point                |
-| `deepmentor/api/routers/unified_ws.py`      | Unified WebSocket endpoint           |
+| `kagweb/runtime/orchestrator.py`        | `ChatOrchestrator` — unified entry   |
+| `kagweb/runtime/launcher.py`            | Backend + frontend lifecycle / port discovery |
+| `kagweb/runtime/registry/`              | Tool + Capability registries         |
+| `kagweb/runtime/bootstrap/builtin_capabilities.py` | Built-in capability class paths |
+| `kagweb/services/config/runtime_settings.py` | JSON settings + process-env overrides |
+| `kagweb/core/stream.py`, `stream_bus.py` | StreamEvent protocol + async fan-out |
+| `kagweb/core/tool_protocol.py`          | `BaseTool` + `ToolDefinition`         |
+| `kagweb/core/capability_protocol.py`    | `BaseCapability` + `CapabilityManifest` |
+| `kagweb/core/context.py`                | `UnifiedContext` dataclass            |
+| `kagweb/tools/builtin/__init__.py`      | All built-in tool wrappers           |
+| `kagweb/capabilities/`                  | Built-in capability implementations  |
+| `kagweb/app.py`                         | `KAGWebApp` — Python SDK facade    |
+| `kagweb_cli/main.py`                    | Typer CLI entry point                |
+| `kagweb/api/routers/unified_ws.py`      | Unified WebSocket endpoint           |
 
 ## Dependency Layers
 
@@ -122,8 +122,8 @@ Public install paths and source extras are defined in `pyproject.toml`.
 Requirements files mirror the same dependency groups for Docker/CI installs.
 
 ```
-pip install deepmentor      — Full app (CLI + Web/API + packaged Web assets)
-pip install deepmentor-cli  — CLI-only (LLM + RAG + providers + document parsing)
+pip install kagweb      — Full app (CLI + Web/API + packaged Web assets)
+pip install kagweb-cli  — CLI-only (LLM + RAG + providers + document parsing)
 pip install -e .           — Source install for development
 
 Source extras (.[ extra ], defined in pyproject.toml):
@@ -132,7 +132,7 @@ Source extras (.[ extra ], defined in pyproject.toml):
 .[partners]       — Partner channel SDKs  (legacy alias: .[tutorbot])
 .[matrix]         — Matrix channel for Partners (matrix-nio; needs libolm)
 .[matrix-e2e]     — Matrix with end-to-end encryption (matrix-nio[e2e])
-.[math-animator]  — Manim addon (powers `visualize` Manim renders + `deepmentor run math_animator`)
+.[math-animator]  — Manim addon (powers `visualize` Manim renders + `kagweb run math_animator`)
 .[dev]            — Test / lint tooling
 .[all]            — Everything above
 ```
@@ -140,7 +140,7 @@ Source extras (.[ extra ], defined in pyproject.toml):
 ## Web Rule: Subpath Deployment
 
 The web app must stay deployable under a **subpath** (e.g.
-`https://ai.wust.edu.cn/deepmentor` behind Kubernetes/Ingress), not only at
+`https://ai.wust.edu.cn/kagweb` behind Kubernetes/Ingress), not only at
 a domain root. When writing code under `web/`, never assume the app is
 served from `/`:
 

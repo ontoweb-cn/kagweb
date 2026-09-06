@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from deepmentor.services.config.model_catalog import (
+from kagweb.services.config.model_catalog import (
     CATALOG_SECRET_MASK,
     ModelCatalogService,
     redact_catalog_secrets,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.services.llm.reasoning_params import (
+from kagweb.services.llm.reasoning_params import (
     build_openai_compatible_reasoning_kwargs,
     default_reasoning_effort_for,
 )

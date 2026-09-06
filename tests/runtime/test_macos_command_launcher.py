@@ -16,7 +16,7 @@ import subprocess
 
 
 def test_macos_command_launcher_forwards_home_and_arguments(tmp_path: Path) -> None:
-    source = Path(__file__).resolve().parents[2] / "start_deepmentor.command"
+    source = Path(__file__).resolve().parents[2] / "start_kagweb.command"
     launcher = tmp_path / source.name
     shutil.copy2(source, launcher)
 
@@ -42,7 +42,7 @@ printf '%s\\n' "$@"
 
     assert result.stdout.splitlines()[-6:] == [
         "-m",
-        "deepmentor_cli.main",
+        "kagweb_cli.main",
         "start",
         "--home",
         str(tmp_path),

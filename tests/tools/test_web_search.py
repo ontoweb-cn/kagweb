@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.services.search import _assert_provider_supported
-from deepmentor.services.search.providers import (
+from kagweb.services.search import _assert_provider_supported
+from kagweb.services.search.providers import (
     _DEPRECATED_UNSUPPORTED,
     get_provider,
     get_providers_info,
     list_providers,
 )
-from deepmentor.services.search.types import Citation, SearchResult, WebSearchResponse
+from kagweb.services.search.types import Citation, SearchResult, WebSearchResponse
 
 # ---------------------------------------------------------------------------
 # Type dataclasses

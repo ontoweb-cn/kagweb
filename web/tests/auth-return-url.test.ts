@@ -48,25 +48,25 @@ test("login inherits a server-invisible fragment without replacing an explicit o
 // carries the prefix. Both prefixed and unprefixed inputs normalize to the
 // same app-relative output.
 test("return URLs strip the deployment prefix for the next parameter", () => {
-  process.env.NEXT_PUBLIC_BASE_PATH = "/deepmentor";
+  process.env.NEXT_PUBLIC_BASE_PATH = "/kagweb";
   try {
-    assert.equal(normalizeInternalReturnPath("/deepmentor"), "/");
+    assert.equal(normalizeInternalReturnPath("/kagweb"), "/");
     assert.equal(
-      normalizeInternalReturnPath("/deepmentor/chat?id=1#x"),
+      normalizeInternalReturnPath("/kagweb/chat?id=1#x"),
       "/chat?id=1#x",
     );
     assert.equal(normalizeInternalReturnPath("/chat"), "/chat");
     // The bare prefix plus query keeps its query after stripping.
-    assert.equal(normalizeInternalReturnPath("/deepmentor?a=b"), "/?a=b");
+    assert.equal(normalizeInternalReturnPath("/kagweb?a=b"), "/?a=b");
 
     const destination = browserReturnPath({
-      pathname: "/deepmentor/notebooks/notes-1",
+      pathname: "/kagweb/notebooks/notes-1",
       search: "?course=course-2",
     });
     assert.equal(destination, "/notebooks/notes-1?course=course-2");
     assert.equal(
       loginHref(destination),
-      "/deepmentor/login?next=%2Fnotebooks%2Fnotes-1%3Fcourse%3Dcourse-2",
+      "/kagweb/login?next=%2Fnotebooks%2Fnotes-1%3Fcourse%3Dcourse-2",
     );
   } finally {
     delete process.env.NEXT_PUBLIC_BASE_PATH;

@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from deepmentor.runtime.coordination import MemoryCoordinator, RuntimeCoordinator
+from kagweb.runtime.coordination import MemoryCoordinator, RuntimeCoordinator
 
 
 @pytest.mark.asyncio

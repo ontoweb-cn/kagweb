@@ -1,5 +1,5 @@
 /**
- * The activity vocabulary: how DeepMentor shows work in progress.
+ * The activity vocabulary: how KAGWeb shows work in progress.
  *
  * Every surface that reports ongoing work — chat's reasoning trace, a book
  * compile, a co-writer run, deep research, the sidebar's live sessions —

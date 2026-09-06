@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from deepmentor.services.persona.service import (
+from kagweb.services.persona.service import (
     InvalidPersonaNameError,
     PersonaExistsError,
     PersonaNotFoundError,

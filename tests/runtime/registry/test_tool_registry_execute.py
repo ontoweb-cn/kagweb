@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.core.tool_protocol import BaseTool, ToolDefinition, ToolParameter, ToolResult
-from deepmentor.runtime.registry.tool_registry import ToolRegistry
+from kagweb.core.tool_protocol import BaseTool, ToolDefinition, ToolParameter, ToolResult
+from kagweb.runtime.registry.tool_registry import ToolRegistry
 
 
 class _NameParamTool(BaseTool):

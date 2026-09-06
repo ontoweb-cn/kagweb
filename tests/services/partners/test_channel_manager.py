@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from deepmentor.partners.bus.events import OutboundMessage
-from deepmentor.partners.channels.manager import ChannelManager
-from deepmentor.partners.config.schema import ChannelsConfig
+from kagweb.partners.bus.events import OutboundMessage
+from kagweb.partners.channels.manager import ChannelManager
+from kagweb.partners.config.schema import ChannelsConfig
 
 
 def test_empty_allow_list_skips_only_misconfigured_channel(monkeypatch):
@@ -23,7 +23,7 @@ def test_empty_allow_list_skips_only_misconfigured_channel(monkeypatch):
             self.setup_state = {}
 
     monkeypatch.setattr(
-        "deepmentor.partners.channels.registry.discover_all_with_errors",
+        "kagweb.partners.channels.registry.discover_all_with_errors",
         lambda: ({"invalid": _Channel, "valid": _Channel}, {}),
     )
     config = ChannelsConfig(
@@ -39,7 +39,7 @@ def test_empty_allow_list_skips_only_misconfigured_channel(monkeypatch):
 
 def test_unavailable_configured_channel_remains_visible(monkeypatch):
     monkeypatch.setattr(
-        "deepmentor.partners.channels.registry.discover_all_with_errors",
+        "kagweb.partners.channels.registry.discover_all_with_errors",
         lambda: ({}, {"telegram": "optional package missing"}),
     )
     manager = ChannelManager(
@@ -81,8 +81,8 @@ class _DummyChannel:
 
 
 def test_channel_media_is_scoped_to_owning_partner(partners_root):
-    from deepmentor.partners.bus.queue import MessageBus
-    from deepmentor.partners.channels.base import BaseChannel
+    from kagweb.partners.bus.queue import MessageBus
+    from kagweb.partners.channels.base import BaseChannel
 
     class _MediaChannel(BaseChannel):
         name = "telegram"
@@ -103,8 +103,8 @@ def test_channel_media_is_scoped_to_owning_partner(partners_root):
 
 
 def test_channel_state_is_scoped_to_owning_partner(partners_root):
-    from deepmentor.partners.bus.queue import MessageBus
-    from deepmentor.partners.channels.base import BaseChannel
+    from kagweb.partners.bus.queue import MessageBus
+    from kagweb.partners.channels.base import BaseChannel
 
     class _StatefulChannel(BaseChannel):
         name = "telegram"
@@ -126,8 +126,8 @@ def test_channel_state_is_scoped_to_owning_partner(partners_root):
 
 def test_partner_id_is_available_while_the_channel_is_constructed(partners_root, monkeypatch):
     """Channels that resolve paths in ``__init__`` must not see an empty owner."""
-    from deepmentor.partners.bus.queue import MessageBus
-    from deepmentor.partners.channels.base import BaseChannel
+    from kagweb.partners.bus.queue import MessageBus
+    from kagweb.partners.channels.base import BaseChannel
 
     class _EagerChannel(BaseChannel):
         name = "telegram"
@@ -147,7 +147,7 @@ def test_partner_id_is_available_while_the_channel_is_constructed(partners_root,
             pass
 
     monkeypatch.setattr(
-        "deepmentor.partners.channels.registry.discover_all_with_errors",
+        "kagweb.partners.channels.registry.discover_all_with_errors",
         lambda: ({"telegram": _EagerChannel}, {}),
     )
     manager = ChannelManager(
@@ -162,8 +162,8 @@ def test_partner_id_is_available_while_the_channel_is_constructed(partners_root,
 
 @pytest.mark.asyncio
 async def test_start_failure_is_sanitized_into_runtime_status():
-    from deepmentor.partners.bus.queue import MessageBus
-    from deepmentor.partners.channels.base import BaseChannel
+    from kagweb.partners.bus.queue import MessageBus
+    from kagweb.partners.channels.base import BaseChannel
 
     class _FailingChannel(BaseChannel):
         name = "telegram"
@@ -191,8 +191,8 @@ async def test_start_failure_is_sanitized_into_runtime_status():
 
 @pytest.mark.asyncio
 async def test_start_return_without_listener_requests_configuration():
-    from deepmentor.partners.bus.queue import MessageBus
-    from deepmentor.partners.channels.base import BaseChannel
+    from kagweb.partners.bus.queue import MessageBus
+    from kagweb.partners.channels.base import BaseChannel
 
     class _UnconfiguredChannel(BaseChannel):
         name = "telegram"
@@ -291,7 +291,7 @@ async def _dispatch_many(
 class TestSendRetry:
     @pytest.mark.asyncio
     async def test_send_retries_on_failure_then_succeeds(self, monkeypatch):
-        monkeypatch.setattr("deepmentor.partners.channels.manager._SEND_RETRY_DELAYS", (0, 0, 0))
+        monkeypatch.setattr("kagweb.partners.channels.manager._SEND_RETRY_DELAYS", (0, 0, 0))
         msg = OutboundMessage(channel="zulip", chat_id="1", content="hi")
         channel = _DummyChannel()
         channel.send.side_effect = [RuntimeError("boom"), None]
@@ -303,7 +303,7 @@ class TestSendRetry:
 
     @pytest.mark.asyncio
     async def test_send_gives_up_after_max_retries(self, monkeypatch):
-        monkeypatch.setattr("deepmentor.partners.channels.manager._SEND_RETRY_DELAYS", (0, 0, 0))
+        monkeypatch.setattr("kagweb.partners.channels.manager._SEND_RETRY_DELAYS", (0, 0, 0))
         msg = OutboundMessage(channel="zulip", chat_id="1", content="hi")
         channel = _DummyChannel()
         channel.send.side_effect = RuntimeError("boom")
@@ -415,8 +415,8 @@ class TestStreamDispatch:
 
 
 def test_channel_registry_discovers_builtin_channels() -> None:
-    from deepmentor.partners.channels.base import BaseChannel
-    from deepmentor.partners.channels.registry import discover_all, discover_channel_names
+    from kagweb.partners.channels.base import BaseChannel
+    from kagweb.partners.channels.registry import discover_all, discover_channel_names
 
     names = set(discover_channel_names())
     assert {"telegram", "slack", "discord", "zulip"} <= names

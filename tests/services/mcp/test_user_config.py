@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from deepmentor.services.mcp.config import MCPServerConfig
-from deepmentor.services.mcp.user_config import (
+from kagweb.services.mcp.config import MCPServerConfig
+from kagweb.services.mcp.user_config import (
     MAX_SERVERS_PER_OWNER,
     UserMcpError,
     assert_name_available,
@@ -26,7 +26,7 @@ from deepmentor.services.mcp.user_config import (
 
 @pytest.fixture
 def system_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    from deepmentor.multi_user import paths
+    from kagweb.multi_user import paths
 
     root = (tmp_path / "data" / "system").resolve()
     monkeypatch.setattr(paths, "SYSTEM_ROOT", root)
@@ -49,7 +49,7 @@ def _offline_dns(monkeypatch: pytest.MonkeyPatch) -> None:
         addr = "127.0.0.1" if loopback else "93.184.216.34"
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (addr, 0))]
 
-    monkeypatch.setattr("deepmentor.services.mcp.network.socket.getaddrinfo", _getaddrinfo)
+    monkeypatch.setattr("kagweb.services.mcp.network.socket.getaddrinfo", _getaddrinfo)
 
 
 def _remote(url: str = "https://mcp.example.com/mcp") -> MCPServerConfig:

@@ -19,7 +19,7 @@ def current_branch() -> str | None:
 
 def allows_main_commit() -> bool:
     result = subprocess.run(
-        ["git", "config", "--bool", "deepmentor.allowMainCommit"],
+        ["git", "config", "--bool", "kagweb.allowMainCommit"],
         check=False,
         capture_output=True,
         text=True,
@@ -32,7 +32,7 @@ def main() -> int:
         print(
             "Direct commits to main are forbidden. Develop on dev or a topic branch, "
             "then integrate through review. For an explicit release exception, set "
-            "deepmentor.allowMainCommit=true and unset it afterward.",
+            "kagweb.allowMainCommit=true and unset it afterward.",
             file=sys.stderr,
         )
         return 1

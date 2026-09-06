@@ -1,6 +1,6 @@
 import { stripBasePath, withBasePath } from "../base-path";
 
-const RETURN_URL_BASE = "https://deepmentor.invalid";
+const RETURN_URL_BASE = "https://kagweb.invalid";
 
 export interface BrowserLocationParts {
   pathname: string;
@@ -14,7 +14,7 @@ export interface BrowserLocationParts {
  * The result is APP-RELATIVE (deployment prefix stripped) so it can be fed
  * straight to `router.push`/`router.replace`, which apply the basePath
  * themselves — storing the prefixed form would double it up
- * (`/deepmentor/deepmentor/chat`).
+ * (`/kagweb/kagweb/chat`).
  */
 export function normalizeInternalReturnPath(
   raw: string | null | undefined,
@@ -42,7 +42,7 @@ export function normalizeInternalReturnPath(
       return fallback;
     }
     // Strip the prefix from the pathname alone: a combined string would
-    // miss the edge case pathname === base ("/deepmentor?x#y").
+    // miss the edge case pathname === base ("/kagweb?x#y").
     const stripped = `${stripBasePath(parsed.pathname)}${parsed.search}${parsed.hash}`;
     // Re-run the leading-slash guard after stripping; the fallback stays
     // reachable when something unexpected survives normalization.

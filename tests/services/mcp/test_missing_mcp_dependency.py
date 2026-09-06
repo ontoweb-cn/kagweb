@@ -23,9 +23,9 @@ import time
 
 import pytest
 
-from deepmentor.services.mcp import manager as manager_mod
-from deepmentor.services.mcp.config import MCPServerConfig
-from deepmentor.services.mcp.manager import SHARED_OWNER, MCPConnectionManager
+from kagweb.services.mcp import manager as manager_mod
+from kagweb.services.mcp.config import MCPServerConfig
+from kagweb.services.mcp.manager import SHARED_OWNER, MCPConnectionManager
 
 # Short enough that a regression (which waits out the full window) is obvious
 # without making the suite slow.

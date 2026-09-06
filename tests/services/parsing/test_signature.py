@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deepmentor.services.parsing.signature import ParserSignature
+from kagweb.services.parsing.signature import ParserSignature
 
 
 def test_hash_is_order_independent() -> None:

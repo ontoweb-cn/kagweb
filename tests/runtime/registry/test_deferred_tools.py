@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.core.tool_protocol import BaseTool, ToolDefinition, ToolResult
-from deepmentor.runtime.registry.deferred_tools import (
+from kagweb.core.tool_protocol import BaseTool, ToolDefinition, ToolResult
+from kagweb.runtime.registry.deferred_tools import (
     DeferredToolLoader,
     render_deferred_tools_manifest,
 )
-from deepmentor.runtime.registry.tool_registry import ToolRegistry
+from kagweb.runtime.registry.tool_registry import ToolRegistry
 
 
 class _FakeDeferredTool(BaseTool):
@@ -35,7 +35,7 @@ class _FakeDeferredTool(BaseTool):
 def _no_persist(monkeypatch):
     """Stop DeferredToolLoader persistence from touching disk."""
     monkeypatch.setattr(
-        "deepmentor.services.mcp.session_state.record_loaded_tools",
+        "kagweb.services.mcp.session_state.record_loaded_tools",
         lambda session_id, names: None,
     )
 

@@ -1,6 +1,6 @@
 const SETTINGS_SCROLL_SELECTOR = "[data-settings-scroll]";
 
-export const SETTINGS_ANCHOR_EVENT = "deepmentor:settings-anchor";
+export const SETTINGS_ANCHOR_EVENT = "kagweb:settings-anchor";
 
 export type SettingsAnchorEvent = CustomEvent<{ key: string }>;
 

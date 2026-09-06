@@ -46,7 +46,7 @@ test("the build wrapper restores every generated checked-in input", () => {
   );
   assert.match(
     source,
-    /DEEPMENTOR_NEXT_TSCONFIG:\s*path\.basename\(buildTsconfigPath\)/,
+    /KAGWEB_NEXT_TSCONFIG:\s*path\.basename\(buildTsconfigPath\)/,
     "Next must consume the process-local build config rather than shared tsconfig.json",
   );
   assert.match(
@@ -60,5 +60,5 @@ test("the standalone bundle is rooted where the Python launcher expects it", () 
   const source = read("next.config.js");
   assert.match(source, /output:\s*"standalone"/);
   assert.match(source, /outputFileTracingRoot:\s*__dirname/);
-  assert.match(source, /tsconfigPath:\s*process\.env\.DEEPMENTOR_NEXT_TSCONFIG/);
+  assert.match(source, /tsconfigPath:\s*process\.env\.KAGWEB_NEXT_TSCONFIG/);
 });

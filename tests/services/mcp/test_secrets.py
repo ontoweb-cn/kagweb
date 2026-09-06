@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from deepmentor.services.mcp.secrets import (
+from kagweb.services.mcp.secrets import (
     configured_fields,
     delete_secrets,
     resolve_references,
@@ -20,7 +20,7 @@ from deepmentor.services.mcp.secrets import (
 
 @pytest.fixture
 def system_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    from deepmentor.multi_user import paths
+    from kagweb.multi_user import paths
 
     root = (tmp_path / "data" / "system").resolve()
     monkeypatch.setattr(paths, "SYSTEM_ROOT", root)

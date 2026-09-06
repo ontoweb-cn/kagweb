@@ -19,9 +19,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from deepmentor.api.routers import settings as settings_router
-from deepmentor.multi_user.models import CurrentUser, UserScope
-from deepmentor.services.partners.scope import PARTNER_USER_PREFIX
+from kagweb.api.routers import settings as settings_router
+from kagweb.multi_user.models import CurrentUser, UserScope
+from kagweb.services.partners.scope import PARTNER_USER_PREFIX
 
 CODEX_ROUTES = [
     ("post", "/api/settings/providers/openai-codex/oauth/start"),

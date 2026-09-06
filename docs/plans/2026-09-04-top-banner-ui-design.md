@@ -41,7 +41,7 @@
 | 1 | `AppShell`(`components/layout/AppShell.tsx`)为 `flex h-dvh` 单行结构:`[sidebar | main]`,**桌面端没有任何顶栏** | Banner 需要新增一行,Shell 从单行变两行 |
 | 2 | LOGO 现在位于侧栏头部(`SidebarShell` collapsed 60px rail / expanded 220px 两种形态,expanded 是 `logo.png + banner.png` wordmark) | 顶栏接管 LOGO 后,侧栏头部需移除或改作他用,否则双 LOGO |
 | 3 | 头像 = `ProfileLink`(侧栏 footer),**仅在多用户 auth 开启且已登录时渲染**;单用户模式下侧栏 footer 只有 Docs / GitHub / VersionBadge | 顶栏右侧在单用户模式下是空的,需要决定放什么 |
-| 4 | 菜单 = `nav-entries.ts` 的 `PRIMARY_NAV`(8 项)+ `SECONDARY_NAV`(Memory / Knowledge Center / Settings,注释明确「不可折叠」);**用户可自定义排序、可折叠进「More」**(`lib/sidebar-layout.ts`,localStorage `deepmentor.sidebar.navLayout`,纯函数 SSR-safe) | 顶栏菜单应复用同一数据源与排序/折叠逻辑,而不是另起一套 |
+| 4 | 菜单 = `nav-entries.ts` 的 `PRIMARY_NAV`(8 项)+ `SECONDARY_NAV`(Memory / Knowledge Center / Settings,注释明确「不可折叠」);**用户可自定义排序、可折叠进「More」**(`lib/sidebar-layout.ts`,localStorage `kagweb.sidebar.navLayout`,纯函数 SSR-safe) | 顶栏菜单应复用同一数据源与排序/折叠逻辑,而不是另起一套 |
 | 5 | 导航项带能力门控(`requires: Capability`,如 `llm`,无能力锁定) | 顶栏菜单项必须继承同一门控 |
 | 6 | 移动端(<768px)main 内已有 h-11 顶条:汉堡按钮 + LOGO;侧栏变 z-50 抽屉 + z-40 scrim | 新 Banner 应与这条移动顶条**合并**,不能并存两条 |
 | 7 | 响应式铁律:静态分叉用 CSS(`max-md:`/`md:`/`lg:`),JS 只管有状态部分(抽屉开合、`useDevice`) | Banner 的显示/隐藏分叉必须延续此模式,保证 SSR 首帧正确 |

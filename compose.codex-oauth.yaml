@@ -3,7 +3,7 @@
 # Apply this overlay only while signing in, then recreate the service from its
 # base Compose file so ports 1455 and 1457 are returned to other Codex clients.
 services:
-  deepmentor:
+  kagweb:
     ports:
-      - "127.0.0.1:1455:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}"
-      - "127.0.0.1:1457:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}"
+      - "127.0.0.1:1455:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}"
+      - "127.0.0.1:1457:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Safely update a local DeepMentor git checkout.
+"""Safely update a local KAGWeb git checkout.
 
 The updater is intentionally conservative:
 1. Fetch the remote for the current branch.
@@ -393,13 +393,13 @@ def run_update(repo_root: Path, *, assume_yes: bool) -> int:
         print(f"Changed files: {len(changed_files)}")
     for hint in dependency_hints(changed_files):
         print(f"Next step: {hint}")
-    print("Restart DeepMentor if it is currently running.")
+    print("Restart KAGWeb if it is currently running.")
     return 0
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Fetch, review, and fast-forward update a local DeepMentor checkout."
+        description="Fetch, review, and fast-forward update a local KAGWeb checkout."
     )
     parser.add_argument(
         "--yes",
@@ -411,7 +411,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--repo",
         type=Path,
         default=PROJECT_ROOT,
-        help="Path to the git checkout to update. Defaults to this DeepMentor repository.",
+        help="Path to the git checkout to update. Defaults to this KAGWeb repository.",
     )
     return parser.parse_args(argv)
 

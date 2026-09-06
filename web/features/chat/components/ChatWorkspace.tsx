@@ -372,7 +372,7 @@ export default function ChatWorkspace() {
     prefillInputRef.current?.(text)
   }, [])
 
-  // A message handed over by another page (Settings' "set up with DeepMentor"
+  // A message handed over by another page (Settings' "set up with KAGWeb"
   // button). Prefilled rather than sent: the user reads what will be asked and
   // presses enter themselves. Consumed once, so a refresh does not retype it.
   //
@@ -651,10 +651,10 @@ export default function ChatWorkspace() {
       shouldAutoScrollRef.current = false
     }
 
-    window.addEventListener('deepmentor:trace-tool-output', locateInConversation)
+    window.addEventListener('kagweb:trace-tool-output', locateInConversation)
     return () => {
       clearTraceFlash()
-      window.removeEventListener('deepmentor:trace-tool-output', locateInConversation)
+      window.removeEventListener('kagweb:trace-tool-output', locateInConversation)
     }
   }, [messagesContainerRef, shouldAutoScrollRef])
   /** Leave history and start following the live end of the turn again. */
@@ -1518,7 +1518,7 @@ export default function ChatWorkspace() {
           onAutoOpen={() => setViewerOpen(true)}
           onTraceToolOutput={options => {
             window.dispatchEvent(
-              new CustomEvent('deepmentor:trace-tool-output', { detail: options })
+              new CustomEvent('kagweb:trace-tool-output', { detail: options })
             )
           }}
         />

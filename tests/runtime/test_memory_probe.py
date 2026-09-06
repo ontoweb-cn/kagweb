@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from deepmentor.runtime import memory_probe
+from kagweb.runtime import memory_probe
 
 
 def test_capture_always_measures_at_least_this_process() -> None:
@@ -68,7 +68,7 @@ def test_classify_maps_roles_and_falls_back_to_the_executable_name() -> None:
     other = self_pid + 1
 
     assert memory_probe._classify(self_pid, "python3.11", "uvicorn") == "backend"
-    assert memory_probe._classify(other, "python", "-m uvicorn deepmentor.api.main:app") == "backend"
+    assert memory_probe._classify(other, "python", "-m uvicorn kagweb.api.main:app") == "backend"
     assert memory_probe._classify(other, "pocketbase", "serve") == "pocketbase"
     assert memory_probe._classify(other, "bwrap", "sandbox runner") == "sandbox"
     assert memory_probe._classify(other, "mineru-worker", "") == "mineru-worker"
@@ -76,14 +76,14 @@ def test_classify_maps_roles_and_falls_back_to_the_executable_name() -> None:
 
 
 def test_classify_names_the_tree_root_by_pid_not_by_argv() -> None:
-    """The supervisor runs as a bare `deepmentor` script — argv has nothing to match."""
+    """The supervisor runs as a bare `kagweb` script — argv has nothing to match."""
     root = os.getpid() + 1
 
-    assert memory_probe._classify(root, "python3.11", "/usr/bin/deepmentor", root_pid=root) == (
+    assert memory_probe._classify(root, "python3.11", "/usr/bin/kagweb", root_pid=root) == (
         "supervisor"
     )
     # Without the anchor there is no root to name, so it falls back to the name.
-    assert memory_probe._classify(root, "python3.11", "/usr/bin/deepmentor") == "python3.11"
+    assert memory_probe._classify(root, "python3.11", "/usr/bin/kagweb") == "python3.11"
     # This process stays "backend" even when it is also the root of the walk.
     assert memory_probe._classify(os.getpid(), "python", "", root_pid=os.getpid()) == "backend"
 

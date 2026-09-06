@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from deepmentor.services.path_service import PathService
+from kagweb.services.path_service import PathService
 
 
-def test_path_service_defaults_to_deepmentor_home(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("DEEPMENTOR_HOME", str(tmp_path))
+def test_path_service_defaults_to_kagweb_home(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("KAGWEB_HOME", str(tmp_path))
     PathService.reset_instance()
 
     service = PathService.get_instance()

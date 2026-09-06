@@ -114,7 +114,7 @@ test("duplicate DSL node ids get suffixed keys — no node is dropped (#75)", ()
   // silently deduplicate them.
   const doc: Parameters<typeof dslToDag>[0] = {
     version: 1,
-    generator: "deepmentor/session-dsl",
+    generator: "kagweb/session-dsl",
     trace: [
       {
         node: "turn:1",
@@ -154,7 +154,7 @@ test("round-trip: export → parse → dslToDag keeps all call nodes materialize
 });
 
 test("empty document yields just the root", () => {
-  const dag = dslToDag({ version: 1, generator: "deepmentor/session-dsl", trace: [] });
+  const dag = dslToDag({ version: 1, generator: "kagweb/session-dsl", trace: [] });
   assert.deepEqual(
     dag.nodes.map((n) => n.kind),
     ["root"],
@@ -173,7 +173,7 @@ test("parseSessionDsl rejects nesting deeper than the depth budget", () => {
   }
   const doc = JSON.stringify({
     version: 1,
-    generator: "deepmentor/session-dsl",
+    generator: "kagweb/session-dsl",
     trace: [{ node: "t1", kind: "user" }, { node: "t2", kind: "assistant", calls: [entry] }],
   });
   assert.throws(() => parseSessionDsl(doc), /nests deeper than 64 levels/);
@@ -197,7 +197,7 @@ test("dslToDag truncates call trees at the node budget, keeping the message skel
             round_index: c,
           })),
   }));
-  const dag = dslToDag({ version: 1, generator: "deepmentor/session-dsl", trace });
+  const dag = dslToDag({ version: 1, generator: "kagweb/session-dsl", trace });
   // Message layer survives intact: root + 500 entries.
   assert.equal(dag.nodes.filter((n) => n.kind === "user" || n.kind === "assistant").length, 500);
   // Call nodes capped, remainder reported as dropped.
@@ -223,7 +223,7 @@ test("dslToDag on a budget-sized document completes fast and untruncated", () =>
       })),
     });
   }
-  const text = JSON.stringify({ version: 1, generator: "deepmentor/session-dsl", trace });
+  const text = JSON.stringify({ version: 1, generator: "kagweb/session-dsl", trace });
   const started = process.hrtime.bigint();
   const dag = dslToDag(parseSessionDsl(text));
   const ms = Number(process.hrtime.bigint() - started) / 1e6;

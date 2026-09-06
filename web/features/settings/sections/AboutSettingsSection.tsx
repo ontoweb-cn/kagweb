@@ -107,7 +107,7 @@ export default function AboutSettingsPage() {
       }
       if (cancelled) return;
       if (Date.now() >= deadline) {
-        setError(t("DeepMentor did not reconnect before the update timeout."));
+        setError(t("KAGWeb did not reconnect before the update timeout."));
         return;
       }
       timer = setTimeout(poll, POLL_INTERVAL_MS);
@@ -208,7 +208,7 @@ export default function AboutSettingsPage() {
       <SettingsPageHeader
         title={t("About")}
         description={t(
-          "DeepMentor version, release channel, and the safest update path for this installation.",
+          "KAGWeb version, release channel, and the safest update path for this installation.",
         )}
       />
 
@@ -281,7 +281,7 @@ export default function AboutSettingsPage() {
         <SettingRow
           title={t("Installation")}
           description={t(
-            status?.installation.reason || "How DeepMentor is installed here.",
+            status?.installation.reason || "How KAGWeb is installed here.",
           )}
           control={
             <span className="text-[12.5px] text-[var(--foreground)]">
@@ -292,7 +292,7 @@ export default function AboutSettingsPage() {
         <SettingRow
           title={t("Release channel")}
           description={t(
-            "Only stable, published DeepMentor releases are considered.",
+            "Only stable, published KAGWeb releases are considered.",
           )}
           control={
             <span className="text-[12.5px] text-[var(--foreground)]">
@@ -305,7 +305,7 @@ export default function AboutSettingsPage() {
       <SettingSection
         title={t("Updates")}
         description={t(
-          "Version checks are cached for 24 hours. DeepMentor never installs an update without confirmation.",
+          "Version checks are cached for 24 hours. KAGWeb never installs an update without confirmation.",
         )}
       >
         <SettingRow
@@ -409,20 +409,20 @@ export default function AboutSettingsPage() {
         <ResourceRow
           title={t("GitHub")}
           description={t("Source code, issues, and contributions")}
-          href="https://github.com/HKUDS/DeepMentor"
+          href="https://github.com/HKUDS/KAGWeb"
           icon={<Github className="h-4 w-4" />}
         />
         <ResourceRow
           title={t("Documentation")}
           description={t("Installation, configuration, and guides")}
-          href="https://docs.deepmentor.info"
+          href="https://docs.kagweb.info"
           icon={<ArrowUpRight className="h-4 w-4" />}
         />
       </SettingSection>
 
       <ConfirmDialog
         open={confirmOpen}
-        title={t("Update and restart DeepMentor?")}
+        title={t("Update and restart KAGWeb?")}
         confirmLabel={t("Update and restart")}
         busy={requesting}
         busyLabel={t("Preparing update…")}
@@ -430,7 +430,7 @@ export default function AboutSettingsPage() {
         onCancel={() => setConfirmOpen(false)}
       >
         {t(
-          "DeepMentor will briefly stop, install {{version}}, and reopen with the same settings. Active conversations must finish first.",
+          "KAGWeb will briefly stop, install {{version}}, and reopen with the same settings. Active conversations must finish first.",
           { version: latestVersion ?? "" },
         )}
       </ConfirmDialog>

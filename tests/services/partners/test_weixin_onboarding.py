@@ -15,14 +15,14 @@ from typing import Any
 import httpx
 import pytest
 
-from deepmentor.partners.channels.weixin_qr import (
+from kagweb.partners.channels.weixin_qr import (
     QrCode,
     QrOutcome,
     interpret_status,
     is_retryable_poll_error,
     normalize_host,
 )
-from deepmentor.services.partners import weixin_onboarding
+from kagweb.services.partners import weixin_onboarding
 
 
 @pytest.fixture(autouse=True)
@@ -62,7 +62,7 @@ def stub_partner(monkeypatch) -> dict[str, Any]:
             self.reload_calls += 1
 
     monkeypatch.setattr(
-        "deepmentor.services.partners.manager.get_partner_manager", lambda: _Manager()
+        "kagweb.services.partners.manager.get_partner_manager", lambda: _Manager()
     )
     return saved
 
@@ -210,7 +210,7 @@ async def test_a_running_partner_reloads_with_the_new_identity(monkeypatch) -> N
             self.reloaded_with = self.instance.config.channels["weixin"]["token"]
 
     manager = _Manager()
-    monkeypatch.setattr("deepmentor.services.partners.manager.get_partner_manager", lambda: manager)
+    monkeypatch.setattr("kagweb.services.partners.manager.get_partner_manager", lambda: manager)
     _stub_exchange(monkeypatch, outcomes=[QrOutcome(status="confirmed", token="live-token")])
 
     started = await weixin_onboarding.start_login("p1")

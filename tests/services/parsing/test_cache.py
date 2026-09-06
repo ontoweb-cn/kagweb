@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-from deepmentor.services.parsing import cache
+from kagweb.services.parsing import cache
 
 
 def test_source_hash_keys_on_bytes_not_name(tmp_path: Path) -> None:

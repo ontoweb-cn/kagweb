@@ -4,9 +4,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from deepmentor.api.routers import system as system_router
-from deepmentor.runtime.memory_probe import MemorySnapshot, ProcessMemory
-from deepmentor.services.app_update import (
+from kagweb.api.routers import system as system_router
+from kagweb.runtime.memory_probe import MemorySnapshot, ProcessMemory
+from kagweb.services.app_update import (
     Installation,
     ReleaseInfo,
     UpdateJobStore,
@@ -58,9 +58,9 @@ def _update_result() -> VersionCheckResult:
         current_version="1.6.1",
         release=ReleaseInfo(
             version="1.7.0",
-            name="DeepMentor 1.7",
+            name="KAGWeb 1.7",
             published_at="2026-08-30T00:00:00Z",
-            url="https://github.com/HKUDS/DeepMentor/releases/tag/v1.7.0",
+            url="https://github.com/HKUDS/KAGWeb/releases/tag/v1.7.0",
             excerpt="A stable release.",
             migration_warning=False,
         ),
@@ -74,7 +74,7 @@ def _pypi_installation() -> Installation:
         mode="pypi",
         current_version="1.6.1",
         automatic_update=True,
-        command="pip install -U deepmentor",
+        command="pip install -U kagweb",
         reason="",
     )
 

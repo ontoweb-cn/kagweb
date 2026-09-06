@@ -1,18 +1,18 @@
 # ============================================
-# DeepMentor Sandbox Runner Sidecar Image
+# KAGWeb Sandbox Runner Sidecar Image
 # ============================================
 # A deliberately small, least-privileged image whose *only* job is to execute
 # untrusted shell commands on behalf of the main app, isolated in its own
 # container. The main app talks to it over HTTP via RunnerSidecarBackend
-# (see deepmentor/services/sandbox/backends.py), pointed here through
-# DEEPMENTOR_SANDBOX_RUNNER_URL.
+# (see kagweb/services/sandbox/backends.py), pointed here through
+# KAGWEB_SANDBOX_RUNNER_URL.
 #
 # Build/run (normally orchestrated by docker-compose, not by hand):
-#   docker build -f Dockerfile.runner -t deepmentor-sandbox-runner:local .
-#   docker run --rm -p 8900:8900 deepmentor-sandbox-runner:local
+#   docker build -f Dockerfile.runner -t kagweb-sandbox-runner:local .
+#   docker run --rm -p 8900:8900 kagweb-sandbox-runner:local
 #
 # Why no app code beyond server.py: the runner ships ONLY the stdlib HTTP server
-# plus a set of common CLI tools. It must not depend on the DeepMentor package or
+# plus a set of common CLI tools. It must not depend on the KAGWeb package or
 # any heavy framework — keeping the attack surface and image size minimal.
 # ============================================
 
@@ -55,10 +55,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # --no-cache-dir keeps the layer lean.
 #
 # numpy/pandas cover simple data crunching. The rest back the built-in office
-# skills (deepmentor/skills/builtin/{docx,pptx,xlsx,pdf}/SKILL.md): the model
+# skills (kagweb/skills/builtin/{docx,pptx,xlsx,pdf}/SKILL.md): the model
 # writes short Python against these libs and runs it via the `exec` tool, so
 # they MUST be present here in the sidecar — the runner image carries no
-# deepmentor deps of its own. All ship as wheels (no extra apt needed). Keep this
+# kagweb deps of its own. All ship as wheels (no extra apt needed). Keep this
 # list in sync with the libraries those SKILL.md playbooks promise are available.
 #
 # Version floors mirror requirements/cli.txt; each gets a <next-major> cap so
@@ -96,10 +96,10 @@ RUN useradd --create-home --uid 1000 --shell /bin/bash runner
 WORKDIR /app
 
 # Ship just the server module. We copy it to a flat path and run it directly
-# (python /app/server.py) rather than `python -m deepmentor...`: the runner image
-# intentionally does NOT contain the deepmentor package, so the module path would
+# (python /app/server.py) rather than `python -m kagweb...`: the runner image
+# intentionally does NOT contain the kagweb package, so the module path would
 # not resolve. Direct-file execution is the simple, dependency-free choice.
-COPY deepmentor/services/sandbox/runner/server.py /app/server.py
+COPY kagweb/services/sandbox/runner/server.py /app/server.py
 
 # The workspace shared with the main app is mounted here at runtime by
 # docker-compose (./data/user:/app/data/user), at the *same* path in both

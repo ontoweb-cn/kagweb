@@ -7,8 +7,8 @@ import stat
 
 import pytest
 
-from deepmentor.services.codex_auth.contracts import CodexAuthError, CodexCredentials
-from deepmentor.services.codex_auth.storage import CodexCredentialStore
+from kagweb.services.codex_auth.contracts import CodexAuthError, CodexCredentials
+from kagweb.services.codex_auth.storage import CodexCredentialStore
 
 
 def _credentials(token: str) -> CodexCredentials:
@@ -23,7 +23,7 @@ def _credentials(token: str) -> CodexCredentials:
     )
 
 
-def test_store_is_scoped_below_deepmentor_user_root(tmp_path: Path) -> None:
+def test_store_is_scoped_below_kagweb_user_root(tmp_path: Path) -> None:
     store = CodexCredentialStore(tmp_path)
 
     assert store.root == tmp_path / "private" / "openai-codex"
@@ -149,7 +149,7 @@ def test_windows_reparse_point_is_rejected(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    from deepmentor.services.codex_auth import storage
+    from kagweb.services.codex_auth import storage
 
     store = CodexCredentialStore(tmp_path)
     store.root.mkdir(parents=True)

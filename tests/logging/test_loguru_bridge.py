@@ -2,8 +2,8 @@ import logging
 
 import pytest
 
-from deepmentor.logging import bind_log_context, capture_process_logs
-from deepmentor.logging.loguru_bridge import install_loguru_bridge
+from kagweb.logging import bind_log_context, capture_process_logs
+from kagweb.logging.loguru_bridge import install_loguru_bridge
 
 
 def test_loguru_bridge_forwards_to_stdlib_process_capture():

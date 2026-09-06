@@ -8,7 +8,7 @@ from types import TracebackType
 from _pytest.monkeypatch import MonkeyPatch
 import pytest
 
-cloud_provider = importlib.import_module("deepmentor.services.llm.cloud_provider")
+cloud_provider = importlib.import_module("kagweb.services.llm.cloud_provider")
 
 
 class _FakeResponse:
@@ -115,7 +115,7 @@ def test_ssl_connector(monkeypatch: MonkeyPatch) -> None:
 @pytest.mark.asyncio
 async def test_complete_shim_forwards_to_factory(monkeypatch: MonkeyPatch) -> None:
     """The retired aiohttp path now forwards to the one real LLM entry point."""
-    from deepmentor.services.llm import factory
+    from kagweb.services.llm import factory
 
     captured: dict[str, object] = {}
 

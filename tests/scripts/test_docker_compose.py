@@ -41,13 +41,13 @@ def test_render_docker_env_reads_json_only(tmp_path: Path) -> None:
     values = module.render_docker_env(settings_dir, output_path)
 
     assert values == {
-        "DEEPMENTOR_DOCKER_BACKEND_PORT": "9001",
-        "DEEPMENTOR_DOCKER_FRONTEND_PORT": "4000",
-        "DEEPMENTOR_DOCKER_POCKETBASE_PORT": "19090",
+        "KAGWEB_DOCKER_BACKEND_PORT": "9001",
+        "KAGWEB_DOCKER_FRONTEND_PORT": "4000",
+        "KAGWEB_DOCKER_POCKETBASE_PORT": "19090",
     }
     saved = output_path.read_text(encoding="utf-8")
     assert "\nBACKEND_PORT=" not in saved
-    assert "DEEPMENTOR_DOCKER_BACKEND_PORT=9001" in saved
+    assert "KAGWEB_DOCKER_BACKEND_PORT=9001" in saved
 
 
 def test_render_docker_env_uses_defaults_for_missing_or_invalid_json(tmp_path: Path) -> None:
@@ -62,9 +62,9 @@ def test_render_docker_env_uses_defaults_for_missing_or_invalid_json(tmp_path: P
 
     values = module.render_docker_env(settings_dir, output_path)
 
-    assert values["DEEPMENTOR_DOCKER_BACKEND_PORT"] == "8001"
-    assert values["DEEPMENTOR_DOCKER_FRONTEND_PORT"] == "3782"
-    assert values["DEEPMENTOR_DOCKER_POCKETBASE_PORT"] == "8090"
+    assert values["KAGWEB_DOCKER_BACKEND_PORT"] == "8001"
+    assert values["KAGWEB_DOCKER_FRONTEND_PORT"] == "3782"
+    assert values["KAGWEB_DOCKER_POCKETBASE_PORT"] == "8090"
 
 
 def test_compose_files_do_not_consume_legacy_env_names() -> None:
@@ -75,12 +75,12 @@ def test_compose_files_do_not_consume_legacy_env_names() -> None:
         assert "${FRONTEND_PORT" not in content
         assert "\n      - BACKEND_PORT" not in content
         assert "\n      - AUTH_ENABLED" not in content
-        assert "DEEPMENTOR_DOCKER_BACKEND_PORT" in content
+        assert "KAGWEB_DOCKER_BACKEND_PORT" in content
 
 
 def _compose_service(root: Path, name: str) -> dict:
     content = yaml.safe_load((root / name).read_text(encoding="utf-8"))
-    return content["services"]["deepmentor"]
+    return content["services"]["kagweb"]
 
 
 def _volume_targets(root: Path, name: str) -> set[str | None]:
@@ -105,8 +105,8 @@ def test_codex_oauth_overlay_forwards_loopback_callbacks_to_frontend() -> None:
     ports = _compose_service(root, "compose.codex-oauth.yaml")["ports"]
 
     assert set(ports) == {
-        "127.0.0.1:1455:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}",
-        "127.0.0.1:1457:${DEEPMENTOR_DOCKER_FRONTEND_PORT:-3782}",
+        "127.0.0.1:1455:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}",
+        "127.0.0.1:1457:${KAGWEB_DOCKER_FRONTEND_PORT:-3782}",
     }
 
 
@@ -141,11 +141,11 @@ def test_container_docs_use_temporary_codex_oauth_bridge() -> None:
     assert "127.0.0.1:1457:3782" in section
     for base_file in ("docker-compose.yml", "docker-compose.ghcr.yml"):
         assert (
-            f"-f {base_file} -f compose.codex-oauth.yaml up -d --force-recreate deepmentor"
+            f"-f {base_file} -f compose.codex-oauth.yaml up -d --force-recreate kagweb"
         ) in normalized_section
     assert (
         "podman compose -f compose.yaml -f compose.codex-oauth.yaml "
-        "up -d --force-recreate deepmentor"
+        "up -d --force-recreate kagweb"
     ) in normalized_section
 
 
@@ -153,7 +153,7 @@ def test_dockerfile_is_json_driven_without_bundle_sed() -> None:
     """The image no longer rewrites the built bundle at startup (the runtime
     ``sed -i`` broke under a read-only rootfs). URL/auth knowledge is JSON-driven:
     the entrypoint re-exports runtime settings from data/user/settings/*.json
-    (including DEEPMENTOR_API_BASE_URL / DEEPMENTOR_AUTH_ENABLED) and web/proxy.ts
+    (including KAGWEB_API_BASE_URL / KAGWEB_AUTH_ENABLED) and web/proxy.ts
     forwards /api/* and /ws/* to the backend at request time."""
     root = Path(__file__).resolve().parents[2]
     content = (root / "Dockerfile").read_text(encoding="utf-8")
@@ -162,7 +162,7 @@ def test_dockerfile_is_json_driven_without_bundle_sed() -> None:
     assert "__NEXT_PUBLIC_AUTH_ENABLED_PLACEHOLDER__" not in content
     # Still JSON-driven: stale runtime env names are ignored and re-exported
     # from the settings JSON on every start.
-    assert "DEEPMENTOR_IGNORE_PROCESS_ENV_OVERRIDES=1" in content
+    assert "KAGWEB_IGNORE_PROCESS_ENV_OVERRIDES=1" in content
     assert 'unset "$key"' in content
     assert "export_runtime_settings_to_env" in content
 
@@ -172,19 +172,19 @@ def test_supervisord_runs_as_root_with_unprivileged_children() -> None:
     """supervisord itself must run as root so it can open the container's
     stdout/stderr (``/dev/fd/1,2`` — root-owned pipes under a rootful daemon
     such as Docker Desktop) and write its pidfile under ``/var/run``. Dropping
-    supervisord to the unprivileged ``deepmentor`` user via ``gosu`` made child
+    supervisord to the unprivileged ``kagweb`` user via ``gosu`` made child
     spawning fail with ``EACCES`` ("making dispatchers ... EACCES"), so neither
     the backend nor the frontend started under rootful Docker (it only worked
     under rootless podman). The app processes stay non-root via the per-program
-    ``user=deepmentor`` directive instead, which keeps them unprivileged in both
+    ``user=kagweb`` directive instead, which keeps them unprivileged in both
     runtimes. This guards against reintroducing the ``gosu`` privilege drop.
     """
     root = Path(__file__).resolve().parents[2]
     content = (root / "Dockerfile").read_text(encoding="utf-8")
     # supervisord is launched directly (as root), not behind a gosu priv-drop.
     assert "exec /usr/bin/supervisord" in content
-    assert "gosu deepmentor /usr/bin/supervisord" not in content
-    # Every supervisord program drops to the unprivileged deepmentor user, so the
+    assert "gosu kagweb /usr/bin/supervisord" not in content
+    # Every supervisord program drops to the unprivileged kagweb user, so the
     # backend/frontend processes never run as root. Each config heredoc closes
     # with ``EOF``; slice to it so a program's section is bounded correctly.
     program_blocks = content.split("[program:")[1:]
@@ -192,8 +192,8 @@ def test_supervisord_runs_as_root_with_unprivileged_children() -> None:
     for block in program_blocks:
         name = block.splitlines()[0].rstrip("]")
         section = block.split("EOF")[0]
-        assert "user=deepmentor" in section, (
-            f"supervisord program '{name}' must run as deepmentor (user=deepmentor)"
+        assert "user=kagweb" in section, (
+            f"supervisord program '{name}' must run as kagweb (user=kagweb)"
         )
 
 
@@ -206,5 +206,5 @@ def test_frontend_api_is_url_agnostic_passthrough() -> None:
     assert "NEXT_PUBLIC_API_BASE_PLACEHOLDER" not in api_ts
     assert "process.env.NEXT_PUBLIC_API_BASE" not in api_ts
     proxy_ts = (root / "web" / "proxy.ts").read_text(encoding="utf-8")
-    assert "DEEPMENTOR_API_BASE_URL" in proxy_ts
+    assert "KAGWEB_API_BASE_URL" in proxy_ts
     assert "NextResponse.rewrite" in proxy_ts

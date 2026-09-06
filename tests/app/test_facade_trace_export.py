@@ -1,4 +1,4 @@
-"""DeepMentorApp.export_session_trace — SDK trace export (module 18)."""
+"""KAGWebApp.export_session_trace — SDK trace export (module 18)."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ import pytest
 
 @pytest.fixture()
 def app(monkeypatch):
-    from deepmentor.app.facade import DeepMentorApp
+    from kagweb.app.facade import KAGWebApp
 
-    facade = DeepMentorApp.__new__(DeepMentorApp)  # skip container bootstrapping
+    facade = KAGWebApp.__new__(KAGWebApp)  # skip container bootstrapping
     messages = [
         {
             "id": 1,

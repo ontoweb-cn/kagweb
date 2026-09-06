@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deepmentor.services.partners.runtime_status import PartnerRuntimeStatusRepository
+from kagweb.services.partners.runtime_status import PartnerRuntimeStatusRepository
 
 
 def test_runtime_status_is_shared_and_does_not_persist_channel_credentials(tmp_path) -> None:

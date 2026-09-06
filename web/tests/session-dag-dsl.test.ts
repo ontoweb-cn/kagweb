@@ -29,7 +29,7 @@ test("serializes a session into the tree-shaped DSL document", () => {
   const doc = parseSessionDsl(text);
 
   assert.equal(doc.version, 1);
-  assert.equal(doc.generator, "deepmentor/session-dsl");
+  assert.equal(doc.generator, "kagweb/session-dsl");
   assert.equal(doc.trace.length, 2);
   assert.equal(doc.trace[0].kind, "user");
   assert.equal(doc.trace[0].node, "msg:1");
@@ -194,7 +194,7 @@ test("parseSessionDsl rejects malformed documents", () => {
   // Structural validation (#75): type-confused fields must fail here, not
   // crash dslToDag inside the panel's render-phase useMemo.
   const doc = (over: Record<string, unknown>) =>
-    JSON.stringify({ version: 1, generator: "deepmentor/session-dsl", trace: [over] });
+    JSON.stringify({ version: 1, generator: "kagweb/session-dsl", trace: [over] });
   assert.throws(
     () => parseSessionDsl(doc({ node: "t1", kind: "user", calls: "not-an-array" })),
     /calls must be an array/,
@@ -216,7 +216,7 @@ test("parseSessionDsl rejects malformed documents", () => {
   // its internal keys instead.
   const dupDoc = JSON.stringify({
     version: 1,
-    generator: "deepmentor/session-dsl",
+    generator: "kagweb/session-dsl",
     trace: [
       { node: "t1", kind: "user" },
       { node: "t1", kind: "assistant" },

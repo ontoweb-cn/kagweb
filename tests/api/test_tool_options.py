@@ -12,10 +12,10 @@ from typing import Any
 
 import pytest
 
-from deepmentor.api.utils import tool_options as tool_options_mod
-from deepmentor.core.tool_protocol import BaseTool, ToolDefinition, ToolResult
-from deepmentor.runtime.registry import tool_registry as tool_registry_mod
-from deepmentor.services import mcp as mcp_mod
+from kagweb.api.utils import tool_options as tool_options_mod
+from kagweb.core.tool_protocol import BaseTool, ToolDefinition, ToolResult
+from kagweb.runtime.registry import tool_registry as tool_registry_mod
+from kagweb.services import mcp as mcp_mod
 
 
 class _FakeTool(BaseTool):

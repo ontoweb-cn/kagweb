@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""DeepMentor settings tour.
+"""KAGWeb settings tour.
 
 This script configures the runtime files under ``data/user/settings`` only.
 It does not install Python packages, install Node dependencies, or start the
 Web app. For day-to-day use prefer:
 
-    deepmentor init
-    deepmentor start
+    kagweb init
+    kagweb start
 """
 
 from __future__ import annotations
@@ -19,12 +19,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from deepmentor_cli.init_cmd import run_init  # noqa: E402
+from kagweb_cli.init_cmd import run_init  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Create or update DeepMentor settings under data/user/settings.",
+        description="Create or update KAGWeb settings under data/user/settings.",
     )
     parser.add_argument(
         "--cli",
@@ -42,13 +42,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
-    print("DeepMentor settings tour")
+    print("KAGWeb settings tour")
     print("Writing configuration to data/user/settings; no dependencies will be installed.")
     run_init(cli_only=args.cli, home=args.home)
     if args.cli:
-        print("\nNext: deepmentor chat")
+        print("\nNext: kagweb chat")
     else:
-        print("\nNext: deepmentor start")
+        print("\nNext: kagweb start")
 
 
 if __name__ == "__main__":

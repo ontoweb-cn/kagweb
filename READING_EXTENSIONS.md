@@ -1,7 +1,7 @@
 # Immersive Reading extensions
 
 Immersive Reading discovers server-side packages through the
-`deepmentor.reading_extensions` Python entry-point group. DeepMentor ships read
+`kagweb.reading_extensions` Python entry-point group. KAGWeb ships read
 aloud, study guidance, vocabulary, quiz, and explicit-target translation
 extensions in this group; when no extension is installed, the Reader does not
 render an extension toolbar.
@@ -10,12 +10,12 @@ An entry point resolves to an object or class with a validated `manifest` and a
 `run_action(action, context)` method. The current protocol version is `1`.
 
 ```toml
-[project.entry-points."deepmentor.reading_extensions"]
+[project.entry-points."kagweb.reading_extensions"]
 example = "example_reading_plugin:ExampleExtension"
 ```
 
 ```python
-from deepmentor.reading.extensions import (
+from kagweb.reading.extensions import (
     ReadingAction,
     ReadingExtensionManifest,
     ReadingExtensionResult,
@@ -56,7 +56,7 @@ class ExampleExtension:
   handler already running in a thread cannot be killed safely, so each
   extension has one private worker and its circuit remains open after a timeout;
   later calls fail fast instead of consuming or queueing work on the process-wide
-  thread pool. Restart DeepMentor after fixing or removing the stuck extension.
+  thread pool. Restart KAGWeb after fixing or removing the stuck extension.
 - Result data is rendered as React text. Extensions cannot send JavaScript or
   raw HTML to the Reader.
 - Discovery and execution failures are isolated. A broken optional package

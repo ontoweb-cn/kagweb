@@ -5,7 +5,7 @@
  *
  * Regenerates `session_dsl_expected.json` (DSL documents) and
  * `session_dsl_expected.mmd` (Mermaid codegen) from the TypeScript
- * implementation. The Python port (`deepmentor/services/session/dsl_export.py`)
+ * implementation. The Python port (`kagweb/services/session/dsl_export.py`)
  * must match these outputs exactly — if you change the web derivation rules,
  * regenerate here AND update the Python port in the same commit (#53/#64).
  */

@@ -11,7 +11,7 @@ export default function ThemeScript() {
   const themeScript = `
     (function() {
       try {
-        const stored = localStorage.getItem('deepmentor-theme');
+        const stored = localStorage.getItem('kagweb-theme');
 
         document.documentElement.classList.remove('dark', 'theme-glass', 'theme-snow');
 
@@ -28,10 +28,10 @@ export default function ThemeScript() {
           // Dark for prefers-color-scheme: dark.
           if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
             document.documentElement.classList.add('dark');
-            localStorage.setItem('deepmentor-theme', 'dark');
+            localStorage.setItem('kagweb-theme', 'dark');
           } else {
             document.documentElement.classList.add('theme-snow');
-            localStorage.setItem('deepmentor-theme', 'snow');
+            localStorage.setItem('kagweb-theme', 'snow');
           }
         }
       } catch (e) {

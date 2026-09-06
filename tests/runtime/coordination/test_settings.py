@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.runtime.coordination import (
+from kagweb.runtime.coordination import (
     CoordinationSettings,
     RuntimeConfigurationError,
 )

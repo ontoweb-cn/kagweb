@@ -28,16 +28,16 @@ def rep(src, old, new, path=""):
 
 
 # ── runtime/providers/view.py ──
-path = "deepmentor/runtime/providers/view.py"
+path = "kagweb/runtime/providers/view.py"
 src = load(path)
 src = rep(src, "    cli_pool = _cli_app_tools(scope)\n", "", path)
 src = cut(src, "def _cli_app_tools(scope: ToolScope) -> list[BaseTool]:", "def _user_grant(scope: ToolScope) -> Allowlist:")
 save(path, src)
 
 # ── services/config/provider_runtime.py ──
-path = "deepmentor/services/config/provider_runtime.py"
+path = "kagweb/services/config/provider_runtime.py"
 src = load(path)
-src = rep(src, "from deepmentor.services.videogen.config import VideogenConfig\n", "", path)
+src = rep(src, "from kagweb.services.videogen.config import VideogenConfig\n", "", path)
 i = src.index("def resolve_videogen_runtime_config(")
 nxt = re.search(r"\n(?:async )?def ", src[i + 10:])
 j = i + 10 + nxt.start() + 1
@@ -46,7 +46,7 @@ src = rep(src, '    "resolve_videogen_runtime_config",\n', "", path)
 save(path, src)
 
 # ── services/config/test_runner.py ──
-path = "deepmentor/services/config/test_runner.py"
+path = "kagweb/services/config/test_runner.py"
 src = load(path)
 src = rep(src, """            elif service == "videogen":
                 asyncio.run(self._test_videogen(run, catalog))
@@ -58,10 +58,10 @@ src = src[:i] + src[j:]
 save(path, src)
 
 # ── services/partners/manager.py ──
-path = "deepmentor/services/partners/manager.py"
+path = "kagweb/services/partners/manager.py"
 src = load(path)
 src = rep(src, """        try:
-            from deepmentor.services.cron import get_cron_service
+            from kagweb.services.cron import get_cron_service
 
             get_cron_service().remove_owner_jobs(f"partner:{partner_id}")
         except Exception:
@@ -70,11 +70,11 @@ src = rep(src, """        try:
 save(path, src)
 
 # ── services/partners/runtime.py: skills manifest -> empty; kb names -> empty ──
-path = "deepmentor/services/partners/runtime.py"
+path = "kagweb/services/partners/runtime.py"
 src = load(path)
 src = rep(src, '''    def _build_skills_manifest(self) -> str:
         try:
-            from deepmentor.services.skill.service import (
+            from kagweb.services.skill.service import (
                 get_skill_service,
                 render_skills_manifest,
             )
@@ -96,4 +96,4 @@ src = rep(src, '''    def _build_skills_manifest(self) -> str:
         return ""''')
 save(path, src)
 
-print(subprocess.run(["grep", "-n", "_list_kb_names\\|services.skill\\|services.cron\\|cli_apps\\|videogen", "deepmentor/services/partners/runtime.py", "deepmentor/services/partners/workspace.py", "deepmentor_cli/chat.py", "deepmentor/tools/__init__.py"], capture_output=True, text=True).stdout)
+print(subprocess.run(["grep", "-n", "_list_kb_names\\|services.skill\\|services.cron\\|cli_apps\\|videogen", "kagweb/services/partners/runtime.py", "kagweb/services/partners/workspace.py", "kagweb_cli/chat.py", "kagweb/tools/__init__.py"], capture_output=True, text=True).stdout)

@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from deepmentor.api import run_server
+from kagweb.api import run_server
 
 
 @pytest.fixture
@@ -16,11 +16,11 @@ def uvicorn_kwargs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str,
     monkeypatch.setattr(run_server.os, "chdir", lambda _path: None)
     monkeypatch.setattr(run_server.uvicorn, "run", lambda *args, **kwargs: captured.update(kwargs))
 
-    from deepmentor import logging as deepmentor_logging
-    from deepmentor.runtime import mode
-    from deepmentor.services import setup
+    from kagweb import logging as kagweb_logging
+    from kagweb.runtime import mode
+    from kagweb.services import setup
 
-    monkeypatch.setattr(deepmentor_logging, "configure_logging", lambda: None)
+    monkeypatch.setattr(kagweb_logging, "configure_logging", lambda: None)
     monkeypatch.setattr(mode, "set_mode", lambda _mode: None)
     monkeypatch.setattr(setup, "get_backend_port", lambda _root: 8001)
     return captured
@@ -29,7 +29,7 @@ def uvicorn_kwargs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str,
 def test_run_server_disables_reload_by_default(
     monkeypatch: pytest.MonkeyPatch, uvicorn_kwargs: dict[str, Any]
 ) -> None:
-    monkeypatch.delenv("DEEPMENTOR_DEV_RELOAD", raising=False)
+    monkeypatch.delenv("KAGWEB_DEV_RELOAD", raising=False)
 
     run_server.main()
 
@@ -42,7 +42,7 @@ def test_run_server_reload_remains_available_for_development(
     tmp_path: Path,
     uvicorn_kwargs: dict[str, Any],
 ) -> None:
-    monkeypatch.setenv("DEEPMENTOR_DEV_RELOAD", "true")
+    monkeypatch.setenv("KAGWEB_DEV_RELOAD", "true")
     (tmp_path / "data").mkdir()
 
     run_server.main()

@@ -95,7 +95,7 @@ test("standalone typecheck ignores stale generated Next route validators", () =>
   assert.match(source, /removeNextTypeIncludes\(original\)/);
   assert.match(
     source,
-    /tsconfig\.deepmentor-typecheck-\$\{process\.pid\}\.json/,
+    /tsconfig\.kagweb-typecheck-\$\{process\.pid\}\.json/,
   );
   assert.match(source, /"-p",\s*isolatedTsconfigPath/);
   assert.match(source, /finally\s*{\s*rmSync\(isolatedTsconfigPath/);

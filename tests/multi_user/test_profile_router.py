@@ -31,9 +31,9 @@ def profile_client(mu_isolated_root, monkeypatch):
     ``ghost-token`` (a valid JWT whose user is absent from the local store,
     mirroring PocketBase-backed identities).
     """
-    import deepmentor.api.routers.auth as auth_router
-    from deepmentor.multi_user.identity import save_user
-    from deepmentor.services.auth import TokenPayload
+    import kagweb.api.routers.auth as auth_router
+    from kagweb.multi_user.identity import save_user
+    from kagweb.services.auth import TokenPayload
 
     alice = save_user("alice", "$2b$12$placeholder", role="admin")
     bob = save_user("bob", "$2b$12$placeholder", role="user", preset="learner")
@@ -87,7 +87,7 @@ def test_get_profile_falls_back_to_token_claims(profile_client):
 
 
 def test_put_profile_sets_marker_on_own_record_only(profile_client):
-    from deepmentor.multi_user.identity import load_users
+    from kagweb.multi_user.identity import load_users
 
     client, _ = profile_client
     response = client.put(
@@ -102,7 +102,7 @@ def test_put_profile_sets_marker_on_own_record_only(profile_client):
 
 
 def test_learner_profile_endpoints_are_self_service(profile_client):
-    from deepmentor.multi_user.identity import load_users
+    from kagweb.multi_user.identity import load_users
 
     client, _ = profile_client
     url = "/api/auth/profile/learner-profile"
@@ -170,7 +170,7 @@ def test_put_profile_rejects_img_and_malformed_markers(profile_client):
 
 
 def test_upload_avatar_stores_file_and_bumps_version(profile_client):
-    from deepmentor.multi_user.identity import get_avatar_file, load_users
+    from kagweb.multi_user.identity import get_avatar_file, load_users
 
     client, users = profile_client
     bob_id = users["bob"]["id"]
@@ -222,7 +222,7 @@ def test_upload_avatar_enforces_size_cap(profile_client):
 
 
 def test_upload_avatar_disabled_in_pocketbase_mode(profile_client, monkeypatch):
-    import deepmentor.api.routers.auth as auth_router
+    import kagweb.api.routers.auth as auth_router
 
     client, _ = profile_client
     monkeypatch.setattr(auth_router, "POCKETBASE_ENABLED", True)
@@ -235,7 +235,7 @@ def test_upload_avatar_disabled_in_pocketbase_mode(profile_client, monkeypatch):
 
 
 def test_delete_avatar_removes_file_and_resets_marker(profile_client):
-    from deepmentor.multi_user.identity import get_avatar_file, load_users
+    from kagweb.multi_user.identity import get_avatar_file, load_users
 
     client, users = profile_client
     client.put(
@@ -251,7 +251,7 @@ def test_delete_avatar_removes_file_and_resets_marker(profile_client):
 
 
 def test_picking_icon_after_upload_drops_the_image_file(profile_client):
-    from deepmentor.multi_user.identity import get_avatar_file
+    from kagweb.multi_user.identity import get_avatar_file
 
     client, users = profile_client
     client.put(
@@ -286,7 +286,7 @@ def test_avatar_serving_headers_and_visibility(profile_client):
 
 def test_admin_user_deletion_removes_avatar_file(profile_client):
     """Deleting an account must not leave its avatar image orphaned on disk."""
-    from deepmentor.multi_user.identity import get_avatar_file
+    from kagweb.multi_user.identity import get_avatar_file
 
     client, users = profile_client
     client.put(

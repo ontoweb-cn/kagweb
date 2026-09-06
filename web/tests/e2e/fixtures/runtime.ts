@@ -42,11 +42,11 @@ export interface ScenarioEvidence {
 const DEFAULT_CONTROL_PATH = "/__e2e__/v2-turn-runtime";
 
 export const multiWorkerFixtureAvailable =
-  process.env.DEEPMENTOR_MULTI_WORKER_E2E === "1";
+  process.env.KAGWEB_MULTI_WORKER_E2E === "1";
 
 function fixtureBaseUrl(): string {
   return (
-    process.env.DEEPMENTOR_MULTI_WORKER_CONTROL_URL ||
+    process.env.KAGWEB_MULTI_WORKER_CONTROL_URL ||
     process.env.NEXT_PUBLIC_API_BASE ||
     process.env.WEB_BASE_URL ||
     "http://127.0.0.1:8001"
@@ -56,7 +56,7 @@ function fixtureBaseUrl(): string {
 export class MultiWorkerRuntimeFixture {
   private readonly baseUrl = fixtureBaseUrl();
   private readonly controlPath =
-    process.env.DEEPMENTOR_MULTI_WORKER_CONTROL_PATH || DEFAULT_CONTROL_PATH;
+    process.env.KAGWEB_MULTI_WORKER_CONTROL_PATH || DEFAULT_CONTROL_PATH;
   private legacyRequests: string[] = [];
 
   constructor(private readonly request: APIRequestContext) {}
@@ -189,6 +189,6 @@ export async function sendPrompt(page: Page, prompt: string): Promise<void> {
 export function assistantActivity(page: Page) {
   return page.locator('[aria-live="polite"]').filter({
     hasText:
-      /DeepMentor (?:Exploring|Reasoning|Planning|Quizzing|Reflecting|responded)|Tool Calling/i,
+      /KAGWeb (?:Exploring|Reasoning|Planning|Quizzing|Reflecting|responded)|Tool Calling/i,
   });
 }

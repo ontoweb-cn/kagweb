@@ -11,12 +11,12 @@ from __future__ import annotations
 import logging
 import sys
 
-from deepmentor.logging.formatters import ConsoleFormatter
+from kagweb.logging.formatters import ConsoleFormatter
 
 
 def _make_record(msg: str, exc_info=None) -> logging.LogRecord:
     return logging.LogRecord(
-        name="deepmentor.test.formatter",
+        name="kagweb.test.formatter",
         level=logging.ERROR,
         pathname=__file__,
         lineno=1,

@@ -50,13 +50,13 @@ def render_docker_env(
     system = _read_json_object(settings_dir / "system.json")
     integrations = _read_json_object(settings_dir / "integrations.json")
     values = {
-        "DEEPMENTOR_DOCKER_BACKEND_PORT": str(
+        "KAGWEB_DOCKER_BACKEND_PORT": str(
             _coerce_port(system.get("backend_port"), DEFAULT_BACKEND_PORT)
         ),
-        "DEEPMENTOR_DOCKER_FRONTEND_PORT": str(
+        "KAGWEB_DOCKER_FRONTEND_PORT": str(
             _coerce_port(system.get("frontend_port"), DEFAULT_FRONTEND_PORT)
         ),
-        "DEEPMENTOR_DOCKER_POCKETBASE_PORT": str(
+        "KAGWEB_DOCKER_POCKETBASE_PORT": str(
             _coerce_port(integrations.get("pocketbase_port"), DEFAULT_POCKETBASE_PORT)
         ),
     }
@@ -85,9 +85,9 @@ def main(argv: list[str] | None = None) -> int:
     values = render_docker_env()
     print(
         "Docker settings: "
-        f"backend={values['DEEPMENTOR_DOCKER_BACKEND_PORT']} "
-        f"frontend={values['DEEPMENTOR_DOCKER_FRONTEND_PORT']} "
-        f"pocketbase={values['DEEPMENTOR_DOCKER_POCKETBASE_PORT']}",
+        f"backend={values['KAGWEB_DOCKER_BACKEND_PORT']} "
+        f"frontend={values['KAGWEB_DOCKER_FRONTEND_PORT']} "
+        f"pocketbase={values['KAGWEB_DOCKER_POCKETBASE_PORT']}",
         file=sys.stderr,
     )
 

@@ -10,8 +10,8 @@ import sys
 
 import pytest
 
-from deepmentor.services.session.protocol import TurnRepository
-from deepmentor.services.session.sqlite_store import SQLiteSessionStore
+from kagweb.services.session.protocol import TurnRepository
+from kagweb.services.session.sqlite_store import SQLiteSessionStore
 
 _PROCESS_BEGIN_SCRIPT = """
 import asyncio
@@ -19,7 +19,7 @@ from pathlib import Path
 import sys
 import time
 
-from deepmentor.services.session.sqlite_store import SQLiteSessionStore
+from kagweb.services.session.sqlite_store import SQLiteSessionStore
 
 database_path, session_id, start_path = sys.argv[1:]
 deadline = time.monotonic() + 15

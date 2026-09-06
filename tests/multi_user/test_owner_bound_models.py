@@ -10,9 +10,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from deepmentor.multi_user import model_access
-from deepmentor.multi_user.context import reset_current_user, set_current_user
-from deepmentor.multi_user.models import CurrentUser, UserScope
+from kagweb.multi_user import model_access
+from kagweb.multi_user.context import reset_current_user, set_current_user
+from kagweb.multi_user.models import CurrentUser, UserScope
 
 CODEX_PROFILE = "llm-profile-openai-codex-managed"
 
@@ -59,7 +59,7 @@ def test_owner_bound_profile_is_withheld_from_granted_users(tmp_path, monkeypatc
 
 def test_owner_bound_profile_is_not_offered_as_assignable(tmp_path, monkeypatch):
     """Admins must not be shown a grant the server would silently discard."""
-    from deepmentor.api.routers import multi_user as multi_user_router
+    from kagweb.api.routers import multi_user as multi_user_router
 
     monkeypatch.setattr(
         multi_user_router,

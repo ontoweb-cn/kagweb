@@ -21,7 +21,7 @@ import {
 import { DSL_MAX_DEPTH, type DagNode, type SessionDag } from "./model";
 
 export const DSL_VERSION = 1;
-const GENERATOR = "deepmentor/session-dsl";
+const GENERATOR = "kagweb/session-dsl";
 const PREVIEW_LIMIT = 140;
 
 export interface SerializeDslOptions {

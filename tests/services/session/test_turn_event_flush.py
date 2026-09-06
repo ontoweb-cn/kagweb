@@ -18,11 +18,11 @@ import re
 
 import pytest
 
-from deepmentor.multi_user.context import reset_current_user, set_current_user
-from deepmentor.multi_user.models import CurrentUser, UserScope
-from deepmentor.services.session.pocketbase_store import PocketBaseSessionStore
-from deepmentor.services.session.sqlite_store import SQLiteSessionStore
-from deepmentor.services.session.turn_runtime import TurnRuntimeManager, _TurnExecution
+from kagweb.multi_user.context import reset_current_user, set_current_user
+from kagweb.multi_user.models import CurrentUser, UserScope
+from kagweb.services.session.pocketbase_store import PocketBaseSessionStore
+from kagweb.services.session.sqlite_store import SQLiteSessionStore
+from kagweb.services.session.turn_runtime import TurnRuntimeManager, _TurnExecution
 
 pytestmark = pytest.mark.asyncio
 
@@ -81,7 +81,7 @@ class _FakeClient:
 def fake_pb(monkeypatch):
     client = _FakeClient()
     monkeypatch.setattr(
-        "deepmentor.services.pocketbase_client.get_pb_client", lambda: client, raising=True
+        "kagweb.services.pocketbase_client.get_pb_client", lambda: client, raising=True
     )
     return client
 
@@ -127,7 +127,7 @@ def stub_workspace(monkeypatch, tmp_path):
             return tmp_path / "workspace" / feature / task_id
 
     monkeypatch.setattr(
-        "deepmentor.services.session.turns.lifecycle.get_path_service",
+        "kagweb.services.session.turns.lifecycle.get_path_service",
         lambda: _StubPathService(),
     )
     return tmp_path / "workspace"

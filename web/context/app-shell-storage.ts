@@ -4,17 +4,17 @@ import { browserStorage } from "@/shared/storage";
 
 export type AppLanguage = "en" | "zh";
 
-export const ACTIVE_SESSION_STORAGE_KEY = "deepmentor.activeSessionId.tab";
-export const LANGUAGE_STORAGE_KEY = "deepmentor-language";
-export const RESPONSE_LANGUAGE_STORAGE_KEY = "deepmentor-response-language";
-export const SIDEBAR_COLLAPSED_STORAGE_KEY = "deepmentor.sidebarCollapsed";
+export const ACTIVE_SESSION_STORAGE_KEY = "kagweb.activeSessionId.tab";
+export const LANGUAGE_STORAGE_KEY = "kagweb-language";
+export const RESPONSE_LANGUAGE_STORAGE_KEY = "kagweb-response-language";
+export const SIDEBAR_COLLAPSED_STORAGE_KEY = "kagweb.sidebarCollapsed";
 export const CHAT_RESPONSE_TIMEOUT_STORAGE_KEY =
-  "deepmentor.chatResponseTimeout";
-export const CODE_BLOCK_THEME_STORAGE_KEY = "deepmentor.code-block-theme";
+  "kagweb.chatResponseTimeout";
+export const CODE_BLOCK_THEME_STORAGE_KEY = "kagweb.code-block-theme";
 export const CODE_BLOCK_SHOW_LINE_NUMBERS_STORAGE_KEY =
-  "deepmentor.code-block-show-line-numbers";
+  "kagweb.code-block-show-line-numbers";
 export const CODE_BLOCK_WRAP_LONG_LINES_STORAGE_KEY =
-  "deepmentor.code-block-wrap-long-lines";
+  "kagweb.code-block-wrap-long-lines";
 
 // Mirror of the per-user ``chat_response_timeout`` UI preference. Cached in
 // localStorage so the chat watchdog (a separate provider from Settings) can
@@ -61,11 +61,11 @@ export function writeStoredChatResponseTimeout(seconds: number): void {
   }
 }
 
-export const ACTIVE_SESSION_EVENT = "deepmentor:active-session";
-export const LANGUAGE_EVENT = "deepmentor:language";
-export const RESPONSE_LANGUAGE_EVENT = "deepmentor:response-language";
-export const SIDEBAR_COLLAPSED_EVENT = "deepmentor:sidebar-collapsed";
-export const CODE_BLOCK_SETTINGS_EVENT = "deepmentor:code-block-settings";
+export const ACTIVE_SESSION_EVENT = "kagweb:active-session";
+export const LANGUAGE_EVENT = "kagweb:language";
+export const RESPONSE_LANGUAGE_EVENT = "kagweb:response-language";
+export const SIDEBAR_COLLAPSED_EVENT = "kagweb:sidebar-collapsed";
+export const CODE_BLOCK_SETTINGS_EVENT = "kagweb:code-block-settings";
 
 export function normalizeLanguage(
   value: string | null | undefined,

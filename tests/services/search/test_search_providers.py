@@ -12,10 +12,10 @@ from typing import Any
 
 import pytest
 
-from deepmentor.services.search.providers.brave import BraveProvider
-from deepmentor.services.search.providers.jina import JinaProvider
-from deepmentor.services.search.providers.serper import SerperProvider
-from deepmentor.services.search.providers.tavily import TavilyProvider
+from kagweb.services.search.providers.brave import BraveProvider
+from kagweb.services.search.providers.jina import JinaProvider
+from kagweb.services.search.providers.serper import SerperProvider
+from kagweb.services.search.providers.tavily import TavilyProvider
 
 PROXY = "http://127.0.0.1:7890"
 
@@ -50,7 +50,7 @@ def calls(monkeypatch):
         return _call
 
     for module in ("serper", "tavily", "brave", "jina"):
-        target = f"deepmentor.services.search.providers.{module}.requests"
+        target = f"kagweb.services.search.providers.{module}.requests"
 
         class _FakeRequests:
             get = staticmethod(_record("GET"))
@@ -95,7 +95,7 @@ def test_jina_truncates_results_to_max_results(monkeypatch) -> None:
         def get(url: str, **kwargs: Any) -> _FakeResponse:
             return _FakeResponse({"data": rows})
 
-    monkeypatch.setattr("deepmentor.services.search.providers.jina.requests", _FakeRequests)
+    monkeypatch.setattr("kagweb.services.search.providers.jina.requests", _FakeRequests)
 
     capped = JinaProvider(api_key="k").search("q", max_results=2)
     assert len(capped.search_results) == 2
@@ -107,7 +107,7 @@ def test_jina_truncates_results_to_max_results(monkeypatch) -> None:
 
 
 def test_provider_metadata_comes_from_the_spec_table() -> None:
-    from deepmentor.services.config import SEARCH_PROVIDERS
+    from kagweb.services.config import SEARCH_PROVIDERS
 
     for cls in (SerperProvider, TavilyProvider, BraveProvider, JinaProvider):
         spec = SEARCH_PROVIDERS[cls.name]
@@ -154,7 +154,7 @@ _NEW_PROVIDERS = [
 def _provider_class(module: str, name: str):
     import importlib
 
-    return getattr(importlib.import_module(f"deepmentor.services.search.providers.{module}"), name)
+    return getattr(importlib.import_module(f"kagweb.services.search.providers.{module}"), name)
 
 
 @pytest.fixture
@@ -175,7 +175,7 @@ def new_calls(monkeypatch):
             get = staticmethod(_record("GET"))
             post = staticmethod(_record("POST"))
 
-        monkeypatch.setattr(f"deepmentor.services.search.providers.{module}.requests", _FakeRequests)
+        monkeypatch.setattr(f"kagweb.services.search.providers.{module}.requests", _FakeRequests)
     return captured
 
 
@@ -192,7 +192,7 @@ def test_new_providers_carry_max_results_and_proxy(module, cls_name, read_limit,
 
 @pytest.mark.parametrize(("module", "cls_name", "_read_limit"), _NEW_PROVIDERS)
 def test_new_provider_metadata_comes_from_the_spec_table(module, cls_name, _read_limit) -> None:
-    from deepmentor.services.config import SEARCH_PROVIDERS
+    from kagweb.services.config import SEARCH_PROVIDERS
 
     cls = _provider_class(module, cls_name)
     spec = SEARCH_PROVIDERS[cls.name]
@@ -251,9 +251,9 @@ def test_doubao_reads_answer_and_citations_off_annotations(monkeypatch) -> None:
         def post(url: str, **kwargs: Any) -> _FakeResponse:
             return _FakeResponse(body)
 
-    monkeypatch.setattr("deepmentor.services.search.providers.doubao.requests", _FakeRequests)
+    monkeypatch.setattr("kagweb.services.search.providers.doubao.requests", _FakeRequests)
 
-    from deepmentor.services.search.providers.doubao import DoubaoProvider
+    from kagweb.services.search.providers.doubao import DoubaoProvider
 
     result = DoubaoProvider(api_key="k").search("q")
     assert result.answer == "答案。"
@@ -265,7 +265,7 @@ def test_doubao_reads_answer_and_citations_off_annotations(monkeypatch) -> None:
 
 
 def test_doubao_rejects_an_unknown_source() -> None:
-    from deepmentor.services.search.providers.doubao import DoubaoProvider
+    from kagweb.services.search.providers.doubao import DoubaoProvider
 
     with pytest.raises(ValueError, match="Doubao source"):
         DoubaoProvider(api_key="k").search("q", sources=["weibo"])
@@ -296,9 +296,9 @@ def test_qianfan_maps_its_native_citation_fields(monkeypatch) -> None:
         def post(url: str, **kwargs: Any) -> _FakeResponse:
             return _FakeResponse(body)
 
-    monkeypatch.setattr("deepmentor.services.search.providers.qianfan.requests", _FakeRequests)
+    monkeypatch.setattr("kagweb.services.search.providers.qianfan.requests", _FakeRequests)
 
-    from deepmentor.services.search.providers.qianfan import QianfanProvider
+    from kagweb.services.search.providers.qianfan import QianfanProvider
 
     citation = QianfanProvider(api_key="k").search("q").citations[0]
     assert citation.web_anchor == "anchor"
@@ -331,9 +331,9 @@ def test_aliyun_iqs_caps_results_client_side(monkeypatch) -> None:
         def get(url: str, **kwargs: Any) -> _FakeResponse:
             return _FakeResponse(body)
 
-    monkeypatch.setattr("deepmentor.services.search.providers.aliyun_iqs.requests", _FakeRequests)
+    monkeypatch.setattr("kagweb.services.search.providers.aliyun_iqs.requests", _FakeRequests)
 
-    from deepmentor.services.search.providers.aliyun_iqs import AliyunIQSProvider
+    from kagweb.services.search.providers.aliyun_iqs import AliyunIQSProvider
 
     result = AliyunIQSProvider(api_key="k").search("q", max_results=3)
     assert len(result.search_results) == 3
@@ -348,9 +348,9 @@ def test_bocha_surfaces_an_error_carried_inside_a_200(monkeypatch) -> None:
         def post(url: str, **kwargs: Any) -> _FakeResponse:
             return _FakeResponse({"code": 403, "msg": "quota exhausted"})
 
-    monkeypatch.setattr("deepmentor.services.search.providers.bocha.requests", _FakeRequests)
+    monkeypatch.setattr("kagweb.services.search.providers.bocha.requests", _FakeRequests)
 
-    from deepmentor.services.search.providers.bocha import BochaProvider
+    from kagweb.services.search.providers.bocha import BochaProvider
 
     with pytest.raises(Exception, match="quota exhausted"):
         BochaProvider(api_key="k").search("q")
@@ -416,12 +416,12 @@ def serply_calls(monkeypatch):
     class _FakeRequests:
         get = staticmethod(_get)
 
-    monkeypatch.setattr("deepmentor.services.search.providers.serply.requests", _FakeRequests)
+    monkeypatch.setattr("kagweb.services.search.providers.serply.requests", _FakeRequests)
     return captured
 
 
 def test_serply_carries_max_results_proxy_and_base_url_root(serply_calls) -> None:
-    from deepmentor.services.search.providers.serply import SerplyProvider
+    from kagweb.services.search.providers.serply import SerplyProvider
 
     provider = SerplyProvider(api_key="k", proxy=PROXY)
     provider.search("attention & focus", max_results=3, base_url="https://gateway.example/v1/")
@@ -434,9 +434,9 @@ def test_serply_carries_max_results_proxy_and_base_url_root(serply_calls) -> Non
 
 
 def test_serply_metadata_comes_from_the_spec_table() -> None:
-    from deepmentor.services.config import SEARCH_PROVIDERS
-    from deepmentor.services.search.providers import list_providers
-    from deepmentor.services.search.providers.serply import SerplyProvider
+    from kagweb.services.config import SEARCH_PROVIDERS
+    from kagweb.services.search.providers import list_providers
+    from kagweb.services.search.providers.serply import SerplyProvider
 
     spec = SEARCH_PROVIDERS["serply"]
     assert "serply" in list_providers()
@@ -448,7 +448,7 @@ def test_serply_metadata_comes_from_the_spec_table() -> None:
 
 
 def test_serply_web_rows_map_onto_search_results(serply_calls) -> None:
-    from deepmentor.services.search.providers.serply import SerplyProvider
+    from kagweb.services.search.providers.serply import SerplyProvider
 
     response = SerplyProvider(api_key="k").search("attention is all you need")
 
@@ -462,7 +462,7 @@ def test_serply_web_rows_map_onto_search_results(serply_calls) -> None:
 
 
 def test_serply_news_trims_client_side_and_strips_html(serply_calls) -> None:
-    from deepmentor.services.search.providers.serply import SerplyProvider
+    from kagweb.services.search.providers.serply import SerplyProvider
 
     response = SerplyProvider(api_key="k").search("chatbots", mode="news", max_results=4)
 
@@ -474,8 +474,8 @@ def test_serply_news_trims_client_side_and_strips_html(serply_calls) -> None:
 
 
 def test_serply_scholar_rows_render_through_the_academic_template(serply_calls) -> None:
-    from deepmentor.services.search.consolidation import AnswerConsolidator
-    from deepmentor.services.search.providers.serply import SerplyProvider
+    from kagweb.services.search.consolidation import AnswerConsolidator
+    from kagweb.services.search.providers.serply import SerplyProvider
 
     response = SerplyProvider(api_key="k").search("attention", mode="scholar")
 
@@ -493,7 +493,7 @@ def test_serply_scholar_rows_render_through_the_academic_template(serply_calls) 
 
 
 def test_serply_rejects_an_unknown_mode() -> None:
-    from deepmentor.services.search.providers.serply import SerplyProvider
+    from kagweb.services.search.providers.serply import SerplyProvider
 
     with pytest.raises(ValueError, match="mode"):
         SerplyProvider(api_key="k").search("q", mode="images")

@@ -2,7 +2,7 @@
 import io
 import py_compile
 
-path = "deepmentor/services/session/context_builder.py"
+path = "kagweb/services/session/context_builder.py"
 with io.open(path, "r", encoding="utf-8") as f:
     src = f.read()
 
@@ -15,9 +15,9 @@ def rep(src, old, new, count=1):
 # import: BaseAgent -> services.llm stream
 src = rep(
     src,
-    """from deepmentor.agents.base_agent import BaseAgent
-from deepmentor.core.stream import StreamEvent, StreamEventType""",
-    """from deepmentor.core.stream import StreamEvent, StreamEventType""",
+    """from kagweb.agents.base_agent import BaseAgent
+from kagweb.core.stream import StreamEvent, StreamEventType""",
+    """from kagweb.core.stream import StreamEvent, StreamEventType""",
 )
 
 # drop the _ContextSummaryAgent class
@@ -74,7 +74,7 @@ src = rep(
             return summary, events
         finally:""",
     """        try:
-            from deepmentor.services.llm import stream as llm_stream
+            from kagweb.services.llm import stream as llm_stream
 
             await _trace_bridge(
                 {"event": "llm_call", "state": "running", **trace_meta}

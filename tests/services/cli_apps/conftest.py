@@ -16,7 +16,7 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def cli_app_roots(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    from deepmentor.multi_user import paths
+    from kagweb.multi_user import paths
 
     admin_root = (tmp_path / "data").resolve()
     monkeypatch.setattr(paths, "PROJECT_ROOT", tmp_path)

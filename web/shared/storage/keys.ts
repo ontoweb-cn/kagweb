@@ -1,4 +1,4 @@
-export const STORAGE_NAMESPACE = "deepmentor:v2:";
+export const STORAGE_NAMESPACE = "kagweb:v2:";
 
 export type StorageScope = "local" | "session";
 

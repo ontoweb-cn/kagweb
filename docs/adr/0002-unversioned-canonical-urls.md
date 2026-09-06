@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-DeepMentor is shipped as one repository whose browser and backend are upgraded
+KAGWeb is shipped as one repository whose browser and backend are upgraded
 together. Existing routes mix `/api/v1`, `/api/outputs`, singular and plural
 resources, RPC verbs, `/home`, query-string session routing, and duplicate
 Settings pages. The product does not promise that an old third-party client

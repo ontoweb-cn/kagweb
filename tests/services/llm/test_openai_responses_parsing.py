@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from deepmentor.services.llm.provider_core.openai_responses.parsing import (
+from kagweb.services.llm.provider_core.openai_responses.parsing import (
     consume_sdk_stream,
     consume_sse,
     parse_response_output,

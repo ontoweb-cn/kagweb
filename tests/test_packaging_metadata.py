@@ -41,7 +41,7 @@ def test_python_314_is_supported_by_both_distributions() -> None:
     expected = ">=3.11,<3.15"
     assert _project(REPOSITORY_ROOT / "pyproject.toml")["requires-python"] == expected
     assert (
-        _project(REPOSITORY_ROOT / "packaging" / "deepmentor-cli" / "pyproject.toml")[
+        _project(REPOSITORY_ROOT / "packaging" / "kagweb-cli" / "pyproject.toml")[
             "requires-python"
         ]
         == expected
@@ -54,7 +54,7 @@ def test_python_314_is_supported_by_both_distributions() -> None:
     "metadata_path",
     [
         REPOSITORY_ROOT / "pyproject.toml",
-        REPOSITORY_ROOT / "packaging" / "deepmentor-cli" / "pyproject.toml",
+        REPOSITORY_ROOT / "packaging" / "kagweb-cli" / "pyproject.toml",
     ],
 )
 def test_typer_dependency_does_not_request_removed_all_extra(metadata_path: Path) -> None:
@@ -69,7 +69,7 @@ def test_typer_dependency_does_not_request_removed_all_extra(metadata_path: Path
     "metadata_path",
     [
         REPOSITORY_ROOT / "pyproject.toml",
-        REPOSITORY_ROOT / "packaging" / "deepmentor-cli" / "pyproject.toml",
+        REPOSITORY_ROOT / "packaging" / "kagweb-cli" / "pyproject.toml",
     ],
 )
 def test_mcp_client_is_a_core_dependency(metadata_path: Path) -> None:
@@ -135,7 +135,7 @@ def test_cli_runtime_dependencies_match_every_install_surface(expected: str) -> 
     """CLI-only installs must include everything used by terminal workflows."""
     with (REPOSITORY_ROOT / "pyproject.toml").open("rb") as file:
         root = tomllib.load(file)["project"]
-    with (REPOSITORY_ROOT / "packaging" / "deepmentor-cli" / "pyproject.toml").open("rb") as file:
+    with (REPOSITORY_ROOT / "packaging" / "kagweb-cli" / "pyproject.toml").open("rb") as file:
         cli_package = tomllib.load(file)["project"]
 
     assert root["dependencies"].count(expected) == 1

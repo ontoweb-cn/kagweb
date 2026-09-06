@@ -6,7 +6,7 @@ plain-dict case). These tests pin all three shapes plus the two API dialects.
 
 from __future__ import annotations
 
-from deepmentor.services.llm.usage_frame import token_counts, usage_mapping
+from kagweb.services.llm.usage_frame import token_counts, usage_mapping
 
 
 class _PydanticLike:
@@ -64,7 +64,7 @@ def test_mapping_falls_back_when_model_dump_is_unusable() -> None:
 
 
 def test_counts_from_plain_dict() -> None:
-    # The shape DeepMentor's own TutorStreamChunk and native adapters emit.
+    # The shape KAGWeb's own TutorStreamChunk and native adapters emit.
     assert token_counts(
         {"prompt_tokens": 1200, "completion_tokens": 400, "total_tokens": 1600}
     ) == {

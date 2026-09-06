@@ -76,7 +76,7 @@ test("dedupes sanitized node ids that collide (#49)", () => {
   // msg:1:1 and msg:1_1 both sanitize to msg_1_1 — the second gets a suffix.
   const doc = {
     version: 1,
-    generator: "deepmentor/session-dsl",
+    generator: "kagweb/session-dsl",
     trace: [
       { node: "msg:1:1", kind: "user" },
       { node: "msg:1_1", kind: "assistant" },
@@ -89,7 +89,7 @@ test("dedupes sanitized node ids that collide (#49)", () => {
 });
 
 test("empty documents produce a minimal valid diagram", () => {
-  const out = dslToMermaid({ version: 1, generator: "deepmentor/session-dsl", trace: [] });
+  const out = dslToMermaid({ version: 1, generator: "kagweb/session-dsl", trace: [] });
   assert.equal(out.trim(), "flowchart TD");
 });
 

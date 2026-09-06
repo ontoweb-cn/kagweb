@@ -4,8 +4,8 @@ import asyncio
 
 import pytest
 
-from deepmentor.runtime.background_leader import BackgroundLeaderSupervisor
-from deepmentor.runtime.coordination import MemoryCoordinator
+from kagweb.runtime.background_leader import BackgroundLeaderSupervisor
+from kagweb.runtime.coordination import MemoryCoordinator
 
 
 @pytest.mark.asyncio

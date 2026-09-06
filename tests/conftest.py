@@ -9,9 +9,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from deepmentor.core.capability_protocol import CapabilityManifest, TurnCapability
-from deepmentor.core.context import Attachment, UnifiedContext
-from deepmentor.runtime.stream_bus import StreamBus
+from kagweb.core.capability_protocol import CapabilityManifest, TurnCapability
+from kagweb.core.context import Attachment, UnifiedContext
+from kagweb.runtime.stream_bus import StreamBus
 
 # ---------------------------------------------------------------------------
 # Multi-user legacy migration guard
@@ -28,8 +28,8 @@ def _tree_snapshot(root: Path) -> frozenset[str]:
 #: guard below always watches the developer's real tree, whatever a test does.
 _REAL_OWNER_SECRET_TREES: tuple[Path, ...] = ()
 try:  # pragma: no cover - import-time wiring
-    from deepmentor.multi_user.paths import ADMIN_WORKSPACE_ROOT as _REAL_ADMIN_ROOT
-    from deepmentor.multi_user.paths import SYSTEM_ROOT as _REAL_SYSTEM_ROOT
+    from kagweb.multi_user.paths import ADMIN_WORKSPACE_ROOT as _REAL_ADMIN_ROOT
+    from kagweb.multi_user.paths import SYSTEM_ROOT as _REAL_SYSTEM_ROOT
 
     _REAL_OWNER_SECRET_TREES = (
         _REAL_SYSTEM_ROOT / "user-secrets",
@@ -80,10 +80,10 @@ def _guard_legacy_multi_user_migration(monkeypatch):
     legacy root at a path that cannot exist and reset the once-flag;
     migration tests opt back in by patching the constants themselves.
     """
-    from deepmentor.multi_user import paths
+    from kagweb.multi_user import paths
 
     monkeypatch.setattr(
-        paths, "LEGACY_MULTI_USER_ROOT", Path("/nonexistent/deepmentor-legacy-multi-user")
+        paths, "LEGACY_MULTI_USER_ROOT", Path("/nonexistent/kagweb-legacy-multi-user")
     )
     monkeypatch.setattr(paths, "_legacy_migration_done", False)
     yield
@@ -98,10 +98,10 @@ def _isolate_codebuddy_login(monkeypatch):
     different results than CI. Tests that exercise the signed-in path point the
     override at a fixture file.
     """
-    from deepmentor.services import codebuddy_credentials
+    from kagweb.services import codebuddy_credentials
 
     monkeypatch.setenv(
-        "DEEPMENTOR_CODEBUDDY_AUTH_FILE", str(Path("/nonexistent/codebuddy-auth.info"))
+        "KAGWEB_CODEBUDDY_AUTH_FILE", str(Path("/nonexistent/codebuddy-auth.info"))
     )
     monkeypatch.setattr(
         codebuddy_credentials,
@@ -111,7 +111,7 @@ def _isolate_codebuddy_login(monkeypatch):
     monkeypatch.delenv("CODEBUDDY_API_KEY", raising=False)
     monkeypatch.delenv("CODEBUDDY_BASE_URL", raising=False)
     monkeypatch.delenv("CODEBUDDY_INTERNET_ENVIRONMENT", raising=False)
-    monkeypatch.delenv("DEEPMENTOR_CODEBUDDY_BACKEND", raising=False)
+    monkeypatch.delenv("KAGWEB_CODEBUDDY_BACKEND", raising=False)
     yield
 
 
@@ -174,7 +174,7 @@ def tmp_db_path(tmp_path: Path) -> Path:
 @pytest.fixture
 def sqlite_store(tmp_db_path: Path):
     """SQLiteSessionStore backed by a temp file."""
-    from deepmentor.services.session.sqlite_store import SQLiteSessionStore
+    from kagweb.services.session.sqlite_store import SQLiteSessionStore
 
     return SQLiteSessionStore(db_path=tmp_db_path)
 

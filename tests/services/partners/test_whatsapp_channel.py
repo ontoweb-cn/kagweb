@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from deepmentor.partners.bus.queue import MessageBus
-from deepmentor.partners.channels.whatsapp import WhatsAppChannel, WhatsAppConfig
+from kagweb.partners.bus.queue import MessageBus
+from kagweb.partners.channels.whatsapp import WhatsAppChannel, WhatsAppConfig
 
 
 def _channel() -> WhatsAppChannel:

@@ -46,14 +46,14 @@ function prepareBuildTsconfig(snapshots, distDir) {
   if (!tsconfig) return null;
   const buildTsconfigPath = path.join(
     webRoot,
-    `tsconfig.deepmentor-build-${process.pid}.json`,
+    `tsconfig.kagweb-build-${process.pid}.json`,
   );
   restore(buildTsconfigPath, configureTypeIncludes(tsconfig[1], distDir));
   return buildTsconfigPath;
 }
 
 const snapshots = generatedPaths
-  .filter((path) => process.env.DEEPMENTOR_BUILD_SKIP_MISSING !== "1")
+  .filter((path) => process.env.KAGWEB_BUILD_SKIP_MISSING !== "1")
   .map((path) => [path, snapshot(path)]);
 
 const isEntry =
@@ -62,15 +62,15 @@ const isEntry =
 export { restoreAll };
 
 if (isEntry) {
-  const distDir = process.env.DEEPMENTOR_NEXT_DIST_DIR || ".next";
+  const distDir = process.env.KAGWEB_NEXT_DIST_DIR || ".next";
   const buildTsconfigPath = prepareBuildTsconfig(snapshots, distDir);
   let result;
   try {
     result = spawnSync(
       process.execPath,
       // Next.js 16 defaults to Turbopack, which does not emit the standalone
-      // server bundle expected by `deepmentor start`. The production launcher
-      // needs the Webpack output at `.next-deepmentor/standalone/server.js`.
+      // server bundle expected by `kagweb start`. The production launcher
+      // needs the Webpack output at `.next-kagweb/standalone/server.js`.
       [nextBin, "build", "--webpack", ...process.argv.slice(2)],
       {
         cwd: webRoot,
@@ -78,7 +78,7 @@ if (isEntry) {
         env: {
           ...process.env,
           ...(buildTsconfigPath
-            ? { DEEPMENTOR_NEXT_TSCONFIG: path.basename(buildTsconfigPath) }
+            ? { KAGWEB_NEXT_TSCONFIG: path.basename(buildTsconfigPath) }
             : {}),
         },
       },

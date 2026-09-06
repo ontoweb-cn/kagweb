@@ -149,7 +149,7 @@ export async function requestCodex<T>(
     } catch {
       throw new CodexOAuthApiError(
         "invalid_response",
-        "DeepMentor returned an invalid Codex OAuth response.",
+        "KAGWeb returned an invalid Codex OAuth response.",
       );
     }
   }

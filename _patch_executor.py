@@ -2,7 +2,7 @@
 import io
 import py_compile
 
-path = "deepmentor/services/session/turns/executor.py"
+path = "kagweb/services/session/turns/executor.py"
 with io.open(path, "r", encoding="utf-8") as f:
     src = f.read()
 
@@ -21,15 +21,15 @@ def rep(src, old, new, count=1):
 # ── skills + learner profile block: keep persona + learner profile, drop skills ──
 src = rep(
     src,
-    """            from deepmentor.multi_user.context import get_current_user
-            from deepmentor.multi_user.paths import get_admin_path_service
-            from deepmentor.multi_user.skill_access import assigned_skill_ids
-            from deepmentor.services.persona import PersonaService, get_persona_service
-            from deepmentor.services.skill.service import SkillService, render_skills_manifest
+    """            from kagweb.multi_user.context import get_current_user
+            from kagweb.multi_user.paths import get_admin_path_service
+            from kagweb.multi_user.skill_access import assigned_skill_ids
+            from kagweb.services.persona import PersonaService, get_persona_service
+            from kagweb.services.skill.service import SkillService, render_skills_manifest
 """,
-    """            from deepmentor.multi_user.context import get_current_user
-            from deepmentor.multi_user.paths import get_admin_path_service
-            from deepmentor.services.persona import PersonaService, get_persona_service
+    """            from kagweb.multi_user.context import get_current_user
+            from kagweb.multi_user.paths import get_admin_path_service
+            from kagweb.services.persona import PersonaService, get_persona_service
 """,
 )
 src = cut(
@@ -50,7 +50,7 @@ src = rep(
             source_index: dict[str, str] = {}
 
             if is_chat_capability:
-                from deepmentor.services.session.source_inventory import (
+                from kagweb.services.session.source_inventory import (
                     build_inventory,
                     render_manifest,
                 )
@@ -88,7 +88,7 @@ src = rep(
     """            source_manifest_text = ""
             source_index: dict[str, str] = {}
 
-            from deepmentor.services.session.source_inventory import (
+            from kagweb.services.session.source_inventory import (
                 build_inventory,
                 render_manifest,
             )
@@ -314,7 +314,7 @@ src = rep(
     src,
     """            self._reply_queues.pop(turn_id, None)
             if bool(payload.get("mastery_path_lease_managed")):
-                from deepmentor.learning.storage import LearningStore
+                from kagweb.learning.storage import LearningStore
 
                 # By turn, not by the path the turn started on: mastery_switch
                 # can move a turn onto a different path mid-flight, and freeing

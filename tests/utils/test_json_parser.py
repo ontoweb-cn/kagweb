@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from deepmentor.utils.json_parser import parse_json_response, safe_json_loads
+from kagweb.utils.json_parser import parse_json_response, safe_json_loads
 
 # ---------------------------------------------------------------------------
 # parse_json_response — direct parsing
@@ -95,7 +95,7 @@ class TestParseJsonResponseRepair:
         assert isinstance(result, dict)
 
     def test_repair_unavailable_returns_fallback(self) -> None:
-        with patch("deepmentor.utils.json_parser.repair_json", None):
+        with patch("kagweb.utils.json_parser.repair_json", None):
             result = parse_json_response("{bad json", fallback={"err": True})
             assert result == {"err": True}
 

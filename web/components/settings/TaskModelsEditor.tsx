@@ -15,7 +15,7 @@ import {
 import { selectClass, selectOptionClass } from "./shared";
 
 /**
- * Task models — what DeepMentor runs on when nobody asked it to run.
+ * Task models — what KAGWeb runs on when nobody asked it to run.
  *
  * Naming a conversation and writing the three starting points are the two
  * calls the product makes on its own. They were briefly two separate pins, one

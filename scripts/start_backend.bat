@@ -1,5 +1,5 @@
 @echo off
-REM DeepMentor Backend Startup Script
+REM KAGWeb Backend Startup Script
 REM Activates virtual environment and starts the backend API server
 
 REM Move to the project root (this script lives in scripts/)
@@ -17,8 +17,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Starting DeepMentor Backend Server...
+echo Starting KAGWeb Backend Server...
 echo Backend will be available at: http://localhost:8001
 echo Press Ctrl+C to stop the server.
-python -m deepmentor.api.run_server
+python -m kagweb.api.run_server
 pause

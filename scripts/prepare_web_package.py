@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Prepare ``deepmentor_web`` package data from a Next.js standalone build."""
+"""Prepare ``kagweb_web`` package data from a Next.js standalone build."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import subprocess
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 WEB_DIR = PROJECT_ROOT / "web"
-PACKAGE_DIR = PROJECT_ROOT / "deepmentor_web"
+PACKAGE_DIR = PROJECT_ROOT / "kagweb_web"
 
 
 def _clean_package_dir(package_dir: Path) -> None:

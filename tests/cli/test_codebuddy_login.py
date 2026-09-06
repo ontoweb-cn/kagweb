@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from deepmentor_cli.provider_cmd import _login_codebuddy
+from kagweb_cli.provider_cmd import _login_codebuddy
 
 
 class FakeAuthFlow:
@@ -42,7 +42,7 @@ async def test_codebuddy_login_starts_auth_flow_when_not_logged_in(monkeypatch, 
         "codebuddy_agent_sdk",
         SimpleNamespace(query=fake_query, authenticate=fake_authenticate),
     )
-    monkeypatch.setattr("deepmentor_cli.provider_cmd.webbrowser.open", opened.append)
+    monkeypatch.setattr("kagweb_cli.provider_cmd.webbrowser.open", opened.append)
 
     await _login_codebuddy()
 

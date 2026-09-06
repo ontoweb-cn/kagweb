@@ -10,8 +10,8 @@ from pathlib import Path
 import shutil
 import tempfile
 
-from deepmentor.services.parsing.engines.mineru.cloud import parse_cloud
-from deepmentor.services.parsing.engines.mineru.config import MinerUConfig
+from kagweb.services.parsing.engines.mineru.cloud import parse_cloud
+from kagweb.services.parsing.engines.mineru.config import MinerUConfig
 
 HERE = Path(__file__).resolve().parent
 SOURCE = HERE / "original.pdf"
@@ -40,7 +40,7 @@ def main() -> None:
         enable_table=True,
     )
     try:
-        with tempfile.TemporaryDirectory(prefix="deepmentor-mineru-capture-") as raw:
+        with tempfile.TemporaryDirectory(prefix="kagweb-mineru-capture-") as raw:
             parsed = parse_cloud(SOURCE, Path(raw), config)
             candidates = sorted(parsed.rglob("*_content_list.json"))
             if len(candidates) != 1:
@@ -64,7 +64,7 @@ def main() -> None:
         "source": {"path": "../original.pdf", "sha256": _sha256(SOURCE)},
         "artifacts": files,
     }
-    (TARGET / "deepmentor-fixture-provenance.json").write_text(
+    (TARGET / "kagweb-fixture-provenance.json").write_text(
         json.dumps(provenance, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     print(f"Captured {len(files)} artifact(s) in {TARGET}")

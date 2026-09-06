@@ -34,7 +34,7 @@ function stripComments(src) {
 }
 
 // Brand names / proper nouns that are identical in every locale.
-const NON_TRANSLATABLE_ATTRS = new Set(["DeepMentor", "GitHub"]);
+const NON_TRANSLATABLE_ATTRS = new Set(["KAGWeb", "GitHub"]);
 
 function auditFile(content) {
   const findings = [];
@@ -75,7 +75,7 @@ function auditFile(content) {
     if (/\.(md|json|ya?ml|tsx?|jsx|py|txt|html)$/i.test(text)) continue;
     // Common non-translatable tokens / file extensions / escapes
     if (text === ".md" || text === ".pdf" || text === "\\n") continue;
-    if (text === "DeepMentor") continue;
+    if (text === "KAGWeb") continue;
     // Ignore obvious already-i18n'd inline markers
     if (text.includes('t("') || text.includes("t('")) continue;
     if (!hasUiText(text)) continue;

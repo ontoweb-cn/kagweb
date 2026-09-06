@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from deepmentor.utils.text_display import decode_escaped_unicode_for_display
+from kagweb.utils.text_display import decode_escaped_unicode_for_display
 
 
 def test_decodes_dense_non_ascii_runs() -> None:

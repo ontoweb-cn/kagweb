@@ -10,7 +10,7 @@ import sys
 FORBIDDEN_PARTS = {
     ".DS_Store",
     ".next",
-    ".next-deepmentor",
+    ".next-kagweb",
     ".turbo",
     "__pycache__",
     "htmlcov",

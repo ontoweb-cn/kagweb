@@ -19,14 +19,14 @@ from urllib.parse import quote
 
 import pytest
 
-from deepmentor.services.llm.multimodal import (
+from kagweb.services.llm.multimodal import (
     has_image_parts,
     prepare_multimodal_messages,
     should_degrade_to_text,
     strip_image_parts,
     strip_image_parts_inplace,
 )
-from deepmentor.services.storage import attachment_store
+from kagweb.services.storage import attachment_store
 
 
 def _msgs() -> list[dict]:

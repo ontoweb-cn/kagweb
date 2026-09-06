@@ -8,8 +8,8 @@ socket and raced to close it; a FIN landing on a socket the pool was handing to
 a new request killed it with ``ECONNRESET``, which the proxy turned into a 500
 ("Failed to proxy ... socket hang up" -> "Failed to load sessions" in the UI).
 ``--timeout-keep-alive`` fixes it, and ``--ws-max-size`` has the same shape:
-correct only if *every* launch point passes it, and DeepMentor has five (two
-Dockerfile stages, the ``deepmentor start`` launcher, the CLI, run_server). A
+correct only if *every* launch point passes it, and KAGWeb has five (two
+Dockerfile stages, the ``kagweb start`` launcher, the CLI, run_server). A
 launch point that forgets one reintroduces the bug for whoever starts the
 backend that way, which no per-module test would catch.
 """
@@ -26,9 +26,9 @@ _REPO = Path(__file__).resolve().parents[2]
 _PYTHON_FLAGS = ("ws_max_size", "timeout_keep_alive")
 _CLI_FLAGS = ("--ws-max-size", "--timeout-keep-alive")
 _LAUNCH_POINTS = [
-    ("deepmentor/runtime/launcher.py", '"uvicorn",', _CLI_FLAGS),
-    ("deepmentor/api/run_server.py", "uvicorn.run(", _PYTHON_FLAGS),
-    ("deepmentor_cli/main.py", "uvicorn.run(", _PYTHON_FLAGS),
+    ("kagweb/runtime/launcher.py", '"uvicorn",', _CLI_FLAGS),
+    ("kagweb/api/run_server.py", "uvicorn.run(", _PYTHON_FLAGS),
+    ("kagweb_cli/main.py", "uvicorn.run(", _PYTHON_FLAGS),
 ]
 
 
@@ -47,7 +47,7 @@ def test_dockerfile_launch_points_wire_serving_flags() -> None:
     lines = [
         line
         for line in (_REPO / "Dockerfile").read_text(encoding="utf-8").splitlines()
-        if "-m uvicorn deepmentor.api.main:app" in line
+        if "-m uvicorn kagweb.api.main:app" in line
     ]
     assert len(lines) == 2, f"expected 2 Dockerfile uvicorn launches, found {len(lines)}"
     for line in lines:
@@ -59,7 +59,7 @@ def test_production_container_wires_configured_worker_count() -> None:
     lines = [
         line
         for line in (_REPO / "Dockerfile").read_text(encoding="utf-8").splitlines()
-        if line.startswith("exec python -m uvicorn deepmentor.api.main:app")
+        if line.startswith("exec python -m uvicorn kagweb.api.main:app")
     ]
     assert len(lines) == 1
     assert "--workers ${BACKEND_WORKERS}" in lines[0]
@@ -71,6 +71,6 @@ def test_keep_alive_outlasts_the_proxy_socket_reaper() -> None:
     Matching it is what caused the collision, so a value anywhere near 5s puts
     the two timers back in contention.
     """
-    from deepmentor.services.config import HTTP_KEEP_ALIVE_TIMEOUT
+    from kagweb.services.config import HTTP_KEEP_ALIVE_TIMEOUT
 
     assert HTTP_KEEP_ALIVE_TIMEOUT >= 60, "too close to the proxy's 5s socket reaper"

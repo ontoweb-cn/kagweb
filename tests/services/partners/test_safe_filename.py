@@ -8,7 +8,7 @@ import pytest
 
 from pathlib import Path
 
-from deepmentor.partners.helpers import safe_filename
+from kagweb.partners.helpers import safe_filename
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX /tmp path")

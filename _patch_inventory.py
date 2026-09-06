@@ -2,7 +2,7 @@
 import io
 import py_compile
 
-path = "deepmentor/services/session/source_inventory.py"
+path = "kagweb/services/session/source_inventory.py"
 with io.open(path, "r", encoding="utf-8") as f:
     src = f.read()
 

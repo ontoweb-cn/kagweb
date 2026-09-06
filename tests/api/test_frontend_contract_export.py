@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from deepmentor.api.contracts.export import render_contracts, write_contracts
+from kagweb.api.contracts.export import render_contracts, write_contracts
 
 
 def _enum_values(schema: dict, name: str) -> set[str]:

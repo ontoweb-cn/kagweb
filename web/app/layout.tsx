@@ -7,7 +7,7 @@ import { AppShellProvider } from "@/context/AppShellContext";
 import { I18nClientBridge } from "@/i18n/I18nClientBridge";
 import { withBasePath } from "@/shared/base-path";
 
-// Geist matches the public site (deepmentor.info) and stays crisp at the
+// Geist matches the public site (kagweb.info) and stays crisp at the
 // small UI sizes the composer/toolbars use, unlike the rounder Jakarta.
 const fontSans = Geist({
   subsets: ["latin"],

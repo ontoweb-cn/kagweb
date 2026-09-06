@@ -9,7 +9,7 @@ def test_status_redacts_model_for_non_admin(mu_isolated_root, as_user, monkeypat
     """Run get_system_status() under a non-admin context and assert that the
     model / provider fields are stripped from the response."""
 
-    from deepmentor.api.routers import system as system_router
+    from kagweb.api.routers import system as system_router
 
     # Stub the heavy bits so the handler returns predictable shape.
     class _FakeLLM:
@@ -35,7 +35,7 @@ def test_status_redacts_model_for_non_admin(mu_isolated_root, as_user, monkeypat
 
 
 def test_status_keeps_model_for_admin(mu_isolated_root, as_user, monkeypatch):
-    from deepmentor.api.routers import system as system_router
+    from kagweb.api.routers import system as system_router
 
     class _FakeLLM:
         model = "gpt-test"

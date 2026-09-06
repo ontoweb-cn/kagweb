@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from deepmentor.core.stream import StreamEvent
+from kagweb.core.stream import StreamEvent
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def partners_root(tmp_path, monkeypatch) -> Path:
     """Redirect the admin workspace (and multi-user roots) under ``tmp_path``.
 
     Everything the partners layer touches resolves through
-    ``deepmentor.multi_user.paths`` — the partners data dir is anchored at the
+    ``kagweb.multi_user.paths`` — the partners data dir is anchored at the
     admin workspace root and partner scopes are synthetic ``UserScope``s — so
     patching that module covers the partners layer itself.
 
@@ -32,7 +32,7 @@ def partners_root(tmp_path, monkeypatch) -> Path:
     back — which made the outcome depend on who already had an account there,
     since the first account in a store is force-promoted to admin.
     """
-    from deepmentor.multi_user import identity, paths
+    from kagweb.multi_user import identity, paths
 
     project_root = tmp_path
     admin_root = (project_root / "data").resolve()
@@ -75,8 +75,8 @@ class _FakeOrchestrator:
 
 @pytest.fixture
 def fake_orchestrator(monkeypatch):
-    import deepmentor.runtime.orchestrator as orch_mod
-    from deepmentor.services.model_selection import runtime as selection_runtime
+    import kagweb.runtime.orchestrator as orch_mod
+    from kagweb.services.model_selection import runtime as selection_runtime
 
     _FakeOrchestrator.script = []
     _FakeOrchestrator.scripts = []

@@ -173,7 +173,7 @@ CytoscapeDag.tsx          serializeSessionDsl()（V2 新增，纯函数）
 视觉视图：交互下钻           结构化 JSON：存、比、查、传
 ```
 
-因此 DSL 的边际成本低：V1 已把推导逻辑收口在聚合层，V2 只加一个序列化器 + 入口（面板内"导出 DSL"按钮 / `deepmentor` CLI 子命令），DAG 侧零改动。
+因此 DSL 的边际成本低：V1 已把推导逻辑收口在聚合层，V2 只加一个序列化器 + 入口（面板内"导出 DSL"按钮 / `kagweb` CLI 子命令），DAG 侧零改动。
 
 ### DSL 相比 DAG 的新增功能
 
@@ -196,7 +196,7 @@ CytoscapeDag.tsx          serializeSessionDsl()（V2 新增，纯函数）
 ```json
 {
   "version": 1,
-  "generator": "deepmentor/1.6.4",
+  "generator": "kagweb/1.6.4",
   "session": {
     "id": "unified_1725_xxxx",
     "exported_at": "2026-09-03T10:00:00Z",
@@ -304,4 +304,4 @@ CytoscapeDag.tsx          serializeSessionDsl()（V2 新增，纯函数）
 - 新增 `web/features/chat/dag/dsl.ts`：`serializeSessionDsl(input, opts?): string`（**输入为 `SessionDagInput` 而非已折叠的 dag**，内部按 `expandAll` 全展开计算，细化#33/#34；白名单字段 JSON，选项 `stable`/`normalizeIds`/`includeText`，见 #13/#12/#21）与 `parseSessionDsl(text)`（用于归一化树校验，**不承诺 IR 全等**，见 #19）。
 - 面板头部加"导出 DSL"按钮（下载 .json，或复制到剪贴板）；复用 ChatWorkspace 现有 `handleDownloadMarkdown` 的下载模式。导出含 running 节点并如实标记（#20）；默认过滤负 id 未持久化消息（#22）。
 - 快照测试：`web/tests/session-dag-dsl.test.ts` 断言 IR → DSL(`stable:true`) → 归一化树往返一致（AST 级比较，非 IR 全等），作为能力改动的行为回归护栏。
-- CLI 侧（可选）：`deepmentor session trace <id> --format dsl` 直接从 SQLite `turn_events` 重建导出，后端复用同一推导规则（需把 `aggregate.ts` 规则在 Python 侧重写或通过前端导出）。
+- CLI 侧（可选）：`kagweb session trace <id> --format dsl` 直接从 SQLite `turn_events` 重建导出，后端复用同一推导规则（需把 `aggregate.ts` 规则在 Python 侧重写或通过前端导出）。

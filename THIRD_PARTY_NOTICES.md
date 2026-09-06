@@ -8,8 +8,8 @@
 - Copyright: Copyright (c) 2026 shanjunjie
 - Adapted concepts: PKCE loopback login, auth generations, atomic credential updates, model-catalog cache invalidation, and redacted operation states.
 
-DeepMentor's Codex OAuth support draws on the design concepts listed above and
-implements them independently against DeepMentor's own settings directory, model
+KAGWeb's Codex OAuth support draws on the design concepts listed above and
+implements them independently against KAGWeb's own settings directory, model
 catalog, and provider lifecycle. The MIT license text from that source commit
 follows:
 
@@ -46,7 +46,7 @@ SOFTWARE.
 - Adapted concepts: Feishu/Lark device-code bot registration and the WeCom AI
   Bot QR creation flow, including their retry and terminal-error semantics.
 
-DeepMentor implements these protocols with its own async HTTP service, in-memory
+KAGWeb implements these protocols with its own async HTTP service, in-memory
 session model, partner configuration merge, and Web administration interface.
 The MIT license text from that source commit follows:
 
@@ -82,7 +82,7 @@ SOFTWARE.
 - Copyright: Copyright (c) 2026 Jakub Antalik
 - Vendored files: `web/vendor/thinking-orbs/`
 
-DeepMentor vendors this package's source rather than depending on the published
+KAGWeb vendors this package's source rather than depending on the published
 `thinking-orbs` npm package, so the dotted thought-orbs can take the host row's
 `currentColor` instead of a flat greyscale ramp. Those local changes are listed at the top of
 `web/vendor/thinking-orbs/index.ts` and marked at each site. Everything else is

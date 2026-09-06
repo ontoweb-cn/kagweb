@@ -11,10 +11,10 @@ import { apiFetch, apiUrl } from "@/lib/api";
 //   • session override — sessionStorage, wins over the global default
 //   • first-play prompt — when the global default is off and the user manually
 //     plays one reply, we offer to auto-play the rest of the session.
-const SESSION_KEY_PREFIX = "deepmentor.voiceAutoplay.session"; // "on" | "off"
-const PROMPTED_KEY_PREFIX = "deepmentor.voiceAutoplay.prompted"; // "1"
-const GLOBAL_EVENT = "deepmentor:voice-autoplay-global";
-const SESSION_EVENT = "deepmentor:voice-autoplay-session";
+const SESSION_KEY_PREFIX = "kagweb.voiceAutoplay.session"; // "on" | "off"
+const PROMPTED_KEY_PREFIX = "kagweb.voiceAutoplay.prompted"; // "1"
+const GLOBAL_EVENT = "kagweb:voice-autoplay-global";
+const SESSION_EVENT = "kagweb:voice-autoplay-session";
 
 let cachedGlobal: boolean | null = null;
 let inflight: Promise<boolean> | null = null;

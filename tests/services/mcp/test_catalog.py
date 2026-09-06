@@ -8,15 +8,15 @@ from typing import Any
 
 import pytest
 
-from deepmentor.services.mcp.catalog import loader
-from deepmentor.services.mcp.catalog.loader import (
+from kagweb.services.mcp.catalog import loader
+from kagweb.services.mcp.catalog.loader import (
     category_counts,
     get_entry,
     load_catalog,
     reset_catalog_cache,
     search_catalog,
 )
-from deepmentor.services.mcp.catalog.models import (
+from kagweb.services.mcp.catalog.models import (
     CATALOG_CATEGORIES,
     CATALOG_TIERS,
     ENTRY_ID_RE,
@@ -26,8 +26,8 @@ from deepmentor.services.mcp.catalog.models import (
     localized_text,
     normalize_transport,
 )
-from deepmentor.services.mcp.config import MCPServerConfig
-from deepmentor.services.mcp.secrets import SECRET_REFERENCE_RE
+from kagweb.services.mcp.config import MCPServerConfig
+from kagweb.services.mcp.secrets import SECRET_REFERENCE_RE
 
 #: The vendored catalog's size, asserted so an edit that guts it is visible in
 #: a diff rather than silently shipping an empty store.
@@ -539,7 +539,7 @@ def test_the_catalog_is_parsed_once(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def system_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    from deepmentor.multi_user import paths
+    from kagweb.multi_user import paths
 
     root = (tmp_path / "data" / "system").resolve()
     monkeypatch.setattr(paths, "SYSTEM_ROOT", root)
@@ -559,8 +559,8 @@ def test_a_query_parameter_entry_resolves_end_to_end(entry_id: str, system_root:
     path that would silently transmit the literal placeholder to the vendor and
     fail with an opaque 401 at tool-call time.
     """
-    from deepmentor.services.mcp.manager import MCPConnectionManager
-    from deepmentor.services.mcp.secrets import store_secrets
+    from kagweb.services.mcp.manager import MCPConnectionManager
+    from kagweb.services.mcp.secrets import store_secrets
 
     entry = get_entry(entry_id)
     assert entry is not None
@@ -575,8 +575,8 @@ def test_a_query_parameter_entry_resolves_end_to_end(entry_id: str, system_root:
 
 def test_every_vendored_secret_resolves_wherever_it_was_targeted(system_root: Path) -> None:
     """Sweep the whole catalog: no entry may keep a reference after resolution."""
-    from deepmentor.services.mcp.manager import MCPConnectionManager
-    from deepmentor.services.mcp.secrets import store_secrets
+    from kagweb.services.mcp.manager import MCPConnectionManager
+    from kagweb.services.mcp.secrets import store_secrets
 
     for entry in load_catalog():
         if not entry.fields:

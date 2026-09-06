@@ -10,7 +10,7 @@ const webRoot = path.resolve(scriptDirectory, "..");
 const schemaRoot = path.join(webRoot, "contracts", "schema");
 const generatedRoot = path.join(webRoot, "contracts", "generated");
 const check = process.argv.includes("--check");
-const temporaryRoot = mkdtempSync(path.join(tmpdir(), "deepmentor-contracts-"));
+const temporaryRoot = mkdtempSync(path.join(tmpdir(), "kagweb-contracts-"));
 
 const outputs = [
   {

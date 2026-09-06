@@ -4,7 +4,7 @@ import re
 
 import py_compile
 
-path = "deepmentor_cli/chat.py"
+path = "kagweb_cli/chat.py"
 src = io.open(path, encoding="utf-8").read()
 
 

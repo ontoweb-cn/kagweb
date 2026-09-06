@@ -3,12 +3,12 @@ import unittest
 
 from typer.testing import CliRunner
 
-from deepmentor_cli import provider_cmd
-from deepmentor_cli.main import app
+from kagweb_cli import provider_cmd
+from kagweb_cli.main import app
 
 ROOT = Path(__file__).resolve().parents[2]
-PROVIDER_CMD = (ROOT / "deepmentor_cli" / "provider_cmd.py").read_text(encoding="utf-8")
-CLI_README = (ROOT / "deepmentor_cli" / "README.md").read_text(encoding="utf-8")
+PROVIDER_CMD = (ROOT / "kagweb_cli" / "provider_cmd.py").read_text(encoding="utf-8")
+CLI_README = (ROOT / "kagweb_cli" / "README.md").read_text(encoding="utf-8")
 ROOT_README = (ROOT / "README.md").read_text(encoding="utf-8")
 
 
@@ -34,11 +34,11 @@ class ProviderCliDocsContractTest(unittest.TestCase):
             ROOT_README,
         )
         self.assertIn(
-            "deepmentor provider login github-copilot    # 校验现有 GitHub Copilot 认证是否可用",
+            "kagweb provider login github-copilot    # 校验现有 GitHub Copilot 认证是否可用",
             CLI_README,
         )
         self.assertIn(
-            "deepmentor provider login codebuddy         # 校验 CodeBuddy SDK 登录；未登录时打开登录入口",
+            "kagweb provider login codebuddy         # 校验 CodeBuddy SDK 登录；未登录时打开登录入口",
             CLI_README,
         )
         self.assertNotIn("OAuth login (`openai-codex`, `github-copilot`)", ROOT_README)

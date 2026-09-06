@@ -10,8 +10,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from deepmentor.api.routers import voice as voice_router
-from deepmentor.services.voice import VoiceProviderError
+from kagweb.api.routers import voice as voice_router
+from kagweb.services.voice import VoiceProviderError
 
 
 @pytest.fixture()

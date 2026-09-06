@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 
 def _client_with_failing_route() -> TestClient:
-    from deepmentor.api.main import app
+    from kagweb.api.main import app
 
     @app.get("/api/__test_unhandled_exception__")
     def _raise_unhandled() -> None:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from deepmentor.partners.helpers import convert_markdown_table_to_labeled_rows
+from kagweb.partners.helpers import convert_markdown_table_to_labeled_rows
 
 
 def test_empty_cells_kept_in_converted_table() -> None:

@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from deepmentor.services.parsing import base, signature
-import deepmentor.services.parsing.service as svc_mod
-from deepmentor.services.parsing.service import ParseService
-from deepmentor.services.parsing.types import ParserError
+from kagweb.services.parsing import base, signature
+import kagweb.services.parsing.service as svc_mod
+from kagweb.services.parsing.service import ParseService
+from kagweb.services.parsing.types import ParserError
 
 
 class _FakeParser:

@@ -46,8 +46,8 @@ async def run_test(
     binding: str | None = None,
     test_stream: bool = False,
 ) -> bool:
-    from deepmentor.services.llm import config as config_module
-    from deepmentor.services.llm.config import LLMConfig, get_llm_config
+    from kagweb.services.llm import config as config_module
+    from kagweb.services.llm.config import LLMConfig, get_llm_config
 
     config_module._LLM_CONFIG_CACHE = None
     cfg = get_llm_config()
@@ -71,11 +71,11 @@ async def run_test(
     # --- Test 1: completion ---
     print(f"\n  {BOLD}[1/{'2' if test_stream else '1'}] Completion{RESET}", end=" ", flush=True)
     try:
-        from deepmentor.services.llm.factory import complete
+        from kagweb.services.llm.factory import complete
 
         t0 = time.perf_counter()
         resp = await complete(
-            "Reply with exactly: HELLO_DEEPMENTOR",
+            "Reply with exactly: HELLO_KAGWEB",
             system_prompt="You are a test bot. Follow instructions exactly.",
             model=effective_model,
             api_key=effective_key,
@@ -100,7 +100,7 @@ async def run_test(
     if test_stream:
         print(f"\n  {BOLD}[2/2] Streaming{RESET}", end=" ", flush=True)
         try:
-            from deepmentor.services.llm.factory import stream
+            from kagweb.services.llm.factory import stream
 
             chunks: list[str] = []
             t0 = time.perf_counter()

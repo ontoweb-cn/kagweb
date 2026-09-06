@@ -114,7 +114,7 @@ function formatFileSize(bytes?: number): string {
   return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`
 }
 
-/** "DeepMentor_Introduction.pdf" → "DeepMentor Introduction" — the card title
+/** "KAGWeb_Introduction.pdf" → "KAGWeb Introduction" — the card title
  * reads like a document name; the extension already shows in the subtitle. */
 function humanizeFilename(filename: string): string {
   const stem = filename.replace(/\.[A-Za-z0-9]{1,8}$/, '')
@@ -295,8 +295,8 @@ export const AssistantMessage = memo(function AssistantMessage({
   return (
     <>
       {/* Activity block pinned to the TOP: the status header
-          ("DeepMentor Exploring… · 8s" → "DeepMentor responded. · 10s") with
-          the exploring trace nested beneath it — expanded while DeepMentor is
+          ("KAGWeb Exploring… · 8s" → "KAGWeb responded. · 10s") with
+          the exploring trace nested beneath it — expanded while KAGWeb is
           still working, collapsed once it settles into the final answer. */}
       <AssistantActivity
         events={events}
@@ -319,7 +319,7 @@ export const AssistantMessage = memo(function AssistantMessage({
               events={events}
             />
           ) : seg.kind === 'trace' ? (
-            // What DeepMentor worked out after the user answered — shown
+            // What KAGWeb worked out after the user answered — shown
             // where they are looking, not back up in the header block.
             <NestedTraceFlow key={seg.key} events={seg.events} isStreaming={isStreaming} />
           ) : (

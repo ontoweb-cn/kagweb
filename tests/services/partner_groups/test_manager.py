@@ -8,21 +8,21 @@ from uuid import uuid4
 
 import pytest
 
-from deepmentor.core.stream import StreamEvent, StreamEventType
-from deepmentor.services.partner_groups.manager import LiveGroupTurn, PartnerGroupManager
-from deepmentor.services.partner_groups.models import (
+from kagweb.core.stream import StreamEvent, StreamEventType
+from kagweb.services.partner_groups.manager import LiveGroupTurn, PartnerGroupManager
+from kagweb.services.partner_groups.models import (
     GroupMessage,
     PartnerGroupConfig,
     PartnerInvocation,
     utc_now,
 )
-from deepmentor.services.partner_groups.modes import DiscussionContext, PanelParallelMode
-from deepmentor.services.partner_groups.store import (
+from kagweb.services.partner_groups.modes import DiscussionContext, PanelParallelMode
+from kagweb.services.partner_groups.store import (
     PUBLIC_TRANSCRIPT_MAX_CHARS,
     GroupTranscriptStore,
     PartnerInvocationStore,
 )
-from deepmentor.services.partners.manager import (
+from kagweb.services.partners.manager import (
     PartnerConfig,
     PartnerGroupTurnResponse,
     PartnerManager,
@@ -32,7 +32,7 @@ from deepmentor.services.partners.manager import (
 @pytest.fixture
 def partners_root(tmp_path, monkeypatch):
     """Keep both global Partners and user-scoped Group files under tmp_path."""
-    from deepmentor.multi_user import paths
+    from kagweb.multi_user import paths
 
     admin_root = (tmp_path / "data").resolve()
     monkeypatch.setattr(paths, "PROJECT_ROOT", tmp_path)
@@ -41,8 +41,8 @@ def partners_root(tmp_path, monkeypatch):
     monkeypatch.setattr(paths, "SYSTEM_ROOT", admin_root / "system")
     monkeypatch.setattr(paths, "_path_services", {})
     admin_root.mkdir(parents=True, exist_ok=True)
-    from deepmentor.multi_user.context import reset_current_user, set_current_user
-    from deepmentor.multi_user.models import CurrentUser, UserScope
+    from kagweb.multi_user.context import reset_current_user, set_current_user
+    from kagweb.multi_user.models import CurrentUser, UserScope
 
     token = set_current_user(
         CurrentUser(
@@ -60,7 +60,7 @@ def partners_root(tmp_path, monkeypatch):
 
 @pytest.fixture
 def group_runtime(partners_root, monkeypatch):
-    import deepmentor.services.partner_groups.manager as group_manager_module
+    import kagweb.services.partner_groups.manager as group_manager_module
 
     partners = PartnerManager()
     partners.save_config("socrates", PartnerConfig(name="Socrates", emoji="🏛️"))
@@ -812,7 +812,7 @@ async def test_partner_trace_is_owner_visible_but_excluded_from_public_context(
     history = manager.history(group.group_id, "trace-session")
     assert history[-1]["events"][0]["content"] == "private scratch path"
 
-    from deepmentor.services.partner_groups.store import GroupTranscriptStore
+    from kagweb.services.partner_groups.store import GroupTranscriptStore
 
     # The public render path deliberately ignores the persisted event payload.
     rendered = GroupTranscriptStore(manager.store.group_dir(group.group_id)).render("trace-session")

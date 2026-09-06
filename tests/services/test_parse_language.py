@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.services.config import parse_language
-from deepmentor.services.prompt import get_prompt_manager
+from kagweb.services.config import parse_language
+from kagweb.services.prompt import get_prompt_manager
 
 
 def prompt_file_chain(code: str) -> list[str]:

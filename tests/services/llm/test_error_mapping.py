@@ -2,8 +2,8 @@
 
 from datetime import datetime, timezone
 
-from deepmentor.services.llm.error_mapping import map_error, retry_after_seconds
-from deepmentor.services.llm.exceptions import (
+from kagweb.services.llm.error_mapping import map_error, retry_after_seconds
+from kagweb.services.llm.exceptions import (
     LLMAPIError,
     LLMAuthenticationError,
     LLMProviderTransportError,

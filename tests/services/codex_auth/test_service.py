@@ -10,15 +10,15 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from deepmentor.services.codex_auth import service as service_module
-from deepmentor.services.codex_auth.contracts import (
+from kagweb.services.codex_auth import service as service_module
+from kagweb.services.codex_auth.contracts import (
     CatalogSnapshot,
     CodexAuthError,
     CodexCredentials,
     CodexModel,
 )
-from deepmentor.services.codex_auth.oauth import OAuthCallbackResult
-from deepmentor.services.codex_auth.service import (
+from kagweb.services.codex_auth.oauth import OAuthCallbackResult
+from kagweb.services.codex_auth.service import (
     CODEX_PROFILE_ID,
     MANAGED_BY,
     CodexOAuthService,
@@ -27,9 +27,9 @@ from deepmentor.services.codex_auth.service import (
     ssh_forward_command,
     sync_codex_catalog,
 )
-from deepmentor.services.codex_auth.storage import CodexCredentialStore
-from deepmentor.services.config.model_catalog import ModelCatalogService
-from deepmentor.services.config.provider_runtime import resolve_llm_runtime_config
+from kagweb.services.codex_auth.storage import CodexCredentialStore
+from kagweb.services.config.model_catalog import ModelCatalogService
+from kagweb.services.config.provider_runtime import resolve_llm_runtime_config
 
 
 def test_each_user_gets_their_own_codex_credential_root(
@@ -44,9 +44,9 @@ def test_each_user_gets_their_own_codex_credential_root(
     pre-existing login is relocated from, so pinning it would leave this
     guarantee unguarded.
     """
-    from deepmentor.multi_user import paths as paths_module
-    from deepmentor.multi_user.context import reset_current_user, set_current_user
-    from deepmentor.multi_user.models import CurrentUser, UserScope
+    from kagweb.multi_user import paths as paths_module
+    from kagweb.multi_user.context import reset_current_user, set_current_user
+    from kagweb.multi_user.models import CurrentUser, UserScope
 
     admin_root = (tmp_path / "data").resolve()
     monkeypatch.setattr(paths_module, "ADMIN_WORKSPACE_ROOT", admin_root)
@@ -80,9 +80,9 @@ def test_partner_turn_inherits_its_owner_codex_login(
     Before #711 the credential store followed the partner scope to
     ``data/partners/<id>/workspace/user``, found nothing, and failed in 0s.
     """
-    from deepmentor.multi_user import paths as paths_module
-    from deepmentor.multi_user.context import reset_current_user, set_current_user
-    from deepmentor.services.partners.scope import partner_user
+    from kagweb.multi_user import paths as paths_module
+    from kagweb.multi_user.context import reset_current_user, set_current_user
+    from kagweb.services.partners.scope import partner_user
 
     admin_root = (tmp_path / "data").resolve()
     monkeypatch.setattr(paths_module, "ADMIN_WORKSPACE_ROOT", admin_root)

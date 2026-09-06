@@ -2,7 +2,7 @@
 
 import pytest
 
-from deepmentor.services.llm.utils import (
+from kagweb.services.llm.utils import (
     build_auth_headers,
     build_chat_url,
     build_completion_url,

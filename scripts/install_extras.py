@@ -3,13 +3,13 @@
 A Docker container is disposable, so `docker exec … pip install ".[partners]"`
 survives exactly until the next `docker compose down` (#762). The fix is to
 stop treating extras as something you *do* to a running container and make them
-something the deployment *declares*: set ``DEEPMENTOR_EXTRAS`` in the Compose
+something the deployment *declares*: set ``KAGWEB_EXTRAS`` in the Compose
 file, and every container that starts from it has them.
 
 Two things keep this cheap enough to run on the startup path:
 
 * it reads the extra's requirement list out of ``pyproject.toml`` and installs
-  those, rather than reinstalling ``deepmentor`` itself to pull them in;
+  those, rather than reinstalling ``kagweb`` itself to pull them in;
 * an extra whose requirements are already importable-and-satisfied costs one
   metadata lookup per requirement, so a warm container starts as fast as it did
   before.

@@ -6,17 +6,17 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from deepmentor.runtime.coordination import RedisCoordinator
+from kagweb.runtime.coordination import RedisCoordinator
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.redis_integration]
 
 
 @pytest_asyncio.fixture
 async def coordinator():
-    url = os.environ.get("DEEPMENTOR_TEST_REDIS_URL", "")
+    url = os.environ.get("KAGWEB_TEST_REDIS_URL", "")
     if not url:
-        pytest.skip("DEEPMENTOR_TEST_REDIS_URL is not configured")
-    prefix = f"deepmentor-test-{uuid.uuid4().hex}"
+        pytest.skip("KAGWEB_TEST_REDIS_URL is not configured")
+    prefix = f"kagweb-test-{uuid.uuid4().hex}"
     instance = RedisCoordinator(url, key_prefix=prefix, lease_ttl_seconds=10)
     if not await instance.health():
         pytest.skip("test Redis is unavailable")

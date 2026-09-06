@@ -5,9 +5,9 @@ gating is LLM-only; embedding/search are shared admin infrastructure. The same
 helper backs the turn-runtime gate and the frontend lock, so they always agree.
 """
 
-from deepmentor.multi_user import model_access
-from deepmentor.multi_user.context import reset_current_user, set_current_user
-from deepmentor.multi_user.models import CurrentUser, UserScope
+from kagweb.multi_user import model_access
+from kagweb.multi_user.context import reset_current_user, set_current_user
+from kagweb.multi_user.models import CurrentUser, UserScope
 
 
 def make_user(tmp_path, role="user"):

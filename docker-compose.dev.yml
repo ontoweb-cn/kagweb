@@ -1,5 +1,5 @@
 # ============================================
-# DeepMentor Docker Compose - Development Override
+# KAGWeb Docker Compose - Development Override
 # ============================================
 # Use with: python scripts/docker_compose.py -f docker-compose.yml -f docker-compose.dev.yml up
 #
@@ -10,14 +10,14 @@
 # ============================================
 
 services:
-  deepmentor:
+  kagweb:
     build:
       target: development
 
     volumes:
       # Mount backend source code for hot-reload
-      - ./deepmentor:/app/deepmentor:ro
-      - ./deepmentor_cli:/app/deepmentor_cli:ro
+      - ./kagweb:/app/kagweb:ro
+      - ./kagweb_cli:/app/kagweb_cli:ro
       - ./scripts:/app/scripts:ro
 
       # Mount frontend source for hot-reload. Anything not listed here still
@@ -47,4 +47,4 @@ services:
     #     max-file: "3"
 
     networks:
-      - deepmentor-network
+      - kagweb-network

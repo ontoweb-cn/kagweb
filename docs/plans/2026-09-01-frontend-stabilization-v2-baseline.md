@@ -1,4 +1,4 @@
-# DeepMentor v2 Frontend Baseline
+# KAGWeb v2 Frontend Baseline
 
 **Captured:** 2026-09-01
 

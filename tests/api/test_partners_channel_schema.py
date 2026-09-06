@@ -15,14 +15,14 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 import pytest
 
-from deepmentor.api.routers._partners_channel_schema import (
+from kagweb.api.routers._partners_channel_schema import (
     all_channel_schemas,
     channel_schema_payload,
     collect_secret_fields,
     inline_refs,
     resolve_config_model,
 )
-from deepmentor.api.routers.partners import _validate_channels_payload
+from kagweb.api.routers.partners import _validate_channels_payload
 
 
 class TestChannelPayloadValidation:
@@ -57,17 +57,17 @@ class TestChannelPayloadValidation:
 
 class TestResolveConfigModel:
     def test_telegram_pairs_with_telegram_config(self) -> None:
-        from deepmentor.partners.channels.telegram import TelegramChannel, TelegramConfig
+        from kagweb.partners.channels.telegram import TelegramChannel, TelegramConfig
 
         assert resolve_config_model(TelegramChannel) is TelegramConfig
 
     def test_slack_pairs_with_slack_config(self) -> None:
-        from deepmentor.partners.channels.slack import SlackChannel, SlackConfig
+        from kagweb.partners.channels.slack import SlackChannel, SlackConfig
 
         assert resolve_config_model(SlackChannel) is SlackConfig
 
     def test_discord_pairs_with_discord_config(self) -> None:
-        from deepmentor.partners.channels.discord import DiscordChannel, DiscordConfig
+        from kagweb.partners.channels.discord import DiscordChannel, DiscordConfig
 
         assert resolve_config_model(DiscordChannel) is DiscordConfig
 
@@ -148,7 +148,7 @@ class TestCollectSecretFields:
 
 class TestChannelSchemaPayload:
     def test_telegram_payload_shape(self) -> None:
-        from deepmentor.partners.channels.telegram import TelegramChannel
+        from kagweb.partners.channels.telegram import TelegramChannel
 
         payload = channel_schema_payload(TelegramChannel)
         assert payload is not None
@@ -161,7 +161,7 @@ class TestChannelSchemaPayload:
         assert payload["default_config"]["enabled"] is False
 
     def test_slack_dm_subtree_inlined(self) -> None:
-        from deepmentor.partners.channels.slack import SlackChannel
+        from kagweb.partners.channels.slack import SlackChannel
 
         payload = channel_schema_payload(SlackChannel)
         assert payload is not None
@@ -181,7 +181,7 @@ class TestEndpoint:
         # fixturing of ``get_partner_manager`` is needed.
         from fastapi import FastAPI
 
-        from deepmentor.api.routers import partners as partners_router
+        from kagweb.api.routers import partners as partners_router
 
         app = FastAPI()
         app.include_router(partners_router.router, prefix="/api/partners")

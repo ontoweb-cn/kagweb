@@ -1,4 +1,4 @@
-from deepmentor.logging import bind_log_context, current_log_context
+from kagweb.logging import bind_log_context, current_log_context
 
 
 def test_bind_log_context_is_scoped_and_nested():

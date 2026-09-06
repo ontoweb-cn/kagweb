@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.api.routers import settings as settings_router
+from kagweb.api.routers import settings as settings_router
 
 
 def test_llm_provider_choices_expose_api_formats_and_legacy_status() -> None:

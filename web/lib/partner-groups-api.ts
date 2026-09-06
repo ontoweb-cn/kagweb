@@ -196,7 +196,7 @@ export async function getPartnerGroupInvocations(
 }
 
 export function partnerGroupSessionKey(groupId: string): string {
-  const storageKey = `deepmentor:partner-group:${groupId}:session`;
+  const storageKey = `kagweb:partner-group:${groupId}:session`;
   if (typeof window === "undefined") return "default";
   const existing = browserStorage.readRaw("local", storageKey);
   if (existing) return existing;
@@ -243,7 +243,7 @@ export function setPartnerGroupSessionKey(groupId: string, key: string): void {
   if (typeof window === "undefined") return;
   browserStorage.writeRaw(
     "local",
-    `deepmentor:partner-group:${groupId}:session`,
+    `kagweb:partner-group:${groupId}:session`,
     key,
   );
 }

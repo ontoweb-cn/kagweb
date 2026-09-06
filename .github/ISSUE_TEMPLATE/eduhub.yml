@@ -1,5 +1,5 @@
 name: EduHub / Skill Registry
-description: Report an issue with EduHub — the DeepMentor skill registry (site, API, CLI, or a published skill)
+description: Report an issue with EduHub — the KAGWeb skill registry (site, API, CLI, or a published skill)
 title: "[EduHub]:"
 labels: ["eduhub", "triage"]
 
@@ -7,9 +7,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        EduHub is DeepMentor's skill registry at https://eduhub.deepmentor.info.
+        EduHub is KAGWeb's skill registry at https://eduhub.kagweb.info.
         Use this template for the EduHub web site, the ClawHub-compatible API, the `eduhub` CLI,
-        or a specific published skill. For bugs in the DeepMentor app itself, use the Bug Report template.
+        or a specific published skill. For bugs in the KAGWeb app itself, use the Bug Report template.
   - type: checkboxes
     id: existingcheck
     attributes:
@@ -17,14 +17,14 @@ body:
       description: Please help us manage our time by avoiding duplicates with the steps below.
       options:
         - label: I have searched the existing issues and this is not already filed.
-        - label: I have read the usage guide at https://eduhub.deepmentor.info/how-to-use
+        - label: I have read the usage guide at https://eduhub.kagweb.info/how-to-use
   - type: dropdown
     id: area
     attributes:
       label: Area
       description: Which part of EduHub is this about?
       options:
-        - Web site (eduhub.deepmentor.info)
+        - Web site (eduhub.kagweb.info)
         - HTTP API (/api/v1)
         - CLI (eduhub command)
         - A published skill (install / content / metadata)
@@ -70,7 +70,7 @@ body:
         - eduhub CLI Version: run `eduhub --version` (CLI issues only)
         - Operating System: e.g., macOS 14.0, Windows 11, Ubuntu 22.04
         - Node.js Version: e.g., 20.x
-        - Registry: e.g., https://eduhub.deepmentor.info
+        - Registry: e.g., https://eduhub.kagweb.info
       value: |
         - eduhub CLI Version:
         - Operating System:

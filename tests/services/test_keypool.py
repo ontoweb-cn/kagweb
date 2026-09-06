@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.services.keypool import KeyPool, primary_api_key
+from kagweb.services.keypool import KeyPool, primary_api_key
 
 
 def test_keypool_rotates_in_round_robin_order() -> None:
@@ -20,7 +20,7 @@ def test_keypool_rotates_in_round_robin_order() -> None:
 def test_keypool_cools_key_after_two_429s_and_restores_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepmentor.services import keypool as keypool_module
+    from kagweb.services import keypool as keypool_module
 
     now = {"value": 100.0}
     monkeypatch.setattr(keypool_module, "monotonic", lambda: now["value"])
@@ -45,7 +45,7 @@ def test_keypool_still_serves_a_single_cooling_key(
     retryable provider 429 into a hard failure for every LLM and embedding
     call until the cooldown expires.
     """
-    from deepmentor.services import keypool as keypool_module
+    from kagweb.services import keypool as keypool_module
 
     now = {"value": 10.0}
     monkeypatch.setattr(keypool_module, "monotonic", lambda: now["value"])
@@ -64,7 +64,7 @@ def test_keypool_still_serves_a_single_cooling_key(
 def test_keypool_prefers_the_soonest_recovering_key_when_all_are_cooling(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepmentor.services import keypool as keypool_module
+    from kagweb.services import keypool as keypool_module
 
     now = {"value": 0.0}
     monkeypatch.setattr(keypool_module, "monotonic", lambda: now["value"])
@@ -101,7 +101,7 @@ def test_primary_api_key_reduces_every_configured_shape(value, expected) -> None
 
 def test_llm_config_get_api_key_uses_the_same_reduction() -> None:
     """``LLMConfig.get_api_key`` is a ``-> str`` front door, not a second copy."""
-    from deepmentor.services.llm.config import LLMConfig
+    from kagweb.services.llm.config import LLMConfig
 
     for value in ("sk-a", ["sk-a", "sk-b"], "", [], [""]):
         config = LLMConfig(api_key=value, model="gpt-5")

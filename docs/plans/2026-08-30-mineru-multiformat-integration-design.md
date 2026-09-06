@@ -2,7 +2,7 @@
 
 ## Context
 
-Issue #1087 correctly points out that current DeepMentor documentation and the
+Issue #1087 correctly points out that current KAGWeb documentation and the
 `MinerUParser` adapter expose PDF only, while current MinerU supports PDF,
 images, DOCX, PPTX, and XLSX. Merely updating the docs would leave Office files
 blocked by the parser adapter and standalone images routed around the parser in

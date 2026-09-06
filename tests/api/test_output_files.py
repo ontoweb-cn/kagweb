@@ -11,17 +11,17 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from deepmentor.services.auth import TokenPayload
-from deepmentor.services.path_service import PathService
+from kagweb.services.auth import TokenPayload
+from kagweb.services.path_service import PathService
 
 OutputAppFactory = Callable[[dict[str, TokenPayload | None], bool], tuple[TestClient, Path, Path]]
 
 
 @pytest.fixture
 def output_app(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> OutputAppFactory:
-    from deepmentor.api.routers import auth as auth_router
-    from deepmentor.api.routers import outputs
-    from deepmentor.multi_user import paths as multi_user_paths
+    from kagweb.api.routers import auth as auth_router
+    from kagweb.api.routers import outputs
+    from kagweb.multi_user import paths as multi_user_paths
 
     admin_root = tmp_path / "data"
     users_root = admin_root / "users"
@@ -129,7 +129,7 @@ def test_authenticated_user_downloads_visible_partner_output(output_app, monkeyp
     alice = TokenPayload(username="alice", role="user", user_id="u_alice")
     client, admin_root, _users_root = output_app({"alice-token": alice})
 
-    from deepmentor.api.routers import outputs
+    from kagweb.api.routers import outputs
 
     partner_root = admin_root / "partners" / "math-bot" / "workspace"
     _write_output(partner_root, relative_path, b"\x89PNG\r\n\x1a\npartner image")

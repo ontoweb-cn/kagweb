@@ -11,8 +11,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from deepmentor.partners.bus.queue import MessageBus
-from deepmentor.partners.channels.zulip import ZulipChannel, ZulipConfig
+from kagweb.partners.bus.queue import MessageBus
+from kagweb.partners.channels.zulip import ZulipChannel, ZulipConfig
 
 
 def _make_channel(**overrides) -> ZulipChannel:
@@ -218,19 +218,19 @@ class TestIsMentioned:
         # from the rendered ``@**Bot Name**`` syntax in the message body.
         ch = _make_channel()
         ch._bot_user_id = 100
-        ch._bot_full_name = "DeepMentor Bot"
-        assert ch._is_mentioned({"flags": [], "content": "hi @**DeepMentor Bot** help"}) is True
+        ch._bot_full_name = "KAGWeb Bot"
+        assert ch._is_mentioned({"flags": [], "content": "hi @**KAGWeb Bot** help"}) is True
 
     def test_content_fallback_requires_full_name(self):
         ch = _make_channel()
         ch._bot_user_id = 100
         ch._bot_full_name = ""
-        assert ch._is_mentioned({"flags": [], "content": "hi @**DeepMentor Bot**"}) is False
+        assert ch._is_mentioned({"flags": [], "content": "hi @**KAGWeb Bot**"}) is False
 
     def test_content_fallback_no_match(self):
         ch = _make_channel()
         ch._bot_user_id = 100
-        ch._bot_full_name = "DeepMentor Bot"
+        ch._bot_full_name = "KAGWeb Bot"
         assert ch._is_mentioned({"flags": [], "content": "no mention here"}) is False
 
     def test_content_fallback_disambiguated_mention(self):
@@ -238,8 +238,8 @@ class TestIsMentioned:
         # does not contain @**Name** as a substring, so it needs its own pattern.
         ch = _make_channel()
         ch._bot_user_id = 100
-        ch._bot_full_name = "DeepMentor Bot"
-        assert ch._is_mentioned({"flags": [], "content": "hi @**DeepMentor Bot|100** help"}) is True
+        ch._bot_full_name = "KAGWeb Bot"
+        assert ch._is_mentioned({"flags": [], "content": "hi @**KAGWeb Bot|100** help"}) is True
 
 
 class TestExtractUploadLinks:
@@ -316,7 +316,7 @@ class TestDownloadAttachments:
                 return_value=[("img.png", "/user_uploads/2/ce/abc/img.png")],
             ),
             patch.object(ch, "media_dir", return_value=tmp_path),
-            patch("deepmentor.partners.channels.zulip.requests.get") as mock_get,
+            patch("kagweb.partners.channels.zulip.requests.get") as mock_get,
         ):
             mock_resp = MagicMock()
             mock_resp.raise_for_status = MagicMock()
@@ -682,7 +682,7 @@ class TestSend:
         mock_client.call_endpoint.return_value = {"result": "success"}
         ch._client = mock_client
 
-        from deepmentor.partners.bus.events import OutboundMessage
+        from kagweb.partners.bus.events import OutboundMessage
 
         msg = OutboundMessage(
             channel="zulip",
@@ -707,7 +707,7 @@ class TestSend:
         typing_task = asyncio.create_task(asyncio.sleep(100))
         ch._typing_tasks["pm:42"] = typing_task
 
-        from deepmentor.partners.bus.events import OutboundMessage
+        from kagweb.partners.bus.events import OutboundMessage
 
         msg = OutboundMessage(
             channel="zulip",
@@ -728,7 +728,7 @@ class TestSend:
         typing_task = asyncio.create_task(asyncio.sleep(100))
         ch._typing_tasks["pm:42"] = typing_task
 
-        from deepmentor.partners.bus.events import OutboundMessage
+        from kagweb.partners.bus.events import OutboundMessage
 
         msg = OutboundMessage(
             channel="zulip",
@@ -744,7 +744,7 @@ class TestSend:
         ch = _make_channel()
         ch._client = None
 
-        from deepmentor.partners.bus.events import OutboundMessage
+        from kagweb.partners.bus.events import OutboundMessage
 
         msg = OutboundMessage(
             channel="zulip",
@@ -772,7 +772,7 @@ class TestUploadAndSend:
         mock_client.call_endpoint.side_effect = fake_call_endpoint
         ch._client = mock_client
 
-        from deepmentor.partners.bus.events import OutboundMessage
+        from kagweb.partners.bus.events import OutboundMessage
 
         msg = OutboundMessage(
             channel="zulip",
@@ -868,7 +868,7 @@ class TestResolveMediaPath:
 
         with (
             patch.object(ch, "media_dir", return_value=tmp_path),
-            patch("deepmentor.partners.channels.zulip.requests.get") as mock_get,
+            patch("kagweb.partners.channels.zulip.requests.get") as mock_get,
         ):
             mock_resp = MagicMock()
             mock_resp.raise_for_status = MagicMock()
@@ -886,7 +886,7 @@ class TestResolveMediaPath:
 
         with (
             patch.object(ch, "media_dir", return_value=tmp_path),
-            patch("deepmentor.partners.channels.zulip.requests.get") as mock_get,
+            patch("kagweb.partners.channels.zulip.requests.get") as mock_get,
         ):
             mock_resp = MagicMock()
             mock_resp.raise_for_status = MagicMock()
@@ -902,7 +902,7 @@ class TestResolveMediaPath:
 
         with (
             patch.object(ch, "media_dir", return_value=tmp_path),
-            patch("deepmentor.partners.channels.zulip.requests.get") as mock_get,
+            patch("kagweb.partners.channels.zulip.requests.get") as mock_get,
         ):
             mock_resp = MagicMock()
             mock_resp.raise_for_status = MagicMock()
@@ -933,7 +933,7 @@ class TestSendMetadataEnrichment:
             "sender_email": "user@example.com",
         }
 
-        from deepmentor.partners.bus.events import OutboundMessage
+        from kagweb.partners.bus.events import OutboundMessage
 
         msg = OutboundMessage(
             channel="zulip",
@@ -959,7 +959,7 @@ class TestSendMetadataEnrichment:
             "recipient_user_id": "42",
         }
 
-        from deepmentor.partners.bus.events import OutboundMessage
+        from kagweb.partners.bus.events import OutboundMessage
 
         msg = OutboundMessage(
             channel="zulip",
@@ -981,7 +981,7 @@ class TestSendToolHints:
         mock_client.call_endpoint.return_value = {"result": "success"}
         ch._client = mock_client
 
-        from deepmentor.partners.bus.events import OutboundMessage
+        from kagweb.partners.bus.events import OutboundMessage
 
         msg = OutboundMessage(
             channel="zulip",
@@ -1005,7 +1005,7 @@ class TestSendToolHints:
         mock_client.call_endpoint.return_value = {"result": "success"}
         ch._client = mock_client
 
-        from deepmentor.partners.bus.events import OutboundMessage
+        from kagweb.partners.bus.events import OutboundMessage
 
         msg = OutboundMessage(
             channel="zulip",
@@ -1130,7 +1130,7 @@ class TestSubscribeStreams:
         }
         ch._client = mock_client
 
-        with patch("deepmentor.partners.channels.zulip.logger.warning") as mock_warning:
+        with patch("kagweb.partners.channels.zulip.logger.warning") as mock_warning:
             ch._subscribe_to_streams()
 
         mock_client.add_subscriptions.assert_called_once()
@@ -1147,8 +1147,8 @@ class TestSubscribeStreams:
         ch._client = mock_client
 
         with (
-            patch("deepmentor.partners.channels.zulip.logger.warning") as mock_warning,
-            patch("deepmentor.partners.channels.zulip.logger.debug") as mock_debug,
+            patch("kagweb.partners.channels.zulip.logger.warning") as mock_warning,
+            patch("kagweb.partners.channels.zulip.logger.debug") as mock_debug,
         ):
             ch._subscribe_to_streams()
 
@@ -1236,7 +1236,7 @@ class TestStart:
         ch = _make_channel()
         fake_zulip = SimpleNamespace(Client=MagicMock())
         monkeypatch.setitem(sys.modules, "zulip", fake_zulip)
-        with patch("deepmentor.partners.channels.zulip.ZulipChannel._call_with_retry") as mock_retry:
+        with patch("kagweb.partners.channels.zulip.ZulipChannel._call_with_retry") as mock_retry:
             mock_retry.return_value = {"result": "error"}
             await ch.start()
 

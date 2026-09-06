@@ -21,13 +21,13 @@ def rep(src, old, new, path=""):
 
 
 # ── core/turn_request.py: drop knowledge_bases field ──
-p = "deepmentor/core/turn_request.py"
+p = "kagweb/core/turn_request.py"
 s = load(p)
 s = rep(s, "    knowledge_bases: list[str] = Field(default_factory=list)\n", "", p)
 save(p, s)
 
 # ── multi_user/grants.py: drop knowledge_bases grant key ──
-p = "deepmentor/multi_user/grants.py"
+p = "kagweb/multi_user/grants.py"
 s = load(p)
 s = rep(s, '        "knowledge_bases": [],\n', "", p)
 s = rep(s, '    for key in ("knowledge_bases", "skills", "partners"):',
@@ -35,13 +35,13 @@ s = rep(s, '    for key in ("knowledge_bases", "skills", "partners"):',
 save(p, s)
 
 # ── multi_user/paths.py: stop creating knowledge_bases dir ──
-p = "deepmentor/multi_user/paths.py"
+p = "kagweb/multi_user/paths.py"
 s = load(p)
 s = rep(s, '    (root / "knowledge_bases").mkdir(parents=True, exist_ok=True)\n', "", p)
 save(p, s)
 
 # ── path_service.py: drop get_knowledge_bases_root ──
-p = "deepmentor/services/path_service.py"
+p = "kagweb/services/path_service.py"
 s = load(p)
 s = rep(s, '''    def get_knowledge_bases_root(self) -> Path:
         return self._workspace_root / "knowledge_bases"
@@ -50,21 +50,21 @@ s = rep(s, '''    def get_knowledge_bases_root(self) -> Path:
 save(p, s)
 
 # ── config/defaults.py + schema.py + loader.py: drop knowledge_bases_dir ──
-p = "deepmentor/config/defaults.py"
+p = "kagweb/config/defaults.py"
 s = load(p)
 s = rep(s, '        "knowledge_bases_dir": str(_project_root / "data" / "knowledge_bases"),\n', "", p)
 save(p, s)
-p = "deepmentor/config/schema.py"
+p = "kagweb/config/schema.py"
 s = load(p)
 s = rep(s, "    knowledge_bases_dir: str\n", "", p)
 save(p, s)
-p = "deepmentor/services/config/loader.py"
+p = "kagweb/services/config/loader.py"
 s = load(p)
 s = rep(s, '        "knowledge_bases_dir": str(path_service.get_knowledge_bases_root()),\n', "", p)
 save(p, s)
 
 # ── session/legacy_migration.py: tolerate old kb prefs by dropping the key ──
-p = "deepmentor/services/session/legacy_migration.py"
+p = "kagweb/services/session/legacy_migration.py"
 s = load(p)
 i = s.index('"knowledge_bases": (')
 j = s.index("),", i) + 2

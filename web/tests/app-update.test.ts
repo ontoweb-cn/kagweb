@@ -22,16 +22,16 @@ const statusPayload = {
   update_available: true,
   release: {
     version: "1.7.0",
-    name: "DeepMentor 1.7",
+    name: "KAGWeb 1.7",
     published_at: "2026-08-30T00:00:00Z",
-    url: "https://github.com/HKUDS/DeepMentor/releases/tag/v1.7.0",
+    url: "https://github.com/HKUDS/KAGWeb/releases/tag/v1.7.0",
     excerpt: "A stable release.",
     migration_warning: false,
   },
   installation: {
     mode: "pypi",
     automatic_update: true,
-    command: "pip install -U deepmentor",
+    command: "pip install -U kagweb",
     reason: "",
   },
   launcher_managed: true,
@@ -172,6 +172,6 @@ test("sidebar keeps update status and external brand links hidden", () => {
   );
 
   assert.doesNotMatch(shell, /VersionBadge/);
-  assert.doesNotMatch(shell, /deepmentor\.info/);
-  assert.doesNotMatch(shell, /github\.com\/HKUDS\/DeepMentor/);
+  assert.doesNotMatch(shell, /kagweb\.info/);
+  assert.doesNotMatch(shell, /github\.com\/HKUDS\/KAGWeb/);
 });

@@ -7,7 +7,7 @@ import { browserStorage } from "@/shared/storage";
 
 export type Theme = "light" | "dark" | "glass" | "snow";
 
-export const THEME_STORAGE_KEY = "deepmentor-theme";
+export const THEME_STORAGE_KEY = "kagweb-theme";
 
 type ThemeChangeListener = (theme: Theme) => void;
 const themeListeners = new Set<ThemeChangeListener>();

@@ -1,7 +1,7 @@
 /**
  * Client-side registry of imported "agents". An agent is a *named, scoped*
  * slice of one source folder (a `.claude` or `.codex` home): the user can carve
- * several agents out of the same folder (e.g. "DeepMentor work" vs "research").
+ * several agents out of the same folder (e.g. "KAGWeb work" vs "research").
  * We keep each agent's `FileSystemDirectoryHandle` in IndexedDB — handles are
  * structured-cloneable but not JSON-serializable — so it can be re-synced later
  * without re-picking the folder (subject to a permission re-grant on a fresh
@@ -32,7 +32,7 @@ export interface ImportAgent {
   lastSyncAt: number;
 }
 
-const DB_NAME = "deepmentor-chat-import";
+const DB_NAME = "kagweb-chat-import";
 const STORE = "agents";
 // v2: the store key moved from `source` (one agent per source) to a generated
 // `id` (many named, scoped agents per source). See `migrate` below.

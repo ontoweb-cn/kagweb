@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.services.llm.provider_core.openai_compat_provider import OpenAICompatProvider
-from deepmentor.services.provider_registry import find_by_model, find_by_name, model_overrides_for
+from kagweb.services.llm.provider_core.openai_compat_provider import OpenAICompatProvider
+from kagweb.services.provider_registry import find_by_model, find_by_name, model_overrides_for
 
 _MOONSHOT_BASE = "https://api.moonshot.cn/v1"
 

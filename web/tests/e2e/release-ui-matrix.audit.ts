@@ -33,8 +33,8 @@ for (const theme of themes) {
         });
         await context.addInitScript(
           ({ selectedTheme, selectedLanguage }) => {
-            localStorage.setItem("deepmentor-theme", selectedTheme);
-            localStorage.setItem("deepmentor-language", selectedLanguage);
+            localStorage.setItem("kagweb-theme", selectedTheme);
+            localStorage.setItem("kagweb-language", selectedLanguage);
           },
           { selectedTheme: theme, selectedLanguage: language },
         );

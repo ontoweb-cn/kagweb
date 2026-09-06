@@ -12,9 +12,9 @@ from typing import Any
 import httpx
 import pytest
 
-from deepmentor.services.llm import openai_http_client
-from deepmentor.services.llm.exceptions import LLMProviderTransportError
-from deepmentor.services.llm.provider_core import openai_codex_provider
+from kagweb.services.llm import openai_http_client
+from kagweb.services.llm.exceptions import LLMProviderTransportError
+from kagweb.services.llm.provider_core import openai_codex_provider
 
 
 @pytest.fixture(autouse=True)

@@ -14,7 +14,7 @@ except Exception:  # pragma: no cover
     FastAPI = None
     TestClient = None
 
-from deepmentor.services.partners.manager import PartnerConfig, PartnerManager
+from kagweb.services.partners.manager import PartnerConfig, PartnerManager
 
 pytestmark = pytest.mark.skipif(
     FastAPI is None or TestClient is None, reason="fastapi not installed"
@@ -23,11 +23,11 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def client(tmp_path: Path, monkeypatch) -> TestClient:
-    from deepmentor.api.routers import auth as auth_module
-    from deepmentor.api.routers import partner_groups as router_module
-    from deepmentor.multi_user import paths
-    import deepmentor.services.partner_groups.manager as manager_module
-    from deepmentor.services.partner_groups.manager import PartnerGroupManager
+    from kagweb.api.routers import auth as auth_module
+    from kagweb.api.routers import partner_groups as router_module
+    from kagweb.multi_user import paths
+    import kagweb.services.partner_groups.manager as manager_module
+    from kagweb.services.partner_groups.manager import PartnerGroupManager
 
     admin_root = (tmp_path / "data").resolve()
     monkeypatch.setattr(paths, "PROJECT_ROOT", tmp_path)
@@ -36,8 +36,8 @@ def client(tmp_path: Path, monkeypatch) -> TestClient:
     monkeypatch.setattr(paths, "SYSTEM_ROOT", admin_root / "system")
     monkeypatch.setattr(paths, "_path_services", {})
     admin_root.mkdir(parents=True, exist_ok=True)
-    from deepmentor.multi_user.context import reset_current_user, set_current_user
-    from deepmentor.multi_user.models import CurrentUser, UserScope
+    from kagweb.multi_user.context import reset_current_user, set_current_user
+    from kagweb.multi_user.models import CurrentUser, UserScope
 
     token = set_current_user(
         CurrentUser(
@@ -505,7 +505,7 @@ def test_round_summary_websocket_uses_standard_stream_frames(
     client: TestClient,
     monkeypatch,
 ) -> None:
-    from deepmentor.core.stream import StreamEvent, StreamEventType
+    from kagweb.core.stream import StreamEvent, StreamEventType
 
     partners = client.app.state.partners
     monkeypatch.setattr(

@@ -4,7 +4,7 @@ import re
 
 import py_compile
 
-p = "deepmentor_cli/init_wizard.py"
+p = "kagweb_cli/init_wizard.py"
 src = io.open(p, encoding="utf-8").read()
 
 if "def probe_embedding(" not in src:
@@ -27,7 +27,7 @@ src = cut(src, r"^class EmbeddingChoice\b", r"^class SearchChoice:")
 src = cut(src, r"^EMBEDDING_FALLBACK_MODELS:", r"^class SearchProviderSpec")
 src = cut(src, r"^# Featured embedding providers", r"^class SearchProviderSpec")
 
-src = re.sub(r"from deepmentor\.services\.config\.embedding_endpoint import \([^)]*\)\n", "", src, count=1)
+src = re.sub(r"from kagweb\.services\.config\.embedding_endpoint import \([^)]*\)\n", "", src, count=1)
 for e in [
     '    "EMBEDDING_FALLBACK_MODELS",\n',
     '    "EmbeddingChoice",\n',
@@ -53,5 +53,5 @@ src = re.sub(r"\n{4,}", "\n\n\n", src)
 io.open(p, "w", encoding="utf-8", newline="").write(src)
 py_compile.compile(p, doraise=True)
 print("init_wizard OK,", src.count(chr(10)), "lines")
-leftover = subprocess.run(["grep", "-niE", "embedding", "deepmentor_cli/init_wizard.py"], capture_output=True, text=True).stdout
+leftover = subprocess.run(["grep", "-niE", "embedding", "kagweb_cli/init_wizard.py"], capture_output=True, text=True).stdout
 print(leftover or "clean")

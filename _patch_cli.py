@@ -2,7 +2,7 @@
 import io
 import py_compile
 
-path = "deepmentor_cli/main.py"
+path = "kagweb_cli/main.py"
 src = io.open(path, encoding="utf-8").read()
 
 
@@ -45,7 +45,7 @@ py_compile.compile(path, doraise=True)
 print("main.py OK")
 
 # common.py: drop kb/notebook plumbing
-path = "deepmentor_cli/common.py"
+path = "kagweb_cli/common.py"
 src = io.open(path, encoding="utf-8").read()
 i = src.index("def parse_notebook_references")
 j = src.index("\n\n\n", i)

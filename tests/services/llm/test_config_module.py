@@ -6,10 +6,10 @@ import os
 
 import pytest
 
-from deepmentor.services.config.provider_runtime import ResolvedLLMConfig
-from deepmentor.services.llm import config as config_module
-from deepmentor.services.llm.config import LLMConfig
-from deepmentor.services.llm.exceptions import LLMConfigError
+from kagweb.services.config.provider_runtime import ResolvedLLMConfig
+from kagweb.services.llm import config as config_module
+from kagweb.services.llm.config import LLMConfig
+from kagweb.services.llm.exceptions import LLMConfigError
 
 
 def _reset_config_cache() -> None:

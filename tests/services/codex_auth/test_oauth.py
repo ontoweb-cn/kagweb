@@ -7,12 +7,12 @@ from urllib.parse import parse_qs, urlsplit
 import httpx
 import pytest
 
-from deepmentor.services.codex_auth.constants import (
+from kagweb.services.codex_auth.constants import (
     CODEX_OAUTH_CLIENT_ID,
     CODEX_OAUTH_SCOPE,
 )
-from deepmentor.services.codex_auth.contracts import CodexAuthError, CodexCredentials
-from deepmentor.services.codex_auth.oauth import (
+from kagweb.services.codex_auth.contracts import CodexAuthError, CodexCredentials
+from kagweb.services.codex_auth.oauth import (
     CodexOAuthClient,
     LoopbackCallback,
     OAuthCallbackResult,

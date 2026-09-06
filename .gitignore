@@ -9,8 +9,8 @@
 data/
 /multi-user/
 run_code_workspace/
-deepmentor/agents/question/reference_papers/
-deepmentor/services/rag/eg_only_for_analysis/
+kagweb/agents/question/reference_papers/
+kagweb/services/rag/eg_only_for_analysis/
 /site/
 .claude
 .agents/
@@ -82,11 +82,11 @@ node_modules/
 # Next.js build output
 .next/
 web/.next/
-web/.next-deepmentor/
-# Custom distDir builds (DEEPMENTOR_NEXT_DIST_DIR / parallel dev servers)
+web/.next-kagweb/
+# Custom distDir builds (KAGWEB_NEXT_DIST_DIR / parallel dev servers)
 web/.next-*/
 # Per-process TypeScript configs used by isolated build/typecheck wrappers
-web/tsconfig.deepmentor-*.json
+web/tsconfig.kagweb-*.json
 # Temporary Next.js dist roots created by isolated build/test runs
 web/tmp/
 out/
@@ -240,7 +240,7 @@ $RECYCLE.BIN/
 *.swo
 
 # Local scripts
-启动 DeepMentor.bat
+启动 KAGWeb.bat
 
 # ============================================
 # Testing and Coverage

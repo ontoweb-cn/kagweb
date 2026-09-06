@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deepmentor.services.session.provider_response_state import (
+from kagweb.services.session.provider_response_state import (
     MAX_REASONING_CONTENT_CHARS,
     MAX_RESPONSE_OUTPUT_ITEMS,
     normalize_provider_response_state,

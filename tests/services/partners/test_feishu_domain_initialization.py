@@ -8,8 +8,8 @@ from typing import Any
 
 import pytest
 
-from deepmentor.partners.channels import feishu as feishu_mod
-from deepmentor.partners.channels.feishu import FeishuChannel
+from kagweb.partners.channels import feishu as feishu_mod
+from kagweb.partners.channels.feishu import FeishuChannel
 
 
 class _Chain:

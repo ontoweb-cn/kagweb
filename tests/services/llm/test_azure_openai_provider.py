@@ -6,8 +6,8 @@ from typing import Any
 
 import pytest
 
-from deepmentor.services.llm.provider_core import azure_openai_provider as azure_mod
-from deepmentor.services.llm.provider_core.azure_openai_provider import normalize_azure_base_url
+from kagweb.services.llm.provider_core import azure_openai_provider as azure_mod
+from kagweb.services.llm.provider_core.azure_openai_provider import normalize_azure_base_url
 
 V1_SURFACE = "https://res.openai.azure.com/openai/v1/"
 

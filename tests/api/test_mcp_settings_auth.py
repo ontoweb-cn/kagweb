@@ -13,9 +13,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from deepmentor.api.routers import mcp_settings
-from deepmentor.api.routers.auth import require_admin
-from deepmentor.services.mcp.config import MCPConfig, MCPServerConfig
+from kagweb.api.routers import mcp_settings
+from kagweb.api.routers.auth import require_admin
+from kagweb.services.mcp.config import MCPConfig, MCPServerConfig
 
 
 @pytest.fixture(autouse=True)
@@ -24,7 +24,7 @@ def _offline_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     import socket
 
     monkeypatch.setattr(
-        "deepmentor.services.mcp.network.socket.getaddrinfo",
+        "kagweb.services.mcp.network.socket.getaddrinfo",
         lambda host, *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))],
     )
 
@@ -34,7 +34,7 @@ def admin_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Mount the router with the admin gate satisfied and config on tmp disk."""
     config_path = tmp_path / "mcp.json"
     monkeypatch.setattr(
-        "deepmentor.services.mcp.config.mcp_config_path",
+        "kagweb.services.mcp.config.mcp_config_path",
         lambda: config_path,
     )
 

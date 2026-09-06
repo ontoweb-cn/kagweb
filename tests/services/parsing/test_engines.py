@@ -8,10 +8,10 @@ import zipfile
 import httpx
 import pytest
 
-from deepmentor.services.parsing.engines import factory
-from deepmentor.services.parsing.engines.docling.config import DoclingConfig
-from deepmentor.services.parsing.engines.tika.config import TikaConfig
-from deepmentor.services.parsing.types import ParserError
+from kagweb.services.parsing.engines import factory
+from kagweb.services.parsing.engines.docling.config import DoclingConfig
+from kagweb.services.parsing.engines.tika.config import TikaConfig
+from kagweb.services.parsing.types import ParserError
 
 
 def test_known_engines() -> None:
@@ -65,7 +65,7 @@ def test_text_only_parser_extracts_docx_text(tmp_path) -> None:
             """
             <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:body>
-                <w:p><w:r><w:t>Hello DeepMentor</w:t></w:r></w:p>
+                <w:p><w:r><w:t>Hello KAGWeb</w:t></w:r></w:p>
               </w:body>
             </w:document>
             """.strip(),
@@ -75,12 +75,12 @@ def test_text_only_parser_extracts_docx_text(tmp_path) -> None:
     workdir.mkdir()
     parser.parse(docx, workdir, config={})
 
-    assert (workdir / "lesson.md").read_text(encoding="utf-8") == "Hello DeepMentor"
+    assert (workdir / "lesson.md").read_text(encoding="utf-8") == "Hello KAGWeb"
 
 
 def test_mineru_signature_distinguishes_local_and_cloud() -> None:
     parser = factory.get_parser("mineru")
-    from deepmentor.services.parsing.engines.mineru.config import MinerUConfig
+    from kagweb.services.parsing.engines.mineru.config import MinerUConfig
 
     local = parser.signature(MinerUConfig(mode="local")).hash()
     cloud = parser.signature(MinerUConfig(mode="cloud")).hash()
@@ -89,7 +89,7 @@ def test_mineru_signature_distinguishes_local_and_cloud() -> None:
 
 def test_mineru_advertises_current_document_and_image_formats() -> None:
     parser = factory.get_parser("mineru")
-    from deepmentor.services.parsing.engines.mineru.formats import (
+    from kagweb.services.parsing.engines.mineru.formats import (
         MIN_MINERU_VERSION,
         mineru_version_is_current,
     )
@@ -115,7 +115,7 @@ def test_mineru_advertises_current_document_and_image_formats() -> None:
 
 
 def test_markitdown_advertises_all_current_builtin_formats() -> None:
-    from deepmentor.services.parsing.engines.markitdown.formats import (
+    from kagweb.services.parsing.engines.markitdown.formats import (
         MARKITDOWN_0_1_7_FORMATS,
         MIN_MARKITDOWN_VERSION,
         markitdown_supported_formats,
@@ -134,7 +134,7 @@ def test_markitdown_advertises_all_current_builtin_formats() -> None:
 
 
 def test_markitdown_readiness_requires_current_package(monkeypatch) -> None:
-    from deepmentor.services.parsing.engines.markitdown import engine as markitdown_engine
+    from kagweb.services.parsing.engines.markitdown import engine as markitdown_engine
 
     parser = factory.get_parser("markitdown")
     monkeypatch.setattr(parser, "is_available", lambda: True)
@@ -148,8 +148,8 @@ def test_markitdown_readiness_requires_current_package(monkeypatch) -> None:
 
 
 def test_mineru_cloud_readiness_needs_token() -> None:
-    from deepmentor.services.parsing.engines.mineru.config import MinerUConfig
-    from deepmentor.services.parsing.engines.mineru.readiness import mineru_readiness
+    from kagweb.services.parsing.engines.mineru.config import MinerUConfig
+    from kagweb.services.parsing.engines.mineru.readiness import mineru_readiness
 
     assert mineru_readiness(MinerUConfig(mode="cloud", api_token="")).reason == "not_configured"
     assert mineru_readiness(MinerUConfig(mode="cloud", api_token="tok")).ready is True
@@ -157,7 +157,7 @@ def test_mineru_cloud_readiness_needs_token() -> None:
 
 def test_docling_signature_distinguishes_local_and_remote() -> None:
     parser = factory.get_parser("docling")
-    from deepmentor.services.parsing.engines.docling.config import DoclingConfig
+    from kagweb.services.parsing.engines.docling.config import DoclingConfig
 
     local = parser.signature(DoclingConfig(mode="local")).hash()
     remote = parser.signature(DoclingConfig(mode="remote", api_base_url="http://host:5001")).hash()
@@ -169,7 +169,7 @@ def test_docling_signature_distinguishes_local_and_remote() -> None:
 
 
 def test_docling_advertises_complete_current_upstream_formats() -> None:
-    from deepmentor.services.parsing.engines.docling.formats import (
+    from kagweb.services.parsing.engines.docling.formats import (
         DOCLING_2_123_1_FORMATS,
         MIN_DOCLING_VERSION,
         docling_supported_formats,
@@ -197,7 +197,7 @@ def test_docling_advertises_complete_current_upstream_formats() -> None:
 
 
 def test_docling_format_discovery_never_imports_the_runtime(monkeypatch) -> None:
-    from deepmentor.services.parsing.engines.docling.formats import (
+    from kagweb.services.parsing.engines.docling.formats import (
         DOCLING_2_123_1_FORMATS,
         docling_supported_formats,
     )
@@ -216,7 +216,7 @@ def test_docling_format_discovery_never_imports_the_runtime(monkeypatch) -> None
 
 def test_docling_remote_readiness_needs_no_local_package() -> None:
     parser = factory.get_parser("docling")
-    from deepmentor.services.parsing.engines.docling.config import DoclingConfig
+    from kagweb.services.parsing.engines.docling.config import DoclingConfig
 
     # Remote mode is ready with a URL set — even if the docling package is absent.
     assert parser.is_ready(DoclingConfig(mode="remote", api_base_url="http://host:5001")).ready
@@ -226,7 +226,7 @@ def test_docling_remote_readiness_needs_no_local_package() -> None:
 
 
 def test_docling_local_readiness_requires_current_package(monkeypatch) -> None:
-    from deepmentor.services.parsing.engines.docling import engine as docling_engine
+    from kagweb.services.parsing.engines.docling import engine as docling_engine
 
     parser = factory.get_parser("docling")
     monkeypatch.setattr(parser, "is_available", lambda: True)
@@ -240,7 +240,7 @@ def test_docling_local_readiness_requires_current_package(monkeypatch) -> None:
 
 
 def test_docling_local_parse_runs_in_isolated_worker(tmp_path, monkeypatch) -> None:
-    from deepmentor.services.parsing.engines.docling import local_worker
+    from kagweb.services.parsing.engines.docling import local_worker
 
     source = tmp_path / "lesson.pdf"
     source.write_bytes(b"%PDF-1.4 fake")
@@ -276,7 +276,7 @@ def test_docling_local_parse_runs_in_isolated_worker(tmp_path, monkeypatch) -> N
     assert captured["command"][:3] == [
         local_worker.sys.executable,
         "-m",
-        "deepmentor.services.parsing.engines.docling.local_worker",
+        "kagweb.services.parsing.engines.docling.local_worker",
     ]
     assert captured["command"][-1] == "--do-ocr"
     assert "--do-table-structure" not in captured["command"]
@@ -286,7 +286,7 @@ def test_docling_local_parse_runs_in_isolated_worker(tmp_path, monkeypatch) -> N
 
 
 def test_docling_local_worker_failure_is_actionable(tmp_path, monkeypatch) -> None:
-    from deepmentor.services.parsing.engines.docling import local_worker
+    from kagweb.services.parsing.engines.docling import local_worker
 
     source = tmp_path / "lesson.pdf"
     source.write_bytes(b"%PDF-1.4 fake")
@@ -413,14 +413,14 @@ def test_tika_readiness_needs_url() -> None:
 
 
 def test_tika_delegates_format_detection_and_tracks_current_server() -> None:
-    from deepmentor.services.parsing.engines.tika.formats import (
+    from kagweb.services.parsing.engines.tika.formats import (
         MIN_TIKA_VERSION,
         TIKA_4_0_0_KNOWN_FORMATS,
         tika_version_is_current,
     )
 
     # Empty is intentional: ParseService treats it as server-authoritative,
-    # including custom parsers that DeepMentor cannot enumerate locally.
+    # including custom parsers that KAGWeb cannot enumerate locally.
     assert factory.get_parser("tika").supported_formats() == frozenset()
     assert MIN_TIKA_VERSION == "4.0.0"
     assert len(TIKA_4_0_0_KNOWN_FORMATS) >= 175
@@ -437,7 +437,7 @@ def test_tika_delegates_format_detection_and_tracks_current_server() -> None:
 def test_tika_verify_enforces_current_server(
     monkeypatch: pytest.MonkeyPatch, version: str, expected_ok: bool
 ) -> None:
-    from deepmentor.services.parsing.engines.tika import remote
+    from kagweb.services.parsing.engines.tika import remote
 
     class _FakeClient:
         def __init__(self, *_args, **_kwargs):
@@ -535,9 +535,9 @@ def test_tika_http_error_raises(tmp_path, monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_mineru_local_model_download_gate(monkeypatch: pytest.MonkeyPatch) -> None:
-    from deepmentor.services.parsing.engines.mineru import backend
-    from deepmentor.services.parsing.engines.mineru import readiness as rd
-    from deepmentor.services.parsing.engines.mineru.config import MinerUConfig
+    from kagweb.services.parsing.engines.mineru import backend
+    from kagweb.services.parsing.engines.mineru import readiness as rd
+    from kagweb.services.parsing.engines.mineru.config import MinerUConfig
 
     monkeypatch.setattr(
         backend,
@@ -567,7 +567,7 @@ def test_mineru_local_model_download_gate(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_pymupdf4llm_signature_tracks_image_knobs() -> None:
     parser = factory.get_parser("pymupdf4llm")
-    from deepmentor.services.parsing.engines.pymupdf4llm.config import PyMuPDF4LLMConfig
+    from kagweb.services.parsing.engines.pymupdf4llm.config import PyMuPDF4LLMConfig
 
     base = parser.signature(
         PyMuPDF4LLMConfig(write_images=True, image_format="png", image_dpi=150)
@@ -581,7 +581,7 @@ def test_pymupdf4llm_signature_tracks_image_knobs() -> None:
 
 
 def test_pymupdf4llm_advertises_current_pymupdf_formats() -> None:
-    from deepmentor.services.parsing.engines.pymupdf4llm.formats import (
+    from kagweb.services.parsing.engines.pymupdf4llm.formats import (
         MIN_PYMUPDF4LLM_VERSION,
         PYMUPDF4LLM_1_28_2_FORMATS,
         pymupdf4llm_version_is_current,
@@ -599,7 +599,7 @@ def test_pymupdf4llm_advertises_current_pymupdf_formats() -> None:
 
 
 def test_pymupdf4llm_readiness_reflects_install() -> None:
-    from deepmentor.services.parsing.engines.pymupdf4llm.formats import (
+    from kagweb.services.parsing.engines.pymupdf4llm.formats import (
         installed_pymupdf4llm_version,
         pymupdf4llm_version_is_current,
     )
@@ -620,7 +620,7 @@ def test_pymupdf4llm_readiness_reflects_install() -> None:
 
 
 def test_pymupdf4llm_readiness_requires_current_package(monkeypatch) -> None:
-    from deepmentor.services.parsing.engines.pymupdf4llm import engine as pymupdf_engine
+    from kagweb.services.parsing.engines.pymupdf4llm import engine as pymupdf_engine
 
     parser = factory.get_parser("pymupdf4llm")
     monkeypatch.setattr(parser, "is_available", lambda: True)
@@ -636,12 +636,12 @@ def test_pymupdf4llm_readiness_requires_current_package(monkeypatch) -> None:
 def test_pymupdf4llm_parses_pdf_and_extracts_images(tmp_path) -> None:
     pymupdf = pytest.importorskip("pymupdf")
     pytest.importorskip("pymupdf4llm")
-    from deepmentor.services.parsing.engines.pymupdf4llm.config import PyMuPDF4LLMConfig
+    from kagweb.services.parsing.engines.pymupdf4llm.config import PyMuPDF4LLMConfig
 
     pdf = tmp_path / "doc.pdf"
     doc = pymupdf.open()
     page = doc.new_page()
-    page.insert_text((72, 72), "Hello DeepMentor via PyMuPDF4LLM")
+    page.insert_text((72, 72), "Hello KAGWeb via PyMuPDF4LLM")
     pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 120, 120))
     pix.clear_with(128)
     page.insert_image(pymupdf.Rect(100, 200, 320, 420), pixmap=pix)
@@ -658,7 +658,7 @@ def test_pymupdf4llm_parses_pdf_and_extracts_images(tmp_path) -> None:
     )
 
     md = (workdir / "doc.md").read_text(encoding="utf-8")
-    assert "DeepMentor" in md
+    assert "KAGWeb" in md
     images = workdir / "images"
     assert images.is_dir()
     extracted = list(images.glob("*.png"))
@@ -671,7 +671,7 @@ def test_pymupdf4llm_parses_pdf_and_extracts_images(tmp_path) -> None:
 def test_pymupdf4llm_no_images_leaves_no_asset_dir(tmp_path) -> None:
     pymupdf = pytest.importorskip("pymupdf")
     pytest.importorskip("pymupdf4llm")
-    from deepmentor.services.parsing.engines.pymupdf4llm.config import PyMuPDF4LLMConfig
+    from kagweb.services.parsing.engines.pymupdf4llm.config import PyMuPDF4LLMConfig
 
     pdf = tmp_path / "text.pdf"
     doc = pymupdf.open()
@@ -692,7 +692,7 @@ def test_pymupdf4llm_no_images_leaves_no_asset_dir(tmp_path) -> None:
 
 def test_liteparse_signature_tracks_knobs() -> None:
     parser = factory.get_parser("liteparse")
-    from deepmentor.services.parsing.engines.liteparse.config import LiteParseConfig
+    from kagweb.services.parsing.engines.liteparse.config import LiteParseConfig
 
     base = parser.signature(LiteParseConfig()).hash()
     with_images = parser.signature(LiteParseConfig(extract_images=True)).hash()
@@ -702,7 +702,7 @@ def test_liteparse_signature_tracks_knobs() -> None:
 
 
 def test_liteparse_advertises_all_current_input_formats() -> None:
-    from deepmentor.services.parsing.engines.liteparse.formats import (
+    from kagweb.services.parsing.engines.liteparse.formats import (
         LITEPARSE_2_14_2_FORMATS,
         MIN_LITEPARSE_VERSION,
         liteparse_version_is_current,
@@ -719,7 +719,7 @@ def test_liteparse_advertises_all_current_input_formats() -> None:
 
 
 def test_liteparse_readiness_reflects_install() -> None:
-    from deepmentor.services.parsing.engines.liteparse.formats import (
+    from kagweb.services.parsing.engines.liteparse.formats import (
         installed_liteparse_version,
         liteparse_version_is_current,
     )
@@ -739,7 +739,7 @@ def test_liteparse_readiness_reflects_install() -> None:
 
 
 def test_liteparse_readiness_requires_current_package(monkeypatch) -> None:
-    from deepmentor.services.parsing.engines.liteparse import engine as liteparse_engine
+    from kagweb.services.parsing.engines.liteparse import engine as liteparse_engine
 
     parser = factory.get_parser("liteparse")
     monkeypatch.setattr(parser, "is_available", lambda: True)
@@ -753,7 +753,7 @@ def test_liteparse_readiness_requires_current_package(monkeypatch) -> None:
 
 
 def test_liteparse_config_rejects_unknown_image_mode_and_coerces_strings() -> None:
-    from deepmentor.services.config.runtime_settings import RuntimeSettingsService
+    from kagweb.services.config.runtime_settings import RuntimeSettingsService
 
     normalized = RuntimeSettingsService._normalize_liteparse_engine(
         None,  # type: ignore[arg-type] - pure function of its argument
@@ -811,7 +811,7 @@ def _install_fake_liteparse(monkeypatch, *, image_names: tuple[str, ...] = ()) -
 
 def test_liteparse_pins_markdown_output_and_images_dir(tmp_path, monkeypatch) -> None:
     """The workdir contract, not the library's defaults, decides these two."""
-    from deepmentor.services.parsing.engines.liteparse.config import LiteParseConfig
+    from kagweb.services.parsing.engines.liteparse.config import LiteParseConfig
 
     seen = _install_fake_liteparse(monkeypatch, image_names=("img_p1_1.png",))
     workdir = tmp_path / "work"
@@ -838,7 +838,7 @@ def test_liteparse_pins_markdown_output_and_images_dir(tmp_path, monkeypatch) ->
 
 
 def test_liteparse_without_images_leaves_no_asset_dir(tmp_path, monkeypatch) -> None:
-    from deepmentor.services.parsing.engines.liteparse.config import LiteParseConfig
+    from kagweb.services.parsing.engines.liteparse.config import LiteParseConfig
 
     seen = _install_fake_liteparse(monkeypatch)
     workdir = tmp_path / "work"
@@ -859,7 +859,7 @@ def test_liteparse_without_images_leaves_no_asset_dir(tmp_path, monkeypatch) -> 
 
 def test_liteparse_leaves_foreign_image_links_alone(tmp_path, monkeypatch) -> None:
     """Only names LiteParse reports as extracted get the images/ prefix."""
-    from deepmentor.services.parsing.engines.liteparse.engine import LiteParseParser
+    from kagweb.services.parsing.engines.liteparse.engine import LiteParseParser
 
     rewritten = LiteParseParser._portable_image_links(
         "![a](img_p1_1.png) ![b](https://example.com/logo.png)",
@@ -870,7 +870,7 @@ def test_liteparse_leaves_foreign_image_links_alone(tmp_path, monkeypatch) -> No
 
 
 def test_install_manager_spec_allowlist() -> None:
-    from deepmentor.services.parsing.engines._install import (
+    from kagweb.services.parsing.engines._install import (
         ENGINE_PIP_SPECS,
         installable_engines,
     )
@@ -889,7 +889,7 @@ def test_install_manager_spec_allowlist() -> None:
 
 
 def test_install_manager_upgrades_existing_package(monkeypatch) -> None:
-    from deepmentor.services.parsing.engines import _install
+    from kagweb.services.parsing.engines import _install
 
     manager = _install.BackgroundJobManager()
     captured: dict = {}
@@ -912,7 +912,7 @@ def test_install_manager_upgrades_existing_package(monkeypatch) -> None:
 
 
 def test_model_download_allowlist() -> None:
-    from deepmentor.services.parsing.engines._install import (
+    from kagweb.services.parsing.engines._install import (
         ENGINE_MODEL_DOWNLOADERS,
         model_downloadable_engines,
     )
@@ -925,14 +925,14 @@ def test_model_download_allowlist() -> None:
 
 
 def test_resolve_model_downloader_unknown_engine() -> None:
-    from deepmentor.services.parsing.engines._install import resolve_model_downloader
+    from kagweb.services.parsing.engines._install import resolve_model_downloader
 
     assert resolve_model_downloader("pymupdf4llm") is None
     assert resolve_model_downloader("nope") is None
 
 
 def test_resolve_model_downloader_finds_windows_exe_next_to_python(monkeypatch, tmp_path) -> None:
-    from deepmentor.services.parsing.engines import _install
+    from kagweb.services.parsing.engines import _install
 
     scripts_dir = tmp_path / "Scripts"
     scripts_dir.mkdir()
@@ -959,7 +959,7 @@ def test_resolve_model_downloader_finds_windows_exe_next_to_python(monkeypatch, 
 
 
 def test_resolve_model_downloader_falls_back_to_path(monkeypatch, tmp_path) -> None:
-    from deepmentor.services.parsing.engines import _install
+    from kagweb.services.parsing.engines import _install
 
     scripts_dir = tmp_path / "Scripts"
     path_downloader = tmp_path / "bin" / "docling-tools"
@@ -984,7 +984,7 @@ def test_resolve_model_downloader_falls_back_to_path(monkeypatch, tmp_path) -> N
 
 
 def test_background_job_manager_idle_status() -> None:
-    from deepmentor.services.parsing.engines._install import get_background_job_manager
+    from kagweb.services.parsing.engines._install import get_background_job_manager
 
     status = get_background_job_manager().status(0)
     assert status["state"] in {"idle", "running", "done", "failed", "cancelled"}
@@ -994,7 +994,7 @@ def test_background_job_manager_idle_status() -> None:
 
 
 def test_docling_models_dir_honors_cache_env(monkeypatch, tmp_path) -> None:
-    from deepmentor.services.parsing.engines.docling import engine as docling_engine
+    from kagweb.services.parsing.engines.docling import engine as docling_engine
 
     monkeypatch.setenv("DOCLING_CACHE_DIR", str(tmp_path))
     assert docling_engine.docling_models_dir() == tmp_path / "models"

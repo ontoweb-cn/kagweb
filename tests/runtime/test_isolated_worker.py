@@ -8,13 +8,13 @@ from pathlib import Path
 
 import pytest
 
-from deepmentor.runtime.isolated_worker import (
+from kagweb.runtime.isolated_worker import (
     IsolatedWorkerError,
     IsolatedWorkerTimeout,
     run_in_isolated_process,
     run_in_isolated_process_sync,
 )
-from deepmentor.utils.document_extractor import (
+from kagweb.utils.document_extractor import (
     EmptyDocumentError,
     extract_text_from_path_isolated,
 )
@@ -64,7 +64,7 @@ def test_child_allocation_does_not_raise_parent_rss_plateau() -> None:
     for _ in range(3):
         assert (
             run_in_isolated_process_sync(
-                "deepmentor.runtime.worker_tasks:test_allocate_bytes",
+                "kagweb.runtime.worker_tasks:test_allocate_bytes",
                 64 * 1024 * 1024,
                 timeout=10,
             )
@@ -77,7 +77,7 @@ def test_child_allocation_does_not_raise_parent_rss_plateau() -> None:
 
 
 def test_text_only_parser_writes_result_from_worker(tmp_path: Path) -> None:
-    from deepmentor.services.parsing.engines.text_only.engine import TextOnlyParser
+    from kagweb.services.parsing.engines.text_only.engine import TextOnlyParser
 
     source = tmp_path / "source.txt"
     source.write_text("isolated parser output", encoding="utf-8")

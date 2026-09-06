@@ -7,14 +7,14 @@ from typing import Any
 import httpx
 import pytest
 
-from deepmentor.services.codex_auth.catalog import CodexModelCatalog, parse_models_response
-from deepmentor.services.codex_auth.constants import (
+from kagweb.services.codex_auth.catalog import CodexModelCatalog, parse_models_response
+from kagweb.services.codex_auth.constants import (
     CODEX_CLIENT_VERSION,
     CODEX_MAX_CATALOG_BYTES,
     CODEX_MAX_MODELS,
 )
-from deepmentor.services.codex_auth.contracts import CodexAuthError, CodexCredentials
-from deepmentor.services.codex_auth.storage import CodexCredentialStore
+from kagweb.services.codex_auth.contracts import CodexAuthError, CodexCredentials
+from kagweb.services.codex_auth.storage import CodexCredentialStore
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "models-response.json"
 

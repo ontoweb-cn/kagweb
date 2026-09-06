@@ -12,10 +12,10 @@ def _auth(token: str) -> dict[str, str]:
 
 
 def _client(mu_isolated_root, monkeypatch) -> tuple[TestClient, dict]:
-    from deepmentor.api.routers import auth as auth_router
-    from deepmentor.multi_user.identity import save_user
-    from deepmentor.services import auth as auth_service
-    from deepmentor.services.auth import create_token, hash_password
+    from kagweb.api.routers import auth as auth_router
+    from kagweb.multi_user.identity import save_user
+    from kagweb.services import auth as auth_service
+    from kagweb.services.auth import create_token, hash_password
 
     admin = save_user("root", hash_password("root-password"), role="admin")
     learner = save_user("learner", hash_password("learner-password"), preset="learner")
@@ -80,7 +80,7 @@ def test_admin_issue_lists_and_secrets_are_not_persisted(mu_isolated_root, monke
 
 def test_only_admins_can_issue_device_credentials(mu_isolated_root, monkeypatch):
     client, users = _client(mu_isolated_root, monkeypatch)
-    from deepmentor.services.auth import create_token
+    from kagweb.services.auth import create_token
 
     learner_token = create_token(
         "learner",
@@ -99,8 +99,8 @@ def test_only_admins_can_issue_device_credentials(mu_isolated_root, monkeypatch)
     )
     assert denied.status_code == 403
 
-    from deepmentor.multi_user.identity import save_user
-    from deepmentor.services.auth import hash_password
+    from kagweb.multi_user.identity import save_user
+    from kagweb.services.auth import hash_password
 
     standard = save_user("standard", hash_password("standard-password"))
     wrong_preset = client.post(
@@ -119,7 +119,7 @@ def test_only_admins_can_issue_device_credentials(mu_isolated_root, monkeypatch)
 
 def test_only_admins_can_list_and_revoke_device_credentials(mu_isolated_root, monkeypatch):
     client, users = _client(mu_isolated_root, monkeypatch)
-    from deepmentor.services.auth import create_token
+    from kagweb.services.auth import create_token
 
     learner_token = create_token(
         "learner",
@@ -229,7 +229,7 @@ def test_relogin_rotates_the_lease_and_charges_elapsed_usage(mu_isolated_root, m
         ]
     )
 
-    from deepmentor.multi_user import device_credentials
+    from kagweb.multi_user import device_credentials
 
     monkeypatch.setattr(device_credentials, "utc_now", lambda: _add_seconds(started, 60))
     second = client.post(
@@ -274,7 +274,7 @@ def test_pin_failures_are_rate_limited(mu_isolated_root, monkeypatch):
     )
     assert locked.status_code == 401
 
-    from deepmentor.multi_user import device_credentials
+    from kagweb.multi_user import device_credentials
 
     records = json.loads(device_credentials.DEVICE_CREDENTIALS_FILE.read_text())
     locked_until = datetime.fromisoformat(records[0]["pin_locked_until"])
@@ -304,7 +304,7 @@ def test_expired_and_deleted_accounts_fail_closed(mu_isolated_root, monkeypatch)
         },
     ).json()
 
-    from deepmentor.multi_user import device_credentials
+    from kagweb.multi_user import device_credentials
 
     real_now = device_credentials.utc_now
     future = datetime.fromisoformat(issued["device"]["expires_at"])
@@ -333,7 +333,7 @@ def test_expired_and_deleted_accounts_fail_closed(mu_isolated_root, monkeypatch)
     assert expired_status.json()["authenticated"] is False
     monkeypatch.setattr(device_credentials, "utc_now", real_now)
 
-    from deepmentor.multi_user.identity import delete_user
+    from kagweb.multi_user.identity import delete_user
 
     assert delete_user("learner") is True
     deleted_status = client.get("/api/auth/status", headers=_auth(token))
@@ -360,7 +360,7 @@ def test_disabled_account_fails_closed(mu_isolated_root, monkeypatch):
     assert login.status_code == 200
     token = login.cookies["dt_token"]
 
-    from deepmentor.multi_user import identity
+    from kagweb.multi_user import identity
 
     users_on_disk = json.loads(identity.USERS_FILE.read_text(encoding="utf-8"))
     users_on_disk["learner"]["disabled"] = True
@@ -404,7 +404,7 @@ def test_heartbeat_enforces_freshness_daily_limit_and_day_rollover(mu_isolated_r
     ).json()["devices"]
     started = datetime.fromisoformat(listed[0]["last_heartbeat_at"])
 
-    from deepmentor.multi_user import device_credentials
+    from kagweb.multi_user import device_credentials
 
     monkeypatch.setattr(device_credentials, "utc_now", lambda: started)
     first = client.post("/api/auth/device/heartbeat", headers=_auth(token))
@@ -470,7 +470,7 @@ def test_stale_heartbeat_cannot_access_authenticated_api(mu_isolated_root, monke
     ).json()["devices"]
     started = datetime.fromisoformat(listed[0]["last_heartbeat_at"])
 
-    from deepmentor.multi_user import device_credentials
+    from kagweb.multi_user import device_credentials
 
     monkeypatch.setattr(device_credentials, "utc_now", lambda: _add_seconds(started, 301))
     stale_status = client.get("/api/auth/status", headers=_auth(token))
@@ -481,7 +481,7 @@ def test_stale_heartbeat_cannot_access_authenticated_api(mu_isolated_root, monke
 
 def test_pocketbase_mode_rejects_local_device_credentials(mu_isolated_root, monkeypatch):
     client, users = _client(mu_isolated_root, monkeypatch)
-    from deepmentor.api.routers import auth as auth_router
+    from kagweb.api.routers import auth as auth_router
 
     monkeypatch.setattr(auth_router, "POCKETBASE_ENABLED", True)
     assert (

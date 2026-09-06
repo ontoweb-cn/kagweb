@@ -68,7 +68,7 @@ test("Codex OAuth response types expose remote-login guidance", () => {
     callback_forward_port: 4782,
     redirect_uri: "http://localhost:1457/auth/callback",
     ssh_forward_command:
-      "ssh -N -L 1457:127.0.0.1:4782 <ssh-user>@deepmentor.example.com",
+      "ssh -N -L 1457:127.0.0.1:4782 <ssh-user>@kagweb.example.com",
   };
   const current = waitingStatus();
 
@@ -76,7 +76,7 @@ test("Codex OAuth response types expose remote-login guidance", () => {
   assert.equal(login.callback_forward_port, 4782);
   assert.equal(
     login.ssh_forward_command,
-    "ssh -N -L 1457:127.0.0.1:4782 <ssh-user>@deepmentor.example.com",
+    "ssh -N -L 1457:127.0.0.1:4782 <ssh-user>@kagweb.example.com",
   );
   assert.equal(current.callback_forward_port, 4782);
   assert.equal(current.redirect_uri, "http://localhost:1457/auth/callback");
@@ -138,7 +138,7 @@ test("Codex remote guidance prefers status expiry and only falls back to the mat
     callback_forward_port: 4782,
     redirect_uri: "http://localhost:1457/auth/callback",
     ssh_forward_command:
-      "ssh -N -L 1457:127.0.0.1:4782 <ssh-user>@deepmentor.example.com",
+      "ssh -N -L 1457:127.0.0.1:4782 <ssh-user>@kagweb.example.com",
   };
   const waiting = waitingStatus({ expires_in: 42 });
 
@@ -172,8 +172,8 @@ test("Codex OAuth recognizes loopback hostnames", () => {
 
   for (const hostname of [
     "192.168.1.10",
-    "deepmentor.example.com",
-    "deepmentor.example.com.",
+    "kagweb.example.com",
+    "kagweb.example.com.",
     "localhost..",
     "app.localhost..",
     "10.0.0.8",
@@ -189,8 +189,8 @@ test("Codex OAuth recognizes loopback hostnames", () => {
 
 test("Codex OAuth builds SSH forwarding guidance for the current server", () => {
   assert.equal(
-    buildSshForwardCommand(1457, "deepmentor.example.com", 4782),
-    "ssh -N -L 1457:127.0.0.1:4782 <ssh-user>@deepmentor.example.com",
+    buildSshForwardCommand(1457, "kagweb.example.com", 4782),
+    "ssh -N -L 1457:127.0.0.1:4782 <ssh-user>@kagweb.example.com",
   );
   assert.equal(
     buildSshForwardCommand(1457, "", 4782),
@@ -231,7 +231,7 @@ test("Codex OAuth reports a stable error for an invalid successful response", as
       assert.equal(error.code, "invalid_response");
       assert.equal(
         error.message,
-        "DeepMentor returned an invalid Codex OAuth response.",
+        "KAGWeb returned an invalid Codex OAuth response.",
       );
       assert.equal(error.message.includes(responseBody), false);
       assert.equal(error.message.includes("text/html"), false);

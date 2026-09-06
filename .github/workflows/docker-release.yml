@@ -3,7 +3,7 @@ name: Docker Release
 # Triggered when a GitHub Release is published.
 # Builds a multi-platform Docker image and pushes it to GitHub Container Registry (GHCR).
 #
-# Image: ghcr.io/hkuds/deepmentor
+# Image: ghcr.io/hkuds/kagweb
 # Tags:
 #   - Version tag stripped of 'v' prefix (e.g. release v1.2.3 → image tag 1.2.3)
 #   - latest (always points to the most recently published release)
@@ -85,7 +85,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/hkuds/deepmentor
+          images: ghcr.io/hkuds/kagweb
           tags: |
             type=raw,value=${{ needs.validate-release-tag.outputs.image_tag }}
             type=raw,value=latest,enable=${{ github.event.release.prerelease == false && needs.validate-release-tag.outputs.is_stable == 'true' }}

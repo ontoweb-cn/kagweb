@@ -8,9 +8,9 @@ grant, and an exclusive knowledge capability suppresses generic MCP tools.
 
 from __future__ import annotations
 
-from deepmentor.runtime.providers.allowlist import Allowlist
-from deepmentor.runtime.providers.authorize import authorize_mcp_tools
-from deepmentor.runtime.providers.scope import ToolScope
+from kagweb.runtime.providers.allowlist import Allowlist
+from kagweb.runtime.providers.authorize import authorize_mcp_tools
+from kagweb.runtime.providers.scope import ToolScope
 
 ADMIN_GRANT = Allowlist.unrestricted()
 GRANTED = Allowlist.of(["mcp_gh_search"])

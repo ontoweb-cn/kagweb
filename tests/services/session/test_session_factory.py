@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import deepmentor.services.session as session_package
-import deepmentor.services.session.turn_runtime as turn_runtime_module
+import kagweb.services.session as session_package
+import kagweb.services.session.turn_runtime as turn_runtime_module
 
 
 def test_pocketbase_store_and_runtime_factories_are_stable(
@@ -10,11 +10,11 @@ def test_pocketbase_store_and_runtime_factories_are_stable(
     """One configured PocketBase scope must resolve to one process-local runtime."""
 
     monkeypatch.setattr(
-        "deepmentor.services.pocketbase_client.is_pocketbase_enabled",
+        "kagweb.services.pocketbase_client.is_pocketbase_enabled",
         lambda: True,
     )
     monkeypatch.setattr(
-        "deepmentor.services.config.load_integrations_settings",
+        "kagweb.services.config.load_integrations_settings",
         lambda: {"pocketbase_url": "http://pocketbase:8090"},
     )
     session_package._pocketbase_store_instances.clear()

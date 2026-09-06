@@ -5,8 +5,8 @@ from __future__ import annotations
 from _pytest.monkeypatch import MonkeyPatch
 import pytest
 
-from deepmentor.services.llm.client import LLMClient
-from deepmentor.services.llm.config import LLMConfig
+from kagweb.services.llm.client import LLMClient
+from kagweb.services.llm.config import LLMConfig
 
 
 @pytest.mark.asyncio
@@ -18,7 +18,7 @@ async def test_client_complete_uses_factory(monkeypatch: MonkeyPatch) -> None:
     async def _fake_complete(**_kwargs: object) -> str:
         return "ok"
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.complete", _fake_complete)
+    monkeypatch.setattr("kagweb.services.llm.factory.complete", _fake_complete)
 
     result = await client.complete("hello")
 
@@ -80,7 +80,7 @@ async def test_client_get_model_func_uses_factory(monkeypatch: MonkeyPatch) -> N
         captured.update(kwargs)
         return "ok"
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.complete", _fake_complete)
+    monkeypatch.setattr("kagweb.services.llm.factory.complete", _fake_complete)
 
     func = client.get_model_func()
     result = await func(
@@ -113,7 +113,7 @@ async def test_client_get_model_func_empty_history_uses_prompt(
         captured.update(kwargs)
         return "ok"
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.complete", _fake_complete)
+    monkeypatch.setattr("kagweb.services.llm.factory.complete", _fake_complete)
 
     func = client.get_model_func()
     result = await func("hello", system_prompt="sys", history_messages=[])
@@ -138,7 +138,7 @@ async def test_client_get_model_func_explicit_messages_override_prompt(
         captured.update(kwargs)
         return "ok"
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.complete", _fake_complete)
+    monkeypatch.setattr("kagweb.services.llm.factory.complete", _fake_complete)
 
     messages = [{"role": "user", "content": "from messages"}]
     func = client.get_model_func()
@@ -160,7 +160,7 @@ async def test_client_get_vision_model_func_uses_factory(monkeypatch: MonkeyPatc
         captured.update(kwargs)
         return "ok"
 
-    monkeypatch.setattr("deepmentor.services.llm.factory.complete", _fake_complete)
+    monkeypatch.setattr("kagweb.services.llm.factory.complete", _fake_complete)
 
     func = client.get_vision_model_func()
     result = await func(

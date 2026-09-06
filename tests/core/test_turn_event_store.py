@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.services.session.sqlite_store import SQLiteSessionStore
+from kagweb.services.session.sqlite_store import SQLiteSessionStore
 
 
 @pytest.mark.asyncio

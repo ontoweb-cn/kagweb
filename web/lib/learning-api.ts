@@ -56,7 +56,7 @@ export async function initModules(bookId: string, modules: ModuleInit[]) {
 }
 
 // ── Mastery map (the dashboard view) ──────────────────────────────────────
-// Mirrors deepmentor/learning/policy.py map_summary + next_objective.
+// Mirrors kagweb/learning/policy.py map_summary + next_objective.
 
 export type ObjectiveStatus = "new" | "learning" | "mastered";
 
@@ -139,7 +139,7 @@ export async function renameProgress(pathId: string, name: string) {
 }
 
 // ── Activity feed ─────────────────────────────────────────────────────────
-// Mirrors deepmentor/learning/models.py MasteryEvent. Every committed change to
+// Mirrors kagweb/learning/models.py MasteryEvent. Every committed change to
 // a path emits one, numbered by the path's revision — which is what lets the
 // dashboard follow along with a tutoring session running in another tab.
 
@@ -169,7 +169,7 @@ export async function fetchProgressEvents(
 }
 
 // ── One objective's evidence trail ────────────────────────────────────────
-// Mirrors deepmentor/learning/policy.py objective_report.
+// Mirrors kagweb/learning/policy.py objective_report.
 
 export interface ObjectiveAttempt {
   question_id: string;

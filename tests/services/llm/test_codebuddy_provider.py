@@ -8,11 +8,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from deepmentor.services.llm.config import LLMConfig
-from deepmentor.services.llm.provider_core import CodeBuddyProvider
-from deepmentor.services.llm.provider_core.codebuddy_provider import fetch_codebuddy_models
-from deepmentor.services.llm.provider_factory import get_runtime_provider
-from deepmentor.services.provider_registry import find_by_name
+from kagweb.services.llm.config import LLMConfig
+from kagweb.services.llm.provider_core import CodeBuddyProvider
+from kagweb.services.llm.provider_core.codebuddy_provider import fetch_codebuddy_models
+from kagweb.services.llm.provider_factory import get_runtime_provider
+from kagweb.services.provider_registry import find_by_name
 
 
 class FakeOptions:
@@ -146,7 +146,7 @@ async def test_codebuddy_provider_maps_sdk_mcp_tool_calls(monkeypatch) -> None:
             [
                 FakeToolUseBlock(
                     "tool-1",
-                    "mcp__deepmentor__web_search",
+                    "mcp__kagweb__web_search",
                     {"query": "latest news"},
                 )
             ]
@@ -187,8 +187,8 @@ async def test_codebuddy_provider_maps_sdk_mcp_tool_calls(monkeypatch) -> None:
     assert response.tool_calls[0].name == "web_search"
     assert response.tool_calls[0].arguments == {"query": "latest news"}
     option_kwargs = captured["options"].kwargs
-    assert option_kwargs["tools"] == ["mcp__deepmentor__web_search"]
-    assert "deepmentor" in option_kwargs["mcp_servers"]
+    assert option_kwargs["tools"] == ["mcp__kagweb__web_search"]
+    assert "kagweb" in option_kwargs["mcp_servers"]
 
 
 @pytest.mark.asyncio
@@ -235,7 +235,7 @@ async def test_codebuddy_session_survives_cross_task_turns(monkeypatch) -> None:
     async def turn(content: str) -> str:
         response = await provider.chat(
             [{"role": "user", "content": content}],
-            deepmentor_session_id="cross-task",
+            kagweb_session_id="cross-task",
         )
         return response.content
 
@@ -291,14 +291,14 @@ async def test_codebuddy_provider_reuses_session_and_sends_message_delta(monkeyp
     )
     provider = CodeBuddyProvider()
     initial = [{"role": "user", "content": "first question"}]
-    first = await provider.chat(initial, deepmentor_session_id="chat-1")
+    first = await provider.chat(initial, kagweb_session_id="chat-1")
     second = await provider.chat(
         [
             *initial,
             {"role": "assistant", "content": "first"},
             {"role": "user", "content": "second question"},
         ],
-        deepmentor_session_id="chat-1",
+        kagweb_session_id="chat-1",
     )
 
     assert first.content == "first"
@@ -330,7 +330,7 @@ async def test_codebuddy_session_drains_interrupt_before_tool_result_round(monke
                     [
                         FakeToolUseBlock(
                             "tool-1",
-                            "mcp__deepmentor__web_search",
+                            "mcp__kagweb__web_search",
                             {"query": "latest news"},
                         )
                     ]
@@ -372,7 +372,7 @@ async def test_codebuddy_session_drains_interrupt_before_tool_result_round(monke
     tool_response = await provider.chat(
         initial,
         tools=tools,
-        deepmentor_session_id="chat-tools",
+        kagweb_session_id="chat-tools",
     )
     final_response = await provider.chat(
         [
@@ -389,7 +389,7 @@ async def test_codebuddy_session_drains_interrupt_before_tool_result_round(monke
             },
         ],
         tools=tools,
-        deepmentor_session_id="chat-tools",
+        kagweb_session_id="chat-tools",
     )
 
     assert tool_response.finish_reason == "tool_calls"
@@ -439,9 +439,9 @@ def test_codebuddy_registry_aliases_and_factory(monkeypatch) -> None:
     assert spec.name == "codebuddy"
     assert spec.backend == "codebuddy"
 
-    monkeypatch.setenv("DEEPMENTOR_CODEBUDDY_BACKEND", "sdk")
+    monkeypatch.setenv("KAGWEB_CODEBUDDY_BACKEND", "sdk")
     monkeypatch.setattr(
-        "deepmentor.services.llm.provider_core.codebuddy_http_provider.sdk_installed",
+        "kagweb.services.llm.provider_core.codebuddy_http_provider.sdk_installed",
         lambda: True,
     )
     provider = get_runtime_provider(
@@ -456,7 +456,7 @@ def test_codebuddy_registry_aliases_and_factory(monkeypatch) -> None:
     assert isinstance(provider, CodeBuddyProvider)
 
 
-def test_codebuddy_ignores_deepmentor_no_key_placeholder() -> None:
+def test_codebuddy_ignores_kagweb_no_key_placeholder() -> None:
     provider = CodeBuddyProvider(api_key="sk-no-key-required")
 
     assert provider.api_key is None

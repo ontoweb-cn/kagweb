@@ -9,13 +9,13 @@ from typing import Any
 
 import pytest
 
-from deepmentor.services.codebuddy_credentials import (
+from kagweb.services.codebuddy_credentials import (
     INTERNAL_ENDPOINT,
     CodeBuddyAuthUnavailable,
 )
-from deepmentor.services.llm.provider_core import codebuddy_http_provider as http_module
-from deepmentor.services.llm.provider_core.base import LLMResponse
-from deepmentor.services.llm.provider_core.codebuddy_http_provider import (
+from kagweb.services.llm.provider_core import codebuddy_http_provider as http_module
+from kagweb.services.llm.provider_core.base import LLMResponse
+from kagweb.services.llm.provider_core.codebuddy_http_provider import (
     CodeBuddyHTTPProvider,
     build_codebuddy_provider,
     codebuddy_http_available,
@@ -39,7 +39,7 @@ def _sign_in(tmp_path: Path, monkeypatch, *, expires_in: float = 86400.0) -> Pat
         ),
         encoding="utf-8",
     )
-    monkeypatch.setenv("DEEPMENTOR_CODEBUDDY_AUTH_FILE", str(path))
+    monkeypatch.setenv("KAGWEB_CODEBUDDY_AUTH_FILE", str(path))
     return path
 
 
@@ -53,7 +53,7 @@ def _capture_stream(monkeypatch) -> dict[str, Any]:
         return LLMResponse(content="OK")
 
     monkeypatch.setattr(
-        "deepmentor.services.llm.provider_core.openai_compat_provider."
+        "kagweb.services.llm.provider_core.openai_compat_provider."
         "OpenAICompatProvider.chat_stream",
         fake_chat_stream,
     )
@@ -85,7 +85,7 @@ async def test_blocking_chat_streams_because_cloud_rejects_non_stream(
         raise AssertionError("CodeBuddy rejects stream: false")
 
     monkeypatch.setattr(
-        "deepmentor.services.llm.provider_core.openai_compat_provider.OpenAICompatProvider.chat",
+        "kagweb.services.llm.provider_core.openai_compat_provider.OpenAICompatProvider.chat",
         fail_chat,
     )
 
@@ -132,16 +132,16 @@ async def test_api_key_mode_sends_the_key_header(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_provider_strips_deepmentor_session_id(tmp_path, monkeypatch) -> None:
+async def test_provider_strips_kagweb_session_id(tmp_path, monkeypatch) -> None:
     _sign_in(tmp_path, monkeypatch)
     captured = _capture_stream(monkeypatch)
 
     await CodeBuddyHTTPProvider().chat_stream(
         messages=[{"role": "user", "content": "hi"}],
-        deepmentor_session_id="session-1",
+        kagweb_session_id="session-1",
     )
 
-    assert "deepmentor_session_id" not in captured
+    assert "kagweb_session_id" not in captured
 
 
 def test_placeholder_api_key_is_not_treated_as_auth() -> None:

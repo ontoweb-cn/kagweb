@@ -1,4 +1,4 @@
-from deepmentor.runtime.launcher import _apply_single_user_allocator_env
+from kagweb.runtime.launcher import _apply_single_user_allocator_env
 
 
 def test_single_user_allocator_defaults_reduce_fragmentation() -> None:

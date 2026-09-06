@@ -6,7 +6,7 @@ returns each message with an ``events`` list and no ``events_json`` key, so the
 helper mutates that list in place.
 """
 
-from deepmentor.api.routers.sessions import (
+from kagweb.api.routers.sessions import (
     _TRUNCATION_NOTICE,
     MAX_EVENT_PAYLOAD,
     _redact_private_message_metadata,

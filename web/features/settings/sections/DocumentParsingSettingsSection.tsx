@@ -37,10 +37,10 @@ type DocumentParsingPayload = {
 };
 
 const PIP_HINT: Record<string, string> = {
-  docling: "pip install deepmentor[parse-docling]",
-  markitdown: "pip install deepmentor[parse-markitdown]",
-  pymupdf4llm: "pip install deepmentor[parse-pymupdf4llm]",
-  liteparse: "pip install deepmentor[parse-liteparse]",
+  docling: "pip install kagweb[parse-docling]",
+  markitdown: "pip install kagweb[parse-markitdown]",
+  pymupdf4llm: "pip install kagweb[parse-pymupdf4llm]",
+  liteparse: "pip install kagweb[parse-liteparse]",
 };
 
 // Engine names and descriptions are returned by the backend so unknown or
@@ -903,7 +903,7 @@ function MarkItDownPanel({
       <SettingRow
         title={t("Describe images with the vision model")}
         description={t(
-          "Reserved — uses DeepMentor's vision model to caption images during conversion.",
+          "Reserved — uses KAGWeb's vision model to caption images during conversion.",
         )}
         control={
           <Toggle

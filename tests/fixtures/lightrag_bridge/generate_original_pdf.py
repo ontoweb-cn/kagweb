@@ -13,10 +13,10 @@ TARGET = Path(__file__).with_name("original.pdf")
 
 def main() -> None:
     page = canvas.Canvas(str(TARGET), pagesize=letter, invariant=True)
-    page.setTitle("DeepMentor LightRAG Bridge Fixture")
-    page.setAuthor("DeepMentor contributors")
+    page.setTitle("KAGWeb LightRAG Bridge Fixture")
+    page.setAuthor("KAGWeb contributors")
     page.setFont("Helvetica-Bold", 18)
-    page.drawString(72, 720, "DeepMentor LightRAG Bridge Fixture")
+    page.drawString(72, 720, "KAGWeb LightRAG Bridge Fixture")
     page.setFont("Helvetica", 11)
     page.drawString(72, 690, "A short paragraph preserves text and heading hierarchy.")
     page.setFont("Times-Italic", 18)

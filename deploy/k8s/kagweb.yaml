@@ -1,0 +1,276 @@
+# KAGWeb on Kubernetes — component-split stack
+#
+# One pod, three containers, one image:
+#   backend    KAGWEB_COMPONENT=backend   FastAPI (:8001) + the data PVC
+#   frontend   KAGWEB_COMPONENT=frontend  Next.js (:3782). It mounts ONLY
+#              data/user/settings, read-only: the entrypoint exports
+#              KAGWEB_AUTH_ENABLED / KAGWEB_API_BASE_URL from those
+#              JSONs, and a frontend without them would re-seed defaults
+#              (auth=false) and disagree with the backend's auth gate. For the
+#              API base the seeded default resolves to http://127.0.0.1:8001
+#              (same pod network namespace) when the settings leave it blank.
+#   sandbox-runner   untrusted-exec sidecar; shares the data volume at the
+#              SAME paths as the backend so the runner mount contract
+#              (host_path == sandbox_path) holds. Never exposed outside the pod.
+#
+# Shape notes (see the review in the PR that added this file):
+#   * replicas is pinned to 1 with strategy Recreate: /app/data is a
+#     SQLite-bearing tree on a ReadWriteOnce volume, so it cannot follow a
+#     rolling update and cannot be shared by two replicas. Scale the backend
+#     up in-process instead (system.json backend_workers + a redis deployment).
+#   * Model/provider keys are entered through the web Settings page and live
+#     in the PVC (data/user/settings/*.json). To pre-seed them, unmount the
+#     settings dir from the PVC and mount a Secret instead — do not commit
+#     them here.
+#   * redis is only required for backend_workers > 1; single-worker mode uses
+#     an in-process coordinator whose health() is always true.
+#
+# Usage:
+#   kubectl apply -k deploy/k8s
+#
+# Prerequisite: images. kagweb (production target) comes from GHCR;
+# the sandbox-runner is NOT published there — build and load it first:
+#   docker build -f Dockerfile.runner -t kagweb-sandbox-runner:local .
+#   (kind: kind load docker-image kagweb-sandbox-runner:local)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kagweb
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kagweb-data
+  namespace: kagweb
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+  # storageClassName: <your-storage-class>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kagweb
+  namespace: kagweb
+  # The backend port is published for remote-server deployments where the
+  # browser calls the API directly (system.json next_public_api_base_external).
+  # Local/browser-through-frontend-only deployments can drop it.
+spec:
+  selector:
+    app: kagweb
+  ports:
+    - name: frontend
+      port: 3782
+      targetPort: 3782
+    - name: backend
+      port: 8001
+      targetPort: 8001
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kagweb
+  namespace: kagweb
+spec:
+  replicas: 1
+  strategy:
+    # A ReadWriteOnce volume cannot attach to the old and new pod at once.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: kagweb
+  template:
+    metadata:
+      labels:
+        app: kagweb
+    spec:
+      # The image bakes a kagweb user at UID/GID 1000 and supervisord
+      # drops each program to it; fsGroup gives the PVC-owned files the same
+      # group so the entrypoint's (conditional) chown becomes a no-op.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 60
+      initContainers:
+        # First-start directory/settings bootstrap, exactly once per volume,
+        # so the app containers' own (idempotent) init never races.
+        - name: init-data
+          image: ghcr.io/hkuds/kagweb:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+          command:
+            - python
+            - -c
+            - >-
+              from pathlib import Path;
+              from kagweb.services.setup import init_user_directories;
+              init_user_directories(Path('/app'))
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      containers:
+        # ---------------- backend ----------------
+        - name: backend
+          image: ghcr.io/hkuds/kagweb:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+            - name: KAGWEB_COMPONENT
+              value: backend
+            # Route untrusted exec to the sidecar (SYSTEM isolation). Remove
+            # to fall back to bwrap / the restricted subprocess backend.
+            # IPv4 literal, not "localhost": the runner binds 0.0.0.0 only, and
+            # on a dual-stack node localhost may resolve to ::1 first (same
+            # rationale as web/proxy.ts's backend URL).
+            - name: KAGWEB_SANDBOX_RUNNER_URL
+              value: http://127.0.0.1:8900
+          ports:
+            - name: backend
+              containerPort: 8001
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: backend
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: backend
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: backend
+            failureThreshold: 12
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "1"
+              memory: 1Gi
+            limits:
+              # Room for document parsing and model tooling; tighten to taste.
+              memory: 4Gi
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
+        # ---------------- frontend ----------------
+        - name: frontend
+          image: ghcr.io/hkuds/kagweb:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+            - name: KAGWEB_COMPONENT
+              value: frontend
+          ports:
+            - name: frontend
+              containerPort: 3782
+          readinessProbe:
+            httpGet:
+              path: /
+              port: frontend
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: frontend
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            # Read-only settings so the entrypoint's auth / API-base exports
+            # track what the backend reads from the same PVC (initContainer
+            # guarantees the files exist before this container starts).
+            - name: data
+              mountPath: /app/data/user/settings
+              subPath: user/settings
+              readOnly: true
+            - name: tmp-frontend
+              mountPath: /tmp
+        # ------------- sandbox runner -------------
+        # Executes untrusted shell commands; cap_drop ALL + read-only rootfs
+        # mirror docker-compose.yml. cli-apps is READ-ONLY here: the runner
+        # must be able to execute installed apps but never modify them.
+        - name: sandbox-runner
+          # Not published to GHCR — build from Dockerfile.runner (see header).
+          image: kagweb-sandbox-runner:local
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: RUNNER_PORT
+              value: "8900"
+          ports:
+            - name: runner
+              containerPort: 8900
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: runner
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            # Same in-pod paths as the backend — the runner contract is that
+            # a request's host_path is already visible at sandbox_path.
+            - name: data
+              mountPath: /app/data/user/workspace
+              subPath: user/workspace
+            - name: data
+              mountPath: /app/data/users
+              subPath: users
+            - name: data
+              mountPath: /app/data/cli-apps
+              subPath: cli-apps
+              readOnly: true
+            - name: runner-tmp
+              mountPath: /tmp
+            - name: runner-home
+              mountPath: /home/runner
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: kagweb-data
+        # Separate /tmp per app container: each runs its own supervisord with
+        # pidfile=/tmp/supervisord.pid — a shared volume made the two daemons
+        # fight over one pidfile across PID namespaces (sporadic "another
+        # program is already running" startup failures).
+        - name: tmp
+          emptyDir: {}
+        - name: tmp-frontend
+          emptyDir: {}
+        - name: runner-tmp
+          emptyDir: {}
+        - name: runner-home
+          emptyDir: {}

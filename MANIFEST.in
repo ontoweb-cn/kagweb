@@ -1,2 +1,2 @@
-recursive-include deepmentor_web *
-recursive-include deepmentor_web/.next *
+recursive-include kagweb_web *
+recursive-include kagweb_web/.next *

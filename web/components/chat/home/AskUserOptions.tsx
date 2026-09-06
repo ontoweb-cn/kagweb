@@ -12,7 +12,7 @@ import {
 import type { StreamEvent } from "@/features/chat/model/protocol";
 
 /**
- * v3 ``ask_user`` payload. Mirrors ``deepmentor.tools.ask_user.AskUserPayload``.
+ * v3 ``ask_user`` payload. Mirrors ``kagweb.tools.ask_user.AskUserPayload``.
  *
  * Every question is rendered as one tab on the card (labelled by its
  * short ``header`` when present); the user can switch between tabs

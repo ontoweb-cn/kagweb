@@ -20,12 +20,12 @@ from pathlib import Path
 import httpx
 import pytest
 
-from deepmentor.services.mcp.config import MCPServerConfig
-from deepmentor.services.mcp.manager import (
+from kagweb.services.mcp.config import MCPServerConfig
+from kagweb.services.mcp.manager import (
     MCPConnectionManager,
     _ServerConnection,
 )
-from deepmentor.services.mcp.secrets import secret_reference, store_secrets
+from kagweb.services.mcp.secrets import secret_reference, store_secrets
 
 OWNER = "u_ada"
 SERVER = "maps"
@@ -34,7 +34,7 @@ SERVER = "maps"
 @pytest.fixture(autouse=True)
 def _isolated_data_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Point the secrets store at a temp tree; it writes to ``data/system``."""
-    from deepmentor.multi_user import paths
+    from kagweb.multi_user import paths
 
     root = (tmp_path / "data").resolve()
     monkeypatch.setattr(paths, "ADMIN_WORKSPACE_ROOT", root)
@@ -48,7 +48,7 @@ def _offline_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     import socket
 
     monkeypatch.setattr(
-        "deepmentor.services.mcp.network.socket.getaddrinfo",
+        "kagweb.services.mcp.network.socket.getaddrinfo",
         lambda host, *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))],
     )
 
@@ -96,8 +96,8 @@ async def test_reload_reconnects_a_server_whose_secret_changed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """End to end: the account must stop talking to the server with the old key."""
-    from deepmentor.runtime.registry.tool_registry import ToolRegistry
-    from deepmentor.services.mcp.user_config import save_user_server
+    from kagweb.runtime.registry.tool_registry import ToolRegistry
+    from kagweb.services.mcp.user_config import save_user_server
 
     monkeypatch.setattr(MCPConnectionManager, "_registry", staticmethod(ToolRegistry))
 
@@ -247,7 +247,7 @@ def test_a_credential_in_the_url_never_reaches_the_caller() -> None:
     httpx names the full request URL in its message, and that string is now
     returned to the model as a tool result, not just shown in settings.
     """
-    from deepmentor.services.mcp.manager import describe_connect_failure
+    from kagweb.services.mcp.manager import describe_connect_failure
 
     exc = httpx.HTTPStatusError(
         "Client error '403 Forbidden' for url "
@@ -265,7 +265,7 @@ def test_a_credential_in_the_url_never_reaches_the_caller() -> None:
 
 
 def test_redaction_keeps_a_plain_url_readable() -> None:
-    from deepmentor.services.mcp.manager import describe_connect_failure
+    from kagweb.services.mcp.manager import describe_connect_failure
 
     exc = RuntimeError("connect failed for url 'https://maps.example:8443/mcp'")
 
@@ -275,7 +275,7 @@ def test_redaction_keeps_a_plain_url_readable() -> None:
 
 
 def test_userinfo_credentials_are_redacted() -> None:
-    from deepmentor.services.mcp.manager import describe_connect_failure
+    from kagweb.services.mcp.manager import describe_connect_failure
 
     exc = RuntimeError("connect failed for url 'https://user:pw@maps.example/mcp'")
 

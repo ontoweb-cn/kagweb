@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from deepmentor.runtime import memory_reclaim
+from kagweb.runtime import memory_reclaim
 
 
 @pytest.mark.asyncio

@@ -16,27 +16,27 @@ import aiohttp
 import httpx
 import pytest
 
-from deepmentor.services.config.provider_runtime import (
+from kagweb.services.config.provider_runtime import (
     resolve_stt_runtime_config,
     resolve_tts_runtime_config,
 )
-from deepmentor.services.voice import synthesize_speech, transcribe_audio
-from deepmentor.services.voice.adapters.dashscope import (
+from kagweb.services.voice import synthesize_speech, transcribe_audio
+from kagweb.services.voice.adapters.dashscope import (
     DashScopeSTTAdapter,
     DashScopeTTSAdapter,
 )
-from deepmentor.services.voice.adapters.openai_compat import (
+from kagweb.services.voice.adapters.openai_compat import (
     OpenAICompatSTTAdapter,
     OpenAICompatTTSAdapter,
     OpenRouterTTSAdapter,
 )
-from deepmentor.services.voice.base import (
+from kagweb.services.voice.base import (
     build_auth_headers,
     join_audio_path,
     normalize_stt_content_type,
     strip_markdown_for_speech,
 )
-from deepmentor.services.voice.config import STTConfig, TTSConfig
+from kagweb.services.voice.config import STTConfig, TTSConfig
 
 
 def _capture_post(monkeypatch: pytest.MonkeyPatch, response: httpx.Response) -> dict[str, Any]:
@@ -191,7 +191,7 @@ async def test_tts_adapter_azure_uses_api_key_header(monkeypatch: pytest.MonkeyP
 
 @pytest.mark.asyncio
 async def test_tts_adapter_raises_on_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    from deepmentor.services.voice.base import VoiceProviderError
+    from kagweb.services.voice.base import VoiceProviderError
 
     _capture_post(monkeypatch, httpx.Response(401, text="bad key"))
     config = TTSConfig(model="m", base_url="https://x/v1", api_key="k", voice="alloy")
@@ -298,7 +298,7 @@ async def test_openrouter_tts_falls_back_to_chat_audio_stream(
 async def test_openrouter_gemini_tts_openai_voice_gets_clear_hint(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from deepmentor.services.voice.base import VoiceProviderError
+    from kagweb.services.voice.base import VoiceProviderError
 
     _capture_post(
         monkeypatch,

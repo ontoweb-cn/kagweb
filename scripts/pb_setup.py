@@ -21,7 +21,7 @@ import time
 # Allow running from project root without installing the package.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from deepmentor.services.config import load_integrations_settings
+from kagweb.services.config import load_integrations_settings
 
 _INTEGRATIONS = load_integrations_settings()
 POCKETBASE_BASE_URL = str(_INTEGRATIONS["pocketbase_url"]).rstrip("/")

@@ -6,8 +6,8 @@ import time
 
 import pytest
 
-from deepmentor.services.parsing.engines.mineru import models as mineru_models
-from deepmentor.services.parsing.engines.mineru.models import (
+from kagweb.services.parsing.engines.mineru import models as mineru_models
+from kagweb.services.parsing.engines.mineru.models import (
     ModelDownloadManager,
     model_env_overrides,
     render_env_overrides,
@@ -183,7 +183,7 @@ def test_render_env_overrides_is_windows_only(monkeypatch) -> None:
     default 3-4 workers), so serializing it unconditionally would cost every
     non-Windows user parse throughput for a Windows-only heap-corruption crash.
     """
-    import deepmentor.services.parsing.engines.mineru.models as models
+    import kagweb.services.parsing.engines.mineru.models as models
 
     monkeypatch.setattr(models.sys, "platform", "win32")
     assert render_env_overrides() == {"MINERU_PDF_RENDER_THREADS": "1"}

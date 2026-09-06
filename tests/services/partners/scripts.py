@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from deepmentor.core.stream import StreamEvent, StreamEventType
+from kagweb.core.stream import StreamEvent, StreamEventType
 
 
 def event(

@@ -10,8 +10,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import deepmentor.core.entry_points as ep_module
-from deepmentor.core.entry_points import load_entry_point_group
+import kagweb.core.entry_points as ep_module
+from kagweb.core.entry_points import load_entry_point_group
 
 
 def _ep(name: str, load):

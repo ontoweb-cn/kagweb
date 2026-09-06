@@ -1,4 +1,4 @@
-# DeepMentor v1.0.0-beta.3 Release Notes
+# KAGWeb v1.0.0-beta.3 Release Notes
 
 **Release Date:** 2026.04.08
 
@@ -31,4 +31,4 @@ Completed i18n coverage for the web UI — all hardcoded strings across workspac
 - **@LocNguyenSGU** — GitHub Copilot provider login docs (#262)
 - **@kagura-agent** — `parse_json_response` for LLM outputs to handle markdown fences
 
-**Full Changelog**: https://github.com/HKUDS/DeepMentor/compare/v1.0.0-beta.2...v1.0.0-beta.3
+**Full Changelog**: https://github.com/HKUDS/KAGWeb/compare/v1.0.0-beta.2...v1.0.0-beta.3

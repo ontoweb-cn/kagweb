@@ -8,8 +8,8 @@ import time
 
 import pytest
 
-from deepmentor.services.path_service import PathService
-from deepmentor.services.session.sqlite_store import SQLiteSessionStore
+from kagweb.services.path_service import PathService
+from kagweb.services.session.sqlite_store import SQLiteSessionStore
 
 
 def test_sqlite_store_defaults_to_data_user_chat_history_db(tmp_path: Path) -> None:

@@ -1,4 +1,4 @@
-# DeepMentor v1.0.0-beta.4 Release Notes
+# KAGWeb v1.0.0-beta.4 Release Notes
 
 **Release Date:** 2026.04.10
 
@@ -18,4 +18,4 @@ Fixed a platform-dependent bug where files with uppercase extensions (e.g. `repo
 - **@oxkage** — Embedding progress tracking and HTTP 429 rate limit retry (#268)
 - **@kuishou68** — Case-insensitive MIME type validation fix (#272, closes #271)
 
-**Full Changelog**: https://github.com/HKUDS/DeepMentor/compare/v1.0.0-beta.3...v1.0.0-beta.4
+**Full Changelog**: https://github.com/HKUDS/KAGWeb/compare/v1.0.0-beta.3...v1.0.0-beta.4

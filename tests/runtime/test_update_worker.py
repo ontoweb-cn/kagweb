@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from deepmentor.runtime.update_worker import build_update_command, run_update_worker
-from deepmentor.services.app_update import UpdateJob, UpdateJobStore
+from kagweb.runtime.update_worker import build_update_command, run_update_worker
+from kagweb.services.app_update import UpdateJob, UpdateJobStore
 
 
 def _handoff_job(tmp_path: Path) -> tuple[UpdateJobStore, UpdateJob]:

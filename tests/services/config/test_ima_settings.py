@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from deepmentor.services.config.runtime_settings import RuntimeSettingsService
+from kagweb.services.config.runtime_settings import RuntimeSettingsService
 
 
 def test_ima_settings_roundtrip(tmp_path: Path) -> None:

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from deepmentor.services.singleflight_cache import AsyncSingleFlightTTLCache
+from kagweb.services.singleflight_cache import AsyncSingleFlightTTLCache
 
 
 @dataclass(frozen=True)

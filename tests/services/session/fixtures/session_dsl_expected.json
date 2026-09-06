@@ -245,7 +245,7 @@
   "expected": {
     "stable_normalized": {
       "version": 1,
-      "generator": "deepmentor/session-dsl",
+      "generator": "kagweb/session-dsl",
       "trace": [
         {
           "node": "turn:1",
@@ -349,7 +349,7 @@
     },
     "raw": {
       "version": 1,
-      "generator": "deepmentor/session-dsl",
+      "generator": "kagweb/session-dsl",
       "trace": [
         {
           "node": "msg:3",

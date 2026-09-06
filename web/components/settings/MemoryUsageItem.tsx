@@ -10,8 +10,8 @@ import { StatusStripDivider } from "@/components/settings/shared";
  * Live resident-memory readout — the whole point of the settings status strip
  * now that the model/search items moved into their own pages.
  *
- * Backed by `/api/system/memory` (deepmentor/runtime/memory_probe.py), which
- * walks the whole DeepMentor process tree — backend, the Next.js server, and
+ * Backed by `/api/system/memory` (kagweb/runtime/memory_probe.py), which
+ * walks the whole KAGWeb process tree — backend, the Next.js server, and
  * whatever sandboxes and subagent CLIs are alive — rather than just this
  * process. Its own endpoint, not part of `/system/status`: that snapshot
  * resolves model configs and is fetched once per mount, while this polls.
@@ -166,7 +166,7 @@ export default function MemoryUsageItem() {
         {usage.partial && (
           <span
             title={t(
-              "Only the backend and its own children. Start DeepMentor through the launcher to include the web server.",
+              "Only the backend and its own children. Start KAGWeb through the launcher to include the web server.",
             )}
           >
             {t("(backend only)")}

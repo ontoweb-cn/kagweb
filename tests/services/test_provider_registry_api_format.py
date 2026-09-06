@@ -1,6 +1,6 @@
 """The API-format vocabulary layered over the provider registry."""
 
-from deepmentor.services.provider_registry import (
+from kagweb.services.provider_registry import (
     api_format_for_provider,
     api_format_from_legacy,
     effective_backend,

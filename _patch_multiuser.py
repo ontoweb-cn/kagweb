@@ -2,7 +2,7 @@
 import io
 import py_compile
 
-path = "deepmentor/api/routers/multi_user.py"
+path = "kagweb/api/routers/multi_user.py"
 with io.open(path, "r", encoding="utf-8") as f:
     src = f.read()
 
@@ -21,46 +21,46 @@ def rep(src, old, new, count=1):
 # ── imports ──
 src = rep(
     src,
-    """from deepmentor.api.routers.auth import require_admin, require_auth
-from deepmentor.knowledge.manager import KnowledgeBaseManager
-from deepmentor.multi_user.audit import log_admin_action, log_guardian_action
-from deepmentor.multi_user.book_permission import (
+    """from kagweb.api.routers.auth import require_admin, require_auth
+from kagweb.knowledge.manager import KnowledgeBaseManager
+from kagweb.multi_user.audit import log_admin_action, log_guardian_action
+from kagweb.multi_user.book_permission import (
     BookDefaultLevel,
     BookPermission,
     BookPermissionLevel,
 )
-from deepmentor.multi_user.context import get_current_user""",
-    """from deepmentor.api.routers.auth import require_admin, require_auth
-from deepmentor.multi_user.audit import log_admin_action, log_guardian_action
-from deepmentor.multi_user.context import get_current_user""",
+from kagweb.multi_user.context import get_current_user""",
+    """from kagweb.api.routers.auth import require_admin, require_auth
+from kagweb.multi_user.audit import log_admin_action, log_guardian_action
+from kagweb.multi_user.context import get_current_user""",
 )
 src = rep(
     src,
-    """from deepmentor.multi_user.identity import (
+    """from kagweb.multi_user.identity import (
     get_user_by_id,
     list_user_info,
     set_book_permission,
     set_password,
 )
-from deepmentor.multi_user.knowledge_access import admin_kb_base_dir
-from deepmentor.multi_user.model_access import is_owner_bound""",
-    """from deepmentor.multi_user.identity import (
+from kagweb.multi_user.knowledge_access import admin_kb_base_dir
+from kagweb.multi_user.model_access import is_owner_bound""",
+    """from kagweb.multi_user.identity import (
     get_user_by_id,
     list_user_info,
     set_password,
 )
-from deepmentor.multi_user.model_access import is_owner_bound""",
+from kagweb.multi_user.model_access import is_owner_bound""",
 )
 src = rep(
     src,
-    """from deepmentor.reading import ReadingStore
-from deepmentor.reading.extensions import get_reading_extension_registry
-from deepmentor.services.auth import POCKETBASE_ENABLED, hash_password
-from deepmentor.services.config.model_catalog import ModelCatalogService
-from deepmentor.services.skill.service import SkillService
+    """from kagweb.reading import ReadingStore
+from kagweb.reading.extensions import get_reading_extension_registry
+from kagweb.services.auth import POCKETBASE_ENABLED, hash_password
+from kagweb.services.config.model_catalog import ModelCatalogService
+from kagweb.services.skill.service import SkillService
 """,
-    """from deepmentor.services.auth import POCKETBASE_ENABLED, hash_password
-from deepmentor.services.config.model_catalog import ModelCatalogService
+    """from kagweb.services.auth import POCKETBASE_ENABLED, hash_password
+from kagweb.services.config.model_catalog import ModelCatalogService
 """,
 )
 

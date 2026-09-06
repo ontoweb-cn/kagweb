@@ -1,6 +1,6 @@
 """Tests for provider registry utilities."""
 
-from deepmentor.services.llm import registry
+from kagweb.services.llm import registry
 
 
 def test_registry_register_and_lookup() -> None:

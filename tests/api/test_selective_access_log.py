@@ -4,7 +4,7 @@ Verifies that non-200 responses are logged with the 5-element args tuple
 (client_addr, method, full_path, http_version, status_code) — the shape that
 was needed for uvicorn's AccessFormatter in #334 — while 200s stay silent.
 
-The real middleware logs through the ``deepmentor.access`` logger, which carries
+The real middleware logs through the ``kagweb.access`` logger, which carries
 its own stdout handler with ``propagate=False`` (uvicorn's own access log is
 disabled on every launch path). Because it does not propagate to root, we
 capture by attaching a handler directly to that logger rather than via caplog.
@@ -23,7 +23,7 @@ from fastapi.testclient import TestClient
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-ACCESS_LOGGER = "deepmentor.access"
+ACCESS_LOGGER = "kagweb.access"
 
 
 def _build_app_with_middleware():
@@ -103,7 +103,7 @@ class TestSelectiveAccessLog:
         assert status_code == 404
 
     def test_200_not_logged(self):
-        """200 responses should not produce deepmentor.access log records."""
+        """200 responses should not produce kagweb.access log records."""
         app = _build_app_with_middleware()
         with _CaptureAccess() as cap:
             with TestClient(app) as client:

@@ -1,5 +1,5 @@
 name: Documentation Issue
-description: Report an inaccuracy, broken link, missing topic, or unclear explanation in the docs at deepmentor.info
+description: Report an inaccuracy, broken link, missing topic, or unclear explanation in the docs at kagweb.info
 title: "[Docs]: "
 labels: ["docs", "triage"]
 
@@ -10,13 +10,13 @@ body:
       label: Before filing
       options:
         - label: I have searched the existing docs issues and this report is not already filed.
-        - label: This is about the docs at https://deepmentor.info — not a product bug.
+        - label: This is about the docs at https://kagweb.info — not a product bug.
   - type: input
     id: page
     attributes:
       label: Page URL
       description: Which page does the issue affect?
-      placeholder: https://deepmentor.info/docs/...
+      placeholder: https://kagweb.info/docs/...
     validations:
       required: true
   - type: dropdown
@@ -51,8 +51,8 @@ body:
     id: environment
     attributes:
       label: Environment (optional)
-      description: Only if relevant to the issue (browser, OS, DeepMentor version).
+      description: Only if relevant to the issue (browser, OS, KAGWeb version).
       placeholder: |
         - Browser:
-        - DeepMentor version (if checked locally):
+        - KAGWeb version (if checked locally):
         - OS:

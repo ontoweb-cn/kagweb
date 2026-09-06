@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from deepmentor.services.config.model_catalog import (
+from kagweb.services.config.model_catalog import (
     CATALOG_SECRET_MASK,
     redact_catalog_secrets,
     restore_catalog_secrets,

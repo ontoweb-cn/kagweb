@@ -1,5 +1,5 @@
 # ============================================
-# DeepMentor Partners — Channel SDK Dependencies
+# KAGWeb Partners — Channel SDK Dependencies
 # ============================================
 # Mirrors pyproject.toml `[project.optional-dependencies].partners`.
 # Keep in sync with pyproject.toml when adding/updating dependencies.

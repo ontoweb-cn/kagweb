@@ -27,7 +27,7 @@ describe("chat activity status", () => {
     );
 
     const status = screen.getByRole("status");
-    expect(status).toHaveTextContent("DeepMentor Exploring");
+    expect(status).toHaveTextContent("KAGWeb Exploring");
     expect(status).not.toHaveTextContent("Responding");
   });
 });

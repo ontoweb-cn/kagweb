@@ -38,7 +38,7 @@ def main(repository: Path = DEFAULT_REPOSITORY) -> None:
         "content_sha256": hashlib.sha256(payload).hexdigest(),
         "note": "Exact official documentation example; not a live parser capture.",
     }
-    (TARGET / "deepmentor-fixture-provenance.json").write_text(
+    (TARGET / "kagweb-fixture-provenance.json").write_text(
         json.dumps(provenance, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
 

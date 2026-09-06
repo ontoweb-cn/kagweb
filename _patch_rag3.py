@@ -27,14 +27,14 @@ def cut(src, start, end, path=""):
 
 
 # ── settings.py ──
-p = "deepmentor/api/routers/settings.py"
+p = "kagweb/api/routers/settings.py"
 s = load(p)
 s = rep(s, '''    logger.warning(
         "Admin applied catalog; resetting global LLM/embedding clients. "
         "In-flight user turns may flip backend client mid-call."
     )
-    from deepmentor.services.embedding.client import reset_embedding_client
-    from deepmentor.services.llm.client import reset_llm_client
+    from kagweb.services.embedding.client import reset_embedding_client
+    from kagweb.services.llm.client import reset_llm_client
 
     clear_llm_config_cache()
     reset_llm_client()
@@ -43,7 +43,7 @@ s = rep(s, '''    logger.warning(
         "Admin applied catalog; resetting the global LLM client. "
         "In-flight user turns may flip backend client mid-call."
     )
-    from deepmentor.services.llm.client import reset_llm_client
+    from kagweb.services.llm.client import reset_llm_client
 
     clear_llm_config_cache()
     reset_llm_client()''', p)

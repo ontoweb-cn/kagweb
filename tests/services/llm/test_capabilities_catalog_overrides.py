@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.services.llm.capabilities import (
+from kagweb.services.llm.capabilities import (
     catalog_capability_override,
     effective_capabilities,
     get_capability,

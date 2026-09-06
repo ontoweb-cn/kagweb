@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.app.container import ApplicationContainer
+from kagweb.app.container import ApplicationContainer
 
 
 @pytest.mark.asyncio

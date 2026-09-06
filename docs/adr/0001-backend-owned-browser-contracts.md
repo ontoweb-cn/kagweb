@@ -8,7 +8,7 @@ Accepted
 
 The backend stabilization and frontend stabilization work were developed from
 the same base commit in parallel. The backend introduced
-`deepmentor.core.turn_request.TurnRequest`; the frontend branch independently
+`kagweb.core.turn_request.TurnRequest`; the frontend branch independently
 introduced a second `TurnRequest` plus WebSocket models under the API adapter.
 The generated browser schema therefore described the frontend branch's copy of
 the backend rather than the backend being integrated.
@@ -18,9 +18,9 @@ deleted chat routes and omitting new runtime and health routes.
 
 ## Decision
 
-- Adapter-neutral request value objects live in `deepmentor.core`.
-- `deepmentor.app.contracts` only re-exports those value objects.
-- Wire-only WebSocket models live in `deepmentor.api.contracts`.
+- Adapter-neutral request value objects live in `kagweb.core`.
+- `kagweb.app.contracts` only re-exports those value objects.
+- Wire-only WebSocket models live in `kagweb.api.contracts`.
 - OpenAPI and WebSocket JSON Schema are generated from the running FastAPI app
   and those canonical models after backend and frontend integration.
 - Duplicate OpenAPI operation IDs are defects in router declarations. The
@@ -48,5 +48,5 @@ deleted chat routes and omitting new runtime and health routes.
 
 - Maintain equivalent TypeScript and Python models by hand: rejected because
   the parallel refactors already demonstrated silent drift.
-- Own all contracts in `deepmentor.api`: rejected because CLI and Python SDK
+- Own all contracts in `kagweb.api`: rejected because CLI and Python SDK
   requests must not depend on the HTTP adapter.

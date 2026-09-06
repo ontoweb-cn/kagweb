@@ -5,8 +5,8 @@
 
 本仓库实际存在**两套 Agent Loop**:
 
-1. **产品主循环** — chat 的原生 tool-calling 循环(`deepmentor/agents/chat/agent_loop.py`),默认能力,所有对话回合都跑在它上面(solve / mastery / reading 以扩展形式挂载,见 §4);
-2. **通用标签驱动引擎** — `deepmentor/runtime/agentic/loop.py` + `labeled_step.py`,服务 deep_research、deep_question、PageIndex RAG 推理等内部流水线。
+1. **产品主循环** — chat 的原生 tool-calling 循环(`kagweb/agents/chat/agent_loop.py`),默认能力,所有对话回合都跑在它上面(solve / mastery / reading 以扩展形式挂载,见 §4);
+2. **通用标签驱动引擎** — `kagweb/runtime/agentic/loop.py` + `labeled_step.py`,服务 deep_research、deep_question、PageIndex RAG 推理等内部流水线。
 
 两者的关系只有通过溯源才能看清:主循环曾长期跑在第二套引擎的标签协议上,2026-06-11 起切换为原生 tool calling,引擎则退守到协议可控的内部场景。
 
@@ -14,7 +14,7 @@
 
 ## 1. 主循环:chat 的原生 tool-calling 循环
 
-回合如何到达这里:`ChatOrchestrator`(`deepmentor/runtime/orchestrator.py`)经 capability routing 选中能力后调用其 `run()`——本文从能力层开始,上游路由不在范围内。
+回合如何到达这里:`ChatOrchestrator`(`kagweb/runtime/orchestrator.py`)经 capability routing 选中能力后调用其 `run()`——本文从能力层开始,上游路由不在范围内。
 
 入口链:
 
@@ -100,7 +100,7 @@ solve / mastery / reading 不是独立循环,而是以 `LoopExtension` 协议(`c
 | 2026-06-11 | `46093e5e` | **分水岭**:chat 弃标签协议,新建 `agents/chat/agent_loop.py`(663 行初版)走原生 tool calling;同提交删除整个 `tutorbot/agent/` 子系统(实测 5,913 行);README 重写并新增 `assets/figs/system/chat-agent-loop.png` |
 | 2026-07-24 | `baa49d68` | DeepSeek DSML 文本工具调用解析(issue #666) |
 | 2026-09-01 | `02ba5679` | 引擎 `core/agentic` → `runtime/agentic`(架构分层:从 core 提升为 runtime) |
-| 2026-09-03 | `5b1eee2d` | 全库 DeepTutor → DeepMentor 改名 |
+| 2026-09-03 | `5b1eee2d` | 全库 DeepTutor → KAGWeb 改名 |
 
 ### 三条演化逻辑
 
@@ -116,15 +116,15 @@ solve / mastery / reading 不是独立循环,而是以 `LoopExtension` 协议(`c
 
 | 文件 | 角色 |
 |---|---|
-| `deepmentor/agents/chat/agent_loop.py` | chat 主循环(轮调度、预算、打捞、nudge、续写) |
-| `deepmentor/agents/chat/agentic_pipeline.py` | 宿主:工具组合、KB seed、briefings、派发、暂停、finish guard |
-| `deepmentor/agents/chat/dsml_tool_calls.py` | DeepSeek 文本工具调用兜底解析 |
-| `deepmentor/runtime/agentic/loop.py` | 标签驱动通用循环调度器 |
-| `deepmentor/runtime/agentic/labeled_step.py` | 单次流式调用 + 标签协议路由 |
-| `deepmentor/runtime/agentic/labels.py` | 标签解析与违规检测(文档串含演化史) |
-| `deepmentor/runtime/agentic/tool_dispatch.py` | 并行工具派发、pause/terminate 聚合 |
-| `deepmentor/capabilities/protocol.py` | `LoopExtension` / `PromptBlock` 挂载协议 |
-| `deepmentor/capabilities/solve/loop.py` | LoopExtension 挂载示例(solve 骨架) |
-| `deepmentor/agents/research/pipeline.py`、`agents/question/pipeline.py`、`services/rag/pipelines/pageindex/reasoning.py` | 标签引擎现行使用者 |
+| `kagweb/agents/chat/agent_loop.py` | chat 主循环(轮调度、预算、打捞、nudge、续写) |
+| `kagweb/agents/chat/agentic_pipeline.py` | 宿主:工具组合、KB seed、briefings、派发、暂停、finish guard |
+| `kagweb/agents/chat/dsml_tool_calls.py` | DeepSeek 文本工具调用兜底解析 |
+| `kagweb/runtime/agentic/loop.py` | 标签驱动通用循环调度器 |
+| `kagweb/runtime/agentic/labeled_step.py` | 单次流式调用 + 标签协议路由 |
+| `kagweb/runtime/agentic/labels.py` | 标签解析与违规检测(文档串含演化史) |
+| `kagweb/runtime/agentic/tool_dispatch.py` | 并行工具派发、pause/terminate 聚合 |
+| `kagweb/capabilities/protocol.py` | `LoopExtension` / `PromptBlock` 挂载协议 |
+| `kagweb/capabilities/solve/loop.py` | LoopExtension 挂载示例(solve 骨架) |
+| `kagweb/agents/research/pipeline.py`、`agents/question/pipeline.py`、`services/rag/pipelines/pageindex/reasoning.py` | 标签引擎现行使用者 |
 
 测试:`tests/core/agentic/`(引擎单测:tool_arg_guard、tool_call_stream、dispatch 事件与暂停时序等)、`tests/core/test_agentic_loop_intermediate.py`、`tests/core/test_labeled_step_*.py`。

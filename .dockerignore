@@ -1,5 +1,5 @@
 # ============================================
-# DeepMentor Docker Ignore File
+# KAGWeb Docker Ignore File
 # ============================================
 # Excludes files and directories from the Docker build context
 # to improve build speed and reduce image size
@@ -61,7 +61,7 @@ ENV/
 .venv/
 env.bak/
 venv.bak/
-DeepMentor.env
+KAGWeb.env
 
 # Pytest cache
 .pytest_cache/

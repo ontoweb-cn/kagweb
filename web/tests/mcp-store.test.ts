@@ -69,7 +69,7 @@ function page(
 // ── refusal codes ────────────────────────────────────────────────────────
 
 test("every refusal code the per-user API can send maps to its own copy", () => {
-  // These are the codes raised in deepmentor/api/routers/space_mcp.py. A code
+  // These are the codes raised in kagweb/api/routers/space_mcp.py. A code
   // with no mapping degrades to the backend's English sentence, which for
   // "reserved name" or "too many servers" tells the reader nothing actionable.
   for (const code of [

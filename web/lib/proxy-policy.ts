@@ -22,7 +22,7 @@ export function isRetiredPagePath(pathname: string): boolean {
 }
 
 // Paths whose responses come from the backend, not the Next app. The middleware
-// rewrites these to DEEPMENTOR_API_BASE_URL so the browser can use frontend-
+// rewrites these to KAGWEB_API_BASE_URL so the browser can use frontend-
 // relative URLs (e.g. `:3782/api/...` or `.../ws`) and let the rewrite
 // bridge the origin gap.
 export function isBackendPath(pathname: string): boolean {

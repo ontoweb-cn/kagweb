@@ -1,18 +1,18 @@
 <div align="center">
 
-<p align="center"><img src="../../assets/figs/logo/logo.png" alt="DeepMentor लोगो" height="56" style="vertical-align: middle;">&nbsp;<img src="../../assets/figs/logo/banner.png" alt="DeepMentor" height="48" style="vertical-align: middle;"></p>
+<p align="center"><img src="../../assets/figs/logo/logo.png" alt="KAGWeb लोगो" height="56" style="vertical-align: middle;">&nbsp;<img src="../../assets/figs/logo/banner.png" alt="KAGWeb" height="48" style="vertical-align: middle;"></p>
 
-# DeepMentor: लाइफलॉन्ग व्यक्तिगत ट्यूटरिंग
+# KAGWeb: लाइफलॉन्ग व्यक्तिगत ट्यूटरिंग
 
 <p align="center">
-  <a href="https://deepmentor.info" target="_blank"><img alt="दस्तावेज़ — deepmentor.info" src="https://img.shields.io/badge/Docs-deepmentor.info%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>&nbsp;
-  <a href="https://deepmentor.info/collaborate/" target="_blank"><img alt="सहयोग करें — हमारे साथ काम करें" src="https://img.shields.io/badge/Collaborate-work%20with%20us%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>
+  <a href="https://kagweb.info" target="_blank"><img alt="दस्तावेज़ — kagweb.info" src="https://img.shields.io/badge/Docs-kagweb.info%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>&nbsp;
+  <a href="https://kagweb.info/collaborate/" target="_blank"><img alt="सहयोग करें — हमारे साथ काम करें" src="https://img.shields.io/badge/Collaborate-work%20with%20us%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>
 </p>
 
 <p align="center">
-  <a href="https://trendshift.io/repositories/17099?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/17099" alt="HKUDS%2FDeepMentor | Trendshift" width="250" height="55"/></a>&nbsp;
-  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/daily" alt="HKUDS%2FDeepMentor | Trendshift" width="250" height="55"/></a>&nbsp;
-  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/weekly?language=Python" alt="HKUDS%2FDeepMentor | Trendshift" width="250" height="55"/></a>
+  <a href="https://trendshift.io/repositories/17099?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/17099" alt="HKUDS%2FKAGWeb | Trendshift" width="250" height="55"/></a>&nbsp;
+  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/daily" alt="HKUDS%2FKAGWeb | Trendshift" width="250" height="55"/></a>&nbsp;
+  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/weekly?language=Python" alt="HKUDS%2FKAGWeb | Trendshift" width="250" height="55"/></a>
 </p>
 
 <p align="center">
@@ -33,33 +33,33 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](../../LICENSE)
-[![GitHub release](https://img.shields.io/github/v/release/HKUDS/DeepMentor?style=flat-square&color=brightgreen)](https://github.com/HKUDS/DeepMentor/releases)
+[![GitHub release](https://img.shields.io/github/v/release/HKUDS/KAGWeb?style=flat-square&color=brightgreen)](https://github.com/HKUDS/KAGWeb/releases)
 [![arXiv](https://img.shields.io/badge/arXiv-2604.26962-b31b1b?style=flat-square&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2604.26962)
 
 [![Discord](https://img.shields.io/badge/Discord-Community-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/eRsjPgMU4t)
 [![Feishu](https://img.shields.io/badge/Feishu-Group-00D4AA?style=flat-square&logo=feishu&logoColor=white)](../../Communication.md)
-[![WeChat](https://img.shields.io/badge/WeChat-Group-07C160?style=flat-square&logo=wechat&logoColor=white)](https://github.com/HKUDS/DeepMentor/issues/78)
+[![WeChat](https://img.shields.io/badge/WeChat-Group-07C160?style=flat-square&logo=wechat&logoColor=white)](https://github.com/HKUDS/KAGWeb/issues/78)
 
-[विशेषताएं](#-मुख्य-विशेषताएं) · [शुरू करें](#-शुरू-करें) · [एक्सप्लोर करें](#-deepmentor-को-एक्सप्लोर-करें) · [CLI](#️-deepmentor-cli--एजेंट-नेटिव-इंटरफेस) · [इकोसिस्टम](#-इकोसिस्टम--eduhub-और-skills-community) · [समुदाय](#-समुदाय)
+[विशेषताएं](#-मुख्य-विशेषताएं) · [शुरू करें](#-शुरू-करें) · [एक्सप्लोर करें](#-kagweb-को-एक्सप्लोर-करें) · [CLI](#️-kagweb-cli--एजेंट-नेटिव-इंटरफेस) · [इकोसिस्टम](#-इकोसिस्टम--eduhub-और-skills-community) · [समुदाय](#-समुदाय)
 
 </div>
 
 ---
 
-> 🤝 **हम किसी भी प्रकार के योगदान का स्वागत करते हैं!** [`Roadmap`](https://github.com/HKUDS/DeepMentor/issues/498) पर roadmap items के लिए वोट करें या नए प्रस्तावित करें, और branching strategy, coding standards और शुरू करने के तरीके के लिए हमारी [Contributing Guide](../../CONTRIBUTING.md) देखें।
+> 🤝 **हम किसी भी प्रकार के योगदान का स्वागत करते हैं!** [`Roadmap`](https://github.com/HKUDS/KAGWeb/issues/498) पर roadmap items के लिए वोट करें या नए प्रस्तावित करें, और branching strategy, coding standards और शुरू करने के तरीके के लिए हमारी [Contributing Guide](../../CONTRIBUTING.md) देखें।
 
 ### 📰 समाचार
 
-- **2026-05-22** 🌐 आधिकारिक डॉक्स साइट [**deepmentor.info**](https://deepmentor.info/) पर live — guides, references, और capability tours एक ही जगह।
+- **2026-05-22** 🌐 आधिकारिक डॉक्स साइट [**kagweb.info**](https://kagweb.info/) पर live — guides, references, और capability tours एक ही जगह।
 - **2026-04-19** 🎉 111 दिनों में 20k स्टार्स! सच्ची व्यक्तिगत, बुद्धिमान ट्यूटरिंग की दिशा में आपके अविश्वसनीय समर्थन के लिए धन्यवाद।
-- **2026-04-10** 📄 हमारा paper अब arXiv पर live है — DeepMentor के design और विचारों के लिए [preprint](https://arxiv.org/abs/2604.26962) पढ़ें।
+- **2026-04-10** 📄 हमारा paper अब arXiv पर live है — KAGWeb के design और विचारों के लिए [preprint](https://arxiv.org/abs/2604.26962) पढ़ें।
 - **2026-02-06** 🚀 39 दिनों में 10k स्टार्स! हमारे अविश्वसनीय community के समर्थन के लिए बहुत धन्यवाद।
-- **2026-01-01** 🎊 नया साल मुबारक! हमारे [Discord](https://discord.gg/eRsjPgMU4t), [WeChat](https://github.com/HKUDS/DeepMentor/issues/78), या [Discussions](https://github.com/HKUDS/DeepMentor/discussions) से जुड़ें — आइए मिलकर DeepMentor को आकार दें।
-- **2025-12-29** 🎓 DeepMentor आधिकारिक रूप से जारी हुआ!
+- **2026-01-01** 🎊 नया साल मुबारक! हमारे [Discord](https://discord.gg/eRsjPgMU4t), [WeChat](https://github.com/HKUDS/KAGWeb/issues/78), या [Discussions](https://github.com/HKUDS/KAGWeb/discussions) से जुड़ें — आइए मिलकर KAGWeb को आकार दें।
+- **2025-12-29** 🎓 KAGWeb आधिकारिक रूप से जारी हुआ!
 
 ## ✨ मुख्य विशेषताएं
 
-DeepMentor एक agent-native learning workspace है जो tutoring, problem solving, quiz generation, research, visualization, और mastery practice को एक extensible system में जोड़ता है।
+KAGWeb एक agent-native learning workspace है जो tutoring, problem solving, quiz generation, research, visualization, और mastery practice को एक extensible system में जोड़ता है।
 
 - **हर मोड के लिए एक रनटाइम** — Chat, Ask Questions, Quiz, Research, Visualize, Solve, Course Study, Mastery Path, Immersive Reading और Immersive Watching एक ही capability runtime और session context share करते हैं, जबकि हर उद्देश्य के लिए बने loops और pipelines बनाए रखते हैं।
 - **जुड़ा हुआ लर्निंग कॉन्टेक्स्ट** — Knowledge bases, books, Co-Writer drafts, notebooks, question banks, personas, और Memory को उन workflows में reuse किया जा सकता है जो उन्हें support करते हैं, account grants और learning policies के अधीन।
@@ -73,23 +73,23 @@ DeepMentor एक agent-native learning workspace है जो tutoring, proble
 
 ## 🚀 शुरू करें
 
-DeepMentor चार installation paths के साथ आता है। वे सभी एक workspace layout साझा करते हैं: settings उस directory के नीचे `data/user/settings/` में रहती हैं जहां से आप launch करते हैं (या `DEEPMENTOR_HOME` / `deepmentor start --home` के नीचे अगर आप explicitly set करते हैं)। पूरे app के लिए, recommended flow है **workspace directory चुनें → install करें → `deepmentor init` → `deepmentor start`**।
+KAGWeb चार installation paths के साथ आता है। वे सभी एक workspace layout साझा करते हैं: settings उस directory के नीचे `data/user/settings/` में रहती हैं जहां से आप launch करते हैं (या `KAGWEB_HOME` / `kagweb start --home` के नीचे अगर आप explicitly set करते हैं)। पूरे app के लिए, recommended flow है **workspace directory चुनें → install करें → `kagweb init` → `kagweb start`**।
 
 <details>
 <summary><b>Option 1 — PyPI से Install करें</b> · पूरा local Web app + CLI, clone की जरूरत नहीं</summary>
 
-पूरा local Web app + CLI, clone की जरूरत नहीं। **Python 3.11–3.14** और PATH पर **Node.js 20+** runtime चाहिए (`deepmentor start` packaged Next.js standalone server को spawn करता है)।
+पूरा local Web app + CLI, clone की जरूरत नहीं। **Python 3.11–3.14** और PATH पर **Node.js 20+** runtime चाहिए (`kagweb start` packaged Next.js standalone server को spawn करता है)।
 
 ```bash
-mkdir -p my-deepmentor && cd my-deepmentor
-pip install -U deepmentor
-deepmentor init     # prompts for ports + LLM provider + optional embedding/search
-deepmentor start    # starts backend + frontend; keep the terminal open
+mkdir -p my-kagweb && cd my-kagweb
+pip install -U kagweb
+kagweb init     # prompts for ports + LLM provider + optional embedding/search
+kagweb start    # starts backend + frontend; keep the terminal open
 ```
 
-`deepmentor init` backend port (default `8001`), frontend port (default `3782`), LLM provider / base URL / API key / model, Knowledge Base / RAG के लिए optional embedding provider, और Web Search के लिए optional search provider के लिए prompt करता है।
+`kagweb init` backend port (default `8001`), frontend port (default `3782`), LLM provider / base URL / API key / model, Knowledge Base / RAG के लिए optional embedding provider, और Web Search के लिए optional search provider के लिए prompt करता है।
 
-`deepmentor start` के बाद, terminal में print किया गया frontend URL खोलें — default रूप से [http://127.0.0.1:3782](http://127.0.0.1:3782)। backend और frontend दोनों को रोकने के लिए उस terminal में `Ctrl+C` दबाएं। Quick trial के लिए `deepmentor init` छोड़ना ठीक है; app default ports और empty model settings के साथ boot होगा, उन्हें बाद में **Settings → Models** में configure करें।
+`kagweb start` के बाद, terminal में print किया गया frontend URL खोलें — default रूप से [http://127.0.0.1:3782](http://127.0.0.1:3782)। backend और frontend दोनों को रोकने के लिए उस terminal में `Ctrl+C` दबाएं। Quick trial के लिए `kagweb init` छोड़ना ठीक है; app default ports और empty model settings के साथ boot होगा, उन्हें बाद में **Settings → Models** में configure करें।
 
 </details>
 
@@ -99,8 +99,8 @@ deepmentor start    # starts backend + frontend; keep the terminal open
 Checkout के विरुद्ध development के लिए। CI और Docker से match करने के लिए **Python 3.11–3.14** और **Node.js 22 LTS** उपयोग करें।
 
 ```bash
-git clone https://gitee.com/wustbd/DeepMentor.git
-cd DeepMentor
+git clone https://gitee.com/wustbd/KAGWeb.git
+cd KAGWeb
 
 # Create a venv (macOS/Linux). Windows PowerShell:
 #   py -3.11 -m venv .venv ; .\.venv\Scripts\Activate.ps1
@@ -111,18 +111,18 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ( cd web && npm ci --legacy-peer-deps )
 
-deepmentor init
-deepmentor start --dev
+kagweb init
+kagweb start --dev
 ```
 
-`deepmentor start` local `web/` frontend को production के लिए एक बार build करता है और उसे reuse करता है; `--dev` Next.js को HMR के साथ run करता है। Config layout, ports, और `Ctrl+C` Option 1 से match करते हैं।
+`kagweb start` local `web/` frontend को production के लिए एक बार build करता है और उसे reuse करता है; `--dev` Next.js को HMR के साथ run करता है। Config layout, ports, और `Ctrl+C` Option 1 से match करते हैं।
 
 <details>
 <summary><b>Conda environment</b> (<code>venv</code> की बजाय)</summary>
 
 ```bash
-conda create -n deepmentor python=3.11
-conda activate deepmentor
+conda create -n kagweb python=3.11
+conda activate kagweb
 python -m pip install --upgrade pip
 ```
 
@@ -149,11 +149,11 @@ pip install -e ".[math-animator]"   # Manim addon; requires LaTeX/ffmpeg/system 
 
 **Frontend dependencies बदलना:** `web/package-lock.json` refresh करने के लिए `npm install --legacy-peer-deps` run करें, फिर `web/package.json` और `web/package-lock.json` दोनों को commit करें।
 
-**Stuck dev server:** अगर `deepmentor start --dev` एक existing frontend report करता है जो respond नहीं कर रहा, तो उस PID को stop करें जो वह print करता है। अगर कोई Next.js process actually नहीं चल रही, तो lock files stale हैं — उन्हें remove करें और retry करें:
+**Stuck dev server:** अगर `kagweb start --dev` एक existing frontend report करता है जो respond नहीं कर रहा, तो उस PID को stop करें जो वह print करता है। अगर कोई Next.js process actually नहीं चल रही, तो lock files stale हैं — उन्हें remove करें और retry करें:
 
 ```bash
 rm -f web/.next/dev/lock web/.next/lock
-deepmentor start --dev
+kagweb start --dev
 ```
 
 </details>
@@ -165,24 +165,24 @@ deepmentor start --dev
 
 पूरे Web app के लिए एक container। GitHub Container Registry पर images:
 
-- `ghcr.io/hkuds/deepmentor:latest` — latest stable release
-- `ghcr.io/hkuds/deepmentor:<version>` — शुरू के `v` के बिना exact release (उदाहरण `:1.6.3`); pre-releases को केवल उनका version tag मिलता है
+- `ghcr.io/hkuds/kagweb:latest` — latest stable release
+- `ghcr.io/hkuds/kagweb:<version>` — शुरू के `v` के बिना exact release (उदाहरण `:1.6.3`); pre-releases को केवल उनका version tag मिलता है
 
 > podman/rootless/read-only-rootfs deployments और पूरे per-installation guide के लिए [CONTAINERIZATION.md](../../CONTAINERIZATION.md) देखें।
 
 ```bash
-docker run --rm --name deepmentor \
+docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 \
-  -v deepmentor-data:/app/data \
-  ghcr.io/hkuds/deepmentor:latest
+  -v kagweb-data:/app/data \
+  ghcr.io/hkuds/kagweb:latest
 ```
 
 > **केवल `3782` publish करना जरूरी है।** Browser exclusively frontend origin से बात करता है; Next.js middleware (`web/proxy.ts`) **container के अंदर** `/api/*` और `/ws/*` को FastAPI backend पर forward करता है। `8001` publish करना (`-p 127.0.0.1:8001:8001`) optional है — केवल curl या scripts से API directly hit करने के लिए उपयोगी।
 
-[http://127.0.0.1:3782](http://127.0.0.1:3782) खोलें। Container पहले boot पर `/app/data/user/settings/*.json` बनाता है; Web Settings page से model providers configure करें। Config, API keys, logs, workspace files, memory, और knowledge bases `deepmentor-data` volume में persist करते हैं। वैकल्पिक extras deployment पर belong करते हैं, किसी shell में नहीं: `DEEPMENTOR_EXTRAS` (और system libraries के लिए `DEEPMENTOR_APT_PACKAGES`) set करें, और उससे शुरू होने वाला हर container उन्हें फिर से apply करता है — जबकि एक `docker exec … pip install` अगले `compose down` पर खो जाता है।
+[http://127.0.0.1:3782](http://127.0.0.1:3782) खोलें। Container पहले boot पर `/app/data/user/settings/*.json` बनाता है; Web Settings page से model providers configure करें। Config, API keys, logs, workspace files, memory, और knowledge bases `kagweb-data` volume में persist करते हैं। वैकल्पिक extras deployment पर belong करते हैं, किसी shell में नहीं: `KAGWEB_EXTRAS` (और system libraries के लिए `KAGWEB_APT_PACKAGES`) set करें, और उससे शुरू होने वाला हर container उन्हें फिर से apply करता है — जबकि एक `docker exec … pip install` अगले `compose down` पर खो जाता है।
 
 - **अलग host ports:** प्रत्येक `-p host:container` mapping के left side को बदलें (जैसे `-p 127.0.0.1:8088:3782`)। अगर आप `/app/data/user/settings/system.json` में container-side ports बदलते हैं, तो restart करें और match करने के लिए प्रत्येक mapping के right side को update करें।
-- **Detached:** `-d` add करें, फिर follow करने के लिए `docker logs -f deepmentor`, stop करने के लिए `docker stop deepmentor`, नाम reuse करने से पहले `docker rm deepmentor`। `deepmentor-data` volume आपकी settings और workspace को restarts के पार रखता है।
+- **Detached:** `-d` add करें, फिर follow करने के लिए `docker logs -f kagweb`, stop करने के लिए `docker stop kagweb`, नाम reuse करने से पहले `docker rm kagweb`। `kagweb-data` volume आपकी settings और workspace को restarts के पार रखता है।
 
 **Remote Docker / reverse proxy:** browser केवल frontend origin (`:3782`) से बात करता है; in-container Next.js middleware `/api/*` और `/ws/*` को backend server-side पर forward करता है। सामान्य single-container case के लिए API base configure करने की जरूरत नहीं — बस अपना reverse proxy / TLS terminator `:3782` पर point करें। **Split deployment** (backend अलग container/host में) के लिए ही API base चाहिए: `data/user/settings/system.json` में `next_public_api_base` को वह in-network address set करें जो frontend server backend तक पहुंचने के लिए उपयोग करता है (यह server-side read होता है, browser को कभी नहीं भेजा जाता)।
 
@@ -192,11 +192,11 @@ docker run --rm --name deepmentor \
 }
 ```
 
-`next_public_api_base_external` (और इसका alias `public_api_base`) lower-precedence fallbacks के रूप में accept किए जाते हैं। CORS frontend **origins** उपयोग करता है, API URLs नहीं। Auth disabled होने पर, DeepMentor default रूप से normal HTTP/HTTPS browser origins permit करता है। Auth enabled होने पर, exact frontend origins add करें:
+`next_public_api_base_external` (और इसका alias `public_api_base`) lower-precedence fallbacks के रूप में accept किए जाते हैं। CORS frontend **origins** उपयोग करता है, API URLs नहीं। Auth disabled होने पर, KAGWeb default रूप से normal HTTP/HTTPS browser origins permit करता है। Auth enabled होने पर, exact frontend origins add करें:
 
 ```json
 {
-  "cors_origins": ["https://deepmentor.example.com"]
+  "cors_origins": ["https://kagweb.example.com"]
 }
 ```
 
@@ -206,11 +206,11 @@ docker run --rm --name deepmentor \
 Docker के अंदर, `localhost` container itself है, आपका host machine नहीं। Host पर चल रहे model service तक पहुंचने के लिए, host gateway उपयोग करें (recommended):
 
 ```bash
-docker run --rm --name deepmentor \
+docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 -p 127.0.0.1:8001:8001 \
   --add-host=host.docker.internal:host-gateway \
-  -v deepmentor-data:/app/data \
-  ghcr.io/hkuds/deepmentor:latest
+  -v kagweb-data:/app/data \
+  ghcr.io/hkuds/kagweb:latest
 ```
 
 फिर **Settings → Models** में, provider Base URL को `host.docker.internal` पर point करें:
@@ -235,50 +235,50 @@ Docker Desktop (macOS/Windows) आमतौर पर `--add-host` के बि
 जब आपको Web UI की जरूरत न हो। CLI-only package PyPI से नहीं, source checkout से install होता है।
 
 ```bash
-git clone https://gitee.com/wustbd/DeepMentor.git
-cd DeepMentor
+git clone https://gitee.com/wustbd/KAGWeb.git
+cd KAGWeb
 
 # Create a venv (macOS/Linux). Windows PowerShell:
 #   py -3.11 -m venv .venv-cli ; .\.venv-cli\Scripts\Activate.ps1
 python3 -m venv .venv-cli && source .venv-cli/bin/activate
 python -m pip install --upgrade pip
 
-python -m pip install -e ./packaging/deepmentor-cli
-deepmentor init --cli
-deepmentor chat
+python -m pip install -e ./packaging/kagweb-cli
+kagweb init --cli
+kagweb chat
 ```
 
-`deepmentor init --cli` पूरे app के समान `data/user/settings/` layout share करता है लेकिन backend/frontend port prompts skip करता है। यह फिर भी Embedding और Search selectors offer करता है (जरूरत न हो तो **Skip** चुनें), मुख्य runtime files (`system.json`, `auth.json`, `integrations.json`, `interface.json`, `model_catalog.json`, `main.yaml`, `agents.yaml`) लिखता है, और active LLM provider और model के लिए prompt करता है।
+`kagweb init --cli` पूरे app के समान `data/user/settings/` layout share करता है लेकिन backend/frontend port prompts skip करता है। यह फिर भी Embedding और Search selectors offer करता है (जरूरत न हो तो **Skip** चुनें), मुख्य runtime files (`system.json`, `auth.json`, `integrations.json`, `interface.json`, `model_catalog.json`, `main.yaml`, `agents.yaml`) लिखता है, और active LLM provider और model के लिए prompt करता है।
 
 <details>
 <summary><b>सामान्य commands</b></summary>
 
 ```bash
-deepmentor chat                                          # interactive REPL
-deepmentor chat --capability deep_solve --tool rag --kb my-kb
-deepmentor run chat "Explain Fourier transform"
-deepmentor run deep_solve "Solve x^2 = 4" --tool rag --kb my-kb
-deepmentor kb create my-kb --doc textbook.pdf
-deepmentor memory show
-deepmentor config show
+kagweb chat                                          # interactive REPL
+kagweb chat --capability deep_solve --tool rag --kb my-kb
+kagweb run chat "Explain Fourier transform"
+kagweb run deep_solve "Solve x^2 = 4" --tool rag --kb my-kb
+kagweb kb create my-kb --doc textbook.pdf
+kagweb memory show
+kagweb config show
 ```
 
 </details>
 
-Local `deepmentor-cli` install में कोई Web assets या server dependencies नहीं हैं। Source checkout को आसपास रखें — editable install उस पर point करता है। बाद में Web app add करने के लिए, PyPI package (Option 1) install करें और same workspace से `deepmentor init` + `deepmentor start` run करें।
+Local `kagweb-cli` install में कोई Web assets या server dependencies नहीं हैं। Source checkout को आसपास रखें — editable install उस पर point करता है। बाद में Web app add करने के लिए, PyPI package (Option 1) install करें और same workspace से `kagweb init` + `kagweb start` run करें।
 
 </details>
 
 <details>
 <summary><b>Code Execution Sandbox (office skills)</b> · docx / pdf / pptx / xlsx के लिए model-generated code run करना</summary>
 
-Built-in office skills — **docx / pdf / pptx / xlsx** — model द्वारा एक short Python script (`python-docx`, `reportlab`, `openpyxl`, …) लिखकर, इसे `exec` / `code_execution` tools के जरिए run करके, और download URL वापस करके काम करती हैं। वे tools तब mount होते हैं जब एक sandbox backend active होता है। DeepMentor इस क्रम में सबसे मजबूत configured backend चुनता है:
+Built-in office skills — **docx / pdf / pptx / xlsx** — model द्वारा एक short Python script (`python-docx`, `reportlab`, `openpyxl`, …) लिखकर, इसे `exec` / `code_execution` tools के जरिए run करके, और download URL वापस करके काम करती हैं। वे tools तब mount होते हैं जब एक sandbox backend active होता है। KAGWeb इस क्रम में सबसे मजबूत configured backend चुनता है:
 
-- **Runner sidecar:** `DEEPMENTOR_SANDBOX_RUNNER_URL` execution को `Dockerfile.runner` की hardened, least-privileged service पर route करता है।
+- **Runner sidecar:** `KAGWEB_SANDBOX_RUNNER_URL` execution को `Dockerfile.runner` की hardened, least-privileged service पर route करता है।
 - **Linux bubblewrap:** उपलब्ध होने पर `bwrap` process और files को isolate करता है।
 - **Restricted subprocess fallback:** local और single-container installs इसे केवल अनुमति होने पर उपयोग करते हैं; Docker में container एक अतिरिक्त isolation boundary बना रहता है।
 
-`data/user/settings/system.json` में `sandbox_allow_subprocess` setting (default `true`) केवल अंतिम fallback को control करती है। कोई runner या `bwrap` backend उपलब्ध न होने पर subprocess execution को refuse करने के लिए इसे `false` set करें (या `DEEPMENTOR_SANDBOX_ALLOW_SUBPROCESS=0` export करें); यह उन मजबूत backends को disable नहीं करता।
+`data/user/settings/system.json` में `sandbox_allow_subprocess` setting (default `true`) केवल अंतिम fallback को control करती है। कोई runner या `bwrap` backend उपलब्ध न होने पर subprocess execution को refuse करने के लिए इसे `false` set करें (या `KAGWEB_SANDBOX_ALLOW_SUBPROCESS=0` export करें); यह उन मजबूत backends को disable नहीं करता।
 
 </details>
 
@@ -321,48 +321,48 @@ LLM और task-model profiles तब **API format** setting expose करते
 <details>
 <summary><b>Uninstall और cleanup</b></summary>
 
-DeepMentor installed code को runtime workspace से अलग रखता है। Default रूप से workspace वही directory है जहां आप `deepmentor init` / `deepmentor start` चलाते हैं; `--home PATH` या `DEEPMENTOR_HOME` इसे override करता है। Runtime output उस workspace के भीतर `data` directory में होता है, इसलिए startup banner में `Workspace:` से शुरू होने वाली line बताती है कि क्या clean करना है।
+KAGWeb installed code को runtime workspace से अलग रखता है। Default रूप से workspace वही directory है जहां आप `kagweb init` / `kagweb start` चलाते हैं; `--home PATH` या `KAGWEB_HOME` इसे override करता है। Runtime output उस workspace के भीतर `data` directory में होता है, इसलिए startup banner में `Workspace:` से शुरू होने वाली line बताती है कि क्या clean करना है।
 
-1. App रोकें। `deepmentor start` चलाने वाले terminal में `Ctrl+C` दबाएं, या `--detach` से शुरू किए गए launcher के लिए `deepmentor stop [--home PATH]` चलाएं; data delete करने से पहले किसी running Partner और detached Docker containers को भी रोकें।
+1. App रोकें। `kagweb start` चलाने वाले terminal में `Ctrl+C` दबाएं, या `--detach` से शुरू किए गए launcher के लिए `kagweb stop [--home PATH]` चलाएं; data delete करने से पहले किसी running Partner और detached Docker containers को भी रोकें।
 2. Runtime data केवल तभी हटाएं जब आप पूरी local state भी मिटाना चाहते हों। इसमें settings और API keys, chat history, sessions, Memory, Notebooks, Books, Reading state, Skills, Partners state, logs, Knowledge Bases, parse caches, generated artifacts, और packaged frontend runtime cache शामिल हैं।
 
-   पहले startup banner से exact `Workspace:` path copy करें और verify करें कि उसका `data` child intended DeepMentor data directory है। अगर बाद में कुछ भी चाहिए हो सकता है तो backup लें, फिर उसी exact directory को operating system के Trash/Recycle Bin में move करें। किसी relative path या unresolved environment variable पर recursive deletion command न चलाएं।
+   पहले startup banner से exact `Workspace:` path copy करें और verify करें कि उसका `data` child intended KAGWeb data directory है। अगर बाद में कुछ भी चाहिए हो सकता है तो backup लें, फिर उसी exact directory को operating system के Trash/Recycle Bin में move करें। किसी relative path या unresolved environment variable पर recursive deletion command न चलाएं।
 
 3. Installed package हटाएं। Distribution से match करने वाली command उपयोग करें:
 
    ```bash
-   python -m pip uninstall deepmentor
-   python -m pip uninstall deepmentor-cli
+   python -m pip uninstall kagweb
+   python -m pip uninstall kagweb-cli
    ```
 
-   अगर virtual environment केवल DeepMentor के लिए बनाई गई थी, तो उसे environment manager से हटाएं। Source install के लिए environment deactivate करें, source directory छोड़ें, और उसी exact checkout में `git status --short` चलाएं। यह confirm करने के बाद ही checkout को Trash/Recycle Bin में move करें कि उसमें कोई unrelated या uncommitted work नहीं है।
+   अगर virtual environment केवल KAGWeb के लिए बनाई गई थी, तो उसे environment manager से हटाएं। Source install के लिए environment deactivate करें, source directory छोड़ें, और उसी exact checkout में `git status --short` चलाएं। यह confirm करने के बाद ही checkout को Trash/Recycle Bin में move करें कि उसमें कोई unrelated या uncommitted work नहीं है।
 
 4. Docker path के लिए exact container और named volume हटाने से पहले inspect करें। Volume removal Docker-managed data को permanently मिटा देता है:
 
    ```bash
-   docker ps -a --filter name=^/deepmentor$
-   docker volume inspect deepmentor-data
-   docker rm -f deepmentor
-   docker volume rm deepmentor-data
+   docker ps -a --filter name=^/kagweb$
+   docker volume inspect kagweb-data
+   docker rm -f kagweb
+   docker volume rm kagweb-data
    ```
 
 </details>
 
-## 📖 DeepMentor को एक्सप्लोर करें
+## 📖 KAGWeb को एक्सप्लोर करें
 
 दैनिक उपयोग की मुख्य surfaces से शुरू करें: Chat, Partners, My Agents, Co-Writer, Book, Knowledge Center, Learning Space, Memory, और Settings। फिर tour साझा, isolated workspaces के लिए Multi-User deployments को cover करता है।
 
 अगर कोई answer पहले का constraint खो दे, weak evidence cite करे, या selected material से disagree करे, तो issue खोलने से पहले [`REASONING_SAFETY_CHECKLIST.md`](../../REASONING_SAFETY_CHECKLIST.md) में diagnostics collect करें।
 
 <div align="center">
-<img src="../../assets/figs/web-1.6.0/OVERVIEW.png" alt="DeepMentor होम — sidebar में हर surface के साथ Chat workspace" width="900">
+<img src="../../assets/figs/web-1.6.0/OVERVIEW.png" alt="KAGWeb होम — sidebar में हर surface के साथ Chat workspace" width="900">
 </div>
 
 <details>
 <summary><b>🏗️ System architecture</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/system/system%20architecture.png" alt="DeepMentor सिस्टम आर्किटेक्चर" width="900">
+<img src="../../assets/figs/system/system%20architecture.png" alt="KAGWeb सिस्टम आर्किटेक्चर" width="900">
 </div>
 
 </details>
@@ -373,13 +373,13 @@ DeepMentor installed code को runtime workspace से अलग रखता
 Chat default capability है और जहां से अधिकांश काम शुरू होता है। एक single thread normally बात कर सकता है, tools call कर सकता है, selected knowledge bases में खुद को ground कर सकता है, attachments पढ़ सकता है, images generate कर सकता है, subagents से consult कर सकता है, notebook records लिख सकता है, और turns के पार same context के साथ जारी रह सकता है।
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/home/00-overview.png" alt="DeepMentor Chat workspace" width="900">
+<img src="../../assets/figs/web-1.4.6+/home/00-overview.png" alt="KAGWeb Chat workspace" width="900">
 </div>
 
 Loop जानबूझकर simple है: model rounds में सोचता है, जब उपयोगी हो tools call करता है, results observe करता है, और tool-free message के साथ finish करता है। `ask_user` special है — guess करने की बजाय, agent turn pause कर सकता है, एक structured clarifying question पूछ सकता है, और आपके जवाब देने के बाद resume कर सकता है।
 
 <div align="center">
-<img src="../../assets/figs/system/chat-agent-loop.png" alt="DeepMentor Chat agent loop" width="900">
+<img src="../../assets/figs/system/chat-agent-loop.png" alt="KAGWeb Chat agent loop" width="900">
 </div>
 
 User-toggleable tools हैं `brainstorm`, `web_search`, `paper_search`, `reason`, और `geogebra_analysis` — साथ ही `imagegen` और `videogen` जब आप matching generation model configure करें। Contextual tools जैसे `rag`, `kb_files`, `read_source`, `read_memory`, `write_memory`, `read_skill`, `load_tools`, `exec`, `web_fetch`, `ask_user`, `list_notebook`, `write_note`, `question_bank`, `github`, और `consult_subagent` तब automatically mount होते हैं जब turn के पास सही context हो।
@@ -394,13 +394,13 @@ Home **Chat**, **Ask Questions**, **Quiz**, और **Visualize** को एक �
 <summary><b>🤝 Partner — Same Brain पर Persistent Companions</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/partners/00-partners%20overview.png" alt="DeepMentor Partners workspace" width="900">
+<img src="../../assets/figs/web-1.4.6+/partners/00-partners%20overview.png" alt="KAGWeb Partners workspace" width="900">
 </div>
 
 Partners अपनी soul, model policy, library, memory, और channels वाले persistent companions हैं। वे एक अलग bot engine नहीं हैं: हर inbound web या IM message partner-scoped workspace के अंदर एक normal `ChatOrchestrator` turn बन जाता है। एक partner "एक chat है जिसकी personality और phone number है।"
 
 <div align="center">
-<img src="../../assets/figs/system/partners-architecture.png" alt="DeepMentor Partners आर्किटेक्चर" width="900">
+<img src="../../assets/figs/system/partners-architecture.png" alt="KAGWeb Partners आर्किटेक्चर" width="900">
 </div>
 
 हर partner के पास एक `SOUL.md`, model selection, channels, tool policy, और assigned library है। Knowledge bases, skills, और notebooks `data/partners/<id>/workspace/` में copy होते हैं, इसलिए same RAG, skill, notebook, और memory tools special cases के बिना काम करते हैं। Authenticated non-admin users private Partner sessions और relationship memory रखते हैं, जबकि Partner उनकी personal memory को read-only पढ़ता है; admin, group, और unbound traffic shared Partner scope उपयोग करते हैं।
@@ -419,16 +419,16 @@ Channel layer schema-driven है और installed extras और configured cre
 <summary><b>🧑‍🚀 My Agents — दूसरे Agents को Consult और Import करें</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/myagents/00-overview.png" alt="DeepMentor My Agents workspace" width="900">
+<img src="../../assets/figs/web-1.4.6+/myagents/00-overview.png" alt="KAGWeb My Agents workspace" width="900">
 </div>
 
-My Agents दूसरे agents को DeepMentor के लिए context बनाता है, और दो अलग काम करता है। **लाइव एजेंट connect करें** — आपकी machine पर Claude Code, Codex, Antigravity, Kimi, opencode, MiMo Code, Hermes Agent, OpenClaw, या DeepSeek Harness, या आपके Partners में से एक — और इसे chat turn के अंदर से consult करें: DeepMentor actually दूसरे agent को *run* करता है और इसके काम को `consult_subagent` tool के जरिए Activity panel में stream करता है। Agent chip से इसे और इसकी round limit select करें, या `@` से connected agents की उसी list को filter करें; यह selection session से जुड़ा रहता है।
+My Agents दूसरे agents को KAGWeb के लिए context बनाता है, और दो अलग काम करता है। **लाइव एजेंट connect करें** — आपकी machine पर Claude Code, Codex, Antigravity, Kimi, opencode, MiMo Code, Hermes Agent, OpenClaw, या DeepSeek Harness, या आपके Partners में से एक — और इसे chat turn के अंदर से consult करें: KAGWeb actually दूसरे agent को *run* करता है और इसके काम को `consult_subagent` tool के जरिए Activity panel में stream करता है। Agent chip से इसे और इसकी round limit select करें, या `@` से connected agents की उसी list को filter करें; यह selection session से जुड़ा रहता है।
 
 <div align="center">
 <img src="../../assets/figs/web-1.4.6+/home/08-subagent%20demo%20with%20claude%20code.png" alt="Claude Code subagent को live consult करना" width="900">
 </div>
 
-**पिछली conversations import करें** — अपनी existing Claude Code और Codex history को named, searchable, resumable agents के रूप में bring in करें। Claude history को project / working directory और Codex history को calendar date के अनुसार चुनें; refresh उस scope को re-sync करता है और नई conversations खींचता है। Chat turn से किसी एक को `+` → My Agents के जरिए reference करें, और DeepMentor इसे एक third-party transcript के रूप में पढ़ता है — यह उनकी conversation रहती है, DeepMentor की अपनी आवाज नहीं।
+**पिछली conversations import करें** — अपनी existing Claude Code और Codex history को named, searchable, resumable agents के रूप में bring in करें। Claude history को project / working directory और Codex history को calendar date के अनुसार चुनें; refresh उस scope को re-sync करता है और नई conversations खींचता है। Chat turn से किसी एक को `+` → My Agents के जरिए reference करें, और KAGWeb इसे एक third-party transcript के रूप में पढ़ता है — यह उनकी conversation रहती है, KAGWeb की अपनी आवाज नहीं।
 
 </details>
 
@@ -436,7 +436,7 @@ My Agents दूसरे agents को DeepMentor के लिए context ब�
 <summary><b>✍️ Co-Writer — Selection-Aware Markdown Drafting</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/co-writer/00-overview.png" alt="DeepMentor Co-Writer workspace" width="900">
+<img src="../../assets/figs/web-1.4.6+/co-writer/00-overview.png" alt="KAGWeb Co-Writer workspace" width="900">
 </div>
 
 Co-Writer reports, tutorials, notes, और long-form learning artifacts के लिए एक split-view Markdown workspace है। Documents autosave होते हैं और live preview render करते हैं (KaTeX math, diagram fences), और जब draft reusable context बन जाए तो notebooks में save किए जा सकते हैं। नया draft शुरू करने के लिए `.docx` import करें, और वर्तमान editor को Markdown या Word के रूप में export करें।
@@ -445,7 +445,7 @@ Co-Writer reports, tutorials, notes, और long-form learning artifacts के 
 <img src="../../assets/figs/web-1.4.6+/co-writer/01-edit%20panel.png" alt="live preview वाला Co-Writer editor" width="900">
 </div>
 
-इसका defining idea **surgical editing** है: एक span select करें और DeepMentor से rewrite, expand, या shorten करने के लिए कहें। Edit agent change को एक knowledge base या web evidence में ground कर सकता है और अपने tool calls का trace रखता है। अगर उसके काम के दौरान draft नहीं बदला है, तो result selected text को directly replace करता है और **Undo** से reversible रहता है।
+इसका defining idea **surgical editing** है: एक span select करें और KAGWeb से rewrite, expand, या shorten करने के लिए कहें। Edit agent change को एक knowledge base या web evidence में ground कर सकता है और अपने tool calls का trace रखता है। अगर उसके काम के दौरान draft नहीं बदला है, तो result selected text को directly replace करता है और **Undo** से reversible रहता है।
 
 </details>
 
@@ -453,7 +453,7 @@ Co-Writer reports, tutorials, notes, और long-form learning artifacts के 
 <summary><b>📖 Book — आपकी सामग्री से Living Books</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/book/00-book_overview.png" alt="DeepMentor पुस्तक लाइब्रेरी" width="900">
+<img src="../../assets/figs/web-1.4.6+/book/00-book_overview.png" alt="KAGWeb पुस्तक लाइब्रेरी" width="900">
 </div>
 
 Book selected sources को एक interactive **living book** में बदलता है — एक static PDF नहीं, बल्कि typed blocks से बना एक reading environment। एक book knowledge bases, notebooks, question banks, या chat history से शुरू हो सकती है; creation flow content generate होने से पहले एक chapter outline propose करता है, इसलिए आप blind one-shot output accept करने की बजाय shape review करते हैं।
@@ -466,7 +466,7 @@ Book selected sources को एक interactive **living book** में बद
 <img src="../../assets/figs/web-1.4.6+/book/03-book-demo%20interactive%20module.png" alt="पुस्तक interactive widget block" width="31%">
 </p>
 
-हर chapter editable typed blocks में compile होता है — text, callouts, quizzes, flash cards, timelines, code, figures, interactive HTML, animations, concept graphs, deep dives, और user notes — और उसका अपना Page Chat होता है। किसी block को insert, move, regenerate, rewrite, या उसका type switch करें; selected passages review की जा सकने वाली learning-capture inbox में जाते हैं। Progress, bookmarks, quiz attempts, captures, और Page Chat हर reader के लिए private रहते हैं, भले admin की book read-only या collaborative editing के लिए share की गई हो; shared book delete करना admin-only रहता है। कोई भी book Markdown में export हो सकती है, लंबी compiles pause और resume होती हैं, और `deepmentor book health` / `refresh-fingerprints` source drift को flag करते हैं।
+हर chapter editable typed blocks में compile होता है — text, callouts, quizzes, flash cards, timelines, code, figures, interactive HTML, animations, concept graphs, deep dives, और user notes — और उसका अपना Page Chat होता है। किसी block को insert, move, regenerate, rewrite, या उसका type switch करें; selected passages review की जा सकने वाली learning-capture inbox में जाते हैं। Progress, bookmarks, quiz attempts, captures, और Page Chat हर reader के लिए private रहते हैं, भले admin की book read-only या collaborative editing के लिए share की गई हो; shared book delete करना admin-only रहता है। कोई भी book Markdown में export हो सकती है, लंबी compiles pause और resume होती हैं, और `kagweb book health` / `refresh-fingerprints` source drift को flag करते हैं।
 
 </details>
 
@@ -474,7 +474,7 @@ Book selected sources को एक interactive **living book** में बद
 <summary><b>📚 Knowledge Center — Multi-Engine RAG Libraries</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/knowledge/00-overview.png" alt="DeepMentor ज्ञान केंद्र" width="900">
+<img src="../../assets/figs/web-1.4.6+/knowledge/00-overview.png" alt="KAGWeb ज्ञान केंद्र" width="900">
 </div>
 
 Knowledge bases RAG के पीछे document collections हैं — वे Chat turns, Co-Writer edits, Book generation, और Partner conversations को ground करते हैं। जो distinctive है वह है **retrieval engines का choice**: **LlamaIndex** (default, hybrid vector + BM25 के साथ optional cross-encoder reranking और exact-flat या HNSW FAISS indexes), **PageIndex** (reasoning retrieval with page-level citations, hosted या self-hosted OSS), **GraphRAG** और **LightRAG** (knowledge-graph retrieval), **LightRAG Server** (retrieval एक external LightRAG instance पर offload किया जाता है जिसे आप HTTP पर connect करते हैं), **WeKnora** (आपके self-hosted deployment की knowledge base से retrieval, बिना local index या document copy के), **Tencent IMA** (एक library जिसे आप IMA में curate करते हैं — इसके OpenAPI पर search, browse, और write back किया जाता है), **MarginNote 4** (आपका MN4 study data — documents, excerpts, mind-map cards और उनके बीच के links — जिन्हें app का Add-on push करता है और dedicated tools से navigate किया जाता है), या एक linked **Obsidian** vault जिसे tutor in-place पढ़ता और लिखता है। हर KB एक engine से bound होती है।
@@ -487,7 +487,7 @@ Existing Obsidian, Hermes, या Markdown library migrate कर रहे ह�
 
 KB बनाते समय, आप either **नया create** करते हैं (documents upload करें और fresh index build करें) या **existing link** करते हैं (कहीं और बना index reuse करें, re-index के बिना in-place पढ़ें)। एक KB **GitHub repositories** (repo, branch, glob) या **documentation-site URLs** (सीमित crawl depth और page count) को भी track कर सकती है; on-demand sync added, changed, और removed content का hash-diff करती है, इसलिए जो documentation आप follow करते हैं वह re-upload किए बिना current बनी रहती है। Re-indexing एक नई flat `version-N` directory लिखता है और prior ones रखता है, इसलिए एक working index rebuild के दौरान कभी destroy नहीं होता। एक single document को **error**-state base से भी remove किया जा सकता है — पूरी delete-and-rebuild के बिना parse होने में failed हुई file को drop करना। Document parsing — Text-only, MinerU, Docling, Tika, markitdown, PyMuPDF4LLM, या LiteParse — **Settings → Knowledge Base** में choose किया जाता है, local model downloads default रूप से off हैं। Docling को **remote** mode में भी एक Docling Serve server के विरुद्ध चलाया जा सकता है (कोई local install या models की जरूरत नहीं), जिसे **Settings → Document Parsing** (`mode=remote`, एक server base URL, और एक optional API key) या `DOCLING_MODE` / `DOCLING_API_BASE_URL` / `DOCLING_API_TOKEN` environment variables के जरिए configure किया जाता है। Tika remote-only है और उस page पर configured Apache Tika server पर point करता है। CLI lifecycle को `list/info/create/add/search/set-default/delete`, source add/remove commands, `list-sources`, और `sync` से mirror करता है।
 
-Built-in LightRAG engine `pip install 'deepmentor[rag-lightrag]'` से install होता है। उस extra में supported LightRAG SDK शामिल है लेकिन यह MinerU install नहीं करता। Document Parsing में MinerU को स्वतंत्र रूप से चुनें और structured parsing चाहिए हो तो या तो इसका cloud mode configure करें या इसका current local CLI install करें। MinerU PDF, common raster images, DOCX, PPTX, और XLSX स्वीकार करता है; legacy `magic-pdf` command PDF-only रहता है। Text-only और बाकी parsing engines को MinerU की जरूरत नहीं होती।
+Built-in LightRAG engine `pip install 'kagweb[rag-lightrag]'` से install होता है। उस extra में supported LightRAG SDK शामिल है लेकिन यह MinerU install नहीं करता। Document Parsing में MinerU को स्वतंत्र रूप से चुनें और structured parsing चाहिए हो तो या तो इसका cloud mode configure करें या इसका current local CLI install करें। MinerU PDF, common raster images, DOCX, PPTX, और XLSX स्वीकार करता है; legacy `magic-pdf` command PDF-only रहता है। Text-only और बाकी parsing engines को MinerU की जरूरत नहीं होती।
 
 </details>
 
@@ -495,7 +495,7 @@ Built-in LightRAG engine `pip install 'deepmentor[rag-lightrag]'` से install
 <summary><b>🌐 Learning Space — Skills, Personas, और Reusable Context</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/learning-space/00-overview.png" alt="DeepMentor Learning Space केंद्र" width="900">
+<img src="../../assets/figs/web-1.4.6+/learning-space/00-overview.png" alt="KAGWeb Learning Space केंद्र" width="900">
 </div>
 
 Learning Space library, organization, और personalization layer है। **Conversations & Materials** में Chat History, notebooks — जिनके records notebooks के बीच move या copy होते हैं और Markdown में export किए जा सकते हैं — और एक question bank है जो आपका जवाब, reference answer, और explanation रखता है। **Personalization** में personas, skills (`SKILL.md` playbooks), one-click **MCP Services**, और [CLI-Anything](https://github.com/HKUDS/CLI-Anything) catalog के **CLI Apps** हैं, जिनकी usage guide on-demand load होती है। अलग **My Courses** workspace subject conversations और tutor threads को group करता है; हर asset केवल उन workflows में उपलब्ध होता है जो उसे support करते हैं।
@@ -512,13 +512,13 @@ Learning Space library, organization, और personalization layer है। **C
 <summary><b>🧠 Memory — Inspectable Personalization</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/memory/00-overview.png" alt="DeepMentor memory अवलोकन" width="900">
+<img src="../../assets/figs/web-1.4.6+/memory/00-overview.png" alt="KAGWeb memory अवलोकन" width="900">
 </div>
 
 Memory एक file-backed, three-layer system है जिसे आप पढ़, curate, और audit कर सकते हैं — जानबूझकर एक hidden vector store नहीं। **L1** workspace mirror plus एक append-only event trace (`trace/<surface>/<date>.jsonl`) है; **L2** per-surface curated facts (`L2/<surface>.md`) है, जिसमें L1 entities के references होते हैं; **L3** cross-surface synthesis (`L3/<profile|recent|scope|preferences>.md`) है, जो अपनी contributing L2 surfaces record करता है।
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/memory/01-3%20layer%20memory%20graph.png" alt="DeepMentor memory graph" width="900">
+<img src="../../assets/figs/web-1.4.6+/memory/01-3%20layer%20memory%20graph.png" alt="KAGWeb memory graph" width="900">
 </div>
 
 Memory Graph पूरा pyramid दिखाता है — L3 synthesis centre में, L2 middle ring में, L1 traces outside में — exact L2 → L1 evidence edges और L3 → contributing-surface links के साथ। Memory `chat`, `notebook`, `quiz`, `kb`, `book`, partner, और `cowriter` surfaces पर track किया जाता है; consolidator के Update / Audit / Dedup budgets **Settings → Memory** में tune किए जाते हैं।
@@ -529,20 +529,20 @@ Memory Graph पूरा pyramid दिखाता है — L3 synthesis cen
 <summary><b>⚙️ Settings — एक Control Plane</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/settings/00-setting%20overview.png" alt="DeepMentor Settings केंद्र" width="900">
+<img src="../../assets/figs/web-1.4.6+/settings/00-setting%20overview.png" alt="KAGWeb Settings केंद्र" width="900">
 </div>
 
 Settings operational control plane है, एक live status strip (Backend health और पूरे process tree में resident memory) और एक persistent, searchable navigator के साथ जो एक ही क्लिक में किसी भी page तक पहुंचाता है: **Appearance** (theme, UI और model output language, code-block styling), **Network** (API base, ports, CORS), **Models** (Connections, LLM, Task models, Embedding, Search, Text-to-Speech, Speech-to-Text, Image Generation, Video Generation), **Knowledge Base** (document parsing engine), **Chat** (Video Learning, searchable tools, per-capability parameters, starting points, attachment caps), **Partners & Agents** (नौ local harnesses), **Learner profile** (age, grade, curriculum, language, reading level, explanation style), **Guardian** (authorized learners, materials, reports, credential resets), **Memory** (consolidator के budgets), और **About** (version checks और safe updates)। एक **connection** एक vendor credential रखती है और उसे हर उस service में mirror करती है जिसे वह vendor serve कर सकता है, इसलिए एक key पांच pages में paste करने की बजाय एक बार enter की जाती है; **task models** उस काम के लिए एक छोटा, तेज़ model pin करते हैं जो किसी ने नहीं मांगा — किसी conversation को नाम देना, composer के starting points लिखना — और खाली छोड़े जाने पर active default पर resolve हो जाते हैं।
 
-Settings → Chat के तहत **Video Learning** default रूप से official privacy-enhanced YouTube IFrame Player उपयोग करता है। Playback को local रखने के लिए administrator-managed Invidious API origin (उदाहरण के लिए `http://127.0.0.1:3000`) set करें, इसे test करें, Invidious select करें, और save करें। नई या फिर से खोली गई videos वही material ID और progress रखते हुए तुरंत provider अपना लेती हैं। Invidious media DeepMentor के byte-range proxy से stream होता है; upstream URLs न browser के सामने expose होते हैं, न disk पर store किए जाते हैं। अगर instance fail हो जाए, तो learner के explicitly native YouTube fallback चुनने तक DeepMentor YouTube से offline रहता है। Public-caption tutoring optional है: `.[video-learning]` install करें; इसके बिना playback जारी रहता है, जबकि transcript-based **Explain here** कारण के साथ disabled रहता है।
+Settings → Chat के तहत **Video Learning** default रूप से official privacy-enhanced YouTube IFrame Player उपयोग करता है। Playback को local रखने के लिए administrator-managed Invidious API origin (उदाहरण के लिए `http://127.0.0.1:3000`) set करें, इसे test करें, Invidious select करें, और save करें। नई या फिर से खोली गई videos वही material ID और progress रखते हुए तुरंत provider अपना लेती हैं। Invidious media KAGWeb के byte-range proxy से stream होता है; upstream URLs न browser के सामने expose होते हैं, न disk पर store किए जाते हैं। अगर instance fail हो जाए, तो learner के explicitly native YouTube fallback चुनने तक KAGWeb YouTube से offline रहता है। Public-caption tutoring optional है: `.[video-learning]` install करें; इसके बिना playback जारी रहता है, जबकि transcript-based **Explain here** कारण के साथ disabled रहता है।
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/settings/01-appearance%20settings.png" alt="DeepMentor appearance settings और themes" width="900">
+<img src="../../assets/figs/web-1.4.6+/settings/01-appearance%20settings.png" alt="KAGWeb appearance settings और themes" width="900">
 </div>
 
-अधिकांश sections एक draft-and-apply flow उपयोग करते हैं, इसलिए आप provider को commit करने से पहले test कर सकते हैं। आप बस Chat में भी पूछ सकते हैं: assistant current configuration पढ़ता है, एक change apply करता है, और बताता है कि उसे restart या re-index चाहिए या नहीं — एक नए model को commit करने से पहले probe करते हुए, इसलिए यह खुद को किसी unreachable चीज़ पर switch नहीं कर सकता। API keys कभी model से नहीं गुजरतीं, जो इसकी बजाय आपके लिए matching form खोल देता है। चार themes box में आते हैं — Default, Cream, Dark, और Glass। Project-root `.env` files जानबूझकर ignored हैं; runtime configuration `data/user/settings/*.json` के नीचे रहती है जब तक कि `DEEPMENTOR_HOME` या `deepmentor start --home` app को कहीं और point न करे।
+अधिकांश sections एक draft-and-apply flow उपयोग करते हैं, इसलिए आप provider को commit करने से पहले test कर सकते हैं। आप बस Chat में भी पूछ सकते हैं: assistant current configuration पढ़ता है, एक change apply करता है, और बताता है कि उसे restart या re-index चाहिए या नहीं — एक नए model को commit करने से पहले probe करते हुए, इसलिए यह खुद को किसी unreachable चीज़ पर switch नहीं कर सकता। API keys कभी model से नहीं गुजरतीं, जो इसकी बजाय आपके लिए matching form खोल देता है। चार themes box में आते हैं — Default, Cream, Dark, और Glass। Project-root `.env` files जानबूझकर ignored हैं; runtime configuration `data/user/settings/*.json` के नीचे रहती है जब तक कि `KAGWEB_HOME` या `kagweb start --home` app को कहीं और point न करे।
 
-**OpenAI Codex OAuth (experimental).** **Models → LLM** के तहत **OpenAI Codex** चुनना API-key fields को एक browser sign-in से replace कर देता है जो आपके अपने ChatGPT plan के विरुद्ध चलता है, इसलिए किसी `OPENAI_API_KEY` की जरूरत नहीं। Tokens केवल `data/system/user-secrets/<owner>/private/openai-codex/` में रहते हैं — multi-container Compose deployment में, उस हर tree के बाहर जहां exec sandbox पहुंच सकता है — और DeepMentor कभी आपकी `~/.codex` CLI login को न तो पढ़ता है न ही modify करता है। Model list उस account के live catalog से आती है; sign in करना profile को publish करता है लेकिन यह active model तभी बनता है जब अभी तक कोई LLM configure न हो, इसलिए यह कभी भी आपकी जानकारी के बिना किसी deployment को repoint नहीं करता। क्योंकि एक token एक व्यक्ति के plan को authorize करता है, profile user grants के जरिए shareable नहीं है — हर account खुद के लिए sign in करता है, सामान्य users भी शामिल: उनका card **Models → LLM** के तहत रहता है, और resulting models, catalog, और sign-out उस account के लिए private रहते हैं।
+**OpenAI Codex OAuth (experimental).** **Models → LLM** के तहत **OpenAI Codex** चुनना API-key fields को एक browser sign-in से replace कर देता है जो आपके अपने ChatGPT plan के विरुद्ध चलता है, इसलिए किसी `OPENAI_API_KEY` की जरूरत नहीं। Tokens केवल `data/system/user-secrets/<owner>/private/openai-codex/` में रहते हैं — multi-container Compose deployment में, उस हर tree के बाहर जहां exec sandbox पहुंच सकता है — और KAGWeb कभी आपकी `~/.codex` CLI login को न तो पढ़ता है न ही modify करता है। Model list उस account के live catalog से आती है; sign in करना profile को publish करता है लेकिन यह active model तभी बनता है जब अभी तक कोई LLM configure न हो, इसलिए यह कभी भी आपकी जानकारी के बिना किसी deployment को repoint नहीं करता। क्योंकि एक token एक व्यक्ति के plan को authorize करता है, profile user grants के जरिए shareable नहीं है — हर account खुद के लिए sign in करता है, सामान्य users भी शामिल: उनका card **Models → LLM** के तहत रहता है, और resulting models, catalog, और sign-out उस account के लिए private रहते हैं।
 
 Default local Docker और Podman deployments separate loopback networks उपयोग करते हैं और sign-in के दौरान एक temporary bridge की जरूरत होती है। Docker, Compose, Podman, और teardown के exact commands के लिए [temporary local Codex OAuth bridge guide](../../CONTAINERIZATION.md#temporary-local-codex-oauth-bridge) follow करें।
 
@@ -552,7 +552,7 @@ Remote deployment में, browser का `localhost` और server का `lo
 ssh -N -L 1455:127.0.0.1:3782 <ssh-user>@<server-host>
 ```
 
-अगर DeepMentor fallback callback port `1457` report करता है, तो उपयोग करें:
+अगर KAGWeb fallback callback port `1457` report करता है, तो उपयोग करें:
 
 ```bash
 ssh -N -L 1457:127.0.0.1:3782 <ssh-user>@<server-host>
@@ -569,7 +569,7 @@ Remote-topology detection की एक localhost boundary है। अगर W
 <details>
 <summary><b>👥 Multi-User — Shared Deployments</b> · optional auth, isolated per-user workspaces</summary>
 
-Authentication **default रूप से बंद** है — DeepMentor single-user चलता है। इसे on करें और एक `data/` tree एक admin workspace, isolated per-user workspaces, और partner workspaces को side by side host करती है:
+Authentication **default रूप से बंद** है — KAGWeb single-user चलता है। इसे on करें और एक `data/` tree एक admin workspace, isolated per-user workspaces, और partner workspaces को side by side host करती है:
 
 ```text
 data/
@@ -582,26 +582,26 @@ data/
 
 **पहला registered user admin बनता है** और model catalogs, provider credentials, shared knowledge bases, skills, canonical shared books, और per-user grants own करता है। Admin द्वारा बनाए गए local users Standard, Learner, या Custom चुनते हैं। Learner learning capabilities और material policy को lock करता है, adaptive profile जोड़ता है, और expiry तथा daily limits वाले revocable device credentials support करता है; authorized guardians reports देख सकते हैं, materials approve कर सकते हैं, और credentials reset कर सकते हैं। अन्य users को raw API keys दिए बिना isolated workspaces के साथ scoped models, KBs, skills, partners, और shared-book access मिलता है। अगर `auth.json` में पहले से `username` + `password_hash` है, तो वही account admin है: `/register` बंद रहता है और `/admin/users` से बनाए गए accounts हमेशा `role=user` रहते हैं, जब तक आप उन्हें promote न करें।
 
-**Enable करें:** `data/user/settings/auth.json` में auth on करें, `deepmentor start` restart करें, `/register` पर पहला admin register करें, फिर `/admin/users` से users add करें और grants के जरिए models, KBs, skills, Partners, tool/MCP/CLI-app policy, और code-execution access assign करें; हर user के **Book access** panel में shared books configure करें।
+**Enable करें:** `data/user/settings/auth.json` में auth on करें, `kagweb start` restart करें, `/register` पर पहला admin register करें, फिर `/admin/users` से users add करें और grants के जरिए models, KBs, skills, Partners, tool/MCP/CLI-app policy, और code-execution access assign करें; हर user के **Book access** panel में shared books configure करें।
 
 > PocketBase single-user integration रहता है — multi-user deployments के लिए `integrations.pocketbase_url` blank रखें जब तक आपने external user store wire up नहीं किया हो।
 
 </details>
 
-## ⌨️ DeepMentor CLI — एजेंट-नेटिव इंटरफेस
+## ⌨️ KAGWeb CLI — एजेंट-नेटिव इंटरफेस
 
-एक `deepmentor` binary, दो तरीके से: terminal में रहने वालों के लिए interactive **REPL**, और DeepMentor को tool के रूप में drive करने वाले दूसरे agents के लिए structured **JSON**। दोनों तरफ same capabilities, tools, और knowledge bases।
+एक `kagweb` binary, दो तरीके से: terminal में रहने वालों के लिए interactive **REPL**, और KAGWeb को tool के रूप में drive करने वाले दूसरे agents के लिए structured **JSON**। दोनों तरफ same capabilities, tools, और knowledge bases।
 
 <details>
 <summary><b>खुद drive करें</b></summary>
 
-`deepmentor chat` एक interactive REPL खोलता है और `--capability` से mode चुनता है; `deepmentor run <capability> "<message>"` उस capability को अपना पहला positional argument लेता है और एक turn के बाद exit करता है। दोनों `--tool`, `--kb`, और `--config` accept करते हैं।
+`kagweb chat` एक interactive REPL खोलता है और `--capability` से mode चुनता है; `kagweb run <capability> "<message>"` उस capability को अपना पहला positional argument लेता है और एक turn के बाद exit करता है। दोनों `--tool`, `--kb`, और `--config` accept करते हैं।
 
 ```bash
-deepmentor chat                                              # interactive REPL
-deepmentor chat --capability deep_solve --kb my-kb --tool rag
-deepmentor run chat "Explain the Fourier transform" --tool rag --kb textbook
-deepmentor run deep_research "Survey 2026 papers on RAG" \
+kagweb chat                                              # interactive REPL
+kagweb chat --capability deep_solve --kb my-kb --tool rag
+kagweb run chat "Explain the Fourier transform" --tool rag --kb textbook
+kagweb run deep_research "Survey 2026 papers on RAG" \
   --config mode=report --config depth=standard
 ```
 
@@ -612,20 +612,20 @@ Core workspace management यहां भी उपलब्ध है — know
 <details>
 <summary><b>किसी agent को drive करने दें</b></summary>
 
-DeepMentor *दूसरे agent द्वारा operated* होने के लिए built है। किसी भी `run` में `--format json` add करें और हर turn **NDJSON — एक event per line** stream करता है (`content`, `tool_call`, `tool_result`, `done`, …), हर line `session_id` के साथ tagged। Runs headless-safe हैं: बिना TTY के `ask_user` pause automatically empty reply से resolve होता है बजाय hang करने के।
+KAGWeb *दूसरे agent द्वारा operated* होने के लिए built है। किसी भी `run` में `--format json` add करें और हर turn **NDJSON — एक event per line** stream करता है (`content`, `tool_call`, `tool_result`, `done`, …), हर line `session_id` के साथ tagged। Runs headless-safe हैं: बिना TTY के `ask_user` pause automatically empty reply से resolve होता है बजाय hang करने के।
 
 ```bash
 # One shot, machine-readable
-deepmentor run deep_solve "Find d/dx[sin(x^2)]" --tool reason --format json
+kagweb run deep_solve "Find d/dx[sin(x^2)]" --tool reason --format json
 
 # Chain turns in one stateful session — capture the id, reuse it
-SID=$(deepmentor run deep_research "Survey 2026 papers on RAG" \
+SID=$(kagweb run deep_research "Survey 2026 papers on RAG" \
   --config mode=report --config depth=standard --format json \
   | jq -r 'select(.type=="done").session_id')
-deepmentor run deep_question "Quiz me on that survey" --session "$SID" --format json
+kagweb run deep_question "Quiz me on that survey" --session "$SID" --format json
 ```
 
-Repo एक root [`SKILL.md`](../../SKILL.md) ship करता है — एक ~200-line handover doc जो किसी भी tool-using LLM को एक read में पूरा surface सिखाता है। इसे Claude Code, Codex, या OpenCode को दें (वे `SKILL.md` automatically pick up करते हैं), या `deepmentor run` को LangChain / AutoGen loop में एक tool के रूप में wrap करें। पूरे recipes: [Agent Handoff](https://deepmentor.info/docs/cli/agent-handoff/)।
+Repo एक root [`SKILL.md`](../../SKILL.md) ship करता है — एक ~200-line handover doc जो किसी भी tool-using LLM को एक read में पूरा surface सिखाता है। इसे Claude Code, Codex, या OpenCode को दें (वे `SKILL.md` automatically pick up करते हैं), या `kagweb run` को LangChain / AutoGen loop में एक tool के रूप में wrap करें। पूरे recipes: [Agent Handoff](https://kagweb.info/docs/cli/agent-handoff/)।
 
 </details>
 
@@ -634,33 +634,33 @@ Repo एक root [`SKILL.md`](../../SKILL.md) ship करता है — ए�
 
 | Command | विवरण |
 |:---|:---|
-| `deepmentor init` | Current workspace के लिए `data/user/settings` create या update करें |
-| `deepmentor doctor [--online]` | Check करें कि workspace session शुरू करने के लिए ready है या नहीं; `--online` configured model provider को भी probe करता है, `--format json` report print करता है |
-| `deepmentor start [--home PATH] [--dev] [--detach] [--no-browser]` | Backend + frontend को एक साथ launch करें; वैकल्पिक रूप से detach करें या browser खुलना रोकें |
-| `deepmentor stop [--home PATH]` | `--detach` से शुरू किए launcher को stop करें |
-| `deepmentor serve [--port PORT]` | केवल FastAPI backend start करें |
-| `deepmentor run <capability> <message>` | एक single capability turn run करें (`chat`, `ask_questions`, `deep_solve`, `deep_question`, `deep_research`, `visualize`, `math_animator`, `mastery_path`, `immersive_reading`, `course_study`, `immersive_watching`); NDJSON output के लिए `--format json` add करें |
-| `deepmentor chat` | capability, tool, KB, notebook, और history controls के साथ interactive REPL |
-| `deepmentor partner list/create/start/stop` | IM-connected partners manage करें |
-| `deepmentor kb list/info/create/add/search/set-default/delete/list-sources/sync` | Knowledge bases manage करें और registered GitHub/web sources sync करें (source add/remove commands के साथ) |
-| `deepmentor skill search/install/list/remove/login/logout/publish/update` | Skills manage करें, hubs से install करें, और अपनी खुद publish करें (default `eduhub:<slug>`, Ecosystem देखें) |
-| `deepmentor memory show/clear` | L2/L3 memory docs inspect करें या L1/all memory clear करें |
-| `deepmentor session list/show/open/rename/delete` | Shared sessions manage करें |
-| `deepmentor notebook list/create/show/add-md/replace-md/remove-record` | Markdown files से notebooks manage करें |
-| `deepmentor book list/health/refresh-fingerprints` | Books inspect करें और source fingerprints refresh करें |
-| `deepmentor plugin list/info` | Registered tools और capabilities inspect करें |
-| `deepmentor config show` | Configuration summary print करें |
-| `deepmentor provider login <provider>` | Provider auth (`openai-codex` OAuth login; `github-copilot` existing Copilot auth session validate करता है; `codebuddy` CodeBuddy SDK auth validate करता है और ज़रूरत पड़ने पर login शुरू करता है) |
+| `kagweb init` | Current workspace के लिए `data/user/settings` create या update करें |
+| `kagweb doctor [--online]` | Check करें कि workspace session शुरू करने के लिए ready है या नहीं; `--online` configured model provider को भी probe करता है, `--format json` report print करता है |
+| `kagweb start [--home PATH] [--dev] [--detach] [--no-browser]` | Backend + frontend को एक साथ launch करें; वैकल्पिक रूप से detach करें या browser खुलना रोकें |
+| `kagweb stop [--home PATH]` | `--detach` से शुरू किए launcher को stop करें |
+| `kagweb serve [--port PORT]` | केवल FastAPI backend start करें |
+| `kagweb run <capability> <message>` | एक single capability turn run करें (`chat`, `ask_questions`, `deep_solve`, `deep_question`, `deep_research`, `visualize`, `math_animator`, `mastery_path`, `immersive_reading`, `course_study`, `immersive_watching`); NDJSON output के लिए `--format json` add करें |
+| `kagweb chat` | capability, tool, KB, notebook, और history controls के साथ interactive REPL |
+| `kagweb partner list/create/start/stop` | IM-connected partners manage करें |
+| `kagweb kb list/info/create/add/search/set-default/delete/list-sources/sync` | Knowledge bases manage करें और registered GitHub/web sources sync करें (source add/remove commands के साथ) |
+| `kagweb skill search/install/list/remove/login/logout/publish/update` | Skills manage करें, hubs से install करें, और अपनी खुद publish करें (default `eduhub:<slug>`, Ecosystem देखें) |
+| `kagweb memory show/clear` | L2/L3 memory docs inspect करें या L1/all memory clear करें |
+| `kagweb session list/show/open/rename/delete` | Shared sessions manage करें |
+| `kagweb notebook list/create/show/add-md/replace-md/remove-record` | Markdown files से notebooks manage करें |
+| `kagweb book list/health/refresh-fingerprints` | Books inspect करें और source fingerprints refresh करें |
+| `kagweb plugin list/info` | Registered tools और capabilities inspect करें |
+| `kagweb config show` | Configuration summary print करें |
+| `kagweb provider login <provider>` | Provider auth (`openai-codex` OAuth login; `github-copilot` existing Copilot auth session validate करता है; `codebuddy` CodeBuddy SDK auth validate करता है और ज़रूरत पड़ने पर login शुरू करता है) |
 
 </details>
 
 <details>
 <summary><b>CLI-only distribution</b></summary>
 
-CLI-only package `packaging/deepmentor-cli` में रहता है। इस checkout में, इसे source से install करें:
+CLI-only package `packaging/kagweb-cli` में रहता है। इस checkout में, इसे source से install करें:
 
 ```bash
-python -m pip install -e ./packaging/deepmentor-cli
+python -m pip install -e ./packaging/kagweb-cli
 ```
 
 यह अभी PyPI पर publish नहीं है, इसलिए main [शुरू करें](#-शुरू-करें) section source-install path रखता है।
@@ -669,31 +669,31 @@ python -m pip install -e ./packaging/deepmentor-cli
 
 ## 🧩 इकोसिस्टम — EduHub और Skills Community
 
-DeepMentor skills open **Agent-Skills** format उपयोग करती हैं — एक `SKILL.md` playbook (YAML frontmatter + Markdown) और optional reference files के साथ एक folder। इसमें DeepMentor-specific कुछ नहीं है, इसलिए format बोलने वाली कोई भी registry आपकी library के लिए एक source बन जाती है। DeepMentor **[EduHub](https://eduhub.deepmentor.info/)** के साथ ship होता है — हमारी अपनी education-focused skill registry — default hub के रूप में built in।
+KAGWeb skills open **Agent-Skills** format उपयोग करती हैं — एक `SKILL.md` playbook (YAML frontmatter + Markdown) और optional reference files के साथ एक folder। इसमें KAGWeb-specific कुछ नहीं है, इसलिए format बोलने वाली कोई भी registry आपकी library के लिए एक source बन जाती है। KAGWeb **[EduHub](https://eduhub.kagweb.info/)** के साथ ship होता है — हमारी अपनी education-focused skill registry — default hub के रूप में built in।
 
 <details>
-<summary><b>EduHub — DeepMentor का skill ecosystem</b></summary>
+<summary><b>EduHub — KAGWeb का skill ecosystem</b></summary>
 
-[**EduHub**](https://eduhub.deepmentor.info/) वह community hub है जिसे DeepMentor ने teaching-oriented agent skills share करने के लिए launch किया — Socratic tutors, flashcard builders, essay feedback, exam blueprints, concept explainers, और बहुत कुछ। यह DeepMentor में built in है, इसलिए configure करने की कोई जरूरत नहीं: एक bare slug या `eduhub:` prefix इसे resolve करता है।
+[**EduHub**](https://eduhub.kagweb.info/) वह community hub है जिसे KAGWeb ने teaching-oriented agent skills share करने के लिए launch किया — Socratic tutors, flashcard builders, essay feedback, exam blueprints, concept explainers, और बहुत कुछ। यह KAGWeb में built in है, इसलिए configure करने की कोई जरूरत नहीं: एक bare slug या `eduhub:` prefix इसे resolve करता है।
 
 **ढूंढें और install करें** — browser में, catalog browse करने और directly आपकी library में skill download करने के लिए **Learning Space → Skills → Import from EduHub** खोलें। Terminal से:
 
 ```bash
-deepmentor skill search "socratic tutor"               # search EduHub (the default hub)
-deepmentor skill install socratic-tutor                # fetch → verify → register
-deepmentor skill install eduhub:socratic-tutor@1.2.0   # pin a hub and a version
-deepmentor skill list                                  # local skills with their hub provenance
+kagweb skill search "socratic tutor"               # search EduHub (the default hub)
+kagweb skill install socratic-tutor                # fetch → verify → register
+kagweb skill install eduhub:socratic-tutor@1.2.0   # pin a hub and a version
+kagweb skill list                                  # local skills with their hub provenance
 ```
 
 **अपनी खुद publish करें** — एक `SKILL.md` package करें और community के साथ share करें:
 
 ```bash
-deepmentor skill login                                 # browser sign-in to EduHub
-deepmentor skill publish ./my-skill                    # interactive: pick a track + tags, then upload
-deepmentor skill update                                # roll back or release a new version
+kagweb skill login                                 # browser sign-in to EduHub
+kagweb skill publish ./my-skill                    # interactive: pick a track + tags, then upload
+kagweb skill update                                # roll back or release a new version
 ```
 
-EduHub एक standalone, ClawHub-compatible registry भी है, इसलिए DeepMentor नहीं होने वाले agents (Claude Code, Codex, …) इसे `eduhub` CLI के जरिए directly use कर सकते हैं — `npx eduhub install socratic-tutor`।
+EduHub एक standalone, ClawHub-compatible registry भी है, इसलिए KAGWeb नहीं होने वाले agents (Claude Code, Codex, …) इसे `eduhub` CLI के जरिए directly use कर सकते हैं — `npx eduhub install socratic-tutor`।
 
 </details>
 
@@ -704,7 +704,7 @@ Source चाहे जो भी हो, हर import आपके workspace �
 
 - registry का **security verdict** पहले check होता है — flagged packages refuse किए जाते हैं जब तक आप `--allow-unverified` pass नहीं करते;
 - archives path-traversal, entry-count, size, compression-ratio, suffix, और symlink checks के साथ defensively extract होते हैं; executable bits strip हो जाते हैं, जबकि extensionless files allowed रहती हैं;
-- frontmatter DeepMentor के schema में normalize होता है और `always:` **stripped** होता है, इसलिए एक downloaded skill खुद को हर system prompt में force नहीं कर सकती;
+- frontmatter KAGWeb के schema में normalize होता है और `always:` **stripped** होता है, इसलिए एक downloaded skill खुद को हर system prompt में force नहीं कर सकती;
 - provenance — hub, version, verdict, और install time — audits और updates के लिए `.hub-lock.json` में लिखा जाता है।
 
 Multi-user deployments में, browser imports authenticated caller की skill layer में आते हैं, जबकि CLI और admin-console installs owner/admin workspace को target करते हैं; admin skills grant होने तक सामान्य users से hidden और read-only रहती हैं।
@@ -714,12 +714,12 @@ Multi-user deployments में, browser imports authenticated caller की sk
 <details>
 <summary><b>ClawHub के साथ भी compatible</b></summary>
 
-क्योंकि DeepMentor open Agent-Skills format बोलता है, **[ClawHub](https://clawhub.ai/)** भी एक first-class source है — यह EduHub के साथ built in है। इसे hub prefix से चुनें:
+क्योंकि KAGWeb open Agent-Skills format बोलता है, **[ClawHub](https://clawhub.ai/)** भी एक first-class source है — यह EduHub के साथ built in है। इसे hub prefix से चुनें:
 
 ```bash
-deepmentor skill search "git release notes" --hub clawhub
-deepmentor skill install clawhub:git-release-notes@1.0.1
-deepmentor skill install clawhub:udiedrichsen/stock-analysis
+kagweb skill search "git release notes" --hub clawhub
+kagweb skill install clawhub:git-release-notes@1.0.1
+kagweb skill install clawhub:udiedrichsen/stock-analysis
 ```
 
 जब कई publishers same slug share करते हैं, तो search हर publisher को और एक fully scoped install ref (`clawhub:<ownerHandle>/<slug>`) दिखाता है।
@@ -741,7 +741,7 @@ deepmentor skill install clawhub:udiedrichsen/stock-analysis
 </p>
 
 <p align="center">
-  कोड का उपयोग करें: <b><code>DEEPMENTOR20</code></b> — अपनी पहली <a href="https://developer.pageindex.ai/">PageIndex subscription</a> पर $20 की छूट पाएं!
+  कोड का उपयोग करें: <b><code>KAGWEB20</code></b> — अपनी पहली <a href="https://developer.pageindex.ai/">PageIndex subscription</a> पर $20 की छूट पाएं!
 </p>
 
 ## 🌐 समुदाय
@@ -758,13 +758,13 @@ deepmentor skill install clawhub:udiedrichsen/stock-analysis
 
 ### 📮 संपर्क
 
-DeepMentor [HKUDS](https://github.com/HKUDS) Group के अंदर [Bingxi Zhao](https://github.com/pancacake) द्वारा lead किया जाने वाला एक open-source project है, और यह **पूरी तरह open-source रूप में**, community के साथ मिलकर बनाया जाता है। अब तक, हमारे पास किसी भी प्रकार के **paid online products नहीं** हैं। discussions, ideas, या collaboration के लिए **bingxizhao39@gmail.com** पर contact करें।
+KAGWeb [HKUDS](https://github.com/HKUDS) Group के अंदर [Bingxi Zhao](https://github.com/pancacake) द्वारा lead किया जाने वाला एक open-source project है, और यह **पूरी तरह open-source रूप में**, community के साथ मिलकर बनाया जाता है। अब तक, हमारे पास किसी भी प्रकार के **paid online products नहीं** हैं। discussions, ideas, या collaboration के लिए **bingxizhao39@gmail.com** पर contact करें।
 
 ### 🙏 आभार
 
-[**Chao Huang**](https://sites.google.com/view/chaoh), Data Intelligence Lab @ HKU के director, और उनके warm support के लिए हमारे HKUDS labmates — विशेष रूप से [**Jiahao Zhang**](https://github.com/zzhtx258), [**Zirui Guo**](https://github.com/LarFii), और [**Xubin Ren**](https://github.com/Re-bin) — के प्रति हार्दिक आभार। हम **open-source community** के प्रति भी गहराई से आभारी हैं: आपके stars, issues, pull requests, और discussions हर एक दिन DeepMentor को आकार देते हैं।
+[**Chao Huang**](https://sites.google.com/view/chaoh), Data Intelligence Lab @ HKU के director, और उनके warm support के लिए हमारे HKUDS labmates — विशेष रूप से [**Jiahao Zhang**](https://github.com/zzhtx258), [**Zirui Guo**](https://github.com/LarFii), और [**Xubin Ren**](https://github.com/Re-bin) — के प्रति हार्दिक आभार। हम **open-source community** के प्रति भी गहराई से आभारी हैं: आपके stars, issues, pull requests, और discussions हर एक दिन KAGWeb को आकार देते हैं।
 
-DeepMentor outstanding open-source projects के कंधों पर खड़ा है जिन्होंने हमें tools और inspiration दोनों दिए:
+KAGWeb outstanding open-source projects के कंधों पर खड़ा है जिन्होंने हमें tools और inspiration दोनों दिए:
 
 | Project | भूमिका / Inspiration |
 |:---|:---|
@@ -775,29 +775,29 @@ DeepMentor outstanding open-source projects के कंधों पर खड
 | [**AI-Researcher**](https://github.com/HKUDS/AI-Researcher) | Automated research pipeline *(HKUDS)* |
 | [**OpenClaw**](https://github.com/openclaw/openclaw) | ClawHub के पीछे open agent gateway और skill ecosystem |
 | [**Codex**](https://github.com/openai/codex) | Agent-native coding CLI जिसने हमारे CLI workflow को inspire किया |
-| [**Claude Code**](https://github.com/anthropics/claude-code) | Agentic coding CLI जिसने DeepMentor agent loop को inspire किया |
+| [**Claude Code**](https://github.com/anthropics/claude-code) | Agentic coding CLI जिसने KAGWeb agent loop को inspire किया |
 | [**ManimCat**](https://github.com/Wing900/ManimCat) | Math Animator के लिए AI-driven math animation generation |
 
 ### 🗺️ Roadmap और योगदान
 
-हम चाहते हैं कि DeepMentor iterate और improve करता रहे — और अंततः open-source community को एक gift बने। हमारा [**roadmap**](https://github.com/HKUDS/DeepMentor/issues/498) continuously update होता है; वहां items पर vote करें या नए propose करें। अगर आप contribute करना चाहते हैं, तो branching strategy, coding standards, और शुरू करने के तरीके के लिए [**Contributing Guide**](../../CONTRIBUTING.md) देखें।
+हम चाहते हैं कि KAGWeb iterate और improve करता रहे — और अंततः open-source community को एक gift बने। हमारा [**roadmap**](https://github.com/HKUDS/KAGWeb/issues/498) continuously update होता है; वहां items पर vote करें या नए propose करें। अगर आप contribute करना चाहते हैं, तो branching strategy, coding standards, और शुरू करने के तरीके के लिए [**Contributing Guide**](../../CONTRIBUTING.md) देखें।
 
 <div align="center">
 
-हम आशा करते हैं कि DeepMentor community के लिए एक उपहार बने। 🎁
+हम आशा करते हैं कि KAGWeb community के लिए एक उपहार बने। 🎁
 
-<a href="https://github.com/HKUDS/DeepMentor/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=HKUDS/DeepMentor&max=999" alt="योगदानकर्ता" />
+<a href="https://github.com/HKUDS/KAGWeb/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=HKUDS/KAGWeb&max=999" alt="योगदानकर्ता" />
 </a>
 
 </div>
 
 <p align="center">
- <a href="https://www.star-history.com/hkuds/deepmentor">
+ <a href="https://www.star-history.com/hkuds/kagweb">
   <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=HKUDS/DeepMentor&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=HKUDS/DeepMentor" />
-   <img alt="स्टार इतिहास रैंक" src="https://api.star-history.com/badge?repo=HKUDS/DeepMentor" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=HKUDS/KAGWeb&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=HKUDS/KAGWeb" />
+   <img alt="स्टार इतिहास रैंक" src="https://api.star-history.com/badge?repo=HKUDS/KAGWeb" />
   </picture>
  </a>
 </p>
@@ -807,7 +807,7 @@ DeepMentor outstanding open-source projects के कंधों पर खड
 [Apache License 2.0](../../LICENSE) के तहत licensed।
 
 <p>
-  <img src="https://visitor-badge.laobi.icu/badge?page_id=HKUDS.DeepMentor&style=for-the-badge&color=00d4ff" alt="दृश्य">
+  <img src="https://visitor-badge.laobi.icu/badge?page_id=HKUDS.KAGWeb&style=for-the-badge&color=00d4ff" alt="दृश्य">
 </p>
 
 </div>

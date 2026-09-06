@@ -39,7 +39,7 @@ export async function pickAndScan(): Promise<ScanResult> {
   let root: FileSystemDirectoryHandle;
   try {
     root = await window.showDirectoryPicker!({
-      id: "deepmentor-chat-import",
+      id: "kagweb-chat-import",
       mode: "read",
     });
   } catch {

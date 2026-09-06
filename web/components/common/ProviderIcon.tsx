@@ -2,7 +2,7 @@ import { Bot } from "lucide-react";
 
 /**
  * Vendor logos for LLM/embedding providers, keyed by binding name
- * (see deepmentor/services/provider_registry.py). SVGs are vendored from
+ * (see kagweb/services/provider_registry.py). SVGs are vendored from
  * @lobehub/icons-static-svg (MIT) into /public/provider-icons.
  *
  * `mono` icons are solid-fill brand marks that render black as <img>;
@@ -44,7 +44,7 @@ const PROVIDER_ICONS: Record<string, { file: string; mono?: boolean }> = {
   cohere: { file: "cohere-color.svg" },
   jina: { file: "jina.svg", mono: true },
   // Search providers (see SEARCH_PROVIDERS in
-  // deepmentor/services/config/provider_runtime.py). brave/duckduckgo/searxng
+  // kagweb/services/config/provider_runtime.py). brave/duckduckgo/searxng
   // come from simple-icons with the brand color baked in. Keys shared with an
   // LLM binding above (zhipu, qianfan) already resolve and are not repeated.
   // A search provider with no vendored logo falls back to the generic Bot mark

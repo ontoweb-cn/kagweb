@@ -1,18 +1,18 @@
 <div align="center">
 
-<p align="center"><img src="assets/figs/logo/logo.png" alt="DeepMentor logo" height="56" style="vertical-align: middle;">&nbsp;<img src="assets/figs/logo/banner.png" alt="DeepMentor" height="48" style="vertical-align: middle;"></p>
+<p align="center"><img src="assets/figs/logo/logo.png" alt="KAGWeb logo" height="56" style="vertical-align: middle;">&nbsp;<img src="assets/figs/logo/banner.png" alt="KAGWeb" height="48" style="vertical-align: middle;"></p>
 
-# DeepMentor: Lifelong Personalized Tutoring
+# KAGWeb: Lifelong Personalized Tutoring
 
 <p align="center">
-  <a href="https://deepmentor.info" target="_blank"><img alt="Docs — deepmentor.info" src="https://img.shields.io/badge/Docs-deepmentor.info%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>&nbsp;
-  <a href="https://deepmentor.info/collaborate/" target="_blank"><img alt="Collaborate — work with us" src="https://img.shields.io/badge/Collaborate-work%20with%20us%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>
+  <a href="https://kagweb.info" target="_blank"><img alt="Docs — kagweb.info" src="https://img.shields.io/badge/Docs-kagweb.info%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>&nbsp;
+  <a href="https://kagweb.info/collaborate/" target="_blank"><img alt="Collaborate — work with us" src="https://img.shields.io/badge/Collaborate-work%20with%20us%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>
 </p>
 
 <p align="center">
-  <a href="https://trendshift.io/repositories/17099?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/17099" alt="HKUDS%2FDeepMentor | Trendshift" width="250" height="55"/></a>&nbsp;
-  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/daily" alt="HKUDS%2FDeepMentor | Trendshift" width="250" height="55"/></a>&nbsp;
-  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/weekly?language=Python" alt="HKUDS%2FDeepMentor | Trendshift" width="250" height="55"/></a>
+  <a href="https://trendshift.io/repositories/17099?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/17099" alt="HKUDS%2FKAGWeb | Trendshift" width="250" height="55"/></a>&nbsp;
+  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/daily" alt="HKUDS%2FKAGWeb | Trendshift" width="250" height="55"/></a>&nbsp;
+  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/weekly?language=Python" alt="HKUDS%2FKAGWeb | Trendshift" width="250" height="55"/></a>
 </p>
 
 <p align="center">
@@ -33,190 +33,190 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
-[![GitHub release](https://img.shields.io/github/v/release/HKUDS/DeepMentor?style=flat-square&color=brightgreen)](https://github.com/HKUDS/DeepMentor/releases)
+[![GitHub release](https://img.shields.io/github/v/release/HKUDS/KAGWeb?style=flat-square&color=brightgreen)](https://github.com/HKUDS/KAGWeb/releases)
 [![arXiv](https://img.shields.io/badge/arXiv-2604.26962-b31b1b?style=flat-square&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2604.26962)
 
 [![Discord](https://img.shields.io/badge/Discord-Community-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/eRsjPgMU4t)
 [![Feishu](https://img.shields.io/badge/Feishu-Group-00D4AA?style=flat-square&logo=feishu&logoColor=white)](./Communication.md)
-[![WeChat](https://img.shields.io/badge/WeChat-Group-07C160?style=flat-square&logo=wechat&logoColor=white)](https://github.com/HKUDS/DeepMentor/issues/78)
+[![WeChat](https://img.shields.io/badge/WeChat-Group-07C160?style=flat-square&logo=wechat&logoColor=white)](https://github.com/HKUDS/KAGWeb/issues/78)
 
-[Features](#-key-features) · [Get Started](#-get-started) · [Explore](#-explore-deepmentor) · [CLI](#%EF%B8%8F-deepmentor-cli--agent-native-interface) · [Ecosystem](#-ecosystem--eduhub--the-skills-community) · [Community](#-community)
+[Features](#-key-features) · [Get Started](#-get-started) · [Explore](#-explore-kagweb) · [CLI](#%EF%B8%8F-kagweb-cli--agent-native-interface) · [Ecosystem](#-ecosystem--eduhub--the-skills-community) · [Community](#-community)
 
 </div>
 
 ---
 
-> 🤝 **We welcome any kinds of contributing!** Vote on roadmap items or propose new ones at [`Roadmap`](https://github.com/HKUDS/DeepMentor/issues/498), and see our [Contributing Guide](CONTRIBUTING.md) for branching strategy, coding standards, and how to get started.
+> 🤝 **We welcome any kinds of contributing!** Vote on roadmap items or propose new ones at [`Roadmap`](https://github.com/HKUDS/KAGWeb/issues/498), and see our [Contributing Guide](CONTRIBUTING.md) for branching strategy, coding standards, and how to get started.
 
 ### 📦 Releases
 
-> **[2026.9.3]** [v1.6.4](https://github.com/HKUDS/DeepMentor/releases/tag/v1.6.4) — Faster isolated runtimes, controllable Book generation, source-complete Mastery paths and Chat hand-offs, durable Reading, unified activity UI, recoverable sessions, and explicit per-model API capabilities.
+> **[2026.9.3]** [v1.6.4](https://github.com/HKUDS/KAGWeb/releases/tag/v1.6.4) — Faster isolated runtimes, controllable Book generation, source-complete Mastery paths and Chat hand-offs, durable Reading, unified activity UI, recoverable sessions, and explicit per-model API capabilities.
 
-> **[2026.9.2]** [v1.6.3](https://github.com/HKUDS/DeepMentor/releases/tag/v1.6.3) — Breaking front/back-end refactor, strict canonical routes and recoverable streams, plus learner/guardian accounts, grounded Reading, WeKnora, broader parsing, Python 3.14, and DashScope media.
+> **[2026.9.2]** [v1.6.3](https://github.com/HKUDS/KAGWeb/releases/tag/v1.6.3) — Breaking front/back-end refactor, strict canonical routes and recoverable streams, plus learner/guardian accounts, grounded Reading, WeKnora, broader parsing, Python 3.14, and DashScope media.
 
-> **[2026.8.31]** [v1.6.2](https://github.com/HKUDS/DeepMentor/releases/tag/v1.6.2) — Immersive YouTube learning, a plugin-driven Visualize catalog, three new agent harnesses, safer reading citations, multi-format MinerU, live Partner channel status, and guided updates.
+> **[2026.8.31]** [v1.6.2](https://github.com/HKUDS/KAGWeb/releases/tag/v1.6.2) — Immersive YouTube learning, a plugin-driven Visualize catalog, three new agent harnesses, safer reading citations, multi-format MinerU, live Partner channel status, and guided updates.
 
-> **[2026.8.30]** [v1.6.1](https://github.com/HKUDS/DeepMentor/releases/tag/v1.6.1) — One vendor key linked to every service it serves, a task model for background work, Settings as a searchable navigator, a sidebar you arrange, and first-party **LightRAG**.
+> **[2026.8.30]** [v1.6.1](https://github.com/HKUDS/KAGWeb/releases/tag/v1.6.1) — One vendor key linked to every service it serves, a task model for background work, Settings as a searchable navigator, a sidebar you arrange, and first-party **LightRAG**.
 
 <details>
 <summary><b>Past releases (more than 1 week ago)</b></summary>
 
-> **[2026.8.27]** [v1.6.0](https://github.com/HKUDS/DeepMentor/releases/tag/v1.6.0) — Faithful EPUB reading and annotations, Courses with Little Tutor and Ask Questions, bounded web-source sync, shared Books with private learning state, and Serply/native search.
+> **[2026.8.27]** [v1.6.0](https://github.com/HKUDS/KAGWeb/releases/tag/v1.6.0) — Faithful EPUB reading and annotations, Courses with Little Tutor and Ask Questions, bounded web-source sync, shared Books with private learning state, and Serply/native search.
 
-> **[2026.8.25]** [v1.5.17](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.17) — Partners each member owns with private conversations and linkable chat accounts, GitHub repos as a knowledge source, **Antigravity CLI**, browser WeChat QR login, and `deepmentor doctor`.
+> **[2026.8.25]** [v1.5.17](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.17) — Partners each member owns with private conversations and linkable chat accounts, GitHub repos as a knowledge source, **Antigravity CLI**, browser WeChat QR login, and `kagweb doctor`.
 
-> **[2026.8.22]** [v1.5.16](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.16) — **MarginNote 4** libraries you connect and its add-on fills, Book pages that turn again, and tool-call ids, embeddings and temperature limits that stop breaking behind a gateway.
+> **[2026.8.22]** [v1.5.16](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.16) — **MarginNote 4** libraries you connect and its add-on fills, Book pages that turn again, and tool-call ids, embeddings and temperature limits that stop breaking behind a gateway.
 
-> **[2026.8.20]** [v1.5.15](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.15) — **PageIndex OSS** you host yourself with reasoning retrieval, a question bank you can finally file into, third-party tool/capability plugins, and **Apache Tika** parsing.
+> **[2026.8.20]** [v1.5.15](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.15) — **PageIndex OSS** you host yourself with reasoning retrieval, a question bank you can finally file into, third-party tool/capability plugins, and **Apache Tika** parsing.
 
-> **[2026.8.19]** [v1.5.14](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.14) — **Immersive Reading**: a document open beside the thread, cited page by page; DeepMentor configures itself from chat; IMA libraries you browse and write to; a notebook console.
+> **[2026.8.19]** [v1.5.14](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.14) — **Immersive Reading**: a document open beside the thread, cited page by page; KAGWeb configures itself from chat; IMA libraries you browse and write to; a notebook console.
 
-> **[2026.8.17]** [v1.5.13](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.13) — Books stream while they compile, track your progress, and export to Markdown; a cost estimate before you approve a spine; and home starter suggestions drawn from memory.
+> **[2026.8.17]** [v1.5.13](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.13) — Books stream while they compile, track your progress, and export to Markdown; a cost estimate before you approve a spine; and home starter suggestions drawn from memory.
 
-> **[2026.8.13]** [v1.5.12](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.12) — Web search rebuilt with six new providers (**Doubao**, **Bocha**, **Zhipu**, **Firecrawl**, **Qianfan**, **Aliyun IQS**), a **LiteParse** parsing engine, MCP servers that reconnect on credential change, and **CodeBuddy** + **OrcaRouter**.
+> **[2026.8.13]** [v1.5.12](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.12) — Web search rebuilt with six new providers (**Doubao**, **Bocha**, **Zhipu**, **Firecrawl**, **Qianfan**, **Aliyun IQS**), a **LiteParse** parsing engine, MCP servers that reconnect on credential change, and **CodeBuddy** + **OrcaRouter**.
 
-> **[2026.8.10]** [v1.5.11](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.11) — Prose around a DSML tool call stops vanishing, a truncated reply continues instead of ending, live memory usage in Settings, and LightRAG indexing off the event loop.
+> **[2026.8.10]** [v1.5.11](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.11) — Prose around a DSML tool call stops vanishing, a truncated reply continues instead of ending, live memory usage in Settings, and LightRAG indexing off the event loop.
 
-> **[2026.8.7]** [v1.5.10](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.10) — Every account signs in to its own **Codex**, model output language becomes its own setting, empty tool calls are rejected instead of retried, and uploads stop blocking the loop.
+> **[2026.8.7]** [v1.5.10](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.10) — Every account signs in to its own **Codex**, model output language becomes its own setting, empty tool calls are rejected instead of retried, and uploads stop blocking the loop.
 
-> **[2026.8.4]** [v1.5.9](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.9) — Gemini **Embedding 2** on its native endpoint, a per-model **reasoning effort** control, a **Novita AI** gateway, retrieval roles for queries, and Compose deployments that keep all of `data/`.
+> **[2026.8.4]** [v1.5.9](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.9) — Gemini **Embedding 2** on its native endpoint, a per-model **reasoning effort** control, a **Novita AI** gateway, retrieval roles for queries, and Compose deployments that keep all of `data/`.
 
-> **[2026.8.2]** [v1.5.8](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.8) — Memory: a real heap ceiling for the dev server, source installs serve a production build, bounded LLM client and index caches, and a keep-alive fix for stray 500s.
+> **[2026.8.2]** [v1.5.8](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.8) — Memory: a real heap ceiling for the dev server, source installs serve a production build, bounded LLM client and index caches, and a keep-alive fix for stray 500s.
 
-> **[2026.7.31]** [v1.5.7](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.7) — A per-account **MCP Services** store, 101 **CLI Apps** the tutor can run, credentials moved out of the sandbox's reach, and a mobile layout.
+> **[2026.7.31]** [v1.5.7](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.7) — A per-account **MCP Services** store, 101 **CLI Apps** the tutor can run, credentials moved out of the sandbox's reach, and a mobile layout.
 
-> **[2026.7.29]** [v1.5.6](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.6) — Remote **Codex** sign-in completes behind an SSH tunnel, generated files get their own card in Activity, non-English languages stop collapsing to Chinese, and book creation no longer times out.
+> **[2026.7.29]** [v1.5.6](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.6) — Remote **Codex** sign-in completes behind an SSH tunnel, generated files get their own card in Activity, non-English languages stop collapsing to Chinese, and book creation no longer times out.
 
-> **[2026.7.26]** [v1.5.5](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.5) — Sign in with your ChatGPT plan via **OpenAI Codex** OAuth, an **Eden AI** provider, knowledge bases that report what they hold, traceable `rag` citations, and GraphRAG indexing without a workaround.
+> **[2026.7.26]** [v1.5.5](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.5) — Sign in with your ChatGPT plan via **OpenAI Codex** OAuth, an **Eden AI** provider, knowledge bases that report what they hold, traceable `rag` citations, and GraphRAG indexing without a workaround.
 
-> **[2026.7.24]** [v1.5.4](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.4) — Maintenance sweep: the post-answer "generating" stall is gone, IM partners render Markdown tables faithfully, LLM JSON parsing is sturdier, plus quiz, create-KB form, and Math Animator fixes.
+> **[2026.7.24]** [v1.5.4](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.4) — Maintenance sweep: the post-answer "generating" stall is gone, IM partners render Markdown tables faithfully, LLM JSON parsing is sturdier, plus quiz, create-KB form, and Math Animator fixes.
 
-> **[2026.7.24]** [v1.5.3](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.3) — Themeable code blocks, four more coding CLIs in My Agents (Gemini, Kimi, opencode, MiMo), an Atlas Cloud LLM provider, and a broad chat, memory, embedding, and parsing reliability sweep.
+> **[2026.7.24]** [v1.5.3](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.3) — Themeable code blocks, four more coding CLIs in My Agents (Gemini, Kimi, opencode, MiMo), an Atlas Cloud LLM provider, and a broad chat, memory, embedding, and parsing reliability sweep.
 
-> **[2026.7.19]** [v1.5.2](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.2) — Configurable chat attachment limits, PageIndex retrieval that reasons across your documents via agentic tool calls, broader Anthropic/OpenAI model support, and steadier Book, Knowledge Base, and chat UI.
+> **[2026.7.19]** [v1.5.2](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.2) — Configurable chat attachment limits, PageIndex retrieval that reasons across your documents via agentic tool calls, broader Anthropic/OpenAI model support, and steadier Book, Knowledge Base, and chat UI.
 
-> **[2026.7.9]** [v1.5.1](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.1) — Remove a single failed document from a knowledge base — even one stuck in an **error** state — instead of deleting and rebuilding the whole base.
+> **[2026.7.9]** [v1.5.1](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.1) — Remove a single failed document from a knowledge base — even one stuck in an **error** state — instead of deleting and rebuilding the whole base.
 
-> **[2026.7.4]** [v1.5.0](https://github.com/HKUDS/DeepMentor/releases/tag/v1.5.0) — LlamaIndex ingestion now honors your **Document Parsing** engine with multimodal image extraction, Partner & Soul ids stay URL-safe for non-Latin names, and optional RAG extras install cleanly on Python 3.14+.
+> **[2026.7.4]** [v1.5.0](https://github.com/HKUDS/KAGWeb/releases/tag/v1.5.0) — LlamaIndex ingestion now honors your **Document Parsing** engine with multimodal image extraction, Partner & Soul ids stay URL-safe for non-Latin names, and optional RAG extras install cleanly on Python 3.14+.
 
-> **[2026.6.30]** [v1.4.15](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.15) — A native **Mattermost** channel for Partners, plus fixes so Guided Learning multiple-choice questions grade correctly and a configured zero chunk overlap is honored.
+> **[2026.6.30]** [v1.4.15](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.15) — A native **Mattermost** channel for Partners, plus fixes so Guided Learning multiple-choice questions grade correctly and a configured zero chunk overlap is honored.
 
-> **[2026.6.29]** [v1.4.14](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.14) — Click an assigned partner to chat in one step, Deep Research flags partial reports, LightRAG indexes without MinerU, FAISS handles non-ASCII paths, and PocketBase sessions are isolated per user.
+> **[2026.6.29]** [v1.4.14](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.14) — Click an assigned partner to chat in one step, Deep Research flags partial reports, LightRAG indexes without MinerU, FAISS handles non-ASCII paths, and PocketBase sessions are isolated per user.
 
-> **[2026.6.27]** [v1.4.13](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.13) — Partners support non-Latin names and become assignable to users, logos render after login (#599), tiny knowledge bases retrieve reliably, and containers start cleanly under rootless Podman.
+> **[2026.6.27]** [v1.4.13](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.13) — Partners support non-Latin names and become assignable to users, logos render after login (#599), tiny knowledge bases retrieve reliably, and containers start cleanly under rootless Podman.
 
-> **[2026.6.24]** [v1.4.12](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.12) — A new **LightRAG Server** retrieval engine, a lightweight **PyMuPDF4LLM** parsing engine, and a FAISS vector backend that makes large knowledge-base retrieval dramatically faster.
+> **[2026.6.24]** [v1.4.12](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.12) — A new **LightRAG Server** retrieval engine, a lightweight **PyMuPDF4LLM** parsing engine, and a FAISS vector backend that makes large knowledge-base retrieval dramatically faster.
 
-> **[2026.6.23]** [v1.4.11](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.11) — Native tool calling on every cloud OpenAI-compatible provider, a redesigned admin Users page, LaTeX in quiz options, an honest session-loading spinner, and configurable container host binding.
+> **[2026.6.23]** [v1.4.11](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.11) — Native tool calling on every cloud OpenAI-compatible provider, a redesigned admin Users page, LaTeX in quiz options, an honest session-loading spinner, and configurable container host binding.
 
-> **[2026.6.21]** [v1.4.10](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.10) — A self-service **Profile** page with avatars, a rootless-ready container guide with a single-port request-time proxy, and deny-by-default MCP tools for non-admin users.
+> **[2026.6.21]** [v1.4.10](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.10) — A self-service **Profile** page with avatars, a rootless-ready container guide with a single-port request-time proxy, and deny-by-default MCP tools for non-admin users.
 
-> **[2026.6.19]** [v1.4.9](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.9) — Settings polish: Search shows only the fields your provider needs, connection profiles can be renamed and auto-named by provider, and graded Mastery Path questions flow into your Question Bank.
+> **[2026.6.19]** [v1.4.9](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.9) — Settings polish: Search shows only the fields your provider needs, connection profiles can be renamed and auto-named by provider, and graded Mastery Path questions flow into your Question Bank.
 
-> **[2026.6.18]** [v1.4.8](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.8) — Connect your own **Partners** under **My Agents** and consult them live in chat — answering through their own persona, library and skills — each with its own private memory.
+> **[2026.6.18]** [v1.4.8](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.8) — Connect your own **Partners** under **My Agents** and consult them live in chat — answering through their own persona, library and skills — each with its own private memory.
 
-> **[2026.6.18]** [v1.4.7](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.7) — Connect your local **Claude Code / Codex** and consult it live mid-turn, **My Agents** graduates to a top-level `/agents`, and Partner conversations gain branch / resume / delete with a replayable trace.
+> **[2026.6.18]** [v1.4.7](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.7) — Connect your local **Claude Code / Codex** and consult it live mid-turn, **My Agents** graduates to a top-level `/agents`, and Partner conversations gain branch / resume / delete with a replayable trace.
 
-> **[2026.6.17]** [v1.4.6](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.6) — Four-surface consolidation: a Space learning dashboard with importable **My Agents** and top-level Memory, a **Knowledge Center** with GraphRAG / PageIndex / LightRAG / linked-KB / Obsidian, opened-up Settings, and per-model capability gating.
+> **[2026.6.17]** [v1.4.6](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.6) — Four-surface consolidation: a Space learning dashboard with importable **My Agents** and top-level Memory, a **Knowledge Center** with GraphRAG / PageIndex / LightRAG / linked-KB / Obsidian, opened-up Settings, and per-model capability gating.
 
-> **[2026.6.14]** [v1.4.5](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.5) — Guided Learning rebuilt on the chat agent loop with a hard per-type mastery gate and a `/learning` dashboard, a new loop-plugin framework, plus Markdown export / save-to-notebook for Partner conversations.
+> **[2026.6.14]** [v1.4.5](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.5) — Guided Learning rebuilt on the chat agent loop with a hard per-type mastery gate and a `/learning` dashboard, a new loop-plugin framework, plus Markdown export / save-to-notebook for Partner conversations.
 
-> **[2026.6.13]** [v1.4.4](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.4) — Install community skills from [ClawHub](https://clawhub.ai/) with `deepmentor skill install` behind a security gate, plus real in-browser DOCX/XLSX previews for knowledge-base files.
+> **[2026.6.13]** [v1.4.4](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.4) — Install community skills from [ClawHub](https://clawhub.ai/) with `kagweb skill install` behind a security gate, plus real in-browser DOCX/XLSX previews for knowledge-base files.
 
-> **[2026.6.12]** [v1.4.3](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.3) — TutorBot becomes **Partners** on a production-grade IM pipeline (15 channels, live streaming), Chat moves to a single agent loop, real per-user isolation, and a rebuilt Visualize.
+> **[2026.6.12]** [v1.4.3](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.3) — TutorBot becomes **Partners** on a production-grade IM pipeline (15 channels, live streaming), Chat moves to a single agent loop, real per-user isolation, and a rebuilt Visualize.
 
-> **[2026.5.28]** [v1.4.2](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.2) — Stability + polish: Gemini 2.5+ unblocked across Visualize and Chat, auth-routing fix (#485), smooth-streaming chat UX, a Recents sidebar, and Lemonade local-provider support.
+> **[2026.5.28]** [v1.4.2](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.2) — Stability + polish: Gemini 2.5+ unblocked across Visualize and Chat, auth-routing fix (#485), smooth-streaming chat UX, a Recents sidebar, and Lemonade local-provider support.
 
-> **[2026.5.27]** [v1.4.1](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.1) — Security + stability: TutorBot tool sandbox locked down, per-user resource isolation, multimodal image fallback, an HTTP/SSE API for TutorBots, and a v1.4.0 chat regression fix.
+> **[2026.5.27]** [v1.4.1](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.1) — Security + stability: TutorBot tool sandbox locked down, per-user resource isolation, multimodal image fallback, an HTTP/SSE API for TutorBots, and a v1.4.0 chat regression fix.
 
-> **[2026.5.22]** [v1.4.0](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.0) — GA cut of v1.4: Auto Mode, three-layer Memory, agentic Deep Research / Solve / Question, LlamaIndex RAG refactor, Visualize/Animator merge, and restart-safe turn runtime.
+> **[2026.5.22]** [v1.4.0](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.0) — GA cut of v1.4: Auto Mode, three-layer Memory, agentic Deep Research / Solve / Question, LlamaIndex RAG refactor, Visualize/Animator merge, and restart-safe turn runtime.
 
-> **[2026.5.21]** [v1.4.0-beta](https://github.com/HKUDS/DeepMentor/releases/tag/v1.4.0-beta) — Three-layer Memory workbench (L1/L2/L3), every chat capability rebuilt on a single agentic engine, LlamaIndex-only RAG, and a unified Settings + Capabilities surface.
+> **[2026.5.21]** [v1.4.0-beta](https://github.com/HKUDS/KAGWeb/releases/tag/v1.4.0-beta) — Three-layer Memory workbench (L1/L2/L3), every chat capability rebuilt on a single agentic engine, LlamaIndex-only RAG, and a unified Settings + Capabilities surface.
 
-> **[2026.5.10]** [v1.3.10](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.10) — Remote Docker CORS recovery, `DISABLE_SSL_VERIFY` across SDK providers, safer code-block citations, and optional Matrix E2EE add-on.
+> **[2026.5.10]** [v1.3.10](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.10) — Remote Docker CORS recovery, `DISABLE_SSL_VERIFY` across SDK providers, safer code-block citations, and optional Matrix E2EE add-on.
 
-> **[2026.5.9]** [v1.3.9](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.9) — TutorBot Zulip and NVIDIA NIM support, safer thinking-model routing, `deepmentor start`, sidebar tooltips, and session-store parity.
+> **[2026.5.9]** [v1.3.9](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.9) — TutorBot Zulip and NVIDIA NIM support, safer thinking-model routing, `kagweb start`, sidebar tooltips, and session-store parity.
 
-> **[2026.5.8]** [v1.3.8](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.8) — Optional multi-user deployments with isolated user workspaces, admin grants, auth routes, and scoped runtime access.
+> **[2026.5.8]** [v1.3.8](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.8) — Optional multi-user deployments with isolated user workspaces, admin grants, auth routes, and scoped runtime access.
 
-> **[2026.5.4]** [v1.3.7](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.7) — Thinking-model/provider fixes, visible Knowledge index history, and safer Co-Writer clear/template editing.
+> **[2026.5.4]** [v1.3.7](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.7) — Thinking-model/provider fixes, visible Knowledge index history, and safer Co-Writer clear/template editing.
 
-> **[2026.5.3]** [v1.3.6](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.6) — Catalog-based model selection for chat and TutorBot, safer RAG re-indexing, OpenAI Responses token-limit fixes, and Skills editor validation.
+> **[2026.5.3]** [v1.3.6](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.6) — Catalog-based model selection for chat and TutorBot, safer RAG re-indexing, OpenAI Responses token-limit fixes, and Skills editor validation.
 
-> **[2026.5.2]** [v1.3.5](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.5) — Smoother local launch settings, safer RAG queries, cleaner local embedding auth, and Settings dark-mode polish.
+> **[2026.5.2]** [v1.3.5](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.5) — Smoother local launch settings, safer RAG queries, cleaner local embedding auth, and Settings dark-mode polish.
 
-> **[2026.5.1]** [v1.3.4](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.4) — Book page chat persistence and rebuild flows, chat-to-book references, stronger language/reasoning handling, RAG document extraction hardening.
+> **[2026.5.1]** [v1.3.4](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.4) — Book page chat persistence and rebuild flows, chat-to-book references, stronger language/reasoning handling, RAG document extraction hardening.
 
-> **[2026.4.30]** [v1.3.3](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.3) — NVIDIA NIM + Gemini embedding support, unified Space context for chat history/skills/memory, session snapshots, RAG re-index resilience.
+> **[2026.4.30]** [v1.3.3](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.3) — NVIDIA NIM + Gemini embedding support, unified Space context for chat history/skills/memory, session snapshots, RAG re-index resilience.
 
-> **[2026.4.29]** [v1.3.2](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.2) — Transparent embedding endpoint URLs, RAG re-index resilience for invalid persisted vectors, memory cleanup for thinking-model output, Deep Solve runtime fix.
+> **[2026.4.29]** [v1.3.2](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.2) — Transparent embedding endpoint URLs, RAG re-index resilience for invalid persisted vectors, memory cleanup for thinking-model output, Deep Solve runtime fix.
 
-> **[2026.4.28]** [v1.3.1](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.1) — Stability: safer RAG routing & embedding validation, Docker persistence, IME-safe input, Windows/GBK robustness.
+> **[2026.4.28]** [v1.3.1](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.1) — Stability: safer RAG routing & embedding validation, Docker persistence, IME-safe input, Windows/GBK robustness.
 
-> **[2026.4.27]** [v1.3.0](https://github.com/HKUDS/DeepMentor/releases/tag/v1.3.0) — Versioned KB indexes with re-index workflow, rebuilt Knowledge workspace, embedding auto-discovery with new adapters, Space hub.
+> **[2026.4.27]** [v1.3.0](https://github.com/HKUDS/KAGWeb/releases/tag/v1.3.0) — Versioned KB indexes with re-index workflow, rebuilt Knowledge workspace, embedding auto-discovery with new adapters, Space hub.
 
-> **[2026.4.25]** [v1.2.5](https://github.com/HKUDS/DeepMentor/releases/tag/v1.2.5) — Persistent chat attachments with file-preview drawer, attachment-aware capability pipelines, TutorBot Markdown export.
+> **[2026.4.25]** [v1.2.5](https://github.com/HKUDS/KAGWeb/releases/tag/v1.2.5) — Persistent chat attachments with file-preview drawer, attachment-aware capability pipelines, TutorBot Markdown export.
 
-> **[2026.4.25]** [v1.2.4](https://github.com/HKUDS/DeepMentor/releases/tag/v1.2.4) — Text/code/SVG attachments, one-command Setup Tour, Markdown chat export, compact KB management UI.
+> **[2026.4.25]** [v1.2.4](https://github.com/HKUDS/KAGWeb/releases/tag/v1.2.4) — Text/code/SVG attachments, one-command Setup Tour, Markdown chat export, compact KB management UI.
 
-> **[2026.4.24]** [v1.2.3](https://github.com/HKUDS/DeepMentor/releases/tag/v1.2.3) — Document attachments (PDF/DOCX/XLSX/PPTX), reasoning thinking-block display, Soul template editor, Co-Writer save-to-notebook.
+> **[2026.4.24]** [v1.2.3](https://github.com/HKUDS/KAGWeb/releases/tag/v1.2.3) — Document attachments (PDF/DOCX/XLSX/PPTX), reasoning thinking-block display, Soul template editor, Co-Writer save-to-notebook.
 
-> **[2026.4.22]** [v1.2.2](https://github.com/HKUDS/DeepMentor/releases/tag/v1.2.2) — User-authored Skills system, chat input performance overhaul, TutorBot auto-start, Book Library UI, visualization fullscreen.
+> **[2026.4.22]** [v1.2.2](https://github.com/HKUDS/KAGWeb/releases/tag/v1.2.2) — User-authored Skills system, chat input performance overhaul, TutorBot auto-start, Book Library UI, visualization fullscreen.
 
-> **[2026.4.21]** [v1.2.1](https://github.com/HKUDS/DeepMentor/releases/tag/v1.2.1) — Per-stage token limits, Regenerate response across all entry points, RAG & Gemma compatibility fixes.
+> **[2026.4.21]** [v1.2.1](https://github.com/HKUDS/KAGWeb/releases/tag/v1.2.1) — Per-stage token limits, Regenerate response across all entry points, RAG & Gemma compatibility fixes.
 
-> **[2026.4.20]** [v1.2.0](https://github.com/HKUDS/DeepMentor/releases/tag/v1.2.0) — Book Engine "living book" compiler, multi-document Co-Writer, interactive HTML visualizations, Question Bank @-mention.
+> **[2026.4.20]** [v1.2.0](https://github.com/HKUDS/KAGWeb/releases/tag/v1.2.0) — Book Engine "living book" compiler, multi-document Co-Writer, interactive HTML visualizations, Question Bank @-mention.
 
-> **[2026.4.18]** [v1.1.2](https://github.com/HKUDS/DeepMentor/releases/tag/v1.1.2) — Schema-driven Channels tab, RAG single-pipeline consolidation, externalized chat prompts.
+> **[2026.4.18]** [v1.1.2](https://github.com/HKUDS/KAGWeb/releases/tag/v1.1.2) — Schema-driven Channels tab, RAG single-pipeline consolidation, externalized chat prompts.
 
-> **[2026.4.17]** [v1.1.1](https://github.com/HKUDS/DeepMentor/releases/tag/v1.1.1) — Universal "Answer now", Co-Writer scroll sync, unified settings panel, streaming Stop button.
+> **[2026.4.17]** [v1.1.1](https://github.com/HKUDS/KAGWeb/releases/tag/v1.1.1) — Universal "Answer now", Co-Writer scroll sync, unified settings panel, streaming Stop button.
 
-> **[2026.4.15]** [v1.1.0](https://github.com/HKUDS/DeepMentor/releases/tag/v1.1.0) — LaTeX block math overhaul, LLM diagnostic probe, Docker + local LLM guidance.
+> **[2026.4.15]** [v1.1.0](https://github.com/HKUDS/KAGWeb/releases/tag/v1.1.0) — LaTeX block math overhaul, LLM diagnostic probe, Docker + local LLM guidance.
 
-> **[2026.4.14]** [v1.1.0-beta](https://github.com/HKUDS/DeepMentor/releases/tag/v1.1.0-beta) — Bookmarkable sessions, Snow theme, WebSocket heartbeat & auto-reconnect, embedding registry overhaul.
+> **[2026.4.14]** [v1.1.0-beta](https://github.com/HKUDS/KAGWeb/releases/tag/v1.1.0-beta) — Bookmarkable sessions, Snow theme, WebSocket heartbeat & auto-reconnect, embedding registry overhaul.
 
-> **[2026.4.13]** [v1.0.3](https://github.com/HKUDS/DeepMentor/releases/tag/v1.0.3) — Question Notebook with bookmarks & categories, Mermaid in Visualize, embedding mismatch detection, Qwen/vLLM compatibility, LM Studio & llama.cpp support, and Glass theme.
+> **[2026.4.13]** [v1.0.3](https://github.com/HKUDS/KAGWeb/releases/tag/v1.0.3) — Question Notebook with bookmarks & categories, Mermaid in Visualize, embedding mismatch detection, Qwen/vLLM compatibility, LM Studio & llama.cpp support, and Glass theme.
 
-> **[2026.4.11]** [v1.0.2](https://github.com/HKUDS/DeepMentor/releases/tag/v1.0.2) — Search consolidation with SearXNG fallback, provider switch fix, and frontend resource leak fixes.
+> **[2026.4.11]** [v1.0.2](https://github.com/HKUDS/KAGWeb/releases/tag/v1.0.2) — Search consolidation with SearXNG fallback, provider switch fix, and frontend resource leak fixes.
 
-> **[2026.4.10]** [v1.0.1](https://github.com/HKUDS/DeepMentor/releases/tag/v1.0.1) — Visualize capability (Chart.js/SVG), quiz duplicate prevention, and o4-mini model support.
+> **[2026.4.10]** [v1.0.1](https://github.com/HKUDS/KAGWeb/releases/tag/v1.0.1) — Visualize capability (Chart.js/SVG), quiz duplicate prevention, and o4-mini model support.
 
-> **[2026.4.10]** [v1.0.0-beta.4](https://github.com/HKUDS/DeepMentor/releases/tag/v1.0.0-beta.4) — Embedding progress tracking with rate-limit retry, cross-platform dependency fixes, and MIME validation fix.
+> **[2026.4.10]** [v1.0.0-beta.4](https://github.com/HKUDS/KAGWeb/releases/tag/v1.0.0-beta.4) — Embedding progress tracking with rate-limit retry, cross-platform dependency fixes, and MIME validation fix.
 
-> **[2026.4.8]** [v1.0.0-beta.3](https://github.com/HKUDS/DeepMentor/releases/tag/v1.0.0-beta.3) — Native OpenAI/Anthropic SDK (drop litellm), Windows Math Animator support, robust JSON parsing, and full Chinese i18n.
+> **[2026.4.8]** [v1.0.0-beta.3](https://github.com/HKUDS/KAGWeb/releases/tag/v1.0.0-beta.3) — Native OpenAI/Anthropic SDK (drop litellm), Windows Math Animator support, robust JSON parsing, and full Chinese i18n.
 
-> **[2026.4.7]** [v1.0.0-beta.2](https://github.com/HKUDS/DeepMentor/releases/tag/v1.0.0-beta.2) — Hot settings reload, MinerU nested output, WebSocket fix, and Python 3.11+ minimum.
+> **[2026.4.7]** [v1.0.0-beta.2](https://github.com/HKUDS/KAGWeb/releases/tag/v1.0.0-beta.2) — Hot settings reload, MinerU nested output, WebSocket fix, and Python 3.11+ minimum.
 
-> **[2026.4.4]** [v1.0.0-beta.1](https://github.com/HKUDS/DeepMentor/releases/tag/v1.0.0-beta.1) — Agent-native architecture rewrite (~200k lines): Tools + Capabilities plugin model, CLI & SDK, TutorBot, Co-Writer, Guided Learning, and persistent memory.
+> **[2026.4.4]** [v1.0.0-beta.1](https://github.com/HKUDS/KAGWeb/releases/tag/v1.0.0-beta.1) — Agent-native architecture rewrite (~200k lines): Tools + Capabilities plugin model, CLI & SDK, TutorBot, Co-Writer, Guided Learning, and persistent memory.
 
-> **[2026.1.23]** [v0.6.0](https://github.com/HKUDS/DeepMentor/releases/tag/v0.6.0) — Session persistence, incremental document upload, flexible RAG pipeline import, and full Chinese localization.
+> **[2026.1.23]** [v0.6.0](https://github.com/HKUDS/KAGWeb/releases/tag/v0.6.0) — Session persistence, incremental document upload, flexible RAG pipeline import, and full Chinese localization.
 
-> **[2026.1.18]** [v0.5.2](https://github.com/HKUDS/DeepMentor/releases/tag/v0.5.2) — Docling support for RAG-Anything, logging system optimization, and bug fixes.
+> **[2026.1.18]** [v0.5.2](https://github.com/HKUDS/KAGWeb/releases/tag/v0.5.2) — Docling support for RAG-Anything, logging system optimization, and bug fixes.
 
-> **[2026.1.15]** [v0.5.0](https://github.com/HKUDS/DeepMentor/releases/tag/v0.5.0) — Unified service configuration, RAG pipeline selection per knowledge base, question generation overhaul, and sidebar customization.
+> **[2026.1.15]** [v0.5.0](https://github.com/HKUDS/KAGWeb/releases/tag/v0.5.0) — Unified service configuration, RAG pipeline selection per knowledge base, question generation overhaul, and sidebar customization.
 
-> **[2026.1.9]** [v0.4.0](https://github.com/HKUDS/DeepMentor/releases/tag/v0.4.0) — Multi-provider LLM & embedding support, new home page, RAG module decoupling, and environment variable refactor.
+> **[2026.1.9]** [v0.4.0](https://github.com/HKUDS/KAGWeb/releases/tag/v0.4.0) — Multi-provider LLM & embedding support, new home page, RAG module decoupling, and environment variable refactor.
 
-> **[2026.1.5]** [v0.3.0](https://github.com/HKUDS/DeepMentor/releases/tag/v0.3.0) — Unified PromptManager architecture, GitHub Actions CI/CD, and pre-built Docker images on GHCR.
+> **[2026.1.5]** [v0.3.0](https://github.com/HKUDS/KAGWeb/releases/tag/v0.3.0) — Unified PromptManager architecture, GitHub Actions CI/CD, and pre-built Docker images on GHCR.
 
-> **[2026.1.2]** [v0.2.0](https://github.com/HKUDS/DeepMentor/releases/tag/v0.2.0) — Docker deployment, Next.js 16 & React 19 upgrade, WebSocket security hardening, and critical vulnerability fixes.
+> **[2026.1.2]** [v0.2.0](https://github.com/HKUDS/KAGWeb/releases/tag/v0.2.0) — Docker deployment, Next.js 16 & React 19 upgrade, WebSocket security hardening, and critical vulnerability fixes.
 
 </details>
 
-> ✨ **v1.6.4 is live.** `pip install -U deepmentor` picks up the latest stable release.
+> ✨ **v1.6.4 is live.** `pip install -U kagweb` picks up the latest stable release.
 
 ### 📰 News
 
-- **2026-05-22** 🌐 Official docs site live at [**deepmentor.info**](https://deepmentor.info/) — guides, references, and capability tours in one place.
+- **2026-05-22** 🌐 Official docs site live at [**kagweb.info**](https://kagweb.info/) — guides, references, and capability tours in one place.
 - **2026-04-19** 🎉 20k stars in 111 days! Thank you for the support toward truly personalized, intelligent tutoring.
-- **2026-04-10** 📄 Our paper is live on arXiv — read the [preprint](https://arxiv.org/abs/2604.26962) for the design and ideas behind DeepMentor.
+- **2026-04-10** 📄 Our paper is live on arXiv — read the [preprint](https://arxiv.org/abs/2604.26962) for the design and ideas behind KAGWeb.
 - **2026-02-06** 🚀 10k stars in just 39 days! A huge thank you to our incredible community.
-- **2026-01-01** 🎊 Happy New Year! Join our [Discord](https://discord.gg/eRsjPgMU4t), [WeChat](https://github.com/HKUDS/DeepMentor/issues/78), or [Discussions](https://github.com/HKUDS/DeepMentor/discussions) — let's shape DeepMentor together.
-- **2025-12-29** 🎓 DeepMentor is officially released!
+- **2026-01-01** 🎊 Happy New Year! Join our [Discord](https://discord.gg/eRsjPgMU4t), [WeChat](https://github.com/HKUDS/KAGWeb/issues/78), or [Discussions](https://github.com/HKUDS/KAGWeb/discussions) — let's shape KAGWeb together.
+- **2025-12-29** 🎓 KAGWeb is officially released!
 
 ## ✨ Key Features
 
-DeepMentor is an agent-native learning workspace that connects tutoring, problem solving, quiz generation, research, visualization, and mastery practice in one extensible system.
+KAGWeb is an agent-native learning workspace that connects tutoring, problem solving, quiz generation, research, visualization, and mastery practice in one extensible system.
 
 - **One runtime for every mode** — Chat, Ask Questions, Quiz, Research, Visualize, Solve, Course Study, Mastery Path, Immersive Reading, and Immersive Watching share one capability runtime and session context while keeping purpose-built loops and pipelines.
 - **Connected learning context** — Knowledge bases, books, Co-Writer drafts, notebooks, question banks, personas, and Memory can be reused across the workflows that support them, subject to account grants and learning policies.
@@ -230,23 +230,23 @@ DeepMentor is an agent-native learning workspace that connects tutoring, problem
 
 ## 🚀 Get Started
 
-DeepMentor ships four installation paths. They all share one workspace layout: settings live in `data/user/settings/` under the directory you launch from (or under `DEEPMENTOR_HOME` / `deepmentor start --home` if you set one explicitly). For the full app, the recommended flow is **pick a workspace directory → install → `deepmentor init` → `deepmentor start`**.
+KAGWeb ships four installation paths. They all share one workspace layout: settings live in `data/user/settings/` under the directory you launch from (or under `KAGWEB_HOME` / `kagweb start --home` if you set one explicitly). For the full app, the recommended flow is **pick a workspace directory → install → `kagweb init` → `kagweb start`**.
 
 <details>
 <summary><b>Option 1 — Install From PyPI</b> · full local Web app + CLI, no clone required</summary>
 
-Full local Web app + CLI, no clone required. Needs **Python 3.11–3.14** and a **Node.js 20+** runtime on PATH (the packaged Next.js standalone server is spawned by `deepmentor start`).
+Full local Web app + CLI, no clone required. Needs **Python 3.11–3.14** and a **Node.js 20+** runtime on PATH (the packaged Next.js standalone server is spawned by `kagweb start`).
 
 ```bash
-mkdir -p my-deepmentor && cd my-deepmentor
-pip install -U deepmentor
-deepmentor init     # prompts for ports + LLM provider + optional embedding/search
-deepmentor start    # starts backend + frontend; keep the terminal open
+mkdir -p my-kagweb && cd my-kagweb
+pip install -U kagweb
+kagweb init     # prompts for ports + LLM provider + optional embedding/search
+kagweb start    # starts backend + frontend; keep the terminal open
 ```
 
-`deepmentor init` prompts for backend port (default `8001`), frontend port (default `3782`), LLM provider / base URL / API key / model, an optional embedding provider for Knowledge Base / RAG, and an optional search provider for Web Search.
+`kagweb init` prompts for backend port (default `8001`), frontend port (default `3782`), LLM provider / base URL / API key / model, an optional embedding provider for Knowledge Base / RAG, and an optional search provider for Web Search.
 
-After `deepmentor start`, open the frontend URL printed in the terminal — by default [http://127.0.0.1:3782](http://127.0.0.1:3782). Press `Ctrl+C` in that terminal to stop both backend and frontend. Skipping `deepmentor init` is fine for a quick trial; the app boots with default ports and empty model settings, configure them later in **Settings → Models**.
+After `kagweb start`, open the frontend URL printed in the terminal — by default [http://127.0.0.1:3782](http://127.0.0.1:3782). Press `Ctrl+C` in that terminal to stop both backend and frontend. Skipping `kagweb init` is fine for a quick trial; the app boots with default ports and empty model settings, configure them later in **Settings → Models**.
 
 </details>
 
@@ -256,8 +256,8 @@ After `deepmentor start`, open the frontend URL printed in the terminal — by d
 For development against a checkout. Use **Python 3.11–3.14** and **Node.js 22 LTS** to match CI and Docker.
 
 ```bash
-git clone https://gitee.com/wustbd/DeepMentor.git
-cd DeepMentor
+git clone https://gitee.com/wustbd/KAGWeb.git
+cd KAGWeb
 
 # Create a venv (macOS/Linux). Windows PowerShell:
 #   py -3.11 -m venv .venv ; .\.venv\Scripts\Activate.ps1
@@ -268,18 +268,18 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ( cd web && npm ci --legacy-peer-deps )
 
-deepmentor init
-deepmentor start --dev
+kagweb init
+kagweb start --dev
 ```
 
-`deepmentor start` builds the local `web/` frontend for production once and reuses it; `--dev` runs Next.js with HMR. Config layout, ports, and `Ctrl+C` match Option 1.
+`kagweb start` builds the local `web/` frontend for production once and reuses it; `--dev` runs Next.js with HMR. Config layout, ports, and `Ctrl+C` match Option 1.
 
 <details>
 <summary><b>Conda environment</b> (instead of <code>venv</code>)</summary>
 
 ```bash
-conda create -n deepmentor python=3.11
-conda activate deepmentor
+conda create -n kagweb python=3.11
+conda activate kagweb
 python -m pip install --upgrade pip
 ```
 
@@ -306,11 +306,11 @@ pip install -e ".[math-animator]"   # Manim addon; requires LaTeX/ffmpeg/system 
 
 **Changing frontend dependencies:** run `npm install --legacy-peer-deps` to refresh `web/package-lock.json`, then commit both `web/package.json` and `web/package-lock.json`.
 
-**Stuck dev server:** if `deepmentor start --dev` reports an existing frontend that isn't responding, stop the PID it prints. If no Next.js process is actually running, the lock files are stale — remove them and retry:
+**Stuck dev server:** if `kagweb start --dev` reports an existing frontend that isn't responding, stop the PID it prints. If no Next.js process is actually running, the lock files are stale — remove them and retry:
 
 ```bash
 rm -f web/.next/dev/lock web/.next/lock
-deepmentor start --dev
+kagweb start --dev
 ```
 
 </details>
@@ -322,24 +322,24 @@ deepmentor start --dev
 
 One container for the full Web app. Images on GitHub Container Registry:
 
-- `ghcr.io/hkuds/deepmentor:latest` — latest stable release
-- `ghcr.io/hkuds/deepmentor:<version>` — exact release without the leading `v` (for example `:1.6.3`); pre-releases receive only their version tag
+- `ghcr.io/hkuds/kagweb:latest` — latest stable release
+- `ghcr.io/hkuds/kagweb:<version>` — exact release without the leading `v` (for example `:1.6.3`); pre-releases receive only their version tag
 
 > See [CONTAINERIZATION.md](./CONTAINERIZATION.md) for podman/rootless/read-only-rootfs deployments and the full per-installation guide.
 
 ```bash
-docker run --rm --name deepmentor \
+docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 \
-  -v deepmentor-data:/app/data \
-  ghcr.io/hkuds/deepmentor:latest
+  -v kagweb-data:/app/data \
+  ghcr.io/hkuds/kagweb:latest
 ```
 
 > **Only `3782` needs to be published.** The browser talks exclusively to the frontend origin; the Next.js middleware (`web/proxy.ts`) forwards `/api/*` and `/ws/*` to the FastAPI backend **inside the container**. Publishing `8001` (`-p 127.0.0.1:8001:8001`) is optional — handy only for hitting the API directly with curl or scripts.
 
-Open [http://127.0.0.1:3782](http://127.0.0.1:3782). The container creates `/app/data/user/settings/*.json` on first boot; configure model providers from the Web Settings page. Config, API keys, logs, workspace files, memory, and knowledge bases persist in the `deepmentor-data` volume. Optional extras belong on the deployment, not in a shell: set `DEEPMENTOR_EXTRAS` (and `DEEPMENTOR_APT_PACKAGES` for system libraries) and every container started from it re-applies them, where a `docker exec … pip install` would be lost at the next `compose down`.
+Open [http://127.0.0.1:3782](http://127.0.0.1:3782). The container creates `/app/data/user/settings/*.json` on first boot; configure model providers from the Web Settings page. Config, API keys, logs, workspace files, memory, and knowledge bases persist in the `kagweb-data` volume. Optional extras belong on the deployment, not in a shell: set `KAGWEB_EXTRAS` (and `KAGWEB_APT_PACKAGES` for system libraries) and every container started from it re-applies them, where a `docker exec … pip install` would be lost at the next `compose down`.
 
 - **Different host ports:** change the left side of each `-p host:container` mapping (e.g. `-p 127.0.0.1:8088:3782`). If you change container-side ports in `/app/data/user/settings/system.json`, restart and update the right side of each mapping to match.
-- **Detached:** add `-d`, then `docker logs -f deepmentor` to follow, `docker stop deepmentor` to stop, `docker rm deepmentor` before reusing the name. The `deepmentor-data` volume keeps your settings and workspace across restarts.
+- **Detached:** add `-d`, then `docker logs -f kagweb` to follow, `docker stop kagweb` to stop, `docker rm kagweb` before reusing the name. The `kagweb-data` volume keeps your settings and workspace across restarts.
 
 **Remote Docker / reverse proxy:** the browser only talks to the frontend
 origin (`:3782`); the in-container Next.js middleware forwards `/api/*` and
@@ -358,12 +358,12 @@ uses to reach the backend (it's read server-side, never sent to the browser).
 
 `next_public_api_base_external` (and its alias `public_api_base`) are accepted as
 lower-precedence fallbacks. CORS uses frontend **origins**, not API URLs. With
-auth disabled, DeepMentor permits normal HTTP/HTTPS browser origins by default.
+auth disabled, KAGWeb permits normal HTTP/HTTPS browser origins by default.
 With auth enabled, add exact frontend origins:
 
 ```json
 {
-  "cors_origins": ["https://deepmentor.example.com"]
+  "cors_origins": ["https://kagweb.example.com"]
 }
 ```
 
@@ -373,11 +373,11 @@ With auth enabled, add exact frontend origins:
 Inside Docker, `localhost` is the container itself, not your host machine. To reach a model service running on the host, use the host gateway (recommended):
 
 ```bash
-docker run --rm --name deepmentor \
+docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 -p 127.0.0.1:8001:8001 \
   --add-host=host.docker.internal:host-gateway \
-  -v deepmentor-data:/app/data \
-  ghcr.io/hkuds/deepmentor:latest
+  -v kagweb-data:/app/data \
+  ghcr.io/hkuds/kagweb:latest
 ```
 
 Then in **Settings → Models**, point the provider Base URL at `host.docker.internal`:
@@ -402,37 +402,37 @@ Docker Desktop (macOS/Windows) usually resolves `host.docker.internal` without `
 When you don't need the Web UI. The CLI-only package is installed from a source checkout, not from PyPI.
 
 ```bash
-git clone https://gitee.com/wustbd/DeepMentor.git
-cd DeepMentor
+git clone https://gitee.com/wustbd/KAGWeb.git
+cd KAGWeb
 
 # Create a venv (macOS/Linux). Windows PowerShell:
 #   py -3.11 -m venv .venv-cli ; .\.venv-cli\Scripts\Activate.ps1
 python3 -m venv .venv-cli && source .venv-cli/bin/activate
 python -m pip install --upgrade pip
 
-python -m pip install -e ./packaging/deepmentor-cli
-deepmentor init --cli
-deepmentor chat
+python -m pip install -e ./packaging/kagweb-cli
+kagweb init --cli
+kagweb chat
 ```
 
-`deepmentor init --cli` shares the same `data/user/settings/` layout as the full app but skips the backend/frontend port prompts. It still offers the Embedding and Search selectors (choose **Skip** when you do not need them), writes the key runtime files (`system.json`, `auth.json`, `integrations.json`, `interface.json`, `model_catalog.json`, `main.yaml`, `agents.yaml`), and prompts for the active LLM provider and model.
+`kagweb init --cli` shares the same `data/user/settings/` layout as the full app but skips the backend/frontend port prompts. It still offers the Embedding and Search selectors (choose **Skip** when you do not need them), writes the key runtime files (`system.json`, `auth.json`, `integrations.json`, `interface.json`, `model_catalog.json`, `main.yaml`, `agents.yaml`), and prompts for the active LLM provider and model.
 
 <details>
 <summary><b>Common commands</b></summary>
 
 ```bash
-deepmentor chat                                          # interactive REPL
-deepmentor chat --capability deep_solve --tool rag --kb my-kb
-deepmentor run chat "Explain Fourier transform"
-deepmentor run deep_solve "Solve x^2 = 4" --tool rag --kb my-kb
-deepmentor kb create my-kb --doc textbook.pdf
-deepmentor memory show
-deepmentor config show
+kagweb chat                                          # interactive REPL
+kagweb chat --capability deep_solve --tool rag --kb my-kb
+kagweb run chat "Explain Fourier transform"
+kagweb run deep_solve "Solve x^2 = 4" --tool rag --kb my-kb
+kagweb kb create my-kb --doc textbook.pdf
+kagweb memory show
+kagweb config show
 ```
 
 </details>
 
-The local `deepmentor-cli` install ships no Web assets or server dependencies. Keep the source checkout around — the editable install points to it. To add the Web app later, install the PyPI package (Option 1) and run `deepmentor init` + `deepmentor start` from the same workspace.
+The local `kagweb-cli` install ships no Web assets or server dependencies. Keep the source checkout around — the editable install points to it. To add the Web app later, install the PyPI package (Option 1) and run `kagweb init` + `kagweb start` from the same workspace.
 
 </details>
 
@@ -442,10 +442,10 @@ The local `deepmentor-cli` install ships no Web assets or server dependencies. K
 The built-in office skills — **docx / pdf / pptx / xlsx** — work by having the
 model write a short Python script (`python-docx`, `reportlab`, `openpyxl`, …),
 run it through the `exec` / `code_execution` tools, and hand back a download URL.
-Those tools mount whenever a sandbox backend is active. DeepMentor selects the
+Those tools mount whenever a sandbox backend is active. KAGWeb selects the
 strongest configured backend in this order:
 
-- **Runner sidecar:** `DEEPMENTOR_SANDBOX_RUNNER_URL` routes execution to the
+- **Runner sidecar:** `KAGWEB_SANDBOX_RUNNER_URL` routes execution to the
   hardened, least-privileged service from `Dockerfile.runner`.
 - **Linux bubblewrap:** when available, `bwrap` isolates the process and files.
 - **Restricted subprocess fallback:** local and single-container installs use
@@ -453,7 +453,7 @@ strongest configured backend in this order:
 
 The `sandbox_allow_subprocess` setting in `data/user/settings/system.json`
 (default `true`) controls only the last fallback. Set it to `false` (or export
-`DEEPMENTOR_SANDBOX_ALLOW_SUBPROCESS=0`) to refuse subprocess execution when no
+`KAGWEB_SANDBOX_ALLOW_SUBPROCESS=0`) to refuse subprocess execution when no
 runner or `bwrap` backend is available; it does not disable those stronger
 backends.
 
@@ -507,14 +507,14 @@ cover tool calling, image input, JSON output, and reasoning controls.
 <details>
 <summary><b>Uninstall and cleanup</b></summary>
 
-DeepMentor separates its installed code from its runtime workspace. By default,
-the workspace is the directory where you run `deepmentor init` / `deepmentor
-start`; `--home PATH` or `DEEPMENTOR_HOME` overrides it. Runtime output is the
+KAGWeb separates its installed code from its runtime workspace. By default,
+the workspace is the directory where you run `kagweb init` / `kagweb
+start`; `--home PATH` or `KAGWEB_HOME` overrides it. Runtime output is the
 `data` directory inside that workspace, so the startup banner line beginning
 with `Workspace:` identifies what to clean up.
 
-1. Stop the app. Press `Ctrl+C` in the terminal running `deepmentor start`, or
-   run `deepmentor stop [--home PATH]` for a launcher started with `--detach`;
+1. Stop the app. Press `Ctrl+C` in the terminal running `kagweb start`, or
+   run `kagweb stop [--home PATH]` for a launcher started with `--detach`;
    stop any running Partner and detached Docker containers before deleting data.
 2. Remove runtime data only if you also want to erase all local state. This
    includes settings and API keys, chat history, sessions, Memory, Notebooks,
@@ -522,7 +522,7 @@ with `Workspace:` identifies what to clean up.
    caches, generated artifacts, and the packaged frontend runtime cache.
 
    First copy the exact `Workspace:` path from the startup banner and verify
-   that its `data` child is the intended DeepMentor data directory. Back it up
+   that its `data` child is the intended KAGWeb data directory. Back it up
    if anything may be needed later, then move that exact directory to your
    operating system's Trash/Recycle Bin. Do not run a recursive deletion
    command against a relative path or an unresolved environment variable.
@@ -530,11 +530,11 @@ with `Workspace:` identifies what to clean up.
 3. Remove the installed package. Use the command that matches the distribution:
 
    ```bash
-   python -m pip uninstall deepmentor
-   python -m pip uninstall deepmentor-cli
+   python -m pip uninstall kagweb
+   python -m pip uninstall kagweb-cli
    ```
 
-   If the virtual environment was created only for DeepMentor, remove it through
+   If the virtual environment was created only for KAGWeb, remove it through
    your environment manager. For a source install, deactivate the environment,
    leave the source directory, and run `git status --short` inside that exact
    checkout. Only move the checkout to Trash/Recycle Bin after confirming it
@@ -544,29 +544,29 @@ with `Workspace:` identifies what to clean up.
    removing them. Volume removal permanently erases the Docker-managed data:
 
    ```bash
-   docker ps -a --filter name=^/deepmentor$
-   docker volume inspect deepmentor-data
-   docker rm -f deepmentor
-   docker volume rm deepmentor-data
+   docker ps -a --filter name=^/kagweb$
+   docker volume inspect kagweb-data
+   docker rm -f kagweb
+   docker volume rm kagweb-data
    ```
 
 </details>
 
-## 📖 Explore DeepMentor
+## 📖 Explore KAGWeb
 
 Start with the main surfaces you will use day to day: Chat, Partners, My Agents, Co-Writer, Book, Knowledge Center, Learning Space, Memory, and Settings. The tour then covers Multi-User deployments for shared, isolated workspaces.
 
 If an answer loses an earlier constraint, cites weak evidence, or disagrees with selected material, collect the diagnostics in [`REASONING_SAFETY_CHECKLIST.md`](./REASONING_SAFETY_CHECKLIST.md) before opening an issue.
 
 <div align="center">
-<img src="assets/figs/web-1.6.0/OVERVIEW.png" alt="DeepMentor home — the Chat workspace with every surface in the sidebar" width="900">
+<img src="assets/figs/web-1.6.0/OVERVIEW.png" alt="KAGWeb home — the Chat workspace with every surface in the sidebar" width="900">
 </div>
 
 <details>
 <summary><b>🏗️ System architecture</b></summary>
 
 <div align="center">
-<img src="assets/figs/system/system%20architecture.png" alt="DeepMentor system architecture" width="900">
+<img src="assets/figs/system/system%20architecture.png" alt="KAGWeb system architecture" width="900">
 </div>
 
 </details>
@@ -577,13 +577,13 @@ If an answer loses an earlier constraint, cites weak evidence, or disagrees with
 Chat is the default capability and where most work begins. A single thread can talk normally, call tools, ground itself in selected knowledge bases, read attachments, generate images, consult subagents, write notebook records, and continue with the same context across turns.
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/home/00-overview.png" alt="DeepMentor chat workspace" width="900">
+<img src="assets/figs/web-1.4.6+/home/00-overview.png" alt="KAGWeb chat workspace" width="900">
 </div>
 
 The loop is deliberately simple: the model thinks in rounds, calls tools when useful, observes the results, and finishes with a tool-free message. `ask_user` is special — instead of guessing, the agent can pause the turn, ask a structured clarifying question, and resume once you answer.
 
 <div align="center">
-<img src="assets/figs/system/chat-agent-loop.png" alt="DeepMentor chat agent loop" width="900">
+<img src="assets/figs/system/chat-agent-loop.png" alt="KAGWeb chat agent loop" width="900">
 </div>
 
 User-toggleable tools are `brainstorm`, `web_search`, `paper_search`, `reason`, and `geogebra_analysis` — plus `imagegen` and `videogen` once you configure the matching generation model. Contextual tools such as `rag`, `kb_files`, `read_source`, `read_memory`, `write_memory`, `read_skill`, `load_tools`, `exec`, `web_fetch`, `ask_user`, `list_notebook`, `write_note`, `question_bank`, `github`, and `consult_subagent` mount automatically when the turn has the right context.
@@ -598,13 +598,13 @@ Home keeps **Chat**, **Ask Questions**, **Quiz**, and **Visualize** one click aw
 <summary><b>🤝 Partner — Persistent Companions on the Same Brain</b></summary>
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/partners/00-partners%20overview.png" alt="DeepMentor partners workspace" width="900">
+<img src="assets/figs/web-1.4.6+/partners/00-partners%20overview.png" alt="KAGWeb partners workspace" width="900">
 </div>
 
 Partners are persistent companions with their own soul, model policy, library, memory, and channels. They are not a separate bot engine: every inbound web or IM message becomes a normal `ChatOrchestrator` turn inside a partner-scoped workspace. A partner is "a chat that has a personality and a phone number."
 
 <div align="center">
-<img src="assets/figs/system/partners-architecture.png" alt="DeepMentor partners architecture" width="900">
+<img src="assets/figs/system/partners-architecture.png" alt="KAGWeb partners architecture" width="900">
 </div>
 
 Each partner has a `SOUL.md`, model selection, channels, tool policy, and assigned library. Knowledge bases, skills, and notebooks are copied into `data/partners/<id>/workspace/`, so the same RAG, skill, notebook, and memory tools work without special cases. Authenticated non-admin users keep private partner sessions and relationship memory while the partner reads their personal memory read-only; admin, group, and unbound traffic use the shared partner scope.
@@ -623,16 +623,16 @@ For faster setup, the Partner channel page can create a Feishu/Lark app or WeCom
 <summary><b>🧑‍🚀 My Agents — Consult & Import Other Agents</b></summary>
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/myagents/00-overview.png" alt="DeepMentor My Agents workspace" width="900">
+<img src="assets/figs/web-1.4.6+/myagents/00-overview.png" alt="KAGWeb My Agents workspace" width="900">
 </div>
 
-My Agents turns other agents into context for DeepMentor, and does two distinct things. **Connect a live agent** — Claude Code, Codex, Antigravity, Kimi, opencode, MiMo Code, Hermes Agent, OpenClaw, or DeepSeek Harness on your machine, or one of your Partners — and consult it from inside a chat turn: DeepMentor actually *runs* the other agent and streams its work into the Activity panel via the `consult_subagent` tool. Select it and its round limit with the Agent chip, or filter the same connected-agent list with `@`; the choice stays attached to the session.
+My Agents turns other agents into context for KAGWeb, and does two distinct things. **Connect a live agent** — Claude Code, Codex, Antigravity, Kimi, opencode, MiMo Code, Hermes Agent, OpenClaw, or DeepSeek Harness on your machine, or one of your Partners — and consult it from inside a chat turn: KAGWeb actually *runs* the other agent and streams its work into the Activity panel via the `consult_subagent` tool. Select it and its round limit with the Agent chip, or filter the same connected-agent list with `@`; the choice stays attached to the session.
 
 <div align="center">
 <img src="assets/figs/web-1.4.6+/home/08-subagent%20demo%20with%20claude%20code.png" alt="Consulting a Claude Code subagent live" width="900">
 </div>
 
-**Import past conversations** — bring in your existing Claude Code and Codex history as named, searchable, resumable agents. Choose Claude history by project / working directory and Codex history by calendar date; refresh re-syncs that scope and pulls in new conversations. Reference one from a Chat turn via `+` → My Agents, and DeepMentor reads it as a third-party transcript — it stays *their* conversation, not DeepMentor's own voice.
+**Import past conversations** — bring in your existing Claude Code and Codex history as named, searchable, resumable agents. Choose Claude history by project / working directory and Codex history by calendar date; refresh re-syncs that scope and pulls in new conversations. Reference one from a Chat turn via `+` → My Agents, and KAGWeb reads it as a third-party transcript — it stays *their* conversation, not KAGWeb's own voice.
 
 </details>
 
@@ -640,7 +640,7 @@ My Agents turns other agents into context for DeepMentor, and does two distinct 
 <summary><b>✍️ Co-Writer — Selection-Aware Markdown Drafting</b></summary>
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/co-writer/00-overview.png" alt="DeepMentor Co-Writer workspace" width="900">
+<img src="assets/figs/web-1.4.6+/co-writer/00-overview.png" alt="KAGWeb Co-Writer workspace" width="900">
 </div>
 
 Co-Writer is a split-view Markdown workspace for reports, tutorials, notes, and long-form learning artifacts. Documents autosave and render a live preview (KaTeX math, diagram fences), and can be saved back into notebooks when a draft becomes reusable context. Import a `.docx` to start a new draft, and export the current editor as Markdown or Word.
@@ -649,7 +649,7 @@ Co-Writer is a split-view Markdown workspace for reports, tutorials, notes, and 
 <img src="assets/figs/web-1.4.6+/co-writer/01-edit%20panel.png" alt="Co-Writer editor with live preview" width="900">
 </div>
 
-Its defining idea is **surgical editing**: select a span and ask DeepMentor to rewrite, expand, or shorten it. The edit agent can ground the change in a knowledge base or web evidence and keeps a trace of its tool calls. If the draft has not changed while it works, the result replaces the selected text directly and remains reversible with **Undo**.
+Its defining idea is **surgical editing**: select a span and ask KAGWeb to rewrite, expand, or shorten it. The edit agent can ground the change in a knowledge base or web evidence and keeps a trace of its tool calls. If the draft has not changed while it works, the result replaces the selected text directly and remains reversible with **Undo**.
 
 </details>
 
@@ -657,7 +657,7 @@ Its defining idea is **surgical editing**: select a span and ask DeepMentor to r
 <summary><b>📖 Book — Living Books from Your Materials</b></summary>
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/book/00-book_overview.png" alt="DeepMentor book library" width="900">
+<img src="assets/figs/web-1.4.6+/book/00-book_overview.png" alt="KAGWeb book library" width="900">
 </div>
 
 Book turns selected sources into an interactive **living book** — not a static PDF, but a reading environment built from typed blocks. A book can start from knowledge bases, notebooks, question banks, or chat history; the creation flow proposes a chapter outline before content is generated, so you review the shape instead of accepting a blind one-shot output.
@@ -670,7 +670,7 @@ Book turns selected sources into an interactive **living book** — not a static
 <img src="assets/figs/web-1.4.6+/book/03-book-demo%20interactive%20module.png" alt="Book interactive widget block" width="31%">
 </p>
 
-Each chapter compiles into editable typed blocks — text, callouts, quizzes, flash cards, timelines, code, figures, interactive HTML, animations, concept graphs, deep dives, and user notes — with its own Page Chat. Insert, move, regenerate, rewrite, or switch a block type; selected passages enter a reviewable learning-capture inbox. Progress, bookmarks, quiz attempts, captures, and Page Chat stay private per reader even when an admin book is shared read-only or for collaborative editing; shared deletion stays admin-only. Any book exports to Markdown, long compiles pause and resume, and `deepmentor book health` / `refresh-fingerprints` flag source drift.
+Each chapter compiles into editable typed blocks — text, callouts, quizzes, flash cards, timelines, code, figures, interactive HTML, animations, concept graphs, deep dives, and user notes — with its own Page Chat. Insert, move, regenerate, rewrite, or switch a block type; selected passages enter a reviewable learning-capture inbox. Progress, bookmarks, quiz attempts, captures, and Page Chat stay private per reader even when an admin book is shared read-only or for collaborative editing; shared deletion stays admin-only. Any book exports to Markdown, long compiles pause and resume, and `kagweb book health` / `refresh-fingerprints` flag source drift.
 
 </details>
 
@@ -678,7 +678,7 @@ Each chapter compiles into editable typed blocks — text, callouts, quizzes, fl
 <summary><b>📚 Knowledge Center — Multi-Engine RAG Libraries</b></summary>
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/knowledge/00-overview.png" alt="DeepMentor Knowledge Center" width="900">
+<img src="assets/figs/web-1.4.6+/knowledge/00-overview.png" alt="KAGWeb Knowledge Center" width="900">
 </div>
 
 Knowledge bases are the document collections behind RAG — they ground Chat turns, Co-Writer edits, Book generation, and Partner conversations. What's distinctive is a **choice of retrieval engines**: **LlamaIndex** (the default, hybrid vector + BM25 with optional cross-encoder reranking and exact-flat or HNSW FAISS indexes), **PageIndex** (reasoning retrieval with page-level citations, hosted or self-hosted OSS), **GraphRAG** and **LightRAG** (knowledge-graph retrieval), **LightRAG Server** (retrieval offloaded to an external LightRAG instance you connect over HTTP), **WeKnora** (retrieval from a knowledge base in your self-hosted deployment, without a local index or document copy), **Tencent IMA** (a library you curate in IMA — searched, browsed, and written back to over its OpenAPI), **MarginNote 4** (your MN4 study data — documents, excerpts, mind-map cards and the links between them — pushed in by the app's Add-on and navigated with dedicated tools), or a linked **Obsidian** vault the tutor reads and writes in place. Each KB is bound to one engine.
@@ -691,7 +691,7 @@ Migrating an existing Obsidian, Hermes, or Markdown library? See [Knowledge migr
 
 Creating a KB, you either **create new** (upload documents and build a fresh index) or **link existing** (reuse an index built elsewhere, read in place with no re-index). A KB can also track **GitHub repositories** (repo, branch, glob) or **documentation-site URLs** (bounded crawl depth and page count); on-demand sync hash-diffs added, changed, and removed content so followed documentation stays current without re-uploading. Re-indexing writes a new flat `version-N` directory and keeps prior ones, so a working index is never destroyed mid-rebuild. A single document can be removed even from an **error**-state base — dropping a file that failed to parse without a full delete-and-rebuild. Document parsing — Text-only, MinerU, Docling, Tika, markitdown, PyMuPDF4LLM, or LiteParse — is chosen in **Settings → Knowledge Base**, with local model downloads off by default. Docling can also run in **remote** mode against a Docling Serve server (no local install or models needed), configured via **Settings → Document Parsing** (`mode=remote`, a server base URL, and an optional API key) or the `DOCLING_MODE` / `DOCLING_API_BASE_URL` / `DOCLING_API_TOKEN` environment variables. Tika is remote-only and points at the Apache Tika server configured on that page. The CLI mirrors the lifecycle with `list/info/create/add/search/set-default/delete`, source add/remove commands, `list-sources`, and `sync`.
 
-The built-in LightRAG engine is installed with `pip install 'deepmentor[rag-lightrag]'`. That extra contains the supported LightRAG SDK but does not install MinerU. Choose MinerU independently in Document Parsing and either configure its cloud mode or install its current local CLI when structured parsing is wanted. MinerU accepts PDF, common raster images, DOCX, PPTX, and XLSX; the legacy `magic-pdf` command remains PDF-only. Text-only and the other parsing engines do not require MinerU.
+The built-in LightRAG engine is installed with `pip install 'kagweb[rag-lightrag]'`. That extra contains the supported LightRAG SDK but does not install MinerU. Choose MinerU independently in Document Parsing and either configure its cloud mode or install its current local CLI when structured parsing is wanted. MinerU accepts PDF, common raster images, DOCX, PPTX, and XLSX; the legacy `magic-pdf` command remains PDF-only. Text-only and the other parsing engines do not require MinerU.
 
 </details>
 
@@ -699,7 +699,7 @@ The built-in LightRAG engine is installed with `pip install 'deepmentor[rag-ligh
 <summary><b>🌐 Learning Space — Skills, Personas, and Reusable Context</b></summary>
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/learning-space/00-overview.png" alt="DeepMentor Learning Space hub" width="900">
+<img src="assets/figs/web-1.4.6+/learning-space/00-overview.png" alt="KAGWeb Learning Space hub" width="900">
 </div>
 
 Learning Space is the library, organization, and personalization layer. **Conversations & Materials** holds Chat History, notebooks — with records that move or copy between notebooks and a Markdown export — and a question bank that keeps your answer, reference answer, and explanation. **Personalization** holds personas, skills (`SKILL.md` playbooks), one-click **MCP Services**, and **CLI Apps** from the [CLI-Anything](https://github.com/HKUDS/CLI-Anything) catalog, each with an on-demand usage guide. The separate **My Courses** workspace groups subject conversations and tutor threads; each asset is offered only in the workflows that support it.
@@ -716,13 +716,13 @@ You don't have to write every skill yourself — **Import from EduHub** browses 
 <summary><b>🧠 Memory — Inspectable Personalization</b></summary>
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/memory/00-overview.png" alt="DeepMentor memory overview" width="900">
+<img src="assets/figs/web-1.4.6+/memory/00-overview.png" alt="KAGWeb memory overview" width="900">
 </div>
 
 Memory is a file-backed, three-layer system you can read, curate, and audit — deliberately *not* a hidden vector store. **L1** is the workspace mirror plus an append-only event trace (`trace/<surface>/<date>.jsonl`); **L2** is per-surface curated facts (`L2/<surface>.md`) with references to L1 entities; **L3** is cross-surface synthesis (`L3/<profile|recent|scope|preferences>.md`) that records its contributing L2 surfaces.
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/memory/01-3%20layer%20memory%20graph.png" alt="DeepMentor memory graph" width="900">
+<img src="assets/figs/web-1.4.6+/memory/01-3%20layer%20memory%20graph.png" alt="KAGWeb memory graph" width="900">
 </div>
 
 The Memory Graph shows the whole pyramid — L3 synthesis at the centre, L2 in the middle ring, L1 traces on the outside — with exact L2 → L1 evidence edges and L3 → contributing-surface links. Memory is tracked across `chat`, `notebook`, `quiz`, `kb`, `book`, partner, and `cowriter` surfaces; the consolidator's Update / Audit / Dedup budgets are tuned in **Settings → Memory**.
@@ -733,20 +733,20 @@ The Memory Graph shows the whole pyramid — L3 synthesis at the centre, L2 in t
 <summary><b>⚙️ Settings — One Control Plane</b></summary>
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/settings/00-setting%20overview.png" alt="DeepMentor settings hub" width="900">
+<img src="assets/figs/web-1.4.6+/settings/00-setting%20overview.png" alt="KAGWeb settings hub" width="900">
 </div>
 
 Settings is the operational control plane, with a live status strip (backend health and resident memory across the process tree) and a persistent, searchable navigator that reaches any page in one click: **Appearance** (theme, interface and model output language, code-block styling), **Network** (API base, ports, CORS), **Models** (Connections, LLM, Task models, Embedding, Search, Text-to-Speech, Speech-to-Text, Image Generation, Video Generation), **Knowledge Base** (document parsing engine), **Chat** (Video Learning, searchable tools, per-capability parameters, starting points, attachment caps), **Partners & Agents** (nine local harnesses), **Learner profile** (age, grade, curriculum, language, reading level, explanation style), **Guardian** (authorized learners, materials, reports, credential resets), **Memory** (the consolidator's budgets), and **About** (version checks and safe updates). A **connection** holds one vendor credential and mirrors it into every service that vendor can serve, so a key is entered once rather than pasted into five pages; **task models** pin a small, fast model for the work nobody asked for — naming a conversation, writing the composer's starting points — and resolve to the active default when left empty.
 
-**Video Learning** under Settings → Chat defaults to the official privacy-enhanced YouTube IFrame Player. To keep playback local, set the administrator-managed Invidious API origin (for example `http://127.0.0.1:3000`), test it, select Invidious, and save. New or reopened videos pick up the provider immediately with the same material ID and progress. Invidious media is streamed through DeepMentor's byte-range proxy; upstream URLs are neither exposed to the browser nor stored on disk. If the instance fails, DeepMentor stays offline from YouTube until the learner explicitly chooses the native YouTube fallback. Public-caption tutoring is optional: install `.[video-learning]`; playback continues without it, while transcript-based **Explain here** is disabled with a reason.
+**Video Learning** under Settings → Chat defaults to the official privacy-enhanced YouTube IFrame Player. To keep playback local, set the administrator-managed Invidious API origin (for example `http://127.0.0.1:3000`), test it, select Invidious, and save. New or reopened videos pick up the provider immediately with the same material ID and progress. Invidious media is streamed through KAGWeb's byte-range proxy; upstream URLs are neither exposed to the browser nor stored on disk. If the instance fails, KAGWeb stays offline from YouTube until the learner explicitly chooses the native YouTube fallback. Public-caption tutoring is optional: install `.[video-learning]`; playback continues without it, while transcript-based **Explain here** is disabled with a reason.
 
 <div align="center">
-<img src="assets/figs/web-1.4.6+/settings/01-appearance%20settings.png" alt="DeepMentor appearance settings and themes" width="900">
+<img src="assets/figs/web-1.4.6+/settings/01-appearance%20settings.png" alt="KAGWeb appearance settings and themes" width="900">
 </div>
 
-Most sections use a draft-and-apply flow, so you can test a provider before committing it. You can also just ask in Chat: the assistant reads the current configuration, applies a change, and says whether it needs a restart or a re-index — probing a new model before it commits, so it cannot switch itself onto something unreachable. API keys never pass through the model, which opens the matching form for you instead. Four themes ship in the box — Default, Cream, Dark, and Glass. Project-root `.env` files are intentionally ignored; runtime configuration lives under `data/user/settings/*.json` unless `DEEPMENTOR_HOME` or `deepmentor start --home` points the app elsewhere.
+Most sections use a draft-and-apply flow, so you can test a provider before committing it. You can also just ask in Chat: the assistant reads the current configuration, applies a change, and says whether it needs a restart or a re-index — probing a new model before it commits, so it cannot switch itself onto something unreachable. API keys never pass through the model, which opens the matching form for you instead. Four themes ship in the box — Default, Cream, Dark, and Glass. Project-root `.env` files are intentionally ignored; runtime configuration lives under `data/user/settings/*.json` unless `KAGWEB_HOME` or `kagweb start --home` points the app elsewhere.
 
-**OpenAI Codex OAuth (experimental).** Picking **OpenAI Codex** under Models → LLM replaces the API-key fields with a browser sign-in that runs against your own ChatGPT plan, so no `OPENAI_API_KEY` is needed. Tokens live only in `data/system/user-secrets/<owner>/private/openai-codex/` — in the multi-container Compose deployment, outside every tree the exec sandbox can reach — and DeepMentor never reads or modifies your `~/.codex` CLI login. The model list comes from that account's live catalog; signing in publishes the profile but only becomes the active model when no LLM is configured yet. Because a token authorizes one person's plan, the profile is not shareable through user grants — each account signs in for itself, ordinary users included: their card sits under Models → LLM, and the resulting models, catalog, and sign-out stay private to that account.
+**OpenAI Codex OAuth (experimental).** Picking **OpenAI Codex** under Models → LLM replaces the API-key fields with a browser sign-in that runs against your own ChatGPT plan, so no `OPENAI_API_KEY` is needed. Tokens live only in `data/system/user-secrets/<owner>/private/openai-codex/` — in the multi-container Compose deployment, outside every tree the exec sandbox can reach — and KAGWeb never reads or modifies your `~/.codex` CLI login. The model list comes from that account's live catalog; signing in publishes the profile but only becomes the active model when no LLM is configured yet. Because a token authorizes one person's plan, the profile is not shareable through user grants — each account signs in for itself, ordinary users included: their card sits under Models → LLM, and the resulting models, catalog, and sign-out stay private to that account.
 
 Default local Docker and Podman deployments use separate loopback networks and need a temporary bridge during sign-in. Follow the [temporary local Codex OAuth bridge guide](./CONTAINERIZATION.md#temporary-local-codex-oauth-bridge) for the exact Docker, Compose, Podman, and teardown commands.
 
@@ -756,7 +756,7 @@ For a remote deployment, the browser's `localhost` and the server's `localhost` 
 ssh -N -L 1455:127.0.0.1:3782 <ssh-user>@<server-host>
 ```
 
-If DeepMentor reports fallback callback port `1457`, use:
+If KAGWeb reports fallback callback port `1457`, use:
 
 ```bash
 ssh -N -L 1457:127.0.0.1:3782 <ssh-user>@<server-host>
@@ -773,7 +773,7 @@ Remote-topology detection has a localhost boundary. If Web itself is reached thr
 <details>
 <summary><b>👥 Multi-User — Shared Deployments</b> · optional auth, isolated per-user workspaces</summary>
 
-Authentication is **off by default** — DeepMentor runs single-user. Turn it on and one `data/` tree hosts an admin workspace, isolated per-user workspaces, and partner workspaces side by side:
+Authentication is **off by default** — KAGWeb runs single-user. Turn it on and one `data/` tree hosts an admin workspace, isolated per-user workspaces, and partner workspaces side by side:
 
 ```text
 data/
@@ -786,26 +786,26 @@ data/
 
 The **first registered user becomes admin** and owns model catalogs, provider credentials, shared knowledge bases, skills, canonical shared books, and per-user grants. Admin-created local users choose Standard, Learner, or Custom. Learner locks learning capabilities and material policy, adds an adaptive profile, and supports revocable device credentials with expiry and daily limits; authorized guardians can view reports, approve materials, and reset credentials. Other users get isolated workspaces plus scoped models, KBs, skills, partners, and shared-book access without receiving raw API keys. If `auth.json` already carries a `username` + `password_hash`, that account *is* the admin: `/register` stays closed and accounts created from `/admin/users` are always `role=user` until you promote them.
 
-**Enable it:** turn auth on in `data/user/settings/auth.json`, restart `deepmentor start`, register the first admin at `/register`, then add users from `/admin/users` and assign models, KBs, skills, partners, tool/MCP/CLI-app policy, and code-execution access through grants; configure shared books under each user's **Book access** panel.
+**Enable it:** turn auth on in `data/user/settings/auth.json`, restart `kagweb start`, register the first admin at `/register`, then add users from `/admin/users` and assign models, KBs, skills, partners, tool/MCP/CLI-app policy, and code-execution access through grants; configure shared books under each user's **Book access** panel.
 
 > PocketBase stays a single-user integration — keep `integrations.pocketbase_url` blank for multi-user deployments unless you've wired up an external user store.
 
 </details>
 
-## ⌨️ DeepMentor CLI — Agent-Native Interface
+## ⌨️ KAGWeb CLI — Agent-Native Interface
 
-One `deepmentor` binary, two ways in: an interactive **REPL** for people who live in the terminal, and structured **JSON** for other agents that drive DeepMentor as a tool. Same capabilities, tools, and knowledge bases either way.
+One `kagweb` binary, two ways in: an interactive **REPL** for people who live in the terminal, and structured **JSON** for other agents that drive KAGWeb as a tool. Same capabilities, tools, and knowledge bases either way.
 
 <details>
 <summary><b>Drive it yourself</b></summary>
 
-`deepmentor chat` opens an interactive REPL and selects a mode with `--capability`; `deepmentor run <capability> "<message>"` takes that capability as its first positional argument and exits after one turn. Both accept `--tool`, `--kb`, and `--config`.
+`kagweb chat` opens an interactive REPL and selects a mode with `--capability`; `kagweb run <capability> "<message>"` takes that capability as its first positional argument and exits after one turn. Both accept `--tool`, `--kb`, and `--config`.
 
 ```bash
-deepmentor chat                                              # interactive REPL
-deepmentor chat --capability deep_solve --kb my-kb --tool rag
-deepmentor run chat "Explain the Fourier transform" --tool rag --kb textbook
-deepmentor run deep_research "Survey 2026 papers on RAG" \
+kagweb chat                                              # interactive REPL
+kagweb chat --capability deep_solve --kb my-kb --tool rag
+kagweb run chat "Explain the Fourier transform" --tool rag --kb textbook
+kagweb run deep_research "Survey 2026 papers on RAG" \
   --config mode=report --config depth=standard
 ```
 
@@ -816,20 +816,20 @@ Core workspace management is here too — knowledge bases (`kb`), sessions (`ses
 <details>
 <summary><b>Let an agent drive it</b></summary>
 
-DeepMentor is built to be *operated by another agent*. Add `--format json` to any `run` and each turn streams **NDJSON — one event per line** (`content`, `tool_call`, `tool_result`, `done`, …), every line tagged with its `session_id`. Runs are headless-safe: an `ask_user` pause with no TTY auto-resolves with an empty reply instead of hanging.
+KAGWeb is built to be *operated by another agent*. Add `--format json` to any `run` and each turn streams **NDJSON — one event per line** (`content`, `tool_call`, `tool_result`, `done`, …), every line tagged with its `session_id`. Runs are headless-safe: an `ask_user` pause with no TTY auto-resolves with an empty reply instead of hanging.
 
 ```bash
 # One shot, machine-readable
-deepmentor run deep_solve "Find d/dx[sin(x^2)]" --tool reason --format json
+kagweb run deep_solve "Find d/dx[sin(x^2)]" --tool reason --format json
 
 # Chain turns in one stateful session — capture the id, reuse it
-SID=$(deepmentor run deep_research "Survey 2026 papers on RAG" \
+SID=$(kagweb run deep_research "Survey 2026 papers on RAG" \
   --config mode=report --config depth=standard --format json \
   | jq -r 'select(.type=="done").session_id')
-deepmentor run deep_question "Quiz me on that survey" --session "$SID" --format json
+kagweb run deep_question "Quiz me on that survey" --session "$SID" --format json
 ```
 
-The repo ships a root [`SKILL.md`](SKILL.md) — a ~200-line handover doc that teaches any tool-using LLM the whole surface in one read. Hand it to Claude Code, Codex, or OpenCode (they pick up `SKILL.md` automatically), or wrap `deepmentor run` as a tool in a LangChain / AutoGen loop. Full recipes: [Agent Handoff](https://deepmentor.info/docs/cli/agent-handoff/).
+The repo ships a root [`SKILL.md`](SKILL.md) — a ~200-line handover doc that teaches any tool-using LLM the whole surface in one read. Hand it to Claude Code, Codex, or OpenCode (they pick up `SKILL.md` automatically), or wrap `kagweb run` as a tool in a LangChain / AutoGen loop. Full recipes: [Agent Handoff](https://kagweb.info/docs/cli/agent-handoff/).
 
 </details>
 
@@ -838,33 +838,33 @@ The repo ships a root [`SKILL.md`](SKILL.md) — a ~200-line handover doc that t
 
 | Command | Description |
 |:---|:---|
-| `deepmentor init` | Create or update `data/user/settings` for the current workspace |
-| `deepmentor doctor [--online]` | Check whether the workspace is ready to start a session; `--online` also probes the configured model provider, `--format json` prints the report |
-| `deepmentor start [--home PATH] [--dev] [--detach] [--no-browser]` | Launch backend + frontend together; optionally detach or suppress browser opening |
-| `deepmentor stop [--home PATH]` | Stop a launcher started with `--detach` |
-| `deepmentor serve [--port PORT]` | Start only the FastAPI backend |
-| `deepmentor run <capability> <message>` | Run a single capability turn (`chat`, `ask_questions`, `deep_solve`, `deep_question`, `deep_research`, `visualize`, `math_animator`, `mastery_path`, `immersive_reading`, `course_study`, `immersive_watching`); add `--format json` for NDJSON output |
-| `deepmentor chat` | Interactive REPL with capability, tool, KB, notebook, and history controls |
-| `deepmentor partner list/create/start/stop` | Manage IM-connected partners |
-| `deepmentor kb list/info/create/add/search/set-default/delete/list-sources/sync` | Manage knowledge bases and synchronize registered GitHub/web sources (with source add/remove commands) |
-| `deepmentor skill search/install/list/remove/login/logout/publish/update` | Manage skills, install from hubs, and publish your own (`eduhub:<slug>` by default, see Ecosystem) |
-| `deepmentor memory show/clear` | Inspect L2/L3 memory docs or clear L1/all memory |
-| `deepmentor session list/show/open/rename/delete` | Manage shared sessions |
-| `deepmentor notebook list/create/show/add-md/replace-md/remove-record` | Manage notebooks from Markdown files |
-| `deepmentor book list/health/refresh-fingerprints` | Inspect books and refresh source fingerprints |
-| `deepmentor plugin list/info` | Inspect registered tools and capabilities |
-| `deepmentor config show` | Print configuration summary |
-| `deepmentor provider login <provider>` | Provider auth (`openai-codex` OAuth login; `github-copilot` validates an existing Copilot auth session; `codebuddy` validates CodeBuddy SDK auth and starts login when needed) |
+| `kagweb init` | Create or update `data/user/settings` for the current workspace |
+| `kagweb doctor [--online]` | Check whether the workspace is ready to start a session; `--online` also probes the configured model provider, `--format json` prints the report |
+| `kagweb start [--home PATH] [--dev] [--detach] [--no-browser]` | Launch backend + frontend together; optionally detach or suppress browser opening |
+| `kagweb stop [--home PATH]` | Stop a launcher started with `--detach` |
+| `kagweb serve [--port PORT]` | Start only the FastAPI backend |
+| `kagweb run <capability> <message>` | Run a single capability turn (`chat`, `ask_questions`, `deep_solve`, `deep_question`, `deep_research`, `visualize`, `math_animator`, `mastery_path`, `immersive_reading`, `course_study`, `immersive_watching`); add `--format json` for NDJSON output |
+| `kagweb chat` | Interactive REPL with capability, tool, KB, notebook, and history controls |
+| `kagweb partner list/create/start/stop` | Manage IM-connected partners |
+| `kagweb kb list/info/create/add/search/set-default/delete/list-sources/sync` | Manage knowledge bases and synchronize registered GitHub/web sources (with source add/remove commands) |
+| `kagweb skill search/install/list/remove/login/logout/publish/update` | Manage skills, install from hubs, and publish your own (`eduhub:<slug>` by default, see Ecosystem) |
+| `kagweb memory show/clear` | Inspect L2/L3 memory docs or clear L1/all memory |
+| `kagweb session list/show/open/rename/delete` | Manage shared sessions |
+| `kagweb notebook list/create/show/add-md/replace-md/remove-record` | Manage notebooks from Markdown files |
+| `kagweb book list/health/refresh-fingerprints` | Inspect books and refresh source fingerprints |
+| `kagweb plugin list/info` | Inspect registered tools and capabilities |
+| `kagweb config show` | Print configuration summary |
+| `kagweb provider login <provider>` | Provider auth (`openai-codex` OAuth login; `github-copilot` validates an existing Copilot auth session; `codebuddy` validates CodeBuddy SDK auth and starts login when needed) |
 
 </details>
 
 <details>
 <summary><b>CLI-only distribution</b></summary>
 
-The CLI-only package lives in `packaging/deepmentor-cli`. In this checkout, install it from source:
+The CLI-only package lives in `packaging/kagweb-cli`. In this checkout, install it from source:
 
 ```bash
-python -m pip install -e ./packaging/deepmentor-cli
+python -m pip install -e ./packaging/kagweb-cli
 ```
 
 It isn't published to PyPI yet, so the main [Get Started](#-get-started) section keeps the source-install path.
@@ -873,31 +873,31 @@ It isn't published to PyPI yet, so the main [Get Started](#-get-started) section
 
 ## 🧩 Ecosystem — EduHub & the Skills Community
 
-DeepMentor skills use the open **Agent-Skills** format — a folder with a `SKILL.md` playbook (YAML frontmatter + Markdown) and optional reference files. Nothing about it is DeepMentor-specific, so any registry that speaks the format becomes a source for your library. DeepMentor ships with **[EduHub](https://eduhub.deepmentor.info/)** — our own education-focused skill registry — wired in as the default hub.
+KAGWeb skills use the open **Agent-Skills** format — a folder with a `SKILL.md` playbook (YAML frontmatter + Markdown) and optional reference files. Nothing about it is KAGWeb-specific, so any registry that speaks the format becomes a source for your library. KAGWeb ships with **[EduHub](https://eduhub.kagweb.info/)** — our own education-focused skill registry — wired in as the default hub.
 
 <details>
-<summary><b>EduHub — DeepMentor's skill ecosystem</b></summary>
+<summary><b>EduHub — KAGWeb's skill ecosystem</b></summary>
 
-[**EduHub**](https://eduhub.deepmentor.info/) is the community hub DeepMentor launched for sharing teaching-oriented agent skills — Socratic tutors, flashcard builders, essay feedback, exam blueprints, concept explainers, and more. It is built into DeepMentor, so there's nothing to configure: a bare slug or an `eduhub:` prefix resolves to it.
+[**EduHub**](https://eduhub.kagweb.info/) is the community hub KAGWeb launched for sharing teaching-oriented agent skills — Socratic tutors, flashcard builders, essay feedback, exam blueprints, concept explainers, and more. It is built into KAGWeb, so there's nothing to configure: a bare slug or an `eduhub:` prefix resolves to it.
 
 **Find and install** — in the browser, open **Learning Space → Skills → Import from EduHub** to browse the catalog and download a skill straight into your library. From the terminal:
 
 ```bash
-deepmentor skill search "socratic tutor"               # search EduHub (the default hub)
-deepmentor skill install socratic-tutor                # fetch → verify → register
-deepmentor skill install eduhub:socratic-tutor@1.2.0   # pin a hub and a version
-deepmentor skill list                                  # local skills with their hub provenance
+kagweb skill search "socratic tutor"               # search EduHub (the default hub)
+kagweb skill install socratic-tutor                # fetch → verify → register
+kagweb skill install eduhub:socratic-tutor@1.2.0   # pin a hub and a version
+kagweb skill list                                  # local skills with their hub provenance
 ```
 
 **Publish your own** — package a `SKILL.md` and share it back to the community:
 
 ```bash
-deepmentor skill login                                 # browser sign-in to EduHub
-deepmentor skill publish ./my-skill                    # interactive: pick a track + tags, then upload
-deepmentor skill update                                # roll back or release a new version
+kagweb skill login                                 # browser sign-in to EduHub
+kagweb skill publish ./my-skill                    # interactive: pick a track + tags, then upload
+kagweb skill update                                # roll back or release a new version
 ```
 
-EduHub is also a standalone, ClawHub-compatible registry, so agents that aren't DeepMentor (Claude Code, Codex, …) can use it directly through the `eduhub` CLI — `npx eduhub install socratic-tutor`.
+EduHub is also a standalone, ClawHub-compatible registry, so agents that aren't KAGWeb (Claude Code, Codex, …) can use it directly through the `eduhub` CLI — `npx eduhub install socratic-tutor`.
 
 </details>
 
@@ -908,7 +908,7 @@ Whatever the source, every import passes the **same safety gate** before anythin
 
 - the registry's **security verdict** is checked first — flagged packages are refused unless you pass `--allow-unverified`;
 - archives are extracted defensively with path-traversal, entry-count, size, compression-ratio, suffix, and symlink checks; executable bits are stripped, while extensionless files remain allowed;
-- frontmatter is normalized to DeepMentor's schema and `always:` is **stripped**, so a downloaded skill can never force itself into every system prompt;
+- frontmatter is normalized to KAGWeb's schema and `always:` is **stripped**, so a downloaded skill can never force itself into every system prompt;
 - provenance — hub, version, verdict, and install time — is written to `.hub-lock.json` for audits and updates.
 
 In multi-user deployments, browser imports land in the authenticated caller's skill layer, while CLI and admin-console installs target the owner/admin workspace; admin skills stay hidden and read-only for ordinary users until granted.
@@ -918,12 +918,12 @@ In multi-user deployments, browser imports land in the authenticated caller's sk
 <details>
 <summary><b>Also compatible with ClawHub</b></summary>
 
-Because DeepMentor speaks the open Agent-Skills format, **[ClawHub](https://clawhub.ai/)** works as a first-class source too — it's built in alongside EduHub. Pick it with the hub prefix:
+Because KAGWeb speaks the open Agent-Skills format, **[ClawHub](https://clawhub.ai/)** works as a first-class source too — it's built in alongside EduHub. Pick it with the hub prefix:
 
 ```bash
-deepmentor skill search "git release notes" --hub clawhub
-deepmentor skill install clawhub:git-release-notes@1.0.1
-deepmentor skill install clawhub:udiedrichsen/stock-analysis
+kagweb skill search "git release notes" --hub clawhub
+kagweb skill install clawhub:git-release-notes@1.0.1
+kagweb skill install clawhub:udiedrichsen/stock-analysis
 ```
 
 When several publishers share the same slug, search shows each publisher and a
@@ -946,7 +946,7 @@ Add more registries in `data/user/settings/skill_hubs.json`: a `type: "clawhub"`
 </p>
 
 <p align="center">
-  Using code: <b><code>DEEPMENTOR20</code></b> — get $20 off for your first <a href="https://developer.pageindex.ai/">PageIndex subscription</a>!
+  Using code: <b><code>KAGWEB20</code></b> — get $20 off for your first <a href="https://developer.pageindex.ai/">PageIndex subscription</a>!
 </p>
 
 ## 🌐 Community
@@ -963,13 +963,13 @@ Add more registries in `data/user/settings/skill_hubs.json`: a `type: "clawhub"`
 
 ### 📮 Contact
 
-DeepMentor is an open-source project led by [Bingxi Zhao](https://github.com/pancacake) within the [HKUDS](https://github.com/HKUDS) Group, and it iterates in a **fully open-source form**, built together with the community. So far, we **DO NOT** have paid online products of any form. Feel free to reach out at **bingxizhao39@gmail.com** for discussions, ideas, or collaboration.
+KAGWeb is an open-source project led by [Bingxi Zhao](https://github.com/pancacake) within the [HKUDS](https://github.com/HKUDS) Group, and it iterates in a **fully open-source form**, built together with the community. So far, we **DO NOT** have paid online products of any form. Feel free to reach out at **bingxizhao39@gmail.com** for discussions, ideas, or collaboration.
 
 ### 🙏 Appreciation
 
-Heartfelt thanks to [**Chao Huang**](https://sites.google.com/view/chaoh), director of the Data Intelligence Lab @ HKU, and to our HKUDS labmates for their warm support — especially [**Jiahao Zhang**](https://github.com/zzhtx258), [**Zirui Guo**](https://github.com/LarFii), and [**Xubin Ren**](https://github.com/Re-bin). We're also deeply grateful to the **open-source community**: your stars, issues, pull requests, and discussions shape DeepMentor every single day.
+Heartfelt thanks to [**Chao Huang**](https://sites.google.com/view/chaoh), director of the Data Intelligence Lab @ HKU, and to our HKUDS labmates for their warm support — especially [**Jiahao Zhang**](https://github.com/zzhtx258), [**Zirui Guo**](https://github.com/LarFii), and [**Xubin Ren**](https://github.com/Re-bin). We're also deeply grateful to the **open-source community**: your stars, issues, pull requests, and discussions shape KAGWeb every single day.
 
-DeepMentor also stands on the shoulders of outstanding open-source projects that gave us both tools and inspiration:
+KAGWeb also stands on the shoulders of outstanding open-source projects that gave us both tools and inspiration:
 
 | Project | Role / Inspiration |
 |:---|:---|
@@ -980,29 +980,29 @@ DeepMentor also stands on the shoulders of outstanding open-source projects that
 | [**AI-Researcher**](https://github.com/HKUDS/AI-Researcher) | Automated research pipeline *(HKUDS)* |
 | [**OpenClaw**](https://github.com/openclaw/openclaw) | Open agent gateway and skill ecosystem behind ClawHub |
 | [**Codex**](https://github.com/openai/codex) | Agent-native coding CLI that inspired our CLI workflow |
-| [**Claude Code**](https://github.com/anthropics/claude-code) | Agentic coding CLI that inspired the DeepMentor agent loop |
+| [**Claude Code**](https://github.com/anthropics/claude-code) | Agentic coding CLI that inspired the KAGWeb agent loop |
 | [**ManimCat**](https://github.com/Wing900/ManimCat) | AI-driven math animation generation for Math Animator |
 
 ### 🗺️ Roadmap & Contribute
 
-We want DeepMentor to keep iterating and improving — and ultimately to become a gift we give back to the open-source community. Our [**roadmap**](https://github.com/HKUDS/DeepMentor/issues/498) is updated continuously; vote on items there or propose new ones. If you'd like to contribute, see the [**Contributing Guide**](CONTRIBUTING.md) for branching strategy, coding standards, and how to get started.
+We want KAGWeb to keep iterating and improving — and ultimately to become a gift we give back to the open-source community. Our [**roadmap**](https://github.com/HKUDS/KAGWeb/issues/498) is updated continuously; vote on items there or propose new ones. If you'd like to contribute, see the [**Contributing Guide**](CONTRIBUTING.md) for branching strategy, coding standards, and how to get started.
 
 <div align="center">
 
-We hope DeepMentor becomes a gift for the community. 🎁
+We hope KAGWeb becomes a gift for the community. 🎁
 
-<a href="https://github.com/HKUDS/DeepMentor/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=HKUDS/DeepMentor&max=999" alt="Contributors" />
+<a href="https://github.com/HKUDS/KAGWeb/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=HKUDS/KAGWeb&max=999" alt="Contributors" />
 </a>
 
 </div>
 
 <p align="center">
- <a href="https://www.star-history.com/hkuds/deepmentor">
+ <a href="https://www.star-history.com/hkuds/kagweb">
   <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=HKUDS/DeepMentor&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=HKUDS/DeepMentor" />
-   <img alt="Star History Rank" src="https://api.star-history.com/badge?repo=HKUDS/DeepMentor" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=HKUDS/KAGWeb&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=HKUDS/KAGWeb" />
+   <img alt="Star History Rank" src="https://api.star-history.com/badge?repo=HKUDS/KAGWeb" />
   </picture>
  </a>
 </p>
@@ -1012,7 +1012,7 @@ We hope DeepMentor becomes a gift for the community. 🎁
 Licensed under the [Apache License 2.0](LICENSE).
 
 <p>
-  <img src="https://visitor-badge.laobi.icu/badge?page_id=HKUDS.DeepMentor&style=for-the-badge&color=00d4ff" alt="Views">
+  <img src="https://visitor-badge.laobi.icu/badge?page_id=HKUDS.KAGWeb&style=for-the-badge&color=00d4ff" alt="Views">
 </p>
 
 </div>

@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from deepmentor.services.mcp.manager import (
+from kagweb.services.mcp.manager import (
     MCPConnectionManager,
     MCPToolAdapter,
     _progress_reporter,
@@ -86,7 +86,7 @@ async def test_a_total_of_zero_does_not_divide_by_it() -> None:
 
 @pytest.mark.asyncio
 async def test_a_progress_beyond_the_total_is_clamped() -> None:
-    """Servers do overshoot. A 130% status line reads as a bug in DeepMentor."""
+    """Servers do overshoot. A 130% status line reads as a bug in KAGWeb."""
     sink = _Sink()
     await _progress_reporter(sink, "crawler")(13, 10, "almost")
 
@@ -121,7 +121,7 @@ class _Session:
 
 
 def _adapter(manager: MCPConnectionManager, session: _Session) -> MCPToolAdapter:
-    from deepmentor.services.mcp.config import MCPServerConfig
+    from kagweb.services.mcp.config import MCPServerConfig
 
     conn = _ServerConnection(
         name="crawler",
@@ -235,7 +235,7 @@ def test_a_wrapped_transport_failure_reports_the_real_cause() -> None:
     failure arrives wrapped. Reporting the wrapper produced *"ExceptionGroup:
     unhandled errors in a TaskGroup (1 sub-exception)"* under a server's row —
     which is what someone whose URL needs OAuth used to be told."""
-    from deepmentor.services.mcp.manager import describe_connect_failure
+    from kagweb.services.mcp.manager import describe_connect_failure
 
     wrapped = ExceptionGroup("unhandled errors in a TaskGroup", [RuntimeError("401 Unauthorized")])
 
@@ -255,7 +255,7 @@ def test_nested_groups_are_flattened() -> None:
 def test_the_same_cause_repeated_is_said_once() -> None:
     """A retrying transport contributes the same error several times, and "401"
     three times is not more informative than once."""
-    from deepmentor.services.mcp.manager import describe_connect_failure
+    from kagweb.services.mcp.manager import describe_connect_failure
 
     group = ExceptionGroup("g", [RuntimeError("401 Unauthorized") for _ in range(3)])
 
@@ -263,7 +263,7 @@ def test_the_same_cause_repeated_is_said_once() -> None:
 
 
 def test_several_distinct_causes_are_all_reported_but_bounded() -> None:
-    from deepmentor.services.mcp.manager import describe_connect_failure
+    from kagweb.services.mcp.manager import describe_connect_failure
 
     group = ExceptionGroup(
         "g",
@@ -276,13 +276,13 @@ def test_several_distinct_causes_are_all_reported_but_bounded() -> None:
 
 
 def test_a_plain_exception_is_passed_through() -> None:
-    from deepmentor.services.mcp.manager import describe_connect_failure
+    from kagweb.services.mcp.manager import describe_connect_failure
 
     assert describe_connect_failure(TimeoutError("took too long")) == "TimeoutError: took too long"
 
 
 def test_an_empty_group_still_says_something() -> None:
     """Degenerate, but a blank status cell is worse than a vague one."""
-    from deepmentor.services.mcp.manager import describe_connect_failure
+    from kagweb.services.mcp.manager import describe_connect_failure
 
     assert describe_connect_failure(ExceptionGroup("g", [ValueError()])).strip()

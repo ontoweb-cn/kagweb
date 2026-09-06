@@ -21,7 +21,7 @@ def rep(src, old, new, path=""):
 
 
 # ── partners.py: drop kb/skill/notebook asset payloads ──
-p = "deepmentor/api/routers/partners.py"
+p = "kagweb/api/routers/partners.py"
 s = load(p)
 s = rep(s, '''class AssetSpec(BaseModel):
     knowledge_bases: list[str] = Field(default_factory=list)
@@ -50,7 +50,7 @@ s = re.sub(r"    notebooks: list\[str\] = Field\(default_factory=list\)\n", "", 
 save(p, s)
 
 # ── multi_user/models.py: drop KnowledgeResource ──
-p = "deepmentor/multi_user/models.py"
+p = "kagweb/multi_user/models.py"
 s = load(p)
 s = rep(s, '''@dataclass(frozen=True, slots=True)
 class KnowledgeResource:
@@ -63,5 +63,5 @@ class KnowledgeResource:
     metadata: dict[str, Any] = field(default_factory=dict)
 ''', "")
 import subprocess
-print(subprocess.run(["grep", "-n", "KnowledgeResource", "deepmentor/multi_user/models.py", "deepmentor/multi_user/__init__.py"], capture_output=True, text=True).stdout)
-print(subprocess.run(["grep", "-rn", "KnowledgeResource", "deepmentor", "--include=*.py"], capture_output=True, text=True).stdout)
+print(subprocess.run(["grep", "-n", "KnowledgeResource", "kagweb/multi_user/models.py", "kagweb/multi_user/__init__.py"], capture_output=True, text=True).stdout)
+print(subprocess.run(["grep", "-rn", "KnowledgeResource", "kagweb", "--include=*.py"], capture_output=True, text=True).stdout)

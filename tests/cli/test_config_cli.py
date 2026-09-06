@@ -6,14 +6,14 @@ from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
-from deepmentor_cli.main import app
+from kagweb_cli.main import app
 
 runner = CliRunner()
 
 
 def test_config_show_reports_unconfigured_services(monkeypatch) -> None:
     """CLI-only defaults leave some services unconfigured; config show must not traceback."""
-    import deepmentor.services.config as config
+    import kagweb.services.config as config
 
     monkeypatch.setattr(
         config,

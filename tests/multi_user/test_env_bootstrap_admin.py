@@ -22,7 +22,7 @@ _BOOTSTRAP_PASSWORD = "bootstrap-pass-1234"  # nosec B105 - test fixture credent
 
 @pytest.fixture
 def bootstrap_hash() -> str:
-    from deepmentor.services.auth import hash_password
+    from kagweb.services.auth import hash_password
 
     return hash_password(_BOOTSTRAP_PASSWORD)
 
@@ -30,7 +30,7 @@ def bootstrap_hash() -> str:
 @pytest.fixture
 def env_admin(mu_isolated_root, monkeypatch, bootstrap_hash):
     """Simulate an ``auth.json``-bootstrapped admin with an empty user store."""
-    from deepmentor.services import auth as auth_service
+    from kagweb.services import auth as auth_service
 
     monkeypatch.setattr(auth_service, "AUTH_USERNAME", "operator")
     monkeypatch.setattr(auth_service, "AUTH_PASSWORD_HASH", bootstrap_hash)
@@ -45,7 +45,7 @@ def env_admin(mu_isolated_root, monkeypatch, bootstrap_hash):
 
 def test_first_created_account_is_not_promoted_when_env_admin_exists(env_admin):
     """``POST /auth/users`` documents role=``user``; honour that."""
-    from deepmentor.multi_user.identity import save_user
+    from kagweb.multi_user.identity import save_user
 
     record = save_user("student1", "$2b$12$placeholder", role="user")
 
@@ -54,7 +54,7 @@ def test_first_created_account_is_not_promoted_when_env_admin_exists(env_admin):
 
 def test_admin_can_still_create_an_explicit_admin_when_env_admin_exists(env_admin):
     """The gate must not clamp an explicitly requested admin role."""
-    from deepmentor.multi_user.identity import save_user
+    from kagweb.multi_user.identity import save_user
 
     record = save_user("deputy", "$2b$12$placeholder", role="admin")
 
@@ -67,7 +67,7 @@ def test_admin_can_still_create_an_explicit_admin_when_env_admin_exists(env_admi
 
 
 def test_env_admin_still_resolves_after_first_account_is_created(env_admin, bootstrap_hash):
-    from deepmentor.multi_user.identity import load_users, save_user
+    from kagweb.multi_user.identity import load_users, save_user
 
     save_user("student1", "$2b$12$placeholder", role="user")
 
@@ -80,8 +80,8 @@ def test_env_admin_still_resolves_after_first_account_is_created(env_admin, boot
 
 def test_env_admin_can_log_in_after_first_account_is_created(env_admin):
     """End-to-end shape of the reported lockout: login returned 401."""
-    from deepmentor.multi_user.identity import save_user
-    from deepmentor.services.auth import authenticate
+    from kagweb.multi_user.identity import save_user
+    from kagweb.services.auth import authenticate
 
     save_user("student1", "$2b$12$placeholder", role="user")
 
@@ -100,7 +100,7 @@ def test_env_admin_is_never_written_into_the_user_store(env_admin):
     """
     import json
 
-    from deepmentor.multi_user.identity import USERS_FILE, save_user
+    from kagweb.multi_user.identity import USERS_FILE, save_user
 
     save_user("student1", "$2b$12$placeholder", role="user")
 
@@ -110,7 +110,7 @@ def test_env_admin_is_never_written_into_the_user_store(env_admin):
 
 def test_stored_record_wins_over_env_bootstrap_admin(env_admin):
     """Re-creating the bootstrap username adopts the account into the store."""
-    from deepmentor.multi_user.identity import load_users, save_user
+    from kagweb.multi_user.identity import load_users, save_user
 
     save_user(env_admin, "$2b$12$adopted", role="admin")
 
@@ -122,7 +122,7 @@ def test_stored_record_wins_over_env_bootstrap_admin(env_admin):
 
 def test_adopting_the_bootstrap_username_keeps_admin_role(env_admin):
     """The adoption write must not be demoted to ``user`` by the new gate."""
-    from deepmentor.multi_user.identity import save_user
+    from kagweb.multi_user.identity import save_user
 
     record = save_user(env_admin, "$2b$12$adopted", role="user")
 
@@ -130,7 +130,7 @@ def test_adopting_the_bootstrap_username_keeps_admin_role(env_admin):
 
 
 def test_env_admin_appears_exactly_once_in_the_admin_user_list(env_admin, bootstrap_hash):
-    from deepmentor.multi_user.identity import list_user_info, save_user
+    from kagweb.multi_user.identity import list_user_info, save_user
 
     save_user("student1", "$2b$12$placeholder", role="user")
 
@@ -142,7 +142,7 @@ def test_env_admin_appears_exactly_once_in_the_admin_user_list(env_admin, bootst
 
 
 def test_is_first_user_is_false_when_only_the_env_admin_exists(env_admin):
-    from deepmentor.services.auth import is_first_user
+    from kagweb.services.auth import is_first_user
 
     assert is_first_user() is False
 
@@ -153,7 +153,7 @@ def test_is_first_user_is_false_when_only_the_env_admin_exists(env_admin):
 
 
 def test_first_account_is_promoted_when_no_env_admin_exists(mu_isolated_root):
-    from deepmentor.multi_user.identity import save_user
+    from kagweb.multi_user.identity import save_user
 
     record = save_user("alice", "$2b$12$placeholder", role="user")
 
@@ -161,7 +161,7 @@ def test_first_account_is_promoted_when_no_env_admin_exists(mu_isolated_root):
 
 
 def test_second_account_is_not_promoted_when_no_env_admin_exists(mu_isolated_root):
-    from deepmentor.multi_user.identity import save_user
+    from kagweb.multi_user.identity import save_user
 
     save_user("alice", "$2b$12$placeholder", role="user")
     record = save_user("bob", "$2b$12$placeholder", role="user")
@@ -176,8 +176,8 @@ def test_partial_env_credentials_do_not_count_as_an_admin(mu_isolated_root, monk
     an empty hash), so treating it as an existing admin would leave a fresh
     deployment with no way to create one.
     """
-    from deepmentor.multi_user.identity import save_user
-    from deepmentor.services import auth as auth_service
+    from kagweb.multi_user.identity import save_user
+    from kagweb.services import auth as auth_service
 
     monkeypatch.setattr(auth_service, "AUTH_USERNAME", "admin")
     monkeypatch.setattr(auth_service, "AUTH_PASSWORD_HASH", "")
@@ -188,7 +188,7 @@ def test_partial_env_credentials_do_not_count_as_an_admin(mu_isolated_root, monk
 
 
 def test_is_first_user_is_true_for_a_genuinely_empty_deployment(mu_isolated_root):
-    from deepmentor.services.auth import is_first_user
+    from kagweb.services.auth import is_first_user
 
     assert is_first_user() is True
 
@@ -204,8 +204,8 @@ def bootstrap_client(env_admin, monkeypatch):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    import deepmentor.api.routers.auth as auth_router
-    from deepmentor.services.auth import TokenPayload
+    import kagweb.api.routers.auth as auth_router
+    from kagweb.services.auth import TokenPayload
 
     tokens = {
         "operator-token": TokenPayload(username=env_admin, role="admin", user_id="env-admin"),

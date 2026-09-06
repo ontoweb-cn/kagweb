@@ -1,4 +1,4 @@
-"""Tests for the safe ZIP extractor (``deepmentor.utils.archive_extractor``).
+"""Tests for the safe ZIP extractor (``kagweb.utils.archive_extractor``).
 
 These lock in the security guards that a naive ``extractall`` lacks: Zip Slip
 defusal, extension whitelisting, nested-archive rejection, duplicate handling,
@@ -12,7 +12,7 @@ import zipfile
 
 import pytest
 
-from deepmentor.utils.archive_extractor import (
+from kagweb.utils.archive_extractor import (
     ArchiveTooLargeError,
     ZipExtractionLimits,
     safe_extract_zip,

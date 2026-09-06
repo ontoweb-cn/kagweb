@@ -4,11 +4,11 @@ import asyncio
 
 import pytest
 
-from deepmentor.app.container import RuntimeRegistry
-from deepmentor.app.service import TurnApplicationService
-from deepmentor.runtime.coordination import MemoryCoordinator
-from deepmentor.services.session.sqlite_store import SQLiteSessionStore
-from deepmentor.services.session.turn_runtime import _TurnExecution
+from kagweb.app.container import RuntimeRegistry
+from kagweb.app.service import TurnApplicationService
+from kagweb.runtime.coordination import MemoryCoordinator
+from kagweb.services.session.sqlite_store import SQLiteSessionStore
+from kagweb.services.session.turn_runtime import _TurnExecution
 
 
 class _FixedStoreProvider:

@@ -173,14 +173,14 @@ export default function SettingsOverview() {
           onClick={() => {
             setPendingPrompt(
               tr({
-                zh: "帮我配置一下 DeepMentor，先看看现在缺什么。",
-                en: "Help me configure DeepMentor — start by checking what's missing.",
+                zh: "帮我配置一下 KAGWeb，先看看现在缺什么。",
+                en: "Help me configure KAGWeb — start by checking what's missing.",
               }),
             );
           }}
           className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] font-medium text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)] sm:inline-flex"
         >
-          {t("Set up with DeepMentor")}
+          {t("Set up with KAGWeb")}
         </button>
       </header>
 

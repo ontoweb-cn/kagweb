@@ -2,15 +2,15 @@ name: PyPI Release
 
 # Triggered when a GitHub Release is published.
 # Publishes the full app package with the version derived from the release tag:
-#   - deepmentor (Python backend/CLI + packaged Next.js standalone assets)
+#   - kagweb (Python backend/CLI + packaged Next.js standalone assets)
 #
 # The CLI-only package is intentionally not published to PyPI; install it from
-# a local checkout with `python -m pip install -e ./packaging/deepmentor-cli`.
+# a local checkout with `python -m pip install -e ./packaging/kagweb-cli`.
 #
 # Expected tag format: vMAJOR.MINOR.PATCH, with PEP 440-compatible suffixes allowed.
 # Example: GitHub release tag v1.3.10 -> PyPI version 1.3.10.
 #
-# PyPI authentication uses Trusted Publishing. Configure the `deepmentor` PyPI
+# PyPI authentication uses Trusted Publishing. Configure the `kagweb` PyPI
 # project to trust this workflow file, then no API token secret is needed.
 
 on:
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/deepmentor/
+      url: https://pypi.org/project/kagweb/
 
     steps:
       - name: Checkout release tag
@@ -97,7 +97,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade build packaging twine
 
-      - name: Verify release tag matches deepmentor/__version__.py
+      - name: Verify release tag matches kagweb/__version__.py
         id: version
         shell: bash
         run: |
@@ -112,18 +112,18 @@ jobs:
           tag_raw = tag[1:] if tag.startswith("v") else tag
           tag_version = str(Version(tag_raw))
 
-          src = Path("deepmentor/__version__.py").read_text(encoding="utf-8")
+          src = Path("kagweb/__version__.py").read_text(encoding="utf-8")
           match = re.search(r'^__version__\s*=\s*"([^"]+)"', src, re.MULTILINE)
           if not match:
               raise SystemExit(
-                  "Could not find __version__ in deepmentor/__version__.py"
+                  "Could not find __version__ in kagweb/__version__.py"
               )
           code_version = str(Version(match.group(1)))
 
           if code_version != tag_version:
               raise SystemExit(
                   f"Release tag {tag!r} (normalized {tag_version!r}) does not "
-                  f"match deepmentor/__version__.py value {code_version!r}. "
+                  f"match kagweb/__version__.py value {code_version!r}. "
                   "Bump __version__ before tagging."
               )
 
@@ -147,36 +147,36 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist/deepmentor
+          mkdir -p dist/kagweb
           # Run from /tmp so any repository-local build/ directory cannot shadow
           # PyPA's `build` module during repeated package builds.
           # Wheels are the supported public install artifacts. The full app
           # wheel contains packaged Next.js assets; source distributions would
           # either duplicate those large assets or require a frontend build.
-          (cd /tmp && python -m build --wheel --outdir "$GITHUB_WORKSPACE/dist/deepmentor" "$GITHUB_WORKSPACE")
+          (cd /tmp && python -m build --wheel --outdir "$GITHUB_WORKSPACE/dist/kagweb" "$GITHUB_WORKSPACE")
 
       - name: Verify package metadata
         run: |
-          python -m twine check dist/deepmentor/*
+          python -m twine check dist/kagweb/*
           python - <<'PY'
           from pathlib import Path
           expected = "${{ steps.version.outputs.version }}"
           files = {
-              "deepmentor": sorted(path.name for path in Path("dist/deepmentor").glob("*")),
+              "kagweb": sorted(path.name for path in Path("dist/kagweb").glob("*")),
           }
           for package, names in files.items():
               print(package)
               print("\n".join(f"  {name}" for name in names))
           required = [
-              ("deepmentor", f"deepmentor-{expected}-py3-none-any.whl"),
+              ("kagweb", f"kagweb-{expected}-py3-none-any.whl"),
           ]
           missing = [name for package, name in required if name not in files[package]]
           if missing:
               raise SystemExit(f"Missing expected distributions: {missing}")
           PY
 
-      - name: Publish deepmentor to PyPI
+      - name: Publish kagweb to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/deepmentor/
+          packages-dir: dist/kagweb/
           print-hash: true

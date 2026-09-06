@@ -1,6 +1,6 @@
-# DeepMentor Containerization
+# KAGWeb Containerization
 
-This document covers deploying DeepMentor from a container image: the
+This document covers deploying KAGWeb from a container image: the
 recommended `docker run` path, the hardened rootless-Podman path with a
 read-only root filesystem, runtime configuration, the optional PocketBase
 sidecar, and the security notes that motivate the default posture.
@@ -12,7 +12,7 @@ file is only about running the published image.
 
 ## Overview
 
-The published `ghcr.io/hkuds/deepmentor` image runs both the FastAPI
+The published `ghcr.io/hkuds/kagweb` image runs both the FastAPI
 backend (`:8001`) and the Next.js frontend (`:3782`) under `supervisord`
 inside a single container, on top of `python:3.11-slim`. There is one
 data tree (`/app/data` inside the container) that holds settings,
@@ -38,13 +38,13 @@ no longer lives in the frontend bundle. Concretely:
   `wsUrl` as one-line pass-throughs, so the browser fetches relative
   paths through the frontend (`:3782/api/...`).
 - `web/proxy.ts` catches `/api/*` and `/ws/*` and rewrites them to
-  `DEEPMENTOR_API_BASE_URL` at request time. That env var is set by the
+  `KAGWEB_API_BASE_URL` at request time. That env var is set by the
   container entrypoint on every start, read from
   `data/user/settings/system.json`.
 - `start-frontend.sh` is now 12 lines: it sets `PORT`/`HOSTNAME` and
   `exec`s `node /app/web/server.js`. No mutations of the bundle.
 - `supervisord` runs as root (PID 1) and drops each program (backend,
-  frontend) to a non-root `deepmentor` user (UID 1000) via its per-program
+  frontend) to a non-root `kagweb` user (UID 1000) via its per-program
   `user=` directive, so the app processes stay non-root. With
   `userns_mode: keep-id` on the host that UID maps to your host UID; with a
   regular `docker run` it's a normal unprivileged user inside the container.
@@ -59,23 +59,23 @@ The simplest possible deployment. One container, one volume, two port
 mappings.
 
 ```bash
-docker run --rm --name deepmentor \
+docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 \
-  -v deepmentor-data:/app/data \
-  ghcr.io/hkuds/deepmentor:latest
+  -v kagweb-data:/app/data \
+  ghcr.io/hkuds/kagweb:latest
 ```
 
 Open <http://127.0.0.1:3782>. The container creates
 `/app/data/user/settings/*.json` on first boot; configure model providers
 from the Web Settings page. Config, API keys, logs, workspace files,
-memory, and knowledge bases persist in the `deepmentor-data` named volume.
+memory, and knowledge bases persist in the `kagweb-data` named volume.
 
 Notes:
 
 - **Only `3782` needs to be published.** The browser talks exclusively to
   the frontend origin (`:3782`); all `/api/*` and `/ws/*` traffic is
   forwarded to the FastAPI backend **inside the container** by the Next.js
-  middleware (`web/proxy.ts`), which reads `DEEPMENTOR_API_BASE_URL`
+  middleware (`web/proxy.ts`), which reads `KAGWEB_API_BASE_URL`
   (`http://localhost:8001` by default) at request time. You do **not** need
   to expose `:8001` to the host for the UI to work. Publishing `:8001`
   (`-p 127.0.0.1:8001:8001`) is optional — handy only for hitting the API
@@ -85,9 +85,9 @@ Notes:
   ports in `data/user/settings/system.json` (`backend_port`,
   `frontend_port`), restart the container and update the right side of
   each mapping to match.
-- **Detached:** add `-d`, then `docker logs -f deepmentor` to follow,
-  `docker stop deepmentor` to stop, `docker rm deepmentor` before reusing
-  the name. The `deepmentor-data` volume keeps your settings and workspace
+- **Detached:** add `-d`, then `docker logs -f kagweb` to follow,
+  `docker stop kagweb` to stop, `docker rm kagweb` before reusing
+  the name. The `kagweb-data` volume keeps your settings and workspace
   across restarts.
 
 ### Temporary local Codex OAuth bridge
@@ -101,12 +101,12 @@ For `docker run`, stop the normal container and temporarily rerun the same
 image and data volume with two extra loopback-only mappings:
 
 ```bash
-docker run --rm --name deepmentor \
+docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 \
   -p 127.0.0.1:1455:3782 \
   -p 127.0.0.1:1457:3782 \
-  -v deepmentor-data:/app/data \
-  ghcr.io/hkuds/deepmentor:latest
+  -v kagweb-data:/app/data \
+  ghcr.io/hkuds/kagweb:latest
 ```
 
 For Compose, add the same temporary overlay to the base file you normally use:
@@ -115,22 +115,22 @@ For Compose, add the same temporary overlay to the base file you normally use:
 # Source build with sidecars
 python scripts/docker_compose.py \
   -f docker-compose.yml -f compose.codex-oauth.yaml \
-  up -d --force-recreate deepmentor
+  up -d --force-recreate kagweb
 
 # Pre-built GHCR image
 python scripts/docker_compose.py \
   -f docker-compose.ghcr.yml -f compose.codex-oauth.yaml \
-  up -d --force-recreate deepmentor
+  up -d --force-recreate kagweb
 
 # Rootless Podman
 podman compose -f compose.yaml -f compose.codex-oauth.yaml \
-  up -d --force-recreate deepmentor
+  up -d --force-recreate kagweb
 ```
 
 Complete **Settings → Models → OpenAI Codex → Sign in with Codex**. After the
 status changes to **Connected**, stop the temporary `docker run` container and
 return to the normal command above. For Compose, rerun the same base command
-without `compose.codex-oauth.yaml`; keep `--force-recreate deepmentor` so the
+without `compose.codex-oauth.yaml`; keep `--force-recreate kagweb` so the
 temporary port bindings are removed.
 
 This releases host ports `1455` and `1457`; credentials remain in the persistent
@@ -154,17 +154,17 @@ on every recreate. It now mounts the whole tree, matching
 `docker-compose.yml` and `compose.yaml`.
 
 **Before your first `up -d` after upgrading**, copy that state out of the
-running container, or the empty host directories shadow it and DeepMentor
+running container, or the empty host directories shadow it and KAGWeb
 regenerates the auth secret (logging everyone out) and starts with no
 non-admin accounts:
 
 ```bash
 for tree in system users partners cli-apps; do
-  docker cp "deepmentor:/app/data/$tree" "./data/$tree" 2>/dev/null || true
+  docker cp "kagweb:/app/data/$tree" "./data/$tree" 2>/dev/null || true
 done
 ```
 
-Deployments using a named volume (`-v deepmentor-data:/app/data`) or the
+Deployments using a named volume (`-v kagweb-data:/app/data`) or the
 source-build Compose file were never affected — they already persisted the
 whole tree.
 
@@ -173,14 +173,14 @@ whole tree.
 For the common **single-container** case (this image), you do **not** need
 to configure an API base at all. The browser issues relative `/api/*` and
 `/ws/*` requests against whatever origin serves the UI
-(`https://deepmentor.example.com`), and the in-container Next.js middleware
+(`https://kagweb.example.com`), and the in-container Next.js middleware
 forwards them to the backend on `localhost:8001`. Just point your reverse
 proxy / TLS terminator at the published `:3782` and you're done.
 
 You only need to set an API base for a **split deployment** where the
 backend runs in a separate container. Edit `data/user/settings/system.json`
-on the host (inside the `deepmentor-data` volume — `docker volume inspect
-deepmentor-data` to find its mountpoint) and set the in-network address the
+on the host (inside the `kagweb-data` volume — `docker volume inspect
+kagweb-data` to find its mountpoint) and set the in-network address the
 frontend container uses to reach the backend container:
 
 ```json
@@ -190,20 +190,20 @@ frontend container uses to reach the backend container:
 ```
 
 The entrypoint reads this on every start and exports
-`DEEPMENTOR_API_BASE_URL` for `proxy.ts` (precedence: `next_public_api_base`,
+`KAGWEB_API_BASE_URL` for `proxy.ts` (precedence: `next_public_api_base`,
 then `next_public_api_base_external`, then `http://localhost:8001`). Note
-that because the proxy is **server-side**, `DEEPMENTOR_API_BASE_URL` is the
+that because the proxy is **server-side**, `KAGWEB_API_BASE_URL` is the
 address the frontend *server* uses to reach the backend — not a URL the
 browser ever sees. `public_api_base` is accepted as a compatibility alias
 and normalized into `next_public_api_base_external` on save.
 
 CORS uses frontend **origins**, not API URLs. With auth disabled,
-DeepMentor permits normal HTTP/HTTPS browser origins by default. With
+KAGWeb permits normal HTTP/HTTPS browser origins by default. With
 auth enabled, add exact frontend origins:
 
 ```json
 {
-  "cors_origins": ["https://deepmentor.example.com"]
+  "cors_origins": ["https://kagweb.example.com"]
 }
 ```
 
@@ -214,11 +214,11 @@ machine. To reach a model service running on the host, use the host
 gateway (recommended):
 
 ```bash
-docker run --rm --name deepmentor \
+docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 -p 127.0.0.1:8001:8001 \
   --add-host=host.docker.internal:host-gateway \
-  -v deepmentor-data:/app/data \
-  ghcr.io/hkuds/deepmentor:latest
+  -v kagweb-data:/app/data \
+  ghcr.io/hkuds/kagweb:latest
 ```
 
 Then in **Settings → Models**, point the provider Base URL at
@@ -251,7 +251,7 @@ to loopback breaks the published `-p` port forward.
 
 For users who want the strongest default posture — rootless, with a
 read-only root filesystem — `compose.yaml` is the supported starting
-point. It pulls the same `ghcr.io/hkuds/deepmentor:latest` image and
+point. It pulls the same `ghcr.io/hkuds/kagweb:latest` image and
 relies on the entrypoint chown + supervisord's per-program privilege drop,
 the URL-forwarding `proxy.ts`, and host-side bind mounts to make it all work.
 
@@ -259,7 +259,7 @@ the URL-forwarding `proxy.ts`, and host-side bind mounts to make it all work.
 cp .env.example .env       # then edit if needed
 podman compose -f compose.yaml up -d
 podman compose -f compose.yaml ps
-podman compose -f compose.yaml logs -f deepmentor
+podman compose -f compose.yaml logs -f kagweb
 ```
 
 Verify rootless is active (`podman info | grep -i rootless` should
@@ -271,7 +271,7 @@ What `compose.yaml` does, and why:
   read-only. The only writable surface is the `tmpfs:` mounts listed
   per service plus the bind-mounted `./data` directory.
 - **`userns_mode: keep-id`.** The container's UID 0 maps to your host
-  UID; the container's UID 1000 (the `deepmentor` user inside the image)
+  UID; the container's UID 1000 (the `kagweb` user inside the image)
   maps to your host UID 1000 (which most distros reserve for the first
   human user). The `:U` suffix on every volume mount tells podman to
   chown the bind-mount target to that mapped UID.
@@ -301,7 +301,7 @@ invariants apply if you want to drive `podman run` directly:
 mkdir -p data/user/settings
 echo '{}' > data/user/settings/system.json
 
-podman run --rm -d --name deepmentor \
+podman run --rm -d --name kagweb \
   -p 127.0.0.1:8001:8001 \
   -p 127.0.0.1:3782:3782 \
   -v $(pwd)/data:/app/data:U \
@@ -313,12 +313,12 @@ podman run --rm -d --name deepmentor \
   --tmpfs /root:size=16m,mode=0700 \
   --tmpfs /home:size=16m,mode=0755 \
   --userns=keep-id \
-  ghcr.io/hkuds/deepmentor:latest
+  ghcr.io/hkuds/kagweb:latest
 ```
 
 After the container is up, the backend and frontend always run as the
-non-root `deepmentor` user (UID 1000) — `podman exec deepmentor ps -o user,pid,comm`
-shows the `uvicorn`/`node` children as `deepmentor`. `supervisord` itself
+non-root `kagweb` user (UID 1000) — `podman exec kagweb ps -o user,pid,comm`
+shows the `uvicorn`/`node` children as `kagweb`. `supervisord` itself
 (PID 1) runs as whatever UID the runtime started it with: root under rootful
 Docker/Podman, or the host user under rootless podman + `userns_mode: keep-id`.
 
@@ -326,7 +326,7 @@ Docker/Podman, or the host user under rootless podman + `userns_mode: keep-id`.
 
 The `[supervisord]` section carries **no `user=` directive**, so supervisord
 runs as PID 1's UID and never tries to drop its own privilege; only its child
-programs are dropped to `deepmentor` via the per-program `user=` directives.
+programs are dropped to `kagweb` via the per-program `user=` directives.
 Pinning `user=root` here (an earlier design) broke rootless keep-id, where
 PID 1 is the non-root host user and lacks `CAP_SETUID`: supervisord refuses to
 drop privilege and exits at startup with `Can't drop privilege as nonroot
@@ -365,7 +365,7 @@ The two settings most relevant to a fresh install:
 
 - **`system.json` → `next_public_api_base`** (in-network) and
   **`next_public_api_base_external`** (cloud/external override). The
-  entrypoint reads these and exports `DEEPMENTOR_API_BASE_URL`, which
+  entrypoint reads these and exports `KAGWEB_API_BASE_URL`, which
   `web/proxy.ts` consumes. `public_api_base` is accepted as a
   compatibility alias and is normalized into
   `next_public_api_base_external` on save.
@@ -385,7 +385,7 @@ JSON/YAML files; deep links to each section live in the page sidebar.
 PocketBase is an optional auth + storage sidecar. Activate it by setting
 `integrations.pocketbase_url` to `http://pocketbase:8090` in
 `data/user/settings/integrations.json` and bringing the `pocketbase`
-service up alongside the main `deepmentor` service. With it running, the
+service up alongside the main `kagweb` service. With it running, the
 main app stores user accounts and sessions in PocketBase instead of
 falling back to the SQLite single-user layout.
 
@@ -413,8 +413,8 @@ current image (or, on an old one, set the `/var/run` tmpfs to `mode=1777`).
 
 **Page loads but Settings says "Backend unreachable".** The UI reaches the
 backend through the in-container proxy, not a host port, so this is almost
-always a backend that failed to start (check `docker logs deepmentor` for the
-`[program:backend]` lines) or a wrong `DEEPMENTOR_API_BASE_URL` in a split
+always a backend that failed to start (check `docker logs kagweb` for the
+`[program:backend]` lines) or a wrong `KAGWEB_API_BASE_URL` in a split
 deployment — **not** a missing `:8001` host mapping (which the UI does not
 need).
 
@@ -430,7 +430,7 @@ directory you own, or use `:U` on the volume mount.
 **`sed -i` errors on a fresh image.** There shouldn't be any — the
 runtime no longer mutates the bundle. The URL is forwarded at request
 time. If you see one, you are probably on an older image; pull
-`ghcr.io/hkuds/deepmentor:latest` again.
+`ghcr.io/hkuds/kagweb:latest` again.
 
 **Settings page won't accept the API base URL.** Open
 `data/user/settings/system.json` on the host and set
@@ -442,7 +442,7 @@ renormalized on save.
 
 ## Security notes
 
-- The image drops privileges to a non-root `deepmentor` user (UID 1000)
+- The image drops privileges to a non-root `kagweb` user (UID 1000)
   before starting `supervisord`. Anything that runs as root is the
   entrypoint, the chown, and the env-var export.
 - `read_only: true` plus `tmpfs:` for the expected writable system
@@ -460,7 +460,7 @@ renormalized on save.
   `sandbox_allow_subprocess`.
 - Auth (`data/user/settings/auth.json` → `auth_enabled = true`) gates
   `/api/*` and `/ws/*` via the `dt_token` cookie. `web/proxy.ts` reads
-  `DEEPMENTOR_AUTH_ENABLED` (exported by the entrypoint on every start)
+  `KAGWEB_AUTH_ENABLED` (exported by the entrypoint on every start)
   to decide whether to require the cookie.
 - CORS uses frontend **origins**, not API URLs. With auth enabled, set
   `cors_origins` in `system.json` to the exact frontend origins the
@@ -471,7 +471,7 @@ renormalized on save.
 ## Split deployments & Kubernetes
 
 The production image supports **component splitting** without a second image:
-set `DEEPMENTOR_COMPONENT=backend` or `frontend` and the entrypoint swaps the
+set `KAGWEB_COMPONENT=backend` or `frontend` and the entrypoint swaps the
 supervisord program set before hand-off (`all` is the default and runs both).
 The container keeps the full startup path — settings JSON loading, extras
 installation, env re-export — so compose, Kubernetes and bare `docker run`

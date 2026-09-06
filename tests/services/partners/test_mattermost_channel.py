@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from deepmentor.partners.bus.events import OutboundMessage
-from deepmentor.partners.bus.queue import MessageBus
-from deepmentor.partners.channels import mattermost as mm_module
-from deepmentor.partners.channels.mattermost import MattermostChannel, MattermostConfig
+from kagweb.partners.bus.events import OutboundMessage
+from kagweb.partners.bus.queue import MessageBus
+from kagweb.partners.channels import mattermost as mm_module
+from kagweb.partners.channels.mattermost import MattermostChannel, MattermostConfig
 
 
 def _make_channel(**overrides) -> MattermostChannel:

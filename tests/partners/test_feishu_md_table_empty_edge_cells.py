@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from deepmentor.partners.channels.feishu import FeishuChannel
+from kagweb.partners.channels.feishu import FeishuChannel
 
 
 def test_leading_empty_header_keeps_column_alignment() -> None:

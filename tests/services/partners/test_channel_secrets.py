@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.services.partners.manager import (
+from kagweb.services.partners.manager import (
     PartnerConfig,
     PartnerInstance,
     mask_channel_secrets,
@@ -142,7 +142,7 @@ async def test_reload_lock_serialises_concurrent_calls(monkeypatch):
     """Two concurrent reload_channels calls must not run their bodies in parallel."""
     import asyncio
 
-    from deepmentor.services.partners.manager import PartnerManager
+    from kagweb.services.partners.manager import PartnerManager
 
     mgr = PartnerManager()
     inst = _make_instance()
@@ -187,7 +187,7 @@ async def test_reload_lock_serialises_concurrent_calls(monkeypatch):
 async def test_reload_failure_records_last_reload_error(monkeypatch):
     import asyncio
 
-    from deepmentor.services.partners.manager import PartnerManager
+    from kagweb.services.partners.manager import PartnerManager
 
     mgr = PartnerManager()
     inst = _make_instance()

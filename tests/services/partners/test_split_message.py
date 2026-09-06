@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from deepmentor.partners.helpers import split_message
+from kagweb.partners.helpers import split_message
 
 
 def test_split_message_nonpositive_max_len_returns_unsplit() -> None:

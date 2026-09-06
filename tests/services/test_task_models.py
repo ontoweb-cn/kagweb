@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from deepmentor.services.config.model_catalog import ModelCatalogService
-from deepmentor.services.model_selection.tasks import task_service_configured
+from kagweb.services.config.model_catalog import ModelCatalogService
+from kagweb.services.model_selection.tasks import task_service_configured
 
 
 def _catalog(service: ModelCatalogService, **task: Any) -> dict[str, Any]:
@@ -95,7 +95,7 @@ def test_a_profile_without_a_model_id_still_inherits(tmp_path: Path) -> None:
 
 
 def test_the_task_service_resolves_its_own_model(tmp_path: Path) -> None:
-    from deepmentor.services.config.provider_runtime import resolve_llm_runtime_config
+    from kagweb.services.config.provider_runtime import resolve_llm_runtime_config
 
     service = ModelCatalogService(path=tmp_path / "model_catalog.json")
     catalog = service.save(

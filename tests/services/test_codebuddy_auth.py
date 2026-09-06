@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from deepmentor.services import codebuddy_auth
-from deepmentor.services.codebuddy_auth import CodeBuddyAuthService
+from kagweb.services import codebuddy_auth
+from kagweb.services.codebuddy_auth import CodeBuddyAuthService
 
 
 class FakeFlow:
@@ -126,7 +126,7 @@ async def test_status_accepts_ide_session_without_the_sdk(tmp_path, monkeypatch)
         raise AssertionError("the SDK must not be probed when a session file exists")
 
     monkeypatch.setattr(codebuddy_auth, "_start_sdk_authenticate", unused_sdk)
-    monkeypatch.setattr("deepmentor.services.codebuddy_credentials.probe_account", _account_label)
+    monkeypatch.setattr("kagweb.services.codebuddy_credentials.probe_account", _account_label)
 
     status = await CodeBuddyAuthService().status()
 
@@ -137,7 +137,7 @@ async def test_status_accepts_ide_session_without_the_sdk(tmp_path, monkeypatch)
 
 @pytest.mark.asyncio
 async def test_logout_explains_that_an_ide_session_ends_in_the_ide(tmp_path, monkeypatch) -> None:
-    """DeepMentor never ends a session it does not own.
+    """KAGWeb never ends a session it does not own.
 
     The auth file is shared with the IDE plugin and the CLI on this host —
     signing it out from a web endpoint would sign the operator out of their
@@ -164,7 +164,7 @@ def _write_ide_session(tmp_path, monkeypatch) -> None:
         ),
         encoding="utf-8",
     )
-    monkeypatch.setenv("DEEPMENTOR_CODEBUDDY_AUTH_FILE", str(path))
+    monkeypatch.setenv("KAGWEB_CODEBUDDY_AUTH_FILE", str(path))
 
 
 async def _account_label(credentials):

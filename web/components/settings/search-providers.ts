@@ -1,9 +1,9 @@
 // Which connection fields a web-search provider actually uses.
 //
 // The answer comes from the backend spec table
-// (`SEARCH_PROVIDERS` in `deepmentor/services/config/provider_runtime.py`),
+// (`SEARCH_PROVIDERS` in `kagweb/services/config/provider_runtime.py`),
 // served per provider by `_provider_choices` in
-// `deepmentor/api/routers/settings.py`. There is deliberately no provider table
+// `kagweb/api/routers/settings.py`. There is deliberately no provider table
 // here — a second copy is how the web app ended up flagging Serper as
 // deprecated while the backend supported it.
 //

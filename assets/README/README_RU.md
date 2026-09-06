@@ -1,18 +1,18 @@
 <div align="center">
 
-<p align="center"><img src="../../assets/figs/logo/logo.png" alt="Логотип DeepMentor" height="56" style="vertical-align: middle;">&nbsp;<img src="../../assets/figs/logo/banner.png" alt="DeepMentor" height="48" style="vertical-align: middle;"></p>
+<p align="center"><img src="../../assets/figs/logo/logo.png" alt="Логотип KAGWeb" height="56" style="vertical-align: middle;">&nbsp;<img src="../../assets/figs/logo/banner.png" alt="KAGWeb" height="48" style="vertical-align: middle;"></p>
 
-# DeepMentor: Персонализированное Обучение на Базе Агентов
+# KAGWeb: Персонализированное Обучение на Базе Агентов
 
 <p align="center">
-  <a href="https://deepmentor.info" target="_blank"><img alt="Docs — deepmentor.info" src="https://img.shields.io/badge/Docs-deepmentor.info%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>&nbsp;
-  <a href="https://deepmentor.info/collaborate/" target="_blank"><img alt="Collaborate — work with us" src="https://img.shields.io/badge/Collaborate-work%20with%20us%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>
+  <a href="https://kagweb.info" target="_blank"><img alt="Docs — kagweb.info" src="https://img.shields.io/badge/Docs-kagweb.info%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>&nbsp;
+  <a href="https://kagweb.info/collaborate/" target="_blank"><img alt="Collaborate — work with us" src="https://img.shields.io/badge/Collaborate-work%20with%20us%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>
 </p>
 
 <p align="center">
-  <a href="https://trendshift.io/repositories/17099?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/17099" alt="HKUDS%2FDeepMentor | Trendshift" width="250" height="55"/></a>&nbsp;
-  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/daily" alt="HKUDS%2FDeepMentor | Trendshift" width="250" height="55"/></a>&nbsp;
-  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/weekly?language=Python" alt="HKUDS%2FDeepMentor | Trendshift" width="250" height="55"/></a>
+  <a href="https://trendshift.io/repositories/17099?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/17099" alt="HKUDS%2FKAGWeb | Trendshift" width="250" height="55"/></a>&nbsp;
+  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/daily" alt="HKUDS%2FKAGWeb | Trendshift" width="250" height="55"/></a>&nbsp;
+  <a href="https://trendshift.io/repositories/17099?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17099" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17099/weekly?language=Python" alt="HKUDS%2FKAGWeb | Trendshift" width="250" height="55"/></a>
 </p>
 
 <p align="center">
@@ -33,33 +33,33 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
-[![GitHub release](https://img.shields.io/github/v/release/HKUDS/DeepMentor?style=flat-square&color=brightgreen)](https://github.com/HKUDS/DeepMentor/releases)
+[![GitHub release](https://img.shields.io/github/v/release/HKUDS/KAGWeb?style=flat-square&color=brightgreen)](https://github.com/HKUDS/KAGWeb/releases)
 [![arXiv](https://img.shields.io/badge/arXiv-2604.26962-b31b1b?style=flat-square&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2604.26962)
 
 [![Discord](https://img.shields.io/badge/Discord-Сообщество-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/eRsjPgMU4t)
 [![Feishu](https://img.shields.io/badge/Feishu-Группа-00D4AA?style=flat-square&logo=feishu&logoColor=white)](./Communication.md)
-[![WeChat](https://img.shields.io/badge/WeChat-Группа-07C160?style=flat-square&logo=wechat&logoColor=white)](https://github.com/HKUDS/DeepMentor/issues/78)
+[![WeChat](https://img.shields.io/badge/WeChat-Группа-07C160?style=flat-square&logo=wechat&logoColor=white)](https://github.com/HKUDS/KAGWeb/issues/78)
 
-[Возможности](#-ключевые-возможности) · [Начать](#-начало-работы) · [Исследовать](#-обзор-deepmentor) · [CLI](#%EF%B8%8F-deepmentor-cli--интерфейс-для-агентов) · [Экосистема](#-экосистема--eduhub-и-сообщество-навыков) · [Сообщество](#-сообщество)
+[Возможности](#-ключевые-возможности) · [Начать](#-начало-работы) · [Исследовать](#-обзор-kagweb) · [CLI](#%EF%B8%8F-kagweb-cli--интерфейс-для-агентов) · [Экосистема](#-экосистема--eduhub-и-сообщество-навыков) · [Сообщество](#-сообщество)
 
 </div>
 
 ---
 
-> 🤝 **Мы приветствуем любые вклады в проект!** Голосуйте за элементы дорожной карты или предлагайте новые на странице [`Roadmap`](https://github.com/HKUDS/DeepMentor/issues/498), а также изучите наше [Руководство по участию](../../CONTRIBUTING.md) с описанием стратегии ветвления, стандартов кодирования и инструкций по началу работы.
+> 🤝 **Мы приветствуем любые вклады в проект!** Голосуйте за элементы дорожной карты или предлагайте новые на странице [`Roadmap`](https://github.com/HKUDS/KAGWeb/issues/498), а также изучите наше [Руководство по участию](../../CONTRIBUTING.md) с описанием стратегии ветвления, стандартов кодирования и инструкций по началу работы.
 
 ### 📰 Новости
 
-- **2026-05-22** 🌐 Официальный сайт документации запущен на [**deepmentor.info**](https://deepmentor.info/) — руководства, справочники и туры по возможностям в одном месте.
+- **2026-05-22** 🌐 Официальный сайт документации запущен на [**kagweb.info**](https://kagweb.info/) — руководства, справочники и туры по возможностям в одном месте.
 - **2026-04-19** 🎉 20 тысяч звёзд за 111 дней! Благодарим за поддержку на пути к по-настоящему персонализированному интеллектуальному обучению.
-- **2026-04-10** 📄 Наша статья опубликована на arXiv — прочитайте [препринт](https://arxiv.org/abs/2604.26962) о дизайне и идеях, лежащих в основе DeepMentor.
+- **2026-04-10** 📄 Наша статья опубликована на arXiv — прочитайте [препринт](https://arxiv.org/abs/2604.26962) о дизайне и идеях, лежащих в основе KAGWeb.
 - **2026-02-06** 🚀 10 тысяч звёзд всего за 39 дней! Огромная благодарность нашему удивительному сообществу.
-- **2026-01-01** 🎊 С Новым Годом! Присоединяйтесь к нашему [Discord](https://discord.gg/eRsjPgMU4t), [WeChat](https://github.com/HKUDS/DeepMentor/issues/78) или [Обсуждениям](https://github.com/HKUDS/DeepMentor/discussions) — давайте вместе формировать DeepMentor.
-- **2025-12-29** 🎓 DeepMentor официально выпущен!
+- **2026-01-01** 🎊 С Новым Годом! Присоединяйтесь к нашему [Discord](https://discord.gg/eRsjPgMU4t), [WeChat](https://github.com/HKUDS/KAGWeb/issues/78) или [Обсуждениям](https://github.com/HKUDS/KAGWeb/discussions) — давайте вместе формировать KAGWeb.
+- **2025-12-29** 🎓 KAGWeb официально выпущен!
 
 ## ✨ Ключевые возможности
 
-DeepMentor — это агентная учебная рабочая среда, объединяющая репетиторство, решение задач, генерацию викторин, исследования, визуализацию и практику освоения в одной расширяемой системе.
+KAGWeb — это агентная учебная рабочая среда, объединяющая репетиторство, решение задач, генерацию викторин, исследования, визуализацию и практику освоения в одной расширяемой системе.
 
 - **Единая среда выполнения для всех режимов** — Chat, Ask Questions, Quiz, Research, Visualize, Solve, Course Study, Mastery Path, Immersive Reading и Immersive Watching работают в единой среде выполнения и используют общий контекст сессии, но сохраняют специализированные циклы и конвейеры для своих задач.
 - **Связанный контекст обучения** — базы знаний, книги, черновики Co-Writer, блокноты, банки вопросов, персоны и Memory можно повторно использовать в поддерживающих их рабочих процессах с учётом грантов учётной записи и политик обучения.
@@ -73,23 +73,23 @@ DeepMentor — это агентная учебная рабочая среда,
 
 ## 🚀 Начало работы
 
-DeepMentor поставляется с четырьмя путями установки. Все они используют одну структуру рабочего пространства: настройки хранятся в `data/user/settings/` в директории запуска (или в `DEEPMENTOR_HOME` / `deepmentor start --home`, если задано явно). Для полного приложения рекомендуемый процесс: **выбрать директорию рабочего пространства → установить → `deepmentor init` → `deepmentor start`**.
+KAGWeb поставляется с четырьмя путями установки. Все они используют одну структуру рабочего пространства: настройки хранятся в `data/user/settings/` в директории запуска (или в `KAGWEB_HOME` / `kagweb start --home`, если задано явно). Для полного приложения рекомендуемый процесс: **выбрать директорию рабочего пространства → установить → `kagweb init` → `kagweb start`**.
 
 <details>
 <summary><b>Вариант 1 — Установка из PyPI</b> · полное локальное веб-приложение + CLI, клонирование не требуется</summary>
 
-Полное локальное веб-приложение + CLI без необходимости клонирования. Требуется **Python 3.11–3.14** и среда выполнения **Node.js 20+** в PATH (упакованный автономный сервер Next.js запускается командой `deepmentor start`).
+Полное локальное веб-приложение + CLI без необходимости клонирования. Требуется **Python 3.11–3.14** и среда выполнения **Node.js 20+** в PATH (упакованный автономный сервер Next.js запускается командой `kagweb start`).
 
 ```bash
-mkdir -p my-deepmentor && cd my-deepmentor
-pip install -U deepmentor
-deepmentor init     # запрашивает порты + провайдер LLM + необязательные настройки встраивания/поиска
-deepmentor start    # запускает бэкенд + фронтенд; держите терминал открытым
+mkdir -p my-kagweb && cd my-kagweb
+pip install -U kagweb
+kagweb init     # запрашивает порты + провайдер LLM + необязательные настройки встраивания/поиска
+kagweb start    # запускает бэкенд + фронтенд; держите терминал открытым
 ```
 
-`deepmentor init` запрашивает порт бэкенда (по умолчанию `8001`), порт фронтенда (по умолчанию `3782`), провайдер LLM / базовый URL / API-ключ / модель, необязательный провайдер встраивания для базы знаний / RAG и необязательный провайдер поиска для Web Search.
+`kagweb init` запрашивает порт бэкенда (по умолчанию `8001`), порт фронтенда (по умолчанию `3782`), провайдер LLM / базовый URL / API-ключ / модель, необязательный провайдер встраивания для базы знаний / RAG и необязательный провайдер поиска для Web Search.
 
-После `deepmentor start` откройте URL фронтенда, напечатанный в терминале — по умолчанию [http://127.0.0.1:3782](http://127.0.0.1:3782). Нажмите `Ctrl+C` в этом терминале, чтобы остановить бэкенд и фронтенд. Пропустить `deepmentor init` можно для быстрого пробного запуска; приложение загружается с портами по умолчанию и пустыми настройками модели, которые можно настроить позже в **Настройки → Модели**.
+После `kagweb start` откройте URL фронтенда, напечатанный в терминале — по умолчанию [http://127.0.0.1:3782](http://127.0.0.1:3782). Нажмите `Ctrl+C` в этом терминале, чтобы остановить бэкенд и фронтенд. Пропустить `kagweb init` можно для быстрого пробного запуска; приложение загружается с портами по умолчанию и пустыми настройками модели, которые можно настроить позже в **Настройки → Модели**.
 
 </details>
 
@@ -99,8 +99,8 @@ deepmentor start    # запускает бэкенд + фронтенд; дер
 Для разработки на основе чекаута. Используйте **Python 3.11–3.14** и **Node.js 22 LTS** для соответствия CI и Docker.
 
 ```bash
-git clone https://gitee.com/wustbd/DeepMentor.git
-cd DeepMentor
+git clone https://gitee.com/wustbd/KAGWeb.git
+cd KAGWeb
 
 # Создание venv (macOS/Linux). Windows PowerShell:
 #   py -3.11 -m venv .venv ; .\.venv\Scripts\Activate.ps1
@@ -111,18 +111,18 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ( cd web && npm ci --legacy-peer-deps )
 
-deepmentor init
-deepmentor start --dev
+kagweb init
+kagweb start --dev
 ```
 
-`deepmentor start` один раз собирает продакшен-сборку локального фронтенда `web/` и переиспользует её; `--dev` запускает Next.js с горячей заменой модулей (HMR). Структура конфигурации, порты и `Ctrl+C` соответствуют Варианту 1.
+`kagweb start` один раз собирает продакшен-сборку локального фронтенда `web/` и переиспользует её; `--dev` запускает Next.js с горячей заменой модулей (HMR). Структура конфигурации, порты и `Ctrl+C` соответствуют Варианту 1.
 
 <details>
 <summary><b>Среда Conda</b> (вместо <code>venv</code>)</summary>
 
 ```bash
-conda create -n deepmentor python=3.11
-conda activate deepmentor
+conda create -n kagweb python=3.11
+conda activate kagweb
 python -m pip install --upgrade pip
 ```
 
@@ -149,11 +149,11 @@ pip install -e ".[math-animator]"   # дополнение Manim; требует
 
 **Изменение зависимостей фронтенда:** запустите `npm install --legacy-peer-deps` для обновления `web/package-lock.json`, затем зафиксируйте оба файла `web/package.json` и `web/package-lock.json`.
 
-**Зависший сервер разработки:** если `deepmentor start --dev` сообщает о существующем фронтенде, который не отвечает, остановите PID, который он печатает. Если процесс Next.js фактически не запущен, файлы блокировки устарели — удалите их и повторите попытку:
+**Зависший сервер разработки:** если `kagweb start --dev` сообщает о существующем фронтенде, который не отвечает, остановите PID, который он печатает. Если процесс Next.js фактически не запущен, файлы блокировки устарели — удалите их и повторите попытку:
 
 ```bash
 rm -f web/.next/dev/lock web/.next/lock
-deepmentor start --dev
+kagweb start --dev
 ```
 
 </details>
@@ -165,24 +165,24 @@ deepmentor start --dev
 
 Один контейнер для полного веб-приложения. Образы в GitHub Container Registry:
 
-- `ghcr.io/hkuds/deepmentor:latest` — последний стабильный выпуск
-- `ghcr.io/hkuds/deepmentor:<version>` — точный выпуск без начальной `v` (например, `:1.6.3`); предварительные выпуски получают только собственный тег версии
+- `ghcr.io/hkuds/kagweb:latest` — последний стабильный выпуск
+- `ghcr.io/hkuds/kagweb:<version>` — точный выпуск без начальной `v` (например, `:1.6.3`); предварительные выпуски получают только собственный тег версии
 
 > Смотрите [CONTAINERIZATION.md](../../CONTAINERIZATION.md) для развёртываний на podman/rootless/read-only-rootfs и полного руководства по установке.
 
 ```bash
-docker run --rm --name deepmentor \
+docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 \
-  -v deepmentor-data:/app/data \
-  ghcr.io/hkuds/deepmentor:latest
+  -v kagweb-data:/app/data \
+  ghcr.io/hkuds/kagweb:latest
 ```
 
 > **Публиковать нужно только порт `3782`.** Браузер обращается исключительно к источнику фронтенда; промежуточный слой Next.js (`web/proxy.ts`) перенаправляет `/api/*` и `/ws/*` на бэкенд FastAPI **внутри контейнера**. Публикация `8001` (`-p 127.0.0.1:8001:8001`) необязательна — полезна только при прямом обращении к API через curl или скрипты.
 
-Откройте [http://127.0.0.1:3782](http://127.0.0.1:3782). Контейнер создаёт `/app/data/user/settings/*.json` при первом запуске; настройте провайдеров моделей на странице веб-настроек. Конфигурация, API-ключи, логи, файлы рабочего пространства, память и базы знаний сохраняются в томе `deepmentor-data`. Необязательные дополнения принадлежат развёртыванию, а не оболочке: задайте `DEEPMENTOR_EXTRAS` (и `DEEPMENTOR_APT_PACKAGES` для системных библиотек), и каждый контейнер, запущенный из него, будет повторно применять их, тогда как `docker exec … pip install` будет потерян при следующем `compose down`.
+Откройте [http://127.0.0.1:3782](http://127.0.0.1:3782). Контейнер создаёт `/app/data/user/settings/*.json` при первом запуске; настройте провайдеров моделей на странице веб-настроек. Конфигурация, API-ключи, логи, файлы рабочего пространства, память и базы знаний сохраняются в томе `kagweb-data`. Необязательные дополнения принадлежат развёртыванию, а не оболочке: задайте `KAGWEB_EXTRAS` (и `KAGWEB_APT_PACKAGES` для системных библиотек), и каждый контейнер, запущенный из него, будет повторно применять их, тогда как `docker exec … pip install` будет потерян при следующем `compose down`.
 
 - **Другие порты хоста:** измените левую часть каждого маппинга `-p host:container` (например, `-p 127.0.0.1:8088:3782`). Если вы измените порты на стороне контейнера в `/app/data/user/settings/system.json`, перезапустите и обновите правую часть каждого маппинга.
-- **Фоновый режим:** добавьте `-d`, затем `docker logs -f deepmentor` для слежения, `docker stop deepmentor` для остановки, `docker rm deepmentor` перед повторным использованием имени. Том `deepmentor-data` сохраняет ваши настройки и рабочее пространство между перезапусками.
+- **Фоновый режим:** добавьте `-d`, затем `docker logs -f kagweb` для слежения, `docker stop kagweb` для остановки, `docker rm kagweb` перед повторным использованием имени. Том `kagweb-data` сохраняет ваши настройки и рабочее пространство между перезапусками.
 
 **Удалённый Docker / обратный прокси:** браузер обращается только к источнику фронтенда (`:3782`); промежуточный слой Next.js внутри контейнера перенаправляет `/api/*` и `/ws/*` на бэкенд на стороне сервера. В типичном случае с одним контейнером вы вообще не настраиваете базовый URL API — просто направьте ваш обратный прокси / TLS-терминатор на `:3782`. Базовый URL API нужен только для **разделённого развёртывания** (бэкенд в отдельном контейнере/хосте): установите `next_public_api_base` в `data/user/settings/system.json` на внутрисетевой адрес, который фронтенд-сервер использует для достижения бэкенда (он читается на стороне сервера, никогда не отправляется браузеру).
 
@@ -192,11 +192,11 @@ docker run --rm --name deepmentor \
 }
 ```
 
-`next_public_api_base_external` (и его псевдоним `public_api_base`) принимаются как запасные варианты с более низким приоритетом. CORS использует **источники** фронтенда, а не URL API. При отключённой аутентификации DeepMentor разрешает обычные HTTP/HTTPS источники браузера по умолчанию. При включённой аутентификации добавьте точные источники фронтенда:
+`next_public_api_base_external` (и его псевдоним `public_api_base`) принимаются как запасные варианты с более низким приоритетом. CORS использует **источники** фронтенда, а не URL API. При отключённой аутентификации KAGWeb разрешает обычные HTTP/HTTPS источники браузера по умолчанию. При включённой аутентификации добавьте точные источники фронтенда:
 
 ```json
 {
-  "cors_origins": ["https://deepmentor.example.com"]
+  "cors_origins": ["https://kagweb.example.com"]
 }
 ```
 
@@ -206,11 +206,11 @@ docker run --rm --name deepmentor \
 Внутри Docker `localhost` — это сам контейнер, а не хост-машина. Чтобы обратиться к модельному сервису, запущенному на хосте, используйте шлюз хоста (рекомендуется):
 
 ```bash
-docker run --rm --name deepmentor \
+docker run --rm --name kagweb \
   -p 127.0.0.1:3782:3782 -p 127.0.0.1:8001:8001 \
   --add-host=host.docker.internal:host-gateway \
-  -v deepmentor-data:/app/data \
-  ghcr.io/hkuds/deepmentor:latest
+  -v kagweb-data:/app/data \
+  ghcr.io/hkuds/kagweb:latest
 ```
 
 Затем в **Настройки → Модели** укажите базовый URL провайдера как `host.docker.internal`:
@@ -235,50 +235,50 @@ Docker Desktop (macOS/Windows) обычно разрешает `host.docker.inte
 Когда веб-интерфейс не нужен. Пакет только для CLI устанавливается из чекаута исходного кода, а не из PyPI.
 
 ```bash
-git clone https://gitee.com/wustbd/DeepMentor.git
-cd DeepMentor
+git clone https://gitee.com/wustbd/KAGWeb.git
+cd KAGWeb
 
 # Создание venv (macOS/Linux). Windows PowerShell:
 #   py -3.11 -m venv .venv-cli ; .\.venv-cli\Scripts\Activate.ps1
 python3 -m venv .venv-cli && source .venv-cli/bin/activate
 python -m pip install --upgrade pip
 
-python -m pip install -e ./packaging/deepmentor-cli
-deepmentor init --cli
-deepmentor chat
+python -m pip install -e ./packaging/kagweb-cli
+kagweb init --cli
+kagweb chat
 ```
 
-`deepmentor init --cli` использует ту же структуру `data/user/settings/`, что и полное приложение, но пропускает запросы портов бэкенда/фронтенда. Он по-прежнему предлагает селекторы Embedding и Search (выберите **Skip**, если они не нужны), записывает основные файлы среды выполнения (`system.json`, `auth.json`, `integrations.json`, `interface.json`, `model_catalog.json`, `main.yaml`, `agents.yaml`) и запрашивает активный провайдер и модель LLM.
+`kagweb init --cli` использует ту же структуру `data/user/settings/`, что и полное приложение, но пропускает запросы портов бэкенда/фронтенда. Он по-прежнему предлагает селекторы Embedding и Search (выберите **Skip**, если они не нужны), записывает основные файлы среды выполнения (`system.json`, `auth.json`, `integrations.json`, `interface.json`, `model_catalog.json`, `main.yaml`, `agents.yaml`) и запрашивает активный провайдер и модель LLM.
 
 <details>
 <summary><b>Основные команды</b></summary>
 
 ```bash
-deepmentor chat                                          # интерактивный REPL
-deepmentor chat --capability deep_solve --tool rag --kb my-kb
-deepmentor run chat "Explain Fourier transform"
-deepmentor run deep_solve "Solve x^2 = 4" --tool rag --kb my-kb
-deepmentor kb create my-kb --doc textbook.pdf
-deepmentor memory show
-deepmentor config show
+kagweb chat                                          # интерактивный REPL
+kagweb chat --capability deep_solve --tool rag --kb my-kb
+kagweb run chat "Explain Fourier transform"
+kagweb run deep_solve "Solve x^2 = 4" --tool rag --kb my-kb
+kagweb kb create my-kb --doc textbook.pdf
+kagweb memory show
+kagweb config show
 ```
 
 </details>
 
-Локальная установка `deepmentor-cli` не включает веб-ресурсы или серверные зависимости. Сохраните чекаут исходного кода — редактируемая установка указывает на него. Чтобы позже добавить веб-приложение, установите пакет PyPI (Вариант 1) и запустите `deepmentor init` + `deepmentor start` из того же рабочего пространства.
+Локальная установка `kagweb-cli` не включает веб-ресурсы или серверные зависимости. Сохраните чекаут исходного кода — редактируемая установка указывает на него. Чтобы позже добавить веб-приложение, установите пакет PyPI (Вариант 1) и запустите `kagweb init` + `kagweb start` из того же рабочего пространства.
 
 </details>
 
 <details>
 <summary><b>Песочница выполнения кода (офисные навыки)</b> · запуск сгенерированного моделью кода для docx / pdf / pptx / xlsx</summary>
 
-Встроенные офисные навыки — **docx / pdf / pptx / xlsx** — работают, заставляя модель написать короткий Python-скрипт (`python-docx`, `reportlab`, `openpyxl`, …), запустить его через инструменты `exec` / `code_execution` и вернуть URL для скачивания. Эти инструменты монтируются при наличии активного бэкенда песочницы. DeepMentor выбирает наиболее надёжный настроенный бэкенд в следующем порядке:
+Встроенные офисные навыки — **docx / pdf / pptx / xlsx** — работают, заставляя модель написать короткий Python-скрипт (`python-docx`, `reportlab`, `openpyxl`, …), запустить его через инструменты `exec` / `code_execution` и вернуть URL для скачивания. Эти инструменты монтируются при наличии активного бэкенда песочницы. KAGWeb выбирает наиболее надёжный настроенный бэкенд в следующем порядке:
 
-- **Runner sidecar:** `DEEPMENTOR_SANDBOX_RUNNER_URL` направляет выполнение в защищённый сервис с минимальными привилегиями из `Dockerfile.runner`.
+- **Runner sidecar:** `KAGWEB_SANDBOX_RUNNER_URL` направляет выполнение в защищённый сервис с минимальными привилегиями из `Dockerfile.runner`.
 - **Linux bubblewrap:** если доступен `bwrap`, он изолирует процесс и файлы.
 - **Резервный ограниченный подпроцесс:** локальные и одноконтейнерные установки используют его только при наличии разрешения; в Docker контейнер остаётся дополнительной границей.
 
-Настройка `sandbox_allow_subprocess` в `data/user/settings/system.json` (по умолчанию `true`) управляет только последним резервным вариантом. Установите её в `false` (или экспортируйте `DEEPMENTOR_SANDBOX_ALLOW_SUBPROCESS=0`), чтобы запретить выполнение через подпроцесс при отсутствии бэкенда runner или `bwrap`; более надёжные бэкенды при этом не отключаются.
+Настройка `sandbox_allow_subprocess` в `data/user/settings/system.json` (по умолчанию `true`) управляет только последним резервным вариантом. Установите её в `false` (или экспортируйте `KAGWEB_SANDBOX_ALLOW_SUBPROCESS=0`), чтобы запретить выполнение через подпроцесс при отсутствии бэкенда runner или `bwrap`; более надёжные бэкенды при этом не отключаются.
 
 </details>
 
@@ -321,48 +321,48 @@ deepmentor config show
 <details>
 <summary><b>Удаление и очистка</b></summary>
 
-DeepMentor отделяет установленный код от рабочего пространства среды выполнения. По умолчанию рабочим пространством служит директория, в которой вы запускаете `deepmentor init` / `deepmentor start`; `--home PATH` или `DEEPMENTOR_HOME` переопределяет её. Результаты работы сохраняются в директории `data` внутри этого рабочего пространства, поэтому строка баннера запуска, начинающаяся с `Workspace:`, указывает, что именно следует очищать.
+KAGWeb отделяет установленный код от рабочего пространства среды выполнения. По умолчанию рабочим пространством служит директория, в которой вы запускаете `kagweb init` / `kagweb start`; `--home PATH` или `KAGWEB_HOME` переопределяет её. Результаты работы сохраняются в директории `data` внутри этого рабочего пространства, поэтому строка баннера запуска, начинающаяся с `Workspace:`, указывает, что именно следует очищать.
 
-1. Остановите приложение. Нажмите `Ctrl+C` в терминале, где выполняется `deepmentor start`, или запустите `deepmentor stop [--home PATH]` для лаунчера, запущенного с `--detach`; перед удалением данных остановите все работающие Partners и отсоединённые контейнеры Docker.
+1. Остановите приложение. Нажмите `Ctrl+C` в терминале, где выполняется `kagweb start`, или запустите `kagweb stop [--home PATH]` для лаунчера, запущенного с `--detach`; перед удалением данных остановите все работающие Partners и отсоединённые контейнеры Docker.
 2. Удаляйте данные среды выполнения только в том случае, если хотите стереть всё локальное состояние. Сюда входят настройки и API-ключи, история чата, сессии, Memory, Notebooks, Books, состояние Reading, Skills, состояние Partners, журналы, Knowledge Bases, кэши разбора, созданные артефакты и кэш среды выполнения упакованного фронтенда.
 
-   Сначала скопируйте точный путь `Workspace:` из баннера запуска и убедитесь, что его дочерняя директория `data` — это нужная директория данных DeepMentor. Если что-либо может понадобиться позже, создайте резервную копию, а затем переместите именно эту директорию в Корзину операционной системы. Не выполняйте команду рекурсивного удаления для относительного пути или неразрешённой переменной окружения.
+   Сначала скопируйте точный путь `Workspace:` из баннера запуска и убедитесь, что его дочерняя директория `data` — это нужная директория данных KAGWeb. Если что-либо может понадобиться позже, создайте резервную копию, а затем переместите именно эту директорию в Корзину операционной системы. Не выполняйте команду рекурсивного удаления для относительного пути или неразрешённой переменной окружения.
 
 3. Удалите установленный пакет. Используйте команду, соответствующую дистрибутиву:
 
    ```bash
-   python -m pip uninstall deepmentor
-   python -m pip uninstall deepmentor-cli
+   python -m pip uninstall kagweb
+   python -m pip uninstall kagweb-cli
    ```
 
-   Если виртуальная среда была создана только для DeepMentor, удалите её через менеджер сред. Для установки из исходного кода деактивируйте среду, выйдите из директории исходного кода и выполните `git status --short` внутри именно этого чекаута. Перемещайте чекаут в Корзину только после того, как убедитесь, что в нём нет посторонних или незакоммиченных изменений.
+   Если виртуальная среда была создана только для KAGWeb, удалите её через менеджер сред. Для установки из исходного кода деактивируйте среду, выйдите из директории исходного кода и выполните `git status --short` внутри именно этого чекаута. Перемещайте чекаут в Корзину только после того, как убедитесь, что в нём нет посторонних или незакоммиченных изменений.
 
 4. При использовании Docker перед удалением проверьте точный контейнер и именованный том. Удаление тома навсегда стирает данные, управляемые Docker:
 
    ```bash
-   docker ps -a --filter name=^/deepmentor$
-   docker volume inspect deepmentor-data
-   docker rm -f deepmentor
-   docker volume rm deepmentor-data
+   docker ps -a --filter name=^/kagweb$
+   docker volume inspect kagweb-data
+   docker rm -f kagweb
+   docker volume rm kagweb-data
    ```
 
 </details>
 
-## 📖 Обзор DeepMentor
+## 📖 Обзор KAGWeb
 
 Начните с основных поверхностей, которые вы будете использовать ежедневно: Chat, Partners, My Agents, Co-Writer, Book, Knowledge Center, Learning Space, Memory и Settings. Затем тур охватывает многопользовательские развёртывания для общих изолированных рабочих пространств.
 
 Если ответ теряет ранее заданное ограничение, ссылается на слабые доказательства или противоречит выбранному материалу, соберите диагностические данные по [`REASONING_SAFETY_CHECKLIST.md`](../../REASONING_SAFETY_CHECKLIST.md), прежде чем открывать issue.
 
 <div align="center">
-<img src="../../assets/figs/web-1.6.0/OVERVIEW.png" alt="Главная страница DeepMentor — рабочее пространство чата со всеми поверхностями на боковой панели" width="900">
+<img src="../../assets/figs/web-1.6.0/OVERVIEW.png" alt="Главная страница KAGWeb — рабочее пространство чата со всеми поверхностями на боковой панели" width="900">
 </div>
 
 <details>
 <summary><b>🏗️ Архитектура системы</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/system/system%20architecture.png" alt="Архитектура системы DeepMentor" width="900">
+<img src="../../assets/figs/system/system%20architecture.png" alt="Архитектура системы KAGWeb" width="900">
 </div>
 
 </details>
@@ -373,13 +373,13 @@ DeepMentor отделяет установленный код от рабоче�
 Чат — это возможность по умолчанию и место, где начинается большинство работ. Один поток может нормально общаться, вызывать инструменты, опираться на выбранные базы знаний, читать вложения, генерировать изображения, обращаться к субагентам, записывать в блокнот и продолжать с тем же контекстом в последующих ходах.
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/home/00-overview.png" alt="Рабочее пространство чата DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/home/00-overview.png" alt="Рабочее пространство чата KAGWeb" width="900">
 </div>
 
 Цикл намеренно прост: модель думает раундами, вызывает инструменты при необходимости, наблюдает результаты и завершает сообщением без инструментов. `ask_user` особенный — вместо угадывания агент может приостановить ход, задать структурированный уточняющий вопрос и возобновить работу, когда вы ответите.
 
 <div align="center">
-<img src="../../assets/figs/system/chat-agent-loop.png" alt="Цикл агента чата DeepMentor" width="900">
+<img src="../../assets/figs/system/chat-agent-loop.png" alt="Цикл агента чата KAGWeb" width="900">
 </div>
 
 Переключаемые пользователем инструменты: `brainstorm`, `web_search`, `paper_search`, `reason` и `geogebra_analysis` — плюс `imagegen` и `videogen` после настройки соответствующей генеративной модели. Контекстные инструменты, такие как `rag`, `kb_files`, `read_source`, `read_memory`, `write_memory`, `read_skill`, `load_tools`, `exec`, `web_fetch`, `ask_user`, `list_notebook`, `write_note`, `question_bank`, `github` и `consult_subagent`, монтируются автоматически, когда ход имеет подходящий контекст.
@@ -394,13 +394,13 @@ DeepMentor отделяет установленный код от рабоче�
 <summary><b>🤝 Partner — Постоянные Компаньоны на Том Же Мозге</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/partners/00-partners%20overview.png" alt="Рабочее пространство партнёров DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/partners/00-partners%20overview.png" alt="Рабочее пространство партнёров KAGWeb" width="900">
 </div>
 
 Партнёры — это постоянные компаньоны со своей душой, политикой модели, библиотекой, памятью и каналами. Они не являются отдельным движком бота: каждое входящее веб- или IM-сообщение становится обычным ходом `ChatOrchestrator` внутри рабочего пространства, ограниченного партнёром. Партнёр — это «чат с личностью и номером телефона».
 
 <div align="center">
-<img src="../../assets/figs/system/partners-architecture.png" alt="Архитектура партнёров DeepMentor" width="900">
+<img src="../../assets/figs/system/partners-architecture.png" alt="Архитектура партнёров KAGWeb" width="900">
 </div>
 
 Каждый партнёр имеет `SOUL.md`, выбор модели, каналы, политику инструментов и назначенную библиотеку. Базы знаний, навыки и блокноты копируются в `data/partners/<id>/workspace/`, поэтому те же инструменты RAG, навыков, блокнотов и памяти работают без специальных случаев. Аутентифицированные пользователи без прав администратора сохраняют приватные сессии Partner и память отношений, а Partner читает их личную память только для чтения; трафик администраторов, групп и непривязанных пользователей использует общую область Partner.
@@ -419,16 +419,16 @@ DeepMentor отделяет установленный код от рабоче�
 <summary><b>🧑‍🚀 Мои Агенты — Консультация и Импорт Других Агентов</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/myagents/00-overview.png" alt="Рабочее пространство «Мои Агенты» DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/myagents/00-overview.png" alt="Рабочее пространство «Мои Агенты» KAGWeb" width="900">
 </div>
 
-Мои Агенты превращают других агентов в контекст для DeepMentor и делают две разные вещи. **Подключите живого агента** — Claude Code, Codex, Antigravity, Kimi, opencode, MiMo Code, Hermes Agent, OpenClaw или DeepSeek Harness на вашей машине, либо одного из ваших Партнёров — и обращайтесь к нему изнутри хода чата: DeepMentor фактически *запускает* другого агента и транслирует его работу в панель Activity через инструмент `consult_subagent`. Выберите его и лимит раундов с помощью чипа Agent или отфильтруйте тот же список подключённых агентов через `@`; выбор остаётся привязанным к сессии.
+Мои Агенты превращают других агентов в контекст для KAGWeb и делают две разные вещи. **Подключите живого агента** — Claude Code, Codex, Antigravity, Kimi, opencode, MiMo Code, Hermes Agent, OpenClaw или DeepSeek Harness на вашей машине, либо одного из ваших Партнёров — и обращайтесь к нему изнутри хода чата: KAGWeb фактически *запускает* другого агента и транслирует его работу в панель Activity через инструмент `consult_subagent`. Выберите его и лимит раундов с помощью чипа Agent или отфильтруйте тот же список подключённых агентов через `@`; выбор остаётся привязанным к сессии.
 
 <div align="center">
 <img src="../../assets/figs/web-1.4.6+/home/08-subagent%20demo%20with%20claude%20code.png" alt="Обращение к субагенту Claude Code в реальном времени" width="900">
 </div>
 
-**Импортируйте прошлые разговоры** — загрузите существующую историю Claude Code и Codex как именованных, доступных для поиска, возобновляемых агентов. Историю Claude выбирайте по проекту / рабочей директории, а историю Codex — по календарной дате; обновление повторно синхронизирует выбранную область и загружает новые разговоры. Ссылайтесь на один из них из хода Chat через `+` → Мои Агенты, и DeepMentor читает его как транскрипт третьей стороны — это *их* разговор, а не собственный голос DeepMentor.
+**Импортируйте прошлые разговоры** — загрузите существующую историю Claude Code и Codex как именованных, доступных для поиска, возобновляемых агентов. Историю Claude выбирайте по проекту / рабочей директории, а историю Codex — по календарной дате; обновление повторно синхронизирует выбранную область и загружает новые разговоры. Ссылайтесь на один из них из хода Chat через `+` → Мои Агенты, и KAGWeb читает его как транскрипт третьей стороны — это *их* разговор, а не собственный голос KAGWeb.
 
 </details>
 
@@ -436,7 +436,7 @@ DeepMentor отделяет установленный код от рабоче�
 <summary><b>✍️ Co-Writer — Редактирование Markdown с Учётом Выделения</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/co-writer/00-overview.png" alt="Рабочее пространство Co-Writer DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/co-writer/00-overview.png" alt="Рабочее пространство Co-Writer KAGWeb" width="900">
 </div>
 
 Co-Writer — это разделённое рабочее пространство Markdown для отчётов, руководств, заметок и долгосрочных учебных артефактов. Документы автосохраняются и отображают живой предварительный просмотр (математика KaTeX, ограждения диаграмм), и могут быть сохранены обратно в блокноты, когда черновик становится повторно используемым контекстом. Импортируйте `.docx`, чтобы начать черновик, и экспортируйте текущий редактор как Markdown или Word.
@@ -445,7 +445,7 @@ Co-Writer — это разделённое рабочее пространст�
 <img src="../../assets/figs/web-1.4.6+/co-writer/01-edit%20panel.png" alt="Редактор Co-Writer с живым предварительным просмотром" width="900">
 </div>
 
-Его определяющая идея — **хирургическое редактирование**: выберите фрагмент и попросите DeepMentor переписать, расширить или сократить его. Агент редактирования может опираться на базу знаний или веб-данные и ведёт журнал вызовов инструментов. Если черновик не изменился за время его работы, результат напрямую заменяет выделенный текст и остаётся обратимым с помощью **Undo**.
+Его определяющая идея — **хирургическое редактирование**: выберите фрагмент и попросите KAGWeb переписать, расширить или сократить его. Агент редактирования может опираться на базу знаний или веб-данные и ведёт журнал вызовов инструментов. Если черновик не изменился за время его работы, результат напрямую заменяет выделенный текст и остаётся обратимым с помощью **Undo**.
 
 </details>
 
@@ -453,7 +453,7 @@ Co-Writer — это разделённое рабочее пространст�
 <summary><b>📖 Книга — Живые Книги из Ваших Материалов</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/book/00-book_overview.png" alt="Библиотека книг DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/book/00-book_overview.png" alt="Библиотека книг KAGWeb" width="900">
 </div>
 
 Книга превращает выбранные источники в интерактивную **живую книгу** — не статический PDF, а среда чтения, построенная из типизированных блоков. Книга может начинаться с баз знаний, блокнотов, банков вопросов или истории чата; процесс создания предлагает план глав перед генерацией содержания, поэтому вы рассматриваете структуру вместо того, чтобы принимать слепой одноразовый вывод.
@@ -466,7 +466,7 @@ Co-Writer — это разделённое рабочее пространст�
 <img src="../../assets/figs/web-1.4.6+/book/03-book-demo%20interactive%20module.png" alt="Блок интерактивного виджета книги" width="31%">
 </p>
 
-Каждая глава компилируется в редактируемые типизированные блоки — текст, выноски, викторины, флэш-карточки, временные шкалы, код, рисунки, интерактивный HTML, анимации, концептуальные графы, углублённые рассуждения и пользовательские заметки — и имеет собственный Page Chat. Вставляйте, перемещайте, регенерируйте и переписывайте блоки или меняйте их тип; выделенные фрагменты попадают в раздел входящих учебных выдержек, где их можно проверить. Прогресс, закладки, попытки прохождения викторин, учебные выдержки и Page Chat остаются личными для каждого читателя, даже если администратор поделился книгой в режиме только для чтения или совместного редактирования; удалять общие книги по-прежнему может только администратор. Любую книгу можно экспортировать в Markdown, длительную компиляцию можно приостанавливать и возобновлять, а `deepmentor book health` / `refresh-fingerprints` отмечают расхождения с источниками.
+Каждая глава компилируется в редактируемые типизированные блоки — текст, выноски, викторины, флэш-карточки, временные шкалы, код, рисунки, интерактивный HTML, анимации, концептуальные графы, углублённые рассуждения и пользовательские заметки — и имеет собственный Page Chat. Вставляйте, перемещайте, регенерируйте и переписывайте блоки или меняйте их тип; выделенные фрагменты попадают в раздел входящих учебных выдержек, где их можно проверить. Прогресс, закладки, попытки прохождения викторин, учебные выдержки и Page Chat остаются личными для каждого читателя, даже если администратор поделился книгой в режиме только для чтения или совместного редактирования; удалять общие книги по-прежнему может только администратор. Любую книгу можно экспортировать в Markdown, длительную компиляцию можно приостанавливать и возобновлять, а `kagweb book health` / `refresh-fingerprints` отмечают расхождения с источниками.
 
 </details>
 
@@ -474,7 +474,7 @@ Co-Writer — это разделённое рабочее пространст�
 <summary><b>📚 Центр Знаний — Многодвигательные RAG-Библиотеки</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/knowledge/00-overview.png" alt="Центр Знаний DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/knowledge/00-overview.png" alt="Центр Знаний KAGWeb" width="900">
 </div>
 
 Базы знаний — это коллекции документов для RAG, которые обосновывают ходы Chat, редакции Co-Writer, генерацию Book и разговоры с Партнёрами. Отличительной чертой является **выбор движков поиска**: **LlamaIndex** (по умолчанию, гибридный векторный поиск + BM25 с необязательным переранжированием cross-encoder и индексами FAISS exact-flat или HNSW), **PageIndex** (поиск с рассуждением с цитатами на уровне страницы, размещённый или самостоятельно развёрнутый (OSS)), **GraphRAG** и **LightRAG** (поиск на основе графа знаний), **LightRAG Server** (поиск, делегированный внешнему экземпляру LightRAG, подключаемому по HTTP), **WeKnora** (поиск в базе знаний вашего самостоятельно размещённого развёртывания без локального индекса или копии документов), **Tencent IMA** (библиотека, которую вы курируете в IMA — доступная для поиска, просмотра и записи через её OpenAPI), **MarginNote 4** (ваши учебные данные MN4 — документы, выдержки, карточки интеллект-карт и связи между ними — передаются дополнением (Add-on) приложения и используются с помощью специальных инструментов навигации), или связанное хранилище **Obsidian**, которое репетитор читает и записывает на месте. Каждая KB привязана к одному движку.
@@ -487,7 +487,7 @@ Co-Writer — это разделённое рабочее пространст�
 
 При создании KB вы либо **создаёте новую** (загружаете документы и строите свежий индекс), либо **связываете существующую** (повторно используете индекс, построенный в другом месте, читаете на месте без переиндексирования). База знаний также может отслеживать **репозитории GitHub** (репозиторий, ветка и glob-шаблон) или **URL сайтов документации** (с ограничениями глубины обхода и числа страниц); синхронизация по запросу сравнивает хеши содержимого, чтобы выявить добавленные, изменённые и удалённые материалы, поэтому документация, за которой вы следите, остаётся актуальной без повторной загрузки. Переиндексирование записывает новую плоскую директорию `version-N` и сохраняет предыдущие, поэтому рабочий индекс никогда не уничтожается в процессе перестройки. Отдельный документ можно удалить даже из базы в состоянии **error** — убрав файл, который не удалось разобрать, без полного удаления и пересборки. Разбор документов — только текст, MinerU, Docling, Tika, markitdown, PyMuPDF4LLM или LiteParse — выбирается в **Настройки → База знаний**, с отключёнными по умолчанию загрузками локальных моделей. Docling может также работать в **удалённом режиме**, обращаясь к серверу Docling Serve (без локальной установки и моделей), который настраивается в **Настройки → Разбор документов** (`mode=remote`, базовый URL сервера и необязательный API-ключ) или через переменные окружения `DOCLING_MODE` / `DOCLING_API_BASE_URL` / `DOCLING_API_TOKEN`. Tika работает только в удалённом режиме и указывает на сервер Apache Tika, настроенный на этой странице. CLI отражает жизненный цикл через `list/info/create/add/search/set-default/delete`, команды добавления/удаления источников, `list-sources` и `sync`.
 
-Встроенный движок LightRAG устанавливается командой `pip install 'deepmentor[rag-lightrag]'`. Это дополнение содержит поддерживаемый SDK LightRAG, но не устанавливает MinerU. Выбирайте MinerU отдельно в разделе Разбор документов и либо настройте его облачный режим, либо установите актуальный локальный CLI, если нужен структурированный разбор. MinerU принимает PDF, распространённые растровые изображения, DOCX, PPTX и XLSX; устаревшая команда `magic-pdf` по-прежнему работает только с PDF. Текстовый и другие движки разбора не требуют MinerU.
+Встроенный движок LightRAG устанавливается командой `pip install 'kagweb[rag-lightrag]'`. Это дополнение содержит поддерживаемый SDK LightRAG, но не устанавливает MinerU. Выбирайте MinerU отдельно в разделе Разбор документов и либо настройте его облачный режим, либо установите актуальный локальный CLI, если нужен структурированный разбор. MinerU принимает PDF, распространённые растровые изображения, DOCX, PPTX и XLSX; устаревшая команда `magic-pdf` по-прежнему работает только с PDF. Текстовый и другие движки разбора не требуют MinerU.
 
 </details>
 
@@ -495,7 +495,7 @@ Co-Writer — это разделённое рабочее пространст�
 <summary><b>🌐 Пространство Обучения — Навыки, Персоны и Многоразовый Контекст</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/learning-space/00-overview.png" alt="Хаб Пространства Обучения DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/learning-space/00-overview.png" alt="Хаб Пространства Обучения KAGWeb" width="900">
 </div>
 
 Пространство Обучения — это уровень библиотеки, организации и персонализации. **Разговоры и материалы** содержат Chat History, блокноты — записи можно перемещать или копировать между блокнотами и экспортировать в Markdown — и банк вопросов, который хранит ваш ответ, эталонный ответ и объяснение. **Персонализация** содержит персонажей, навыки (сценарии `SKILL.md`), устанавливаемые одним кликом **MCP-сервисы** и **CLI-приложения** из каталога [CLI-Anything](https://github.com/HKUDS/CLI-Anything), причём руководство по использованию каждого приложения загружается по требованию. Отдельное рабочее пространство **My Courses** группирует разговоры по предметам и ветки репетиторов; каждый ресурс предлагается только в поддерживающих его рабочих процессах.
@@ -512,13 +512,13 @@ Co-Writer — это разделённое рабочее пространст�
 <summary><b>🧠 Память — Проверяемая Персонализация</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/memory/00-overview.png" alt="Обзор Памяти DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/memory/00-overview.png" alt="Обзор Памяти KAGWeb" width="900">
 </div>
 
 Память — это трёхуровневая система на основе файлов, которую можно читать, курировать и проверять — намеренно *не* скрытое векторное хранилище. **L1** — зеркало рабочего пространства плюс трассировка событий только для добавления (`trace/<surface>/<date>.jsonl`); **L2** — курированные факты на уровне поверхности (`L2/<surface>.md`) со ссылками на сущности L1; **L3** — межповерхностный синтез (`L3/<profile|recent|scope|preferences>.md`), фиксирующий участвующие поверхности L2.
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/memory/01-3%20layer%20memory%20graph.png" alt="Граф Памяти DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/memory/01-3%20layer%20memory%20graph.png" alt="Граф Памяти KAGWeb" width="900">
 </div>
 
 Граф памяти показывает всю пирамиду — синтез L3 в центре, L2 в среднем кольце, трассировки L1 снаружи — с точными рёбрами доказательств L2 → L1 и связями L3 → участвующие поверхности. Память отслеживается по поверхностям `chat`, `notebook`, `quiz`, `kb`, `book`, partner и `cowriter`; бюджеты обновления / аудита / дедупликации консолидатора настраиваются в **Настройки → Память**.
@@ -529,20 +529,20 @@ Co-Writer — это разделённое рабочее пространст�
 <summary><b>⚙️ Настройки — Единая Панель Управления</b></summary>
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/settings/00-setting%20overview.png" alt="Хаб настроек DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/settings/00-setting%20overview.png" alt="Хаб настроек KAGWeb" width="900">
 </div>
 
 Настройки — это операционная панель управления с живой строкой статуса (состояние бэкенда и резидентная память по всему дереву процессов) и постоянным навигатором с поиском, который открывает любую страницу в один клик: **Внешний вид** (тема, язык интерфейса и вывода модели, оформление блоков кода), **Сеть** (базовый URL API, порты, CORS), **Модели** (Соединения, LLM, Task-модели, Встраивание, Поиск, Синтез речи, Распознавание речи, Генерация изображений, Генерация видео), **База знаний** (движок разбора документов), **Чат** (Video Learning, инструменты с поиском, параметры по возможностям, стартовые подсказки, лимиты вложений), **Партнёры и агенты** (девять локальных агентных сред), **Профиль учащегося** (возраст, класс, учебная программа, язык, уровень чтения, стиль объяснений), **Guardian** (авторизованные учащиеся, материалы, отчёты, сброс учётных данных), **Память** (бюджеты консолидатора) и **О проекте** (проверка версии и безопасные обновления). **Соединение** хранит одну учётную запись провайдера и зеркалирует её во все сервисы, которые этот провайдер может обслуживать, поэтому ключ вводится один раз, а не вставляется на пять разных страниц; **Task-модели** закрепляют небольшую быструю модель за незаметной фоновой работой — названием разговора, написанием стартовых подсказок для поля ввода — и при пустом значении используют активную модель по умолчанию.
 
-**Video Learning** в разделе Настройки → Чат по умолчанию использует официальный YouTube IFrame Player с повышенной конфиденциальностью. Чтобы воспроизведение оставалось локальным, задайте управляемый администратором источник Invidious API (например, `http://127.0.0.1:3000`), протестируйте его, выберите Invidious и сохраните настройки. Новые и повторно открытые видео сразу используют выбранного провайдера с тем же идентификатором материала и прогрессом. Медиаданные Invidious передаются потоково через прокси DeepMentor с поддержкой диапазонов байтов; исходные URL не раскрываются браузеру и не сохраняются на диске. При сбое экземпляра DeepMentor не обращается к YouTube, пока учащийся явно не выберет нативный резервный вариант YouTube. Репетиторство по общедоступным субтитрам необязательно: установите `.[video-learning]`; без него воспроизведение продолжает работать, а действие **«Объяснить здесь»** на основе транскрипта отключается с указанием причины.
+**Video Learning** в разделе Настройки → Чат по умолчанию использует официальный YouTube IFrame Player с повышенной конфиденциальностью. Чтобы воспроизведение оставалось локальным, задайте управляемый администратором источник Invidious API (например, `http://127.0.0.1:3000`), протестируйте его, выберите Invidious и сохраните настройки. Новые и повторно открытые видео сразу используют выбранного провайдера с тем же идентификатором материала и прогрессом. Медиаданные Invidious передаются потоково через прокси KAGWeb с поддержкой диапазонов байтов; исходные URL не раскрываются браузеру и не сохраняются на диске. При сбое экземпляра KAGWeb не обращается к YouTube, пока учащийся явно не выберет нативный резервный вариант YouTube. Репетиторство по общедоступным субтитрам необязательно: установите `.[video-learning]`; без него воспроизведение продолжает работать, а действие **«Объяснить здесь»** на основе транскрипта отключается с указанием причины.
 
 <div align="center">
-<img src="../../assets/figs/web-1.4.6+/settings/01-appearance%20settings.png" alt="Настройки внешнего вида и темы DeepMentor" width="900">
+<img src="../../assets/figs/web-1.4.6+/settings/01-appearance%20settings.png" alt="Настройки внешнего вида и темы KAGWeb" width="900">
 </div>
 
-Большинство разделов используют поток черновика и применения, поэтому вы можете протестировать провайдера перед подтверждением. Вы также можете просто попросить об этом в Chat: ассистент читает текущую конфигурацию, применяет изменение и сообщает, требуется ли перезапуск или переиндексация — предварительно проверяя новую модель перед её применением, поэтому он не может переключить себя на что-то недостижимое. API-ключи никогда не проходят через модель — вместо этого она открывает для вас соответствующую форму. В комплект входят четыре темы — Default, Cream, Dark и Glass. Корневые файлы `.env` проекта намеренно игнорируются; конфигурация среды выполнения хранится в `data/user/settings/*.json`, если только `DEEPMENTOR_HOME` или `deepmentor start --home` не указывает приложению другое место.
+Большинство разделов используют поток черновика и применения, поэтому вы можете протестировать провайдера перед подтверждением. Вы также можете просто попросить об этом в Chat: ассистент читает текущую конфигурацию, применяет изменение и сообщает, требуется ли перезапуск или переиндексация — предварительно проверяя новую модель перед её применением, поэтому он не может переключить себя на что-то недостижимое. API-ключи никогда не проходят через модель — вместо этого она открывает для вас соответствующую форму. В комплект входят четыре темы — Default, Cream, Dark и Glass. Корневые файлы `.env` проекта намеренно игнорируются; конфигурация среды выполнения хранится в `data/user/settings/*.json`, если только `KAGWEB_HOME` или `kagweb start --home` не указывает приложению другое место.
 
-**OpenAI Codex OAuth (экспериментально).** Выбор **OpenAI Codex** в разделе Модели → LLM заменяет поля API-ключа входом через браузер, который выполняется по вашему собственному плану ChatGPT, поэтому `OPENAI_API_KEY` не требуется. Токены хранятся только в `data/system/user-secrets/<owner>/private/openai-codex/` — в многоконтейнерном развёртывании Compose это за пределами любого дерева, доступного песочнице выполнения, — и DeepMentor никогда не читает и не изменяет вашу CLI-авторизацию `~/.codex`. Список моделей формируется из актуального каталога этой учётной записи; вход публикует профиль, но тот становится активной моделью, только если LLM ещё не настроен. Поскольку токен авторизует план одного человека, профиль нельзя передать через гранты для пользователей — каждая учётная запись входит сама за себя, включая обычных пользователей: их карточка находится в разделе Модели → LLM, а получившиеся модели, каталог и выход из системы остаются приватными для этой учётной записи.
+**OpenAI Codex OAuth (экспериментально).** Выбор **OpenAI Codex** в разделе Модели → LLM заменяет поля API-ключа входом через браузер, который выполняется по вашему собственному плану ChatGPT, поэтому `OPENAI_API_KEY` не требуется. Токены хранятся только в `data/system/user-secrets/<owner>/private/openai-codex/` — в многоконтейнерном развёртывании Compose это за пределами любого дерева, доступного песочнице выполнения, — и KAGWeb никогда не читает и не изменяет вашу CLI-авторизацию `~/.codex`. Список моделей формируется из актуального каталога этой учётной записи; вход публикует профиль, но тот становится активной моделью, только если LLM ещё не настроен. Поскольку токен авторизует план одного человека, профиль нельзя передать через гранты для пользователей — каждая учётная запись входит сама за себя, включая обычных пользователей: их карточка находится в разделе Модели → LLM, а получившиеся модели, каталог и выход из системы остаются приватными для этой учётной записи.
 
 Локальные развёртывания Docker и Podman по умолчанию используют раздельные loopback-сети и во время входа требуют временного моста. Следуйте [руководству по временному локальному мосту Codex OAuth](../../CONTAINERIZATION.md#temporary-local-codex-oauth-bridge) для точных команд Docker, Compose, Podman и отключения моста.
 
@@ -552,7 +552,7 @@ Co-Writer — это разделённое рабочее пространст�
 ssh -N -L 1455:127.0.0.1:3782 <ssh-user>@<server-host>
 ```
 
-Если DeepMentor сообщает резервный порт обратного вызова `1457`, используйте:
+Если KAGWeb сообщает резервный порт обратного вызова `1457`, используйте:
 
 ```bash
 ssh -N -L 1457:127.0.0.1:3782 <ssh-user>@<server-host>
@@ -569,7 +569,7 @@ CLI выводит команду туннеля, а затем сразу пы�
 <details>
 <summary><b>👥 Многопользовательский режим — Общие Развёртывания</b> · необязательная аутентификация, изолированные рабочие пространства</summary>
 
-Аутентификация **отключена по умолчанию** — DeepMentor работает в однопользовательском режиме. Включите её, и одно дерево `data/` содержит рабочее пространство администратора, изолированные пользовательские рабочие пространства и партнёрские рабочие пространства рядом:
+Аутентификация **отключена по умолчанию** — KAGWeb работает в однопользовательском режиме. Включите её, и одно дерево `data/` содержит рабочее пространство администратора, изолированные пользовательские рабочие пространства и партнёрские рабочие пространства рядом:
 
 ```text
 data/
@@ -582,26 +582,26 @@ data/
 
 **Первый зарегистрированный пользователь становится администратором** и владеет каталогами моделей, учётными данными провайдеров, общими базами знаний, навыками, каноническими общими книгами и грантами для пользователей. Локальные пользователи, созданные администратором, выбирают Standard, Learner или Custom. Learner блокирует учебные возможности и политику материалов, добавляет адаптивный профиль и поддерживает отзываемые учётные данные устройства со сроком действия и дневными лимитами; авторизованные guardians могут просматривать отчёты, одобрять материалы и сбрасывать учётные данные. Остальные пользователи получают изолированные рабочие пространства и ограниченный доступ к моделям, KB, навыкам, Partners и общим книгам без получения необработанных API-ключей. Если `auth.json` уже содержит `username` + `password_hash`, эта учётная запись *является* администратором: `/register` остаётся закрытым, а учётные записи, созданные в `/admin/users`, всегда имеют `role=user` до повышения роли.
 
-**Включение:** включите аутентификацию в `data/user/settings/auth.json`, перезапустите `deepmentor start`, зарегистрируйте первого администратора по адресу `/register`, затем добавляйте пользователей из `/admin/users` и назначайте модели, KB, навыки, Partners, политику инструментов/MCP/CLI-приложений и доступ к выполнению кода через гранты; настройте общие книги в панели **Book access** каждого пользователя.
+**Включение:** включите аутентификацию в `data/user/settings/auth.json`, перезапустите `kagweb start`, зарегистрируйте первого администратора по адресу `/register`, затем добавляйте пользователей из `/admin/users` и назначайте модели, KB, навыки, Partners, политику инструментов/MCP/CLI-приложений и доступ к выполнению кода через гранты; настройте общие книги в панели **Book access** каждого пользователя.
 
 > PocketBase остаётся однопользовательской интеграцией — оставьте `integrations.pocketbase_url` пустым для многопользовательских развёртываний, если только вы не подключили внешнее хранилище пользователей.
 
 </details>
 
-## ⌨️ DeepMentor CLI — Интерфейс для Агентов
+## ⌨️ KAGWeb CLI — Интерфейс для Агентов
 
-Один бинарный файл `deepmentor`, два способа входа: интерактивный **REPL** для тех, кто живёт в терминале, и структурированный **JSON** для других агентов, которые управляют DeepMentor как инструментом. Одни и те же возможности, инструменты и базы знаний в любом случае.
+Один бинарный файл `kagweb`, два способа входа: интерактивный **REPL** для тех, кто живёт в терминале, и структурированный **JSON** для других агентов, которые управляют KAGWeb как инструментом. Одни и те же возможности, инструменты и базы знаний в любом случае.
 
 <details>
 <summary><b>Управляйте им самостоятельно</b></summary>
 
-`deepmentor chat` открывает интерактивный REPL и выбирает режим с помощью `--capability`; `deepmentor run <capability> "<message>"` принимает эту возможность как первый позиционный аргумент и завершается после одного хода. Обе команды принимают `--tool`, `--kb` и `--config`.
+`kagweb chat` открывает интерактивный REPL и выбирает режим с помощью `--capability`; `kagweb run <capability> "<message>"` принимает эту возможность как первый позиционный аргумент и завершается после одного хода. Обе команды принимают `--tool`, `--kb` и `--config`.
 
 ```bash
-deepmentor chat                                              # интерактивный REPL
-deepmentor chat --capability deep_solve --kb my-kb --tool rag
-deepmentor run chat "Explain the Fourier transform" --tool rag --kb textbook
-deepmentor run deep_research "Survey 2026 papers on RAG" \
+kagweb chat                                              # интерактивный REPL
+kagweb chat --capability deep_solve --kb my-kb --tool rag
+kagweb run chat "Explain the Fourier transform" --tool rag --kb textbook
+kagweb run deep_research "Survey 2026 papers on RAG" \
   --config mode=report --config depth=standard
 ```
 
@@ -612,20 +612,20 @@ deepmentor run deep_research "Survey 2026 papers on RAG" \
 <details>
 <summary><b>Позвольте агенту управлять им</b></summary>
 
-DeepMentor создан для того, чтобы *им управлял другой агент*. Добавьте `--format json` к любой команде `run`, и каждый ход транслирует **NDJSON — одно событие на строку** (`content`, `tool_call`, `tool_result`, `done`, …), каждая строка помечена своим `session_id`. Запуски безопасны без TTY: пауза `ask_user` без TTY автоматически разрешается пустым ответом вместо зависания.
+KAGWeb создан для того, чтобы *им управлял другой агент*. Добавьте `--format json` к любой команде `run`, и каждый ход транслирует **NDJSON — одно событие на строку** (`content`, `tool_call`, `tool_result`, `done`, …), каждая строка помечена своим `session_id`. Запуски безопасны без TTY: пауза `ask_user` без TTY автоматически разрешается пустым ответом вместо зависания.
 
 ```bash
 # Один запрос, машиночитаемый
-deepmentor run deep_solve "Find d/dx[sin(x^2)]" --tool reason --format json
+kagweb run deep_solve "Find d/dx[sin(x^2)]" --tool reason --format json
 
 # Цепочка ходов в одной сессии с состоянием — захватите id, повторно используйте его
-SID=$(deepmentor run deep_research "Survey 2026 papers on RAG" \
+SID=$(kagweb run deep_research "Survey 2026 papers on RAG" \
   --config mode=report --config depth=standard --format json \
   | jq -r 'select(.type=="done").session_id')
-deepmentor run deep_question "Quiz me on that survey" --session "$SID" --format json
+kagweb run deep_question "Quiz me on that survey" --session "$SID" --format json
 ```
 
-В репозитории есть корневой [`SKILL.md`](../../SKILL.md) — документ передачи на ~200 строк, который знакомит любой использующий инструменты LLM со всей поверхностью за одно чтение. Передайте его Claude Code, Codex или OpenCode (они автоматически подхватывают `SKILL.md`), или оберните `deepmentor run` как инструмент в цикл LangChain / AutoGen. Полные рецепты: [Agent Handoff](https://deepmentor.info/docs/cli/agent-handoff/).
+В репозитории есть корневой [`SKILL.md`](../../SKILL.md) — документ передачи на ~200 строк, который знакомит любой использующий инструменты LLM со всей поверхностью за одно чтение. Передайте его Claude Code, Codex или OpenCode (они автоматически подхватывают `SKILL.md`), или оберните `kagweb run` как инструмент в цикл LangChain / AutoGen. Полные рецепты: [Agent Handoff](https://kagweb.info/docs/cli/agent-handoff/).
 
 </details>
 
@@ -634,33 +634,33 @@ deepmentor run deep_question "Quiz me on that survey" --session "$SID" --format 
 
 | Команда | Описание |
 |:---|:---|
-| `deepmentor init` | Создать или обновить `data/user/settings` для текущего рабочего пространства |
-| `deepmentor doctor [--online]` | Проверить, готово ли рабочее пространство к запуску сессии; `--online` также проверяет настроенного провайдера модели, `--format json` выводит отчёт |
-| `deepmentor start [--home PATH] [--dev] [--detach] [--no-browser]` | Запустить бэкенд + фронтенд вместе; при необходимости отсоединить процесс или запретить открытие браузера |
-| `deepmentor stop [--home PATH]` | Остановить лаунчер, запущенный с `--detach` |
-| `deepmentor serve [--port PORT]` | Запустить только бэкенд FastAPI |
-| `deepmentor run <capability> <message>` | Запустить один ход возможности (`chat`, `ask_questions`, `deep_solve`, `deep_question`, `deep_research`, `visualize`, `math_animator`, `mastery_path`, `immersive_reading`, `course_study`, `immersive_watching`); добавьте `--format json` для вывода NDJSON |
-| `deepmentor chat` | Интерактивный REPL с управлением возможностями, инструментами, KB, блокнотами и историей |
-| `deepmentor partner list/create/start/stop` | Управление партнёрами, подключёнными к IM |
-| `deepmentor kb list/info/create/add/search/set-default/delete/list-sources/sync` | Управление базами знаний и синхронизация зарегистрированных источников GitHub/Web (с командами добавления/удаления источников) |
-| `deepmentor skill search/install/list/remove/login/logout/publish/update` | Управление навыками, установка из хабов и публикация своих (`eduhub:<slug>` по умолчанию, см. Экосистема) |
-| `deepmentor memory show/clear` | Просмотр документов памяти L2/L3 или очистка памяти L1/всей памяти |
-| `deepmentor session list/show/open/rename/delete` | Управление общими сессиями |
-| `deepmentor notebook list/create/show/add-md/replace-md/remove-record` | Управление блокнотами из файлов Markdown |
-| `deepmentor book list/health/refresh-fingerprints` | Просмотр книг и обновление исходных отпечатков |
-| `deepmentor plugin list/info` | Просмотр зарегистрированных инструментов и возможностей |
-| `deepmentor config show` | Вывод сводки конфигурации |
-| `deepmentor provider login <provider>` | Аутентификация провайдера (`openai-codex` вход через OAuth; `github-copilot` проверяет существующую сессию аутентификации Copilot; `codebuddy` проверяет аутентификацию CodeBuddy SDK и запускает вход при необходимости) |
+| `kagweb init` | Создать или обновить `data/user/settings` для текущего рабочего пространства |
+| `kagweb doctor [--online]` | Проверить, готово ли рабочее пространство к запуску сессии; `--online` также проверяет настроенного провайдера модели, `--format json` выводит отчёт |
+| `kagweb start [--home PATH] [--dev] [--detach] [--no-browser]` | Запустить бэкенд + фронтенд вместе; при необходимости отсоединить процесс или запретить открытие браузера |
+| `kagweb stop [--home PATH]` | Остановить лаунчер, запущенный с `--detach` |
+| `kagweb serve [--port PORT]` | Запустить только бэкенд FastAPI |
+| `kagweb run <capability> <message>` | Запустить один ход возможности (`chat`, `ask_questions`, `deep_solve`, `deep_question`, `deep_research`, `visualize`, `math_animator`, `mastery_path`, `immersive_reading`, `course_study`, `immersive_watching`); добавьте `--format json` для вывода NDJSON |
+| `kagweb chat` | Интерактивный REPL с управлением возможностями, инструментами, KB, блокнотами и историей |
+| `kagweb partner list/create/start/stop` | Управление партнёрами, подключёнными к IM |
+| `kagweb kb list/info/create/add/search/set-default/delete/list-sources/sync` | Управление базами знаний и синхронизация зарегистрированных источников GitHub/Web (с командами добавления/удаления источников) |
+| `kagweb skill search/install/list/remove/login/logout/publish/update` | Управление навыками, установка из хабов и публикация своих (`eduhub:<slug>` по умолчанию, см. Экосистема) |
+| `kagweb memory show/clear` | Просмотр документов памяти L2/L3 или очистка памяти L1/всей памяти |
+| `kagweb session list/show/open/rename/delete` | Управление общими сессиями |
+| `kagweb notebook list/create/show/add-md/replace-md/remove-record` | Управление блокнотами из файлов Markdown |
+| `kagweb book list/health/refresh-fingerprints` | Просмотр книг и обновление исходных отпечатков |
+| `kagweb plugin list/info` | Просмотр зарегистрированных инструментов и возможностей |
+| `kagweb config show` | Вывод сводки конфигурации |
+| `kagweb provider login <provider>` | Аутентификация провайдера (`openai-codex` вход через OAuth; `github-copilot` проверяет существующую сессию аутентификации Copilot; `codebuddy` проверяет аутентификацию CodeBuddy SDK и запускает вход при необходимости) |
 
 </details>
 
 <details>
 <summary><b>Дистрибутив только с CLI</b></summary>
 
-Пакет только с CLI находится в `packaging/deepmentor-cli`. В этом чекауте установите его из исходного кода:
+Пакет только с CLI находится в `packaging/kagweb-cli`. В этом чекауте установите его из исходного кода:
 
 ```bash
-python -m pip install -e ./packaging/deepmentor-cli
+python -m pip install -e ./packaging/kagweb-cli
 ```
 
 Он ещё не опубликован в PyPI, поэтому основной раздел [Начало работы](#-начало-работы) сохраняет путь установки из исходного кода.
@@ -669,31 +669,31 @@ python -m pip install -e ./packaging/deepmentor-cli
 
 ## 🧩 Экосистема — EduHub и Сообщество Навыков
 
-Навыки DeepMentor используют открытый формат **Agent-Skills** — папку с плейбуком `SKILL.md` (YAML frontmatter + Markdown) и необязательными справочными файлами. В нём нет ничего специфичного для DeepMentor, поэтому любой реестр, говорящий на этом формате, становится источником для вашей библиотеки. DeepMentor поставляется с **[EduHub](https://eduhub.deepmentor.info/)** — нашим собственным образовательным реестром навыков — встроенным в качестве хаба по умолчанию.
+Навыки KAGWeb используют открытый формат **Agent-Skills** — папку с плейбуком `SKILL.md` (YAML frontmatter + Markdown) и необязательными справочными файлами. В нём нет ничего специфичного для KAGWeb, поэтому любой реестр, говорящий на этом формате, становится источником для вашей библиотеки. KAGWeb поставляется с **[EduHub](https://eduhub.kagweb.info/)** — нашим собственным образовательным реестром навыков — встроенным в качестве хаба по умолчанию.
 
 <details>
-<summary><b>EduHub — экосистема навыков DeepMentor</b></summary>
+<summary><b>EduHub — экосистема навыков KAGWeb</b></summary>
 
-[**EduHub**](https://eduhub.deepmentor.info/) — это хаб сообщества, запущенный DeepMentor для обмена обучающими навыками агентов — сократовские репетиторы, создатели флэш-карточек, обратная связь по эссе, планы экзаменов, объяснители концепций и многое другое. Он встроен в DeepMentor, поэтому настраивать ничего не нужно: голый слаг или префикс `eduhub:` разрешается в него.
+[**EduHub**](https://eduhub.kagweb.info/) — это хаб сообщества, запущенный KAGWeb для обмена обучающими навыками агентов — сократовские репетиторы, создатели флэш-карточек, обратная связь по эссе, планы экзаменов, объяснители концепций и многое другое. Он встроен в KAGWeb, поэтому настраивать ничего не нужно: голый слаг или префикс `eduhub:` разрешается в него.
 
 **Найти и установить** — в браузере откройте **Пространство Обучения → Навыки → Импорт из EduHub** для просмотра каталога и загрузки навыка прямо в вашу библиотеку. Из терминала:
 
 ```bash
-deepmentor skill search "socratic tutor"               # поиск в EduHub (хаб по умолчанию)
-deepmentor skill install socratic-tutor                # получить → проверить → зарегистрировать
-deepmentor skill install eduhub:socratic-tutor@1.2.0   # указать хаб и версию
-deepmentor skill list                                  # локальные навыки с их хабовой принадлежностью
+kagweb skill search "socratic tutor"               # поиск в EduHub (хаб по умолчанию)
+kagweb skill install socratic-tutor                # получить → проверить → зарегистрировать
+kagweb skill install eduhub:socratic-tutor@1.2.0   # указать хаб и версию
+kagweb skill list                                  # локальные навыки с их хабовой принадлежностью
 ```
 
 **Опубликуйте свой** — упакуйте `SKILL.md` и поделитесь им обратно с сообществом:
 
 ```bash
-deepmentor skill login                                 # вход через браузер в EduHub
-deepmentor skill publish ./my-skill                    # интерактивно: выберите трек + теги, затем загрузите
-deepmentor skill update                                # откатиться или выпустить новую версию
+kagweb skill login                                 # вход через браузер в EduHub
+kagweb skill publish ./my-skill                    # интерактивно: выберите трек + теги, затем загрузите
+kagweb skill update                                # откатиться или выпустить новую версию
 ```
 
-EduHub также является отдельным, совместимым с ClawHub реестром, поэтому агенты, отличные от DeepMentor (Claude Code, Codex, …), могут использовать его напрямую через CLI `eduhub` — `npx eduhub install socratic-tutor`.
+EduHub также является отдельным, совместимым с ClawHub реестром, поэтому агенты, отличные от KAGWeb (Claude Code, Codex, …), могут использовать его напрямую через CLI `eduhub` — `npx eduhub install socratic-tutor`.
 
 </details>
 
@@ -704,7 +704,7 @@ EduHub также является отдельным, совместимым с
 
 - сначала проверяется **вердикт безопасности** реестра — отмеченные пакеты отклоняются, если вы не передали `--allow-unverified`;
 - архивы извлекаются безопасно с проверками обхода путей, числа записей, размера, коэффициента сжатия, суффиксов и символических ссылок; биты исполнения снимаются, а файлы без расширения остаются разрешёнными;
-- frontmatter нормализуется по схеме DeepMentor, и `always:` **удаляется**, поэтому загруженный навык никогда не может принудить себя в каждый системный промпт;
+- frontmatter нормализуется по схеме KAGWeb, и `always:` **удаляется**, поэтому загруженный навык никогда не может принудить себя в каждый системный промпт;
 - происхождение — хаб, версия, вердикт и время установки — записывается в `.hub-lock.json` для аудитов и обновлений.
 
 В многопользовательских развёртываниях импорт через браузер попадает в слой навыков аутентифицированного пользователя, тогда как установки через CLI и консоль администратора направляются в рабочее пространство владельца/администратора; навыки администратора остаются скрытыми и доступными обычным пользователям только для чтения, пока не выдан грант.
@@ -714,12 +714,12 @@ EduHub также является отдельным, совместимым с
 <details>
 <summary><b>Также совместим с ClawHub</b></summary>
 
-Поскольку DeepMentor использует открытый формат Agent-Skills, **[ClawHub](https://clawhub.ai/)** также работает как первоклассный источник — он встроен рядом с EduHub. Выберите его с префиксом хаба:
+Поскольку KAGWeb использует открытый формат Agent-Skills, **[ClawHub](https://clawhub.ai/)** также работает как первоклассный источник — он встроен рядом с EduHub. Выберите его с префиксом хаба:
 
 ```bash
-deepmentor skill search "git release notes" --hub clawhub
-deepmentor skill install clawhub:git-release-notes@1.0.1
-deepmentor skill install clawhub:udiedrichsen/stock-analysis
+kagweb skill search "git release notes" --hub clawhub
+kagweb skill install clawhub:git-release-notes@1.0.1
+kagweb skill install clawhub:udiedrichsen/stock-analysis
 ```
 
 Когда один и тот же слаг используют несколько издателей, поиск показывает каждого издателя и полностью определённую ссылку для установки (`clawhub:<ownerHandle>/<slug>`).
@@ -741,7 +741,7 @@ deepmentor skill install clawhub:udiedrichsen/stock-analysis
 </p>
 
 <p align="center">
-  Используйте код: <b><code>DEEPMENTOR20</code></b> — скидка $20 на первую <a href="https://developer.pageindex.ai/">подписку PageIndex</a>!
+  Используйте код: <b><code>KAGWEB20</code></b> — скидка $20 на первую <a href="https://developer.pageindex.ai/">подписку PageIndex</a>!
 </p>
 
 ## 🌐 Сообщество
@@ -758,13 +758,13 @@ deepmentor skill install clawhub:udiedrichsen/stock-analysis
 
 ### 📮 Контакты
 
-DeepMentor — это проект с открытым исходным кодом, который ведёт [Bingxi Zhao](https://github.com/pancacake) в составе группы [HKUDS](https://github.com/HKUDS), и он развивается в **полностью открытом формате**, создаваясь вместе с сообществом. До сих пор у нас **НЕТ** платных онлайн-продуктов в каком-либо виде. Не стесняйтесь обращаться по адресу **bingxizhao39@gmail.com** для обсуждений, идей или сотрудничества.
+KAGWeb — это проект с открытым исходным кодом, который ведёт [Bingxi Zhao](https://github.com/pancacake) в составе группы [HKUDS](https://github.com/HKUDS), и он развивается в **полностью открытом формате**, создаваясь вместе с сообществом. До сих пор у нас **НЕТ** платных онлайн-продуктов в каком-либо виде. Не стесняйтесь обращаться по адресу **bingxizhao39@gmail.com** для обсуждений, идей или сотрудничества.
 
 ### 🙏 Благодарности
 
-Сердечная благодарность [**Chao Huang**](https://sites.google.com/view/chaoh), директору Лаборатории интеллектуальных данных @ HKU, и нашим коллегам из HKUDS за их тёплую поддержку — особенно [**Jiahao Zhang**](https://github.com/zzhtx258), [**Zirui Guo**](https://github.com/LarFii) и [**Xubin Ren**](https://github.com/Re-bin). Мы также глубоко благодарны **сообществу открытого исходного кода**: ваши звёзды, вопросы, пул-реквесты и обсуждения каждый день формируют DeepMentor.
+Сердечная благодарность [**Chao Huang**](https://sites.google.com/view/chaoh), директору Лаборатории интеллектуальных данных @ HKU, и нашим коллегам из HKUDS за их тёплую поддержку — особенно [**Jiahao Zhang**](https://github.com/zzhtx258), [**Zirui Guo**](https://github.com/LarFii) и [**Xubin Ren**](https://github.com/Re-bin). Мы также глубоко благодарны **сообществу открытого исходного кода**: ваши звёзды, вопросы, пул-реквесты и обсуждения каждый день формируют KAGWeb.
 
-DeepMentor также стоит на плечах выдающихся проектов с открытым исходным кодом, которые дали нам инструменты и вдохновение:
+KAGWeb также стоит на плечах выдающихся проектов с открытым исходным кодом, которые дали нам инструменты и вдохновение:
 
 | Проект | Роль / Вдохновение |
 |:---|:---|
@@ -775,29 +775,29 @@ DeepMentor также стоит на плечах выдающихся прое
 | [**AI-Researcher**](https://github.com/HKUDS/AI-Researcher) | Автоматизированный исследовательский конвейер *(HKUDS)* |
 | [**OpenClaw**](https://github.com/openclaw/openclaw) | Открытый шлюз агентов и экосистема навыков за ClawHub |
 | [**Codex**](https://github.com/openai/codex) | Агентный CLI кодирования, вдохновивший наш рабочий процесс CLI |
-| [**Claude Code**](https://github.com/anthropics/claude-code) | Агентный CLI кодирования, вдохновивший цикл агента DeepMentor |
+| [**Claude Code**](https://github.com/anthropics/claude-code) | Агентный CLI кодирования, вдохновивший цикл агента KAGWeb |
 | [**ManimCat**](https://github.com/Wing900/ManimCat) | Генерация математической анимации на основе ИИ для Math Animator |
 
 ### 🗺️ Дорожная карта и участие
 
-Мы хотим, чтобы DeepMentor продолжал развиваться и совершенствоваться — и в конечном итоге стал подарком, который мы возвращаем сообществу открытого исходного кода. Наша [**дорожная карта**](https://github.com/HKUDS/DeepMentor/issues/498) обновляется непрерывно; голосуйте там за пункты или предлагайте новые. Если вы хотите участвовать, см. [**Руководство по участию**](../../CONTRIBUTING.md) с описанием стратегии ветвления, стандартов кодирования и инструкций по началу работы.
+Мы хотим, чтобы KAGWeb продолжал развиваться и совершенствоваться — и в конечном итоге стал подарком, который мы возвращаем сообществу открытого исходного кода. Наша [**дорожная карта**](https://github.com/HKUDS/KAGWeb/issues/498) обновляется непрерывно; голосуйте там за пункты или предлагайте новые. Если вы хотите участвовать, см. [**Руководство по участию**](../../CONTRIBUTING.md) с описанием стратегии ветвления, стандартов кодирования и инструкций по началу работы.
 
 <div align="center">
 
-Мы надеемся, что DeepMentor станет подарком для сообщества. 🎁
+Мы надеемся, что KAGWeb станет подарком для сообщества. 🎁
 
-<a href="https://github.com/HKUDS/DeepMentor/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=HKUDS/DeepMentor&max=999" alt="Участники" />
+<a href="https://github.com/HKUDS/KAGWeb/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=HKUDS/KAGWeb&max=999" alt="Участники" />
 </a>
 
 </div>
 
 <p align="center">
- <a href="https://www.star-history.com/hkuds/deepmentor">
+ <a href="https://www.star-history.com/hkuds/kagweb">
   <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=HKUDS/DeepMentor&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=HKUDS/DeepMentor" />
-   <img alt="Рейтинг истории звёзд" src="https://api.star-history.com/badge?repo=HKUDS/DeepMentor" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=HKUDS/KAGWeb&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=HKUDS/KAGWeb" />
+   <img alt="Рейтинг истории звёзд" src="https://api.star-history.com/badge?repo=HKUDS/KAGWeb" />
   </picture>
  </a>
 </p>
@@ -807,7 +807,7 @@ DeepMentor также стоит на плечах выдающихся прое
 Лицензировано по [Apache License 2.0](LICENSE).
 
 <p>
-  <img src="https://visitor-badge.laobi.icu/badge?page_id=HKUDS.DeepMentor&style=for-the-badge&color=00d4ff" alt="Просмотры">
+  <img src="https://visitor-badge.laobi.icu/badge?page_id=HKUDS.KAGWeb&style=for-the-badge&color=00d4ff" alt="Просмотры">
 </p>
 
 </div>

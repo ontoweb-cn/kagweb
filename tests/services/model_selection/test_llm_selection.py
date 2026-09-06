@@ -1,4 +1,4 @@
-from deepmentor.services.model_selection import (
+from kagweb.services.model_selection import (
     LLMSelection,
     apply_llm_selection_to_catalog,
     list_llm_options,

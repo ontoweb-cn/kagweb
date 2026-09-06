@@ -29,7 +29,7 @@ import { inputClass, selectClass, selectOptionClass } from "./shared";
 /**
  * Connections — the credential layer.
  *
- * Every model service in DeepMentor stores its own profile with its own key,
+ * Every model service in KAGWeb stores its own profile with its own key,
  * which is right when the keys differ and absurd when they do not: one
  * OpenRouter key had to be pasted into five pages. A connection is that key,
  * typed once, with one linked profile created per service that can use it.

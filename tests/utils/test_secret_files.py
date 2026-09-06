@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from deepmentor.utils.secret_files import (
+from kagweb.utils.secret_files import (
     SECRET_FILE_MODE,
     write_secret_text,
 )

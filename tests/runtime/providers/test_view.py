@@ -7,11 +7,11 @@ from typing import Any
 
 import pytest
 
-from deepmentor.core.tool_protocol import BaseTool, ToolDefinition, ToolResult
-from deepmentor.runtime.providers.scope import ToolScope
-from deepmentor.runtime.providers.view import build_tool_view
-from deepmentor.runtime.registry.scoped_registry import ScopedToolRegistry
-from deepmentor.runtime.registry.tool_registry import ToolRegistry
+from kagweb.core.tool_protocol import BaseTool, ToolDefinition, ToolResult
+from kagweb.runtime.providers.scope import ToolScope
+from kagweb.runtime.providers.view import build_tool_view
+from kagweb.runtime.registry.scoped_registry import ScopedToolRegistry
+from kagweb.runtime.registry.tool_registry import ToolRegistry
 
 PAGEINDEX = "pageindex"
 
@@ -63,14 +63,14 @@ def registry() -> ToolRegistry:
 @pytest.fixture(autouse=True)
 def _stub_providers(monkeypatch) -> _FakeManager:
     manager = _FakeManager()
-    monkeypatch.setattr("deepmentor.services.mcp.get_mcp_manager", lambda: manager)
-    monkeypatch.setattr("deepmentor.services.mcp.load_loaded_tools", lambda session_id: set())
-    monkeypatch.setattr("deepmentor.multi_user.tool_access.allowed_mcp_tools", lambda: None)
+    monkeypatch.setattr("kagweb.services.mcp.get_mcp_manager", lambda: manager)
+    monkeypatch.setattr("kagweb.services.mcp.load_loaded_tools", lambda session_id: set())
+    monkeypatch.setattr("kagweb.multi_user.tool_access.allowed_mcp_tools", lambda: None)
     return manager
 
 
 def _grant(monkeypatch, value: set[str] | None) -> None:
-    monkeypatch.setattr("deepmentor.multi_user.tool_access.allowed_mcp_tools", lambda: value)
+    monkeypatch.setattr("kagweb.multi_user.tool_access.allowed_mcp_tools", lambda: value)
 
 
 @pytest.mark.asyncio
@@ -152,7 +152,7 @@ async def test_a_failing_provider_degrades_instead_of_killing_the_turn(
     def _boom() -> Any:
         raise RuntimeError("mcp is down")
 
-    monkeypatch.setattr("deepmentor.services.mcp.get_mcp_manager", _boom)
+    monkeypatch.setattr("kagweb.services.mcp.get_mcp_manager", _boom)
     view = await build_tool_view(base_registry=registry, scope=ToolScope(session_id="s"))
     assert view.loader is None
     assert view.pool == ()
@@ -163,7 +163,7 @@ async def test_a_failing_provider_degrades_instead_of_killing_the_turn(
 async def test_attach_adds_loaded_schemas_and_binds_the_live_list(registry, monkeypatch) -> None:
     _grant(monkeypatch, None)
     monkeypatch.setattr(
-        "deepmentor.services.mcp.load_loaded_tools", lambda session_id: {"mcp_gh_search"}
+        "kagweb.services.mcp.load_loaded_tools", lambda session_id: {"mcp_gh_search"}
     )
     view = await build_tool_view(base_registry=registry, scope=ToolScope(session_id="s"))
     live: list[dict[str, Any]] = []
@@ -265,10 +265,10 @@ async def test_a_slow_personal_server_costs_only_its_own_tools(
 ) -> None:
     """This runs before the turn's first stream event.
 
-    A third-party host that hangs must not present to the user as DeepMentor
+    A third-party host that hangs must not present to the user as KAGWeb
     hanging, so the scope connect is bounded and the turn proceeds without it.
     """
-    from deepmentor.runtime.providers import view as view_module
+    from kagweb.runtime.providers import view as view_module
 
     monkeypatch.setattr(view_module, "_OWNER_SCOPE_TIMEOUT_S", 0.01)
     _grant(monkeypatch, None)

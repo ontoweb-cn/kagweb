@@ -7,11 +7,11 @@ import httpcore
 import httpx
 import pytest
 
-from deepmentor.services.codex_auth.constants import CODEX_RESPONSES_URL
-from deepmentor.services.codex_auth.contracts import CodexAuthError, CodexToken
-from deepmentor.services.llm.exceptions import LLMProviderTransportError
-from deepmentor.services.llm.provider_core import openai_codex_provider as module
-from deepmentor.services.llm.provider_core.openai_codex_provider import (
+from kagweb.services.codex_auth.constants import CODEX_RESPONSES_URL
+from kagweb.services.codex_auth.contracts import CodexAuthError, CodexToken
+from kagweb.services.llm.exceptions import LLMProviderTransportError
+from kagweb.services.llm.provider_core import openai_codex_provider as module
+from kagweb.services.llm.provider_core.openai_codex_provider import (
     CodexHTTPError,
     OpenAICodexProvider,
 )
@@ -52,7 +52,7 @@ class FakeCodexService:
 
 
 @pytest.mark.asyncio
-async def test_provider_uses_deepmentor_token_service_and_raw_sol_id(
+async def test_provider_uses_kagweb_token_service_and_raw_sol_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     service = FakeCodexService()

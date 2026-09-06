@@ -5,8 +5,8 @@ from __future__ import annotations
 from fastapi import HTTPException
 import pytest
 
-from deepmentor.multi_user import partner_access
-from deepmentor.multi_user.grants import empty_grant, normalize_grant
+from kagweb.multi_user import partner_access
+from kagweb.multi_user.grants import empty_grant, normalize_grant
 
 
 class _FakeManager:
@@ -24,7 +24,7 @@ class _FakeManager:
 
 
 def _patch_manager(monkeypatch, partners: list[dict]) -> None:
-    import deepmentor.services.partners as pkg
+    import kagweb.services.partners as pkg
 
     monkeypatch.setattr(pkg, "get_partner_manager", lambda: _FakeManager(partners))
 
@@ -197,7 +197,7 @@ def test_visible_partners_projects_by_what_the_caller_may_do(as_user, monkeypatc
 
 
 def test_admin_partner_summary_is_identity_only(monkeypatch):
-    from deepmentor.api.routers import multi_user as router
+    from kagweb.api.routers import multi_user as router
 
     _patch_manager(
         monkeypatch,

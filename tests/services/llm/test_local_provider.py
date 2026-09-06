@@ -8,7 +8,7 @@ from types import TracebackType
 from _pytest.monkeypatch import MonkeyPatch
 import pytest
 
-from deepmentor.services.llm import local_provider
+from kagweb.services.llm import local_provider
 
 
 class _FakeResponse:
@@ -92,7 +92,7 @@ async def test_openai_compatible_models_come_from_models_endpoint(
 
 @pytest.mark.asyncio
 async def test_stream_shim_forwards_to_factory(monkeypatch: MonkeyPatch) -> None:
-    from deepmentor.services.llm import factory
+    from kagweb.services.llm import factory
 
     async def fake_stream(prompt: str, **kwargs: object):
         yield f"{prompt}:{kwargs['model']}"

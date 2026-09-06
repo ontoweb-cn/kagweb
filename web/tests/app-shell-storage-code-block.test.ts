@@ -52,7 +52,7 @@ import {
 
 test("app-shell-storage: code block theme defaults to oneDark", () => {
   assert.equal(DEFAULT_CODE_BLOCK_THEME, "oneDark");
-  assert.equal(CODE_BLOCK_THEME_STORAGE_KEY, "deepmentor.code-block-theme");
+  assert.equal(CODE_BLOCK_THEME_STORAGE_KEY, "kagweb.code-block-theme");
 
   // When no value is stored, read returns default
   mockLocalStorage = {}; // Clear
@@ -64,7 +64,7 @@ test("app-shell-storage: code block show line numbers defaults to false", () => 
   assert.equal(DEFAULT_CODE_BLOCK_SHOW_LINE_NUMBERS, false);
   assert.equal(
     CODE_BLOCK_SHOW_LINE_NUMBERS_STORAGE_KEY,
-    "deepmentor.code-block-show-line-numbers",
+    "kagweb.code-block-show-line-numbers",
   );
 
   // When no value is stored, read returns default
@@ -77,7 +77,7 @@ test("app-shell-storage: code block wrap long lines defaults to false", () => {
   assert.equal(DEFAULT_CODE_BLOCK_WRAP_LONG_LINES, false);
   assert.equal(
     CODE_BLOCK_WRAP_LONG_LINES_STORAGE_KEY,
-    "deepmentor.code-block-wrap-long-lines",
+    "kagweb.code-block-wrap-long-lines",
   );
 
   // When no value is stored, read returns default
@@ -126,7 +126,7 @@ test("app-shell-storage: write and read code block wrap long lines", () => {
 });
 
 test("app-shell-storage: CODE_BLOCK_SETTINGS_EVENT constant exists", () => {
-  assert.equal(CODE_BLOCK_SETTINGS_EVENT, "deepmentor:code-block-settings");
+  assert.equal(CODE_BLOCK_SETTINGS_EVENT, "kagweb:code-block-settings");
 });
 
 test("app-shell-storage: write dispatches CODE_BLOCK_SETTINGS_EVENT", () => {

@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from deepmentor.api.main import app, health_live, health_ready
+from kagweb.api.main import app, health_live, health_ready
 
 
 def test_only_canonical_transport_and_resource_routes_are_registered() -> None:

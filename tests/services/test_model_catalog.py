@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 
-from deepmentor.services.config.model_catalog import SERVICE_NAMES, ModelCatalogService
+from kagweb.services.config.model_catalog import SERVICE_NAMES, ModelCatalogService
 
 
 def test_load_creates_empty_catalog_without_dotenv_hydration(tmp_path: Path):

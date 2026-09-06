@@ -6,8 +6,8 @@ import uuid
 
 import pytest
 
-from deepmentor.runtime.coordination import RedisCoordinator
-from deepmentor.services.session.sqlite_store import SQLiteSessionStore
+from kagweb.runtime.coordination import RedisCoordinator
+from kagweb.services.session.sqlite_store import SQLiteSessionStore
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.redis_integration]
 
@@ -19,11 +19,11 @@ async def test_four_workers_complete_one_thousand_turns_without_conflicts(tmp_pa
     lease, event, command, and durable-state failures remain deterministic.
     """
 
-    redis_url = os.environ.get("DEEPMENTOR_TEST_REDIS_URL", "")
+    redis_url = os.environ.get("KAGWEB_TEST_REDIS_URL", "")
     if not redis_url:
-        pytest.skip("DEEPMENTOR_TEST_REDIS_URL is not configured")
+        pytest.skip("KAGWEB_TEST_REDIS_URL is not configured")
 
-    prefix = f"deepmentor-stress-{uuid.uuid4().hex}"
+    prefix = f"kagweb-stress-{uuid.uuid4().hex}"
     coordinators = [
         RedisCoordinator(
             redis_url,

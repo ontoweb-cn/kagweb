@@ -6,9 +6,9 @@ import json
 
 import pytest
 
-from deepmentor.partners.config import paths as partner_paths
-from deepmentor.partners.helpers import ensure_dir
-from deepmentor.services.partners.channel_state_migration import rehome_shared_channel_state
+from kagweb.partners.config import paths as partner_paths
+from kagweb.partners.helpers import ensure_dir
+from kagweb.services.partners.channel_state_migration import rehome_shared_channel_state
 
 
 @pytest.fixture

@@ -12,8 +12,8 @@ from typing import Any
 
 import pytest
 
-from deepmentor.services.llm.multimodal import has_image_parts
-from deepmentor.services.llm.provider_core.base import LLMProvider, LLMResponse
+from kagweb.services.llm.multimodal import has_image_parts
+from kagweb.services.llm.provider_core.base import LLMProvider, LLMResponse
 
 
 def _image_messages() -> list[dict[str, Any]]:

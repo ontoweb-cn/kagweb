@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from deepmentor.runtime import launcher
-from deepmentor.runtime import process as runtime_process
-from deepmentor.runtime.home import validate_runtime_home
-from deepmentor.services.app_update import UpdateJobStore, update_store_root
+from kagweb.runtime import launcher
+from kagweb.runtime import process as runtime_process
+from kagweb.runtime.home import validate_runtime_home
+from kagweb.services.app_update import UpdateJobStore, update_store_root
 
 
 class _FakeTty:
@@ -68,21 +68,21 @@ def test_packaged_web_cache_replaces_next_public_placeholders(tmp_path: Path) ->
 
 def test_runtime_home_rejects_project_data_paths(monkeypatch, tmp_path: Path) -> None:
     package_root = tmp_path / "package"
-    monkeypatch.setattr("deepmentor.runtime.home.PACKAGE_ROOT", package_root)
+    monkeypatch.setattr("kagweb.runtime.home.PACKAGE_ROOT", package_root)
 
-    with pytest.raises(ValueError, match="Invalid DeepMentor runtime home"):
+    with pytest.raises(ValueError, match="Invalid KAGWeb runtime home"):
         validate_runtime_home(package_root / "data")
-    with pytest.raises(ValueError, match="Invalid DeepMentor runtime home"):
+    with pytest.raises(ValueError, match="Invalid KAGWeb runtime home"):
         validate_runtime_home(package_root / "data" / "user")
 
 
 def test_start_does_not_create_nested_data_tree(monkeypatch, tmp_path: Path) -> None:
     package_root = tmp_path / "package"
     bad_home = package_root / "data" / "user"
-    monkeypatch.setattr("deepmentor.runtime.home.PACKAGE_ROOT", package_root)
+    monkeypatch.setattr("kagweb.runtime.home.PACKAGE_ROOT", package_root)
     monkeypatch.setattr(launcher, "get_runtime_home", lambda _home=None: bad_home)
 
-    with pytest.raises(SystemExit, match="Invalid DeepMentor runtime home"):
+    with pytest.raises(SystemExit, match="Invalid KAGWeb runtime home"):
         launcher.start(bad_home)
 
     assert not bad_home.exists()
@@ -454,7 +454,7 @@ def test_source_production_build_is_reused_until_an_input_changes(
     calls: list[tuple[list[str], Path, str]] = []
 
     def _run(command, cwd, env, **_kwargs):
-        calls.append((list(command), Path(cwd), env["DEEPMENTOR_NEXT_DIST_DIR"]))
+        calls.append((list(command), Path(cwd), env["KAGWEB_NEXT_DIST_DIR"]))
         next_env.write_text("// production dist types\n", encoding="utf-8")
         dist = source / launcher.SOURCE_PRODUCTION_DIST_DIR
         (dist / "standalone").mkdir(parents=True, exist_ok=True)
@@ -493,8 +493,8 @@ def test_start_uses_ipv4_loopback_for_frontend_proxy(
     monkeypatch: pytest.MonkeyPatch,
     resolved_backend_port: int,
 ) -> None:
-    from deepmentor.services import config as config_module
-    from deepmentor.services import setup as setup_module
+    from kagweb.services import config as config_module
+    from kagweb.services import setup as setup_module
 
     settings_dir = tmp_path / "data" / "user" / "settings"
     settings = config_module.LaunchSettings(
@@ -523,7 +523,7 @@ def test_start_uses_ipv4_loopback_for_frontend_proxy(
     monkeypatch.setattr(launcher, "resolve_language", lambda: "en")
     monkeypatch.setattr(launcher, "print_banner", lambda **_kwargs: None)
     monkeypatch.setattr(launcher, "_log", lambda _message: None)
-    monkeypatch.setenv("DEEPMENTOR_NEXT_DIST_DIR", ".next-inherited")
+    monkeypatch.setenv("KAGWEB_NEXT_DIST_DIR", ".next-inherited")
     monkeypatch.setenv(launcher.DETACHED_WORKER_ENV, "1")
     monkeypatch.setenv(launcher.DETACHED_TOKEN_ENV, "secret-token")
     monkeypatch.setattr(
@@ -555,11 +555,11 @@ def test_start_uses_ipv4_loopback_for_frontend_proxy(
     with pytest.raises(RuntimeError, match="captured launch environment"):
         launcher.start(tmp_path)
 
-    assert captured_envs["frontend"]["DEEPMENTOR_API_BASE_URL"] == (
+    assert captured_envs["frontend"]["KAGWEB_API_BASE_URL"] == (
         f"http://127.0.0.1:{resolved_backend_port}"
     )
-    assert "DEEPMENTOR_NEXT_DIST_DIR" not in captured_envs["backend"]
-    assert "DEEPMENTOR_NEXT_DIST_DIR" not in captured_envs["frontend"]
+    assert "KAGWEB_NEXT_DIST_DIR" not in captured_envs["backend"]
+    assert "KAGWEB_NEXT_DIST_DIR" not in captured_envs["frontend"]
     assert launcher.DETACHED_WORKER_ENV not in captured_envs["backend"]
     assert launcher.DETACHED_TOKEN_ENV not in captured_envs["backend"]
 

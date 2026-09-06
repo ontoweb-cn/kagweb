@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from deepmentor.services.session.sqlite_store import (
+from kagweb.services.session.sqlite_store import (
     SQLiteSessionStore,
     make_imported_session_id,
 )

@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from pydantic import ValidationError
 import pytest
 
-from deepmentor.partners.bus.events import OutboundMessage
-from deepmentor.partners.bus.queue import MessageBus
-from deepmentor.partners.channels.napcat import NapcatChannel, NapcatConfig
+from kagweb.partners.bus.events import OutboundMessage
+from kagweb.partners.bus.queue import MessageBus
+from kagweb.partners.channels.napcat import NapcatChannel, NapcatConfig
 
 
 def _make_channel(**overrides) -> NapcatChannel:
@@ -621,7 +621,7 @@ class TestDispatchFrame:
 
 class TestChannelSchema:
     def test_napcat_in_all_channel_schemas(self):
-        from deepmentor.api.routers._partners_channel_schema import all_channel_schemas
+        from kagweb.api.routers._partners_channel_schema import all_channel_schemas
 
         schemas = all_channel_schemas()
         assert "napcat" in schemas
@@ -632,7 +632,7 @@ class TestChannelSchema:
         assert payload["default_config"]["ws_url"] == "ws://127.0.0.1:3001"
 
     def test_coexists_with_official_qq_channel(self):
-        from deepmentor.api.routers._partners_channel_schema import all_channel_schemas
+        from kagweb.api.routers._partners_channel_schema import all_channel_schemas
 
         schemas = all_channel_schemas()
         assert "qq" in schemas

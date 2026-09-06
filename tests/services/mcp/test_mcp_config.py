@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from deepmentor.services.mcp.config import MCPConfig, MCPServerConfig
-from deepmentor.services.mcp.manager import wrapped_tool_name
-from deepmentor.services.mcp.network import validate_mcp_url
+from kagweb.services.mcp.config import MCPConfig, MCPServerConfig
+from kagweb.services.mcp.manager import wrapped_tool_name
+from kagweb.services.mcp.network import validate_mcp_url
 
 
 def test_resolved_type_stdio() -> None:
