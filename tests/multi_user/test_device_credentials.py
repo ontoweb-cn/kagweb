@@ -381,6 +381,18 @@ def test_disabled_account_fails_closed(mu_isolated_root, monkeypatch):
 def test_heartbeat_enforces_freshness_daily_limit_and_day_rollover(mu_isolated_root, monkeypatch):
     client, users = _client(mu_isolated_root, monkeypatch)
     learner_id = users["learner"]["id"]
+
+    from kagweb.multi_user import device_credentials
+
+    # Pin the clock before issuance. The scenario books usage at
+    # started+0/60/300 and expects the quota to roll over at started+86400 —
+    # which only holds while the whole span sits inside one UTC day: with the
+    # real wall clock near UTC midnight, the +300s heartbeat books the usage
+    # on the "next" day and the +86400 re-login still sees the spent quota
+    # (401). Noon UTC keeps every step off the boundary deterministically.
+    clock = {"now": datetime(2026, 9, 6, 12, 0, 0, tzinfo=timezone.utc)}
+    monkeypatch.setattr(device_credentials, "utc_now", lambda: clock["now"])
+
     issued = client.post(
         "/api/auth/devices",
         headers=_auth(users["admin_token"]),
@@ -404,20 +416,18 @@ def test_heartbeat_enforces_freshness_daily_limit_and_day_rollover(mu_isolated_r
     ).json()["devices"]
     started = datetime.fromisoformat(listed[0]["last_heartbeat_at"])
 
-    from kagweb.multi_user import device_credentials
-
-    monkeypatch.setattr(device_credentials, "utc_now", lambda: started)
+    clock["now"] = started
     first = client.post("/api/auth/device/heartbeat", headers=_auth(token))
     assert first.status_code == 200
     assert first.json()["remaining_seconds"] == 300
 
-    monkeypatch.setattr(device_credentials, "utc_now", lambda: _add_seconds(started, 60))
+    clock["now"] = _add_seconds(started, 60)
     second = client.post("/api/auth/device/heartbeat", headers=_auth(token))
     assert second.status_code == 200
     assert second.json()["used_seconds"] == 60
     assert client.get("/api/auth/status", headers=_auth(token)).status_code == 200
 
-    monkeypatch.setattr(device_credentials, "utc_now", lambda: _add_seconds(started, 300))
+    clock["now"] = _add_seconds(started, 300)
     limited = client.post("/api/auth/device/heartbeat", headers=_auth(token))
     assert limited.status_code == 200
     assert limited.json()["ok"] is False
@@ -433,7 +443,7 @@ def test_heartbeat_enforces_freshness_daily_limit_and_day_rollover(mu_isolated_r
         == 401
     )
 
-    monkeypatch.setattr(device_credentials, "utc_now", lambda: _add_seconds(started, 86_400))
+    clock["now"] = _add_seconds(started, 86_400)
     rolled = client.post(
         "/api/auth/device-login",
         json={"pairing_code": issued["pairing_code"], "pin": issued["pin"]},
