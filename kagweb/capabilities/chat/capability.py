@@ -24,8 +24,23 @@ from kagweb.capabilities._shared import emit_capability_result
 from kagweb.core.capability_protocol import CapabilityManifest, TurnCapability
 from kagweb.core.context import UnifiedContext
 from kagweb.services.agent_loop import build_agent_loop_backend
+from kagweb.services.agent_loop.consult import (
+    consult_manifest,
+    consult_session_id,
+    followup_request,
+    parse_consult_directive,
+    strip_consult_directive,
+)
 from kagweb.services.agent_loop.protocol import AgentLoopBackend, AgentLoopEvent
-from kagweb.services.agent_loop.settings import get_agent_loop_settings
+from kagweb.services.agent_loop.settings import (
+    consult_budget as read_consult_budget,
+)
+from kagweb.services.agent_loop.settings import (
+    consult_profiles,
+    find_consult_profile,
+    get_agent_loop_settings,
+    resolve_primary_profile,
+)
 from kagweb.services.i18n import t
 from kagweb.services.llm.usage_tracker import UsageTracker
 from kagweb.services.settings.interface_settings import get_response_language
@@ -50,11 +65,12 @@ class ChatCapability(TurnCapability):
         # may rewrite it), so neither the backend factory nor the request
         # builder may go to disk a second time.
         settings = get_agent_loop_settings()
-        backend = build_agent_loop_backend(settings)
+        primary = resolve_primary_profile(settings)
+        backend = build_agent_loop_backend(primary) if primary else None
         if backend is None:
             await self._run_shell_notice(context, stream)
             return
-        await self._run_agent_loop(context, stream, backend, settings)
+        await self._run_agent_loop(context, stream, backend, primary, settings)
 
     # ------------------------------------------------------------------
     # Framework-shell stub
@@ -85,20 +101,85 @@ class ChatCapability(TurnCapability):
         context: UnifiedContext,
         stream,  # noqa: ANN001
         backend: AgentLoopBackend,
+        primary: dict[str, Any],
         settings: dict[str, Any],
     ) -> None:
-        request = _build_request(context, session_workspace=bool(settings.get("session_workspace")))
+        budget = max(0, read_consult_budget(settings))
+        consults = consult_profiles(settings) if budget > 0 else []
+        language = context.language or "en"
+        request = _build_request(
+            context,
+            session_workspace=bool(primary.get("session_workspace")),
+            consult_manifest=(
+                consult_manifest(consults, budget=budget, language=language)
+                if consults
+                else None
+            ),
+        )
 
-        answer_parts: list[str] = []
         usage: dict[str, Any] = {}
-        async for event in backend.run(request):
-            await _emit_agent_loop_event(stream, event, source=self.name, stage="responding")
-            if event.kind == "content" and event.text:
-                answer_parts.append(event.text)
-            elif event.kind == "usage":
-                usage.update({k: v for k, v in event.data.items() if v is not None})
+        answer = ""
+        asked: set[tuple[str, str]] = set()
+        consults_done = 0
+        # Pass cap = budget + 1: every consult costs one extra pass, and one
+        # runaway loop that keeps emitting directives is cut off here.
+        while True:
+            answer, pass_usage = await self._run_single_pass(stream, backend, request)
+            usage.update({k: v for k, v in pass_usage.items() if v is not None})
+            directive = (
+                parse_consult_directive(answer)
+                if consults and consults_done < budget
+                else None
+            )
+            if directive is None:
+                break
+            key = (directive["agent"], directive["question"])
+            if key in asked:
+                break
+            asked.add(key)
+            consults_done += 1
+            profile = find_consult_profile(settings, directive["agent"])
+            if profile is None:
+                # Unknown agent reference: surface it and stop consulting —
+                # the spoken answer (minus the directive block) still lands.
+                await stream.progress(
+                    t(
+                        "agent_loop.consult_unknown_agent",
+                        agent=directive["agent"],
+                        language=language,
+                    ),
+                    source=self.name,
+                    stage="responding",
+                )
+                answer = strip_consult_directive(answer)
+                break
+            await stream.tool_call(
+                "consult_agent",
+                {"agent": str(profile.get("name")), "question": directive["question"]},
+                source=self.name,
+                stage="responding",
+                metadata={"agent_loop_consult": str(profile.get("id"))},
+            )
+            consult_answer = await self._run_consult(
+                stream, settings, profile, directive["question"], request, language
+            )
+            await stream.tool_result(
+                "consult_agent",
+                consult_answer or t("agent_loop.consult_empty", language=language),
+                source=self.name,
+                stage="responding",
+                metadata={"agent_loop_consult": str(profile.get("id"))},
+            )
+            request = followup_request(
+                request,
+                pass_answer=answer,
+                consult_name=str(profile.get("name")),
+                consult_answer=consult_answer
+                or t("agent_loop.consult_empty", language=language),
+                language=language,
+            )
 
-        answer = "".join(answer_parts).strip()
+        answer = answer.strip()
         if not answer:
             # A completed turn with no answer text is a backend problem the
             # operator must be able to see; surface it in the trace without
@@ -117,13 +198,87 @@ class ChatCapability(TurnCapability):
             stream,
             {
                 "response": answer,
-                "agent_loop": {"backend": backend.name, "usage": usage or None},
+                "agent_loop": {
+                    "backend": backend.name,
+                    "usage": usage or None,
+                    "consults": consults_done or None,
+                },
             },
             source=self.name,
         )
 
+    async def _run_single_pass(
+        self,
+        stream,  # noqa: ANN001
+        backend: AgentLoopBackend,
+        request: Any,
+    ) -> tuple[str, dict[str, Any]]:
+        """Stream one backend pass; return (answer text, usage counters)."""
+        answer_parts: list[str] = []
+        usage: dict[str, Any] = {}
+        async for event in backend.run(request):
+            await _emit_agent_loop_event(stream, event, source="chat", stage="responding")
+            if event.kind == "content" and event.text:
+                answer_parts.append(event.text)
+            elif event.kind == "usage":
+                usage.update({k: v for k, v in event.data.items() if v is not None})
+        return "".join(answer_parts).strip(), usage
 
-def _build_request(context: UnifiedContext, *, session_workspace: bool) -> Any:
+    async def _run_consult(
+        self,
+        stream,  # noqa: ANN001
+        settings: dict[str, Any],
+        profile: dict[str, Any],
+        question: str,
+        request: Any,
+        language: str,
+    ) -> str:
+        """Run one consult against a secondary profile; its events surface as
+        progress (never as main content), and failures degrade to an error
+        note instead of failing the whole turn."""
+        from kagweb.services.agent_loop.protocol import AgentLoopError, AgentLoopRequest
+
+        name = str(profile.get("name") or profile.get("preset") or "agent")
+        try:
+            consult_backend = build_agent_loop_backend(profile)
+        except AgentLoopError as exc:
+            await stream.error(str(exc), source=self.name, stage="responding")
+            return str(exc)
+        if consult_backend is None:  # pragma: no cover - consult_profiles filters
+            return ""
+        consult_request = AgentLoopRequest(
+            prompt=question,
+            session_id=consult_session_id(request, str(profile.get("id"))),
+            language=language,
+        )
+        answer_parts: list[str] = []
+        try:
+            async for event in consult_backend.run(consult_request):
+                text = event.text or event.name
+                if text:
+                    await stream.progress(
+                        text,
+                        source=f"consult:{name}",
+                        stage="responding",
+                        metadata={
+                            "agent_loop_consult": str(profile.get("id")),
+                            "kind": event.kind,
+                        },
+                    )
+                if event.kind == "content" and event.text:
+                    answer_parts.append(event.text)
+        except AgentLoopError as exc:
+            await stream.error(str(exc), source=f"consult:{name}", stage="responding")
+            return str(exc)
+        return "".join(answer_parts).strip()
+
+
+def _build_request(
+    context: UnifiedContext,
+    *,
+    session_workspace: bool,
+    consult_manifest: str | None = None,
+) -> Any:
     from kagweb.services.agent_loop.protocol import AgentLoopRequest
 
     # Agent loops carry their own system prompt; KAGWeb contributes its
@@ -134,6 +289,7 @@ def _build_request(context: UnifiedContext, *, session_workspace: bool) -> Any:
             context.persona_context,
             context.sidebar_context,
             f"Attached sources:\n{context.source_manifest}" if context.source_manifest else "",
+            consult_manifest or "",
         )
         if block.strip()
     ]

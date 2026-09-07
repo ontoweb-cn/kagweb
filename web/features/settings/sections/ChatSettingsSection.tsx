@@ -7,6 +7,10 @@ import { useSettingsAccess } from "@/features/settings/navigation/SettingsAccess
 import { visibleSettingsChildren } from "@/features/settings/navigation/settings-nav";
 
 const loading = () => <div className="min-h-64" aria-hidden="true" />;
+const AgentLoopSettingsPage = dynamic(
+  () => import("./AgentLoopSettingsSection"),
+  { loading },
+);
 const VideoLearningSettingsPage = dynamic(
   () => import("./VideoLearningSettingsSection"),
   { loading },
@@ -28,6 +32,7 @@ const AttachmentSettingsPage = dynamic(
 );
 
 const CHAT_SECTIONS = [
+  { key: "agent-loop", Component: AgentLoopSettingsPage },
   { key: "video-learning", Component: VideoLearningSettingsPage },
   { key: "tools", Component: ToolsSettingsPage },
   { key: "capabilities", Component: CapabilitiesSettingsPage },

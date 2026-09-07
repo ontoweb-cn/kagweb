@@ -105,25 +105,86 @@ real status/body.
 `data/user/settings/system.json`, `agent_loop` block (normalized by
 `RuntimeSettingsService`; env overrides `KAGWEB_AGENT_LOOP_BACKEND` /
 `_URL` / `_COMMAND`, and `KAG_AGENT_LOOP_API_KEY` — the credential carries
-the KAG_ prefix because it belongs to the external agent service):
+the KAG_ prefix because it belongs to the external agent service; env pins
+land on the **primary** profile, creating a synthetic `env-override`
+profile when the file configures none):
 
 ```json
 {
-  "backend": "claude-code",        // "" = shell stub
-  "command": "",                   // CLI: override the preset executable
-  "args": [],                      // CLI: extra argv ("{prompt}" placeholder)
-  "env": {},                       // CLI: extra subprocess env
-  "url": "",                       // HTTP: service base URL (required)
-  "turn_path": "/agent/turn",      // HTTP: turn endpoint path
-  "headers": {},                   // HTTP: extra headers
-  "api_key": "",                   // HTTP: Bearer token
-  "timeout_seconds": 900,          // per-turn wall clock (30..86400)
-  "session_workspace": true        // CLI: per-session working dir
+  "version": 2,
+  "profiles": [
+    {
+      "id": "default",              // stable id; the primary pointer uses it
+      "name": "本地 Intellect",      // display label
+      "preset": "intellect",        // backend kind (builtin.PRESETS)
+      "enabled": true,
+      "command": "",                // CLI: override the preset executable
+      "args": [],                   // CLI: extra argv ("{prompt}" placeholder)
+      "env": {},                    // CLI: the ONLY credentials the child gets
+      "session_workspace": true,    // CLI: per-session working dir
+      "url": "http://localhost:8083", // HTTP: service base URL (required)
+      "turn_path": "/agent/turn",   // HTTP: turn endpoint path
+      "headers": {},                // HTTP: extra headers
+      "api_key": "",                // HTTP: Bearer token
+      "timeout_seconds": 900,       // per-turn wall clock (30..86400)
+      "consult_enabled": true       // may the primary consult this profile
+    }
+  ],
+  "primary": "default",             // "" = shell stub; missing/null = auto
+  "consult_budget": 3               // max consults per turn (0..12)
 }
 ```
 
+**Primary selection.** The primary drives every turn. A missing/null
+`primary` auto-resolves: a local Intellect (community or enterprise)
+first, then any local profile, then the first enabled one — so enabling a
+local `intellect` / `intellect-team` makes it the primary by default. An
+explicit `""` is the operator's shell-stub choice and is never overridden.
+v1 flat blocks migrate into a single `"default"` profile on load.
+
+**Detection** (`kagweb/services/agent_loop/detect.py`, exposed at
+`GET /api/settings/agent-loop/detect`): CLI presets are PATH-probed with
+`shutil.which` (Windows PATHEXT-safe) — the DeepMentor `detect_all()`
+pattern — and configured HTTP profiles get a short direct reachability
+GET (any HTTP response counts; no live agent turn is sent). The settings
+page probes on load and shows install/reachability badges.
+
 Misconfiguration (unknown preset, missing `command` / `url`) **fails turns**
 with a localized error — never a silent fallback to the stub notice.
+
+The same block is configurable from the web UI under **Settings → Chat →
+Agent Loop** (`/settings#agent-loop`, admin-only): profile cards (add /
+edit / remove / enable), the primary picker with the automatic rule,
+per-profile fields, detection badges, a no-live-turn configuration check,
+and the API key as a write-only secret (`GET /api/settings/agent-loop`
+redacts it; `PUT` treats an omitted key as "keep the stored one"). Changes
+apply to the next turn — the chat capability re-reads the block and
+rebuilds the backend per turn.
+
+## Consultation (multi agent-loop)
+
+Enabled, `consult_enabled` profiles other than the primary are offered to
+it for mid-turn consultation — DeepMentor's `consult_subagent` mechanism
+adapted to KAGWeb's delegated-turn architecture (the primary is an
+external process that cannot call KAGWeb tools, so the consult rides on
+the existing request/response contract; see
+`kagweb/services/agent_loop/consult.py`):
+
+1. KAGWeb appends a **manifest** of consultable agents to the turn prompt.
+2. A backend wanting a consultation ends its reply with **only** a fenced
+   ```` ```consult {"agent": "<id>", "question": "…"} ``` ```` block.
+3. KAGWeb parses the tail directive, runs the named profile (its events
+   stream as progress under `consult:<name>`; the exchange surfaces as a
+   `consult_agent` tool_call/tool_result pair), appends the result to the
+   history, and re-runs the primary.
+4. Repeat until no directive, the budget (`consult_budget`, default 3) is
+   spent, or the directive repeats — then the last pass's answer is the
+   turn's answer.
+
+Consult sessions use `<chat session>::consult::<profile id>` session ids,
+so backends with session state answer follow-up consults with continuity.
+A consult failure (backend error, unknown agent reference) degrades to a
+trace note — the turn still completes.
 
 ## Other integration seams
 

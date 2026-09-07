@@ -24,20 +24,22 @@ from .protocol import (
     AgentLoopEvent,
     AgentLoopRequest,
 )
-from .settings import get_agent_loop_settings
 
 logger = logging.getLogger(__name__)
 
 
 def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend | None:
-    """Instantiate the configured backend; ``None`` when none is configured.
+    """Instantiate one agent-loop backend from a profile dict; ``None`` when
+    no preset is configured.
 
-    Raises :class:`AgentLoopError` for a configured-but-unusable backend
-    (unknown preset, missing CLI command, missing HTTP URL) — those must
-    surface as failed turns, never fall back to the stub notice.
+    Accepts a v2 profile dict (``preset`` key) or a legacy flat block
+    (``backend`` key) so tests and older callers keep working. Raises
+    :class:`AgentLoopError` for a configured-but-unusable backend (unknown
+    preset, missing CLI command, missing HTTP URL) — those must surface as
+    failed turns, never fall back to the stub notice.
     """
-    resolved = dict(settings if settings is not None else get_agent_loop_settings())
-    name = str(resolved.get("backend") or "").strip()
+    resolved = dict(settings if settings is not None else {})
+    name = str(resolved.get("preset") or resolved.get("backend") or "").strip()
     if not name:
         return None
     preset = PRESETS.get(name)

@@ -37,6 +37,8 @@ from kagweb.services.config import (
 )
 from kagweb.services.config.origins import normalize_origins
 from kagweb.services.config.runtime_settings import (
+    AGENT_LOOP_CONSULT_BUDGET_RANGE,
+    AGENT_LOOP_TIMEOUT_RANGE,
     CHAT_ATTACHMENT_CHARS_RANGE,
     CHAT_ATTACHMENT_MAX_FILE_MB_RANGE,
     CHAT_ATTACHMENT_MAX_TOTAL_MB_RANGE,
@@ -265,6 +267,44 @@ class ChatStarterSettingsUpdate(BaseModel):
     """
 
     trace_count: int = Field(ge=STARTER_TRACE_COUNT_RANGE[0], le=STARTER_TRACE_COUNT_RANGE[1])
+
+
+class AgentLoopProfileUpdate(BaseModel):
+    """One agent-loop profile. ``api_key`` is tri-state like MinerU's
+    ``api_token``: ``None`` keeps the stored credential (matched by id), ""
+    clears it, a non-empty string replaces it."""
+
+    id: str = ""
+    name: str = ""
+    preset: str
+    enabled: bool = True
+    command: str = ""
+    args: List[str] = Field(default_factory=list)
+    env: dict[str, str] = Field(default_factory=dict)
+    url: str = ""
+    turn_path: str = ""
+    headers: dict[str, str] = Field(default_factory=dict)
+    api_key: Optional[str] = None
+    timeout_seconds: int = Field(
+        default=900, ge=AGENT_LOOP_TIMEOUT_RANGE[0], le=AGENT_LOOP_TIMEOUT_RANGE[1]
+    )
+    session_workspace: bool = True
+    consult_enabled: bool = True
+
+
+class AgentLoopSettingsUpdate(BaseModel):
+    """The whole ``agent_loop`` v2 block, as the settings UI holds it.
+
+    ``primary`` is ``None`` for "let the default rule pick" (local Intellect
+    first — resolved and persisted on save), a profile id to pin one, or ""
+    for the explicit shell-stub choice.
+    """
+
+    profiles: List[AgentLoopProfileUpdate] = Field(default_factory=list)
+    primary: Optional[str] = None
+    consult_budget: int = Field(
+        default=3, ge=AGENT_LOOP_CONSULT_BUDGET_RANGE[0], le=AGENT_LOOP_CONSULT_BUDGET_RANGE[1]
+    )
 
 
 class MinerUSettingsUpdate(BaseModel):
@@ -920,6 +960,240 @@ async def update_chat_attachment_settings(payload: ChatAttachmentSettingsUpdate)
         }
     )
     return _chat_attachments_payload()
+
+
+# agent_loop block keys a process-env override can currently pin. When one is
+# pinned, the stored value is not what turns actually use — the UI disables the
+# corresponding input instead of letting an operator "save" a lie.
+AGENT_LOOP_ENV_OVERRIDABLE_KEYS = ("preset", "command", "url", "api_key")
+
+
+def _agent_loop_profile_block(
+    profile: AgentLoopProfileUpdate,
+    stored_profiles: dict[str, dict],
+) -> dict[str, Any]:
+    """One profile as persisted — honoring the api_key tri-state and the
+    stored key for unknown ids (new profiles default to no key)."""
+    stored = stored_profiles.get(profile.id) or {}
+    api_key = str(stored.get("api_key") or "")
+    if profile.api_key is not None:
+        api_key = profile.api_key.strip()
+    return {
+        "id": profile.id.strip(),
+        "name": profile.name.strip(),
+        "preset": profile.preset,
+        "enabled": profile.enabled,
+        "command": profile.command,
+        "args": [str(arg) for arg in profile.args],
+        "env": dict(profile.env),
+        "url": profile.url,
+        "turn_path": profile.turn_path,
+        "headers": dict(profile.headers),
+        "api_key": api_key,
+        "timeout_seconds": profile.timeout_seconds,
+        "session_workspace": profile.session_workspace,
+        "consult_enabled": profile.consult_enabled,
+    }
+
+
+def _agent_loop_settings_block(payload: AgentLoopSettingsUpdate) -> dict[str, Any]:
+    import uuid
+
+    stored = get_runtime_settings_service().load_system(include_process_overrides=False)
+    stored_profiles = {
+        str(item.get("id")): item
+        for item in (stored.get("agent_loop") or {}).get("profiles", [])
+        if isinstance(item, dict)
+    }
+    profiles: list[dict[str, Any]] = []
+    taken_ids: set[str] = set()
+    for index, profile in enumerate(payload.profiles):
+        profile_id = profile.id.strip()
+        if not profile_id or profile_id in taken_ids:
+            profile_id = f"p-{uuid.uuid4().hex[:8]}"
+        profile = profile.model_copy(update={"id": profile_id})
+        taken_ids.add(profile_id)
+        profiles.append(_agent_loop_profile_block(profile, stored_profiles))
+    return {
+        "version": 2,
+        "profiles": profiles,
+        # None = auto-resolve (the default rule runs in the normalizer);
+        # "" = the explicit shell stub.
+        "primary": payload.primary,
+        "consult_budget": payload.consult_budget,
+    }
+
+
+def _agent_loop_payload() -> dict[str, Any]:
+    """State for the Agent Loop settings page: stored block (keys redacted),
+    effective block (env overrides applied), preset catalog, the auto-primary
+    candidate, and bounds."""
+    service = get_runtime_settings_service()
+    stored = service.load_system(include_process_overrides=False).get("agent_loop") or {}
+    effective = service.load_system(include_process_overrides=True).get("agent_loop") or {}
+
+    from kagweb.services.agent_loop.builtin import PRESETS
+
+    def _public(block: dict[str, Any]) -> dict[str, Any]:
+        return {
+            **{key: value for key, value in block.items() if key != "profiles"},
+            "profiles": [
+                {
+                    **{key: value for key, value in profile.items() if key != "api_key"},
+                    "api_key_set": bool(profile.get("api_key")),
+                }
+                for profile in (block.get("profiles") or [])
+                if isinstance(profile, dict)
+            ],
+        }
+
+    effective_primary = str(effective.get("primary") or "")
+    stored_primary = str(stored.get("primary") or "")
+    from kagweb.services.config.runtime_settings import _auto_primary_agent_loop
+
+    return {
+        "settings": _public(stored),
+        "effective": _public(effective),
+        # What the default rule (local Intellect first) would pick — shown
+        # next to the "Automatic" primary option so the rule is visible.
+        "auto_primary": _auto_primary_agent_loop(
+            [dict(p) for p in (stored.get("profiles") or []) if isinstance(p, dict)]
+        ),
+        "env_overrides": {
+            key: stored_primary != effective_primary
+            or _primary_field_differs(stored, effective, key)
+            for key in AGENT_LOOP_ENV_OVERRIDABLE_KEYS
+        },
+        "presets": [
+            {
+                "name": preset.name,
+                "family": preset.family,
+                "description": preset.description,
+                # The preset picker's detection column is filled by /detect.
+            }
+            for preset in PRESETS.values()
+        ],
+        "bounds": {
+            "timeout_seconds": list(AGENT_LOOP_TIMEOUT_RANGE),
+            "consult_budget": list(AGENT_LOOP_CONSULT_BUDGET_RANGE),
+        },
+    }
+
+
+def _primary_field_differs(
+    stored: dict[str, Any], effective: dict[str, Any], key: str
+) -> bool:
+    def _field(block: dict[str, Any]) -> Any:
+        primary_id = str(block.get("primary") or "")
+        for profile in block.get("profiles") or []:
+            if isinstance(profile, dict) and str(profile.get("id")) == primary_id:
+                return profile.get(key)
+        return None
+
+    return _field(stored) != _field(effective)
+
+
+@router.get("/agent-loop")
+async def get_agent_loop_settings():
+    _require_settings_admin()
+    return _agent_loop_payload()
+
+
+@router.put("/agent-loop")
+async def update_agent_loop_settings(payload: AgentLoopSettingsUpdate):
+    _require_settings_admin()
+    service = get_runtime_settings_service()
+    current = service.load_system(include_process_overrides=False)
+    # save_system re-normalizes (migration of odd shapes, id dedupe, the
+    # auto-primary rule, clamps) exactly as it does for every other
+    # system.json block, so the response is the truth.
+    service.save_system(
+        {**current, "agent_loop": _agent_loop_settings_block(payload)}
+    )
+    return _agent_loop_payload()
+
+
+@router.get("/agent-loop/detect")
+async def detect_agent_loops():
+    """Probe local agent loops: PATH-probe every CLI preset, reachability-
+    probe every configured HTTP profile. Like DeepMentor's machine-global
+    /api/subagents/detect — but admin-gated, matching the other settings
+    reads here."""
+    _require_settings_admin()
+    from kagweb.services.agent_loop.detect import detect_agent_loops as run_detect
+
+    # Read through the router's settings service (not the module singleton)
+    # so probes follow the same settings directory as every other endpoint.
+    block = (
+        get_runtime_settings_service().load_system().get("agent_loop") or {}
+    )
+    results = await run_detect(block)
+    return {"results": [result.to_dict() for result in results]}
+
+
+@router.post("/agent-loop/test")
+async def test_agent_loop_settings(payload: AgentLoopProfileUpdate):
+    """Validate one draft profile without saving it or sending a live turn.
+
+    Builds the backend exactly as a turn would (preset resolution, required
+    command / URL). CLI commands additionally get a server-PATH resolution
+    probe; HTTP services only get URL sanity checks — the turn contract has
+    no health endpoint, and POSTing it would run a real (possibly costly)
+    agent turn.
+    """
+    _require_settings_admin()
+    import os
+    import shutil
+    import urllib.parse
+
+    from kagweb.services.agent_loop import AgentLoopError, build_agent_loop_backend
+
+    stored = get_runtime_settings_service().load_system(include_process_overrides=False)
+    stored_profiles = {
+        str(item.get("id")): item
+        for item in (stored.get("agent_loop") or {}).get("profiles", [])
+        if isinstance(item, dict)
+    }
+    profile = _agent_loop_profile_block(payload, stored_profiles)
+    try:
+        backend = build_agent_loop_backend(profile)
+    except AgentLoopError as exc:
+        return {"ok": False, "message": str(exc)}
+    if backend is None:
+        return {
+            "ok": True,
+            "message": "No backend configured; chat stays the framework-shell stub.",
+        }
+
+    command = str(getattr(backend, "command", "") or "")
+    if command:
+        if os.path.sep in command or (os.altsep and os.altsep in command):
+            found = os.path.isfile(command)
+            detail = command
+        else:
+            resolved = shutil.which(command)
+            found = resolved is not None
+            detail = resolved or command
+        if not found:
+            return {
+                "ok": False,
+                "message": f"'{command}' was not found on the server PATH.",
+            }
+        return {"ok": True, "message": f"CLI resolved: {detail}. No live turn was sent."}
+
+    scheme = urllib.parse.urlsplit(str(getattr(backend, "url", "") or "")).scheme.lower()
+    if scheme not in {"http", "https"}:
+        return {
+            "ok": False,
+            "message": "The service URL needs an http:// or https:// scheme.",
+        }
+    return {
+        "ok": True,
+        "message": (
+            f"Configuration resolves: turns will POST {backend.url}{backend.turn_path}. "
+            "No live turn was sent."
+        ),
+    }
 
 
 def _mineru_settings_payload() -> dict[str, Any]:

@@ -50,28 +50,21 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
     "chat_attachment_max_total_mb": 25,
     "chat_attachment_max_chars_per_doc": 200_000,
     "chat_attachment_max_chars_total": 150_000,
-    # Conversation backend: an external agent loop (Claude Code / Codex /
+    # Conversation backend: external agent loops (Claude Code / Codex /
     # OpenCode CLIs, or Intellect / Hermes / AgentScope services) instead of
-    # a plain LLM call. ``backend`` "" keeps the framework-shell stub chat.
-    # CLI-family backends spawn subprocesses with the server's privileges —
-    # single-operator shape; multi-user deployments should use the HTTP
-    # family so the loop runs in its own service. See
-    # kagweb/services/agent_loop/ for the full contract.
+    # a plain LLM call. v2 shape: a list of named profiles plus a primary
+    # pointer — the primary drives the turn, the other enabled profiles can
+    # be consulted by it (see ARCHITECTURE.md). ``primary == ""`` keeps the
+    # framework-shell stub; a missing/null primary auto-resolves (local
+    # Intellect first). v1 flat blocks are migrated into one "default"
+    # profile on load. CLI-family profiles spawn subprocesses with the
+    # server's privileges — single-operator shape; multi-user deployments
+    # should use HTTP-family profiles so the loop runs in its own service.
     "agent_loop": {
-        "backend": "",
-        "command": "",
-        "args": [],
-        # CLI family: the ONLY credentials the agent subprocess receives —
-        # the child does not inherit the server environment (which holds
-        # exported deployment secrets), just an allowlisted process basics
-        # set plus these entries.
-        "env": {},
-        "url": "",
-        "turn_path": "/agent/turn",
-        "headers": {},
-        "api_key": "",
-        "timeout_seconds": 900,
-        "session_workspace": True,
+        "version": 2,
+        "profiles": [],
+        "primary": "",
+        "consult_budget": 3,
     },
 }
 
@@ -83,6 +76,14 @@ CHAT_ATTACHMENT_MAX_TOTAL_MB_RANGE = (1, 2048)
 CHAT_ATTACHMENT_CHARS_RANGE = (10_000, 5_000_000)
 
 AGENT_LOOP_TIMEOUT_RANGE = (30, 86_400)
+
+#: Per-turn cap on how many times the primary loop may consult the other
+#: enabled profiles (0 disables consultation entirely).
+AGENT_LOOP_CONSULT_BUDGET_RANGE = (0, 12)
+
+#: Presets that pin the auto-primary preference: a local Intellect (community
+#: or enterprise) is the project's default conversation stack.
+AGENT_LOOP_INTELLECT_PRESETS = frozenset({"intellect", "intellect-team"})
 
 DEFAULT_AUTH_SETTINGS: dict[str, Any] = {
     "version": 1,
@@ -807,21 +808,58 @@ class RuntimeSettingsService:
             payload["chat_attachment_max_chars_per_doc"] = value
         if value := self._process_env_value("CHAT_ATTACHMENT_MAX_CHARS_TOTAL"):
             payload["chat_attachment_max_chars_total"] = value
-        agent_loop = dict(payload.get("agent_loop") or {})
-        if value := self._process_env_value("KAGWEB_AGENT_LOOP_BACKEND"):
-            agent_loop["backend"] = value
-        if value := self._process_env_value("KAGWEB_AGENT_LOOP_COMMAND"):
-            agent_loop["command"] = value
-        if value := self._process_env_value("KAGWEB_AGENT_LOOP_URL"):
-            agent_loop["url"] = value
+        agent_loop = self._apply_agent_loop_env_overrides(payload.get("agent_loop"))
+        if agent_loop is not None:
+            payload["agent_loop"] = agent_loop
+        return self._normalize_system(payload)
+
+    def _apply_agent_loop_env_overrides(self, block: Any) -> dict[str, Any] | None:
+        """Pin the primary profile through process env (containerized shape).
+
+        The four overrides land on the primary profile (creating a synthetic
+        ``env-override`` profile when the file configures none), so single-
+        backend deployments keep working with ``KAGWEB_AGENT_LOOP_BACKEND``
+        alone while profile-based setups stay intact.
+        """
+        backend = self._process_env_value("KAGWEB_AGENT_LOOP_BACKEND")
+        command = self._process_env_value("KAGWEB_AGENT_LOOP_COMMAND")
+        url = self._process_env_value("KAGWEB_AGENT_LOOP_URL")
         # The api_key override carries the KAG_ prefix, not KAGWEB_: the
         # credential belongs to the external agent-loop service, while the
         # other three are KAGWeb deployment concerns.
-        if value := self._process_env_value("KAG_AGENT_LOOP_API_KEY"):
-            agent_loop["api_key"] = value
-        if agent_loop:
-            payload["agent_loop"] = agent_loop
-        return self._normalize_system(payload)
+        api_key = self._process_env_value("KAG_AGENT_LOOP_API_KEY")
+        if not (backend or command or url or api_key):
+            return None
+        normalized = self._normalize_agent_loop({"agent_loop": block or {}})
+        profiles = [dict(profile) for profile in normalized["profiles"]]
+        target = next(
+            (profile for profile in profiles if profile["id"] == normalized["primary"]),
+            None,
+        )
+        if target is None:
+            target = self._normalize_agent_loop_profile(
+                {"id": "env-override", "preset": backend or "custom-http"},
+                index=len(profiles),
+            )
+            profiles.append(target)
+        if backend:
+            target["preset"] = backend
+        if command:
+            target["command"] = str(command)
+        if url:
+            target["url"] = str(url)
+        if api_key:
+            target["api_key"] = str(api_key)
+        return self._normalize_agent_loop(
+            {
+                "agent_loop": {
+                    "version": 2,
+                    "profiles": profiles,
+                    "primary": target["id"],
+                    "consult_budget": normalized["consult_budget"],
+                }
+            }
+        )
 
     def _apply_auth_process_overrides(self, settings: dict[str, Any]) -> dict[str, Any]:
         payload = dict(settings)
@@ -1156,31 +1194,93 @@ class RuntimeSettingsService:
         raw = settings.get("agent_loop")
         block = raw if isinstance(raw, dict) else {}
 
+        if isinstance(block.get("profiles"), list):
+            raw_profiles = block["profiles"]
+        elif _string(block.get("backend")).strip():
+            # v1 migration: the flat single-backend block becomes one
+            # profile named "default", keeping its fields verbatim.
+            legacy = {**block, "preset": _string(block.get("backend")).strip(), "id": "default"}
+            raw_profiles = [legacy]
+        else:
+            raw_profiles = []
+
+        profiles = [
+            self._normalize_agent_loop_profile(item, index=index)
+            for index, item in enumerate(raw_profiles)
+            if isinstance(item, dict)
+        ]
+        self._dedupe_agent_loop_ids(profiles)
+
+        ids = {profile["id"] for profile in profiles}
+        if "profiles" in block:
+            primary = block.get("primary")
+        else:
+            # v1: configured → the migrated "default" profile; absent → auto.
+            primary = "default" if raw_profiles else None
+        if primary is None or (_string(primary) and _string(primary) not in ids):
+            # None = "let the default rule pick" (auto). A dangling id is a
+            # broken config — healed by the same rule rather than stubbing
+            # chat silently. An explicit "" stays "": that is the user's
+            # shell-stub choice.
+            primary = _auto_primary_agent_loop(profiles)
+        return {
+            "version": 2,
+            "profiles": profiles,
+            "primary": _string(primary),
+            "consult_budget": _coerce_clamped_int(
+                block.get("consult_budget"),
+                DEFAULT_SYSTEM_SETTINGS["agent_loop"]["consult_budget"],
+                *AGENT_LOOP_CONSULT_BUDGET_RANGE,
+            ),
+        }
+
+    def _normalize_agent_loop_profile(self, raw: dict[str, Any], *, index: int) -> dict[str, Any]:
         def _env_map(value: Any) -> dict[str, str]:
             if not isinstance(value, dict):
                 return {}
             return {
-                str(key): str(item) for key, item in value.items() if str(key).strip() and str(item)
+                str(key): str(item)
+                for key, item in value.items()
+                if str(key).strip() and str(item)
             }
 
+        # CLI profiles: the ONLY credentials the agent subprocess receives —
+        # the child does not inherit the server environment (which holds
+        # exported deployment secrets), just an allowlisted process basics
+        # set plus these entries.
+        preset = _string(raw.get("preset") or raw.get("backend")).strip()
         return {
-            "backend": _string(block.get("backend")).strip(),
-            "command": _string(block.get("command")).strip(),
-            "args": [str(arg) for arg in (block.get("args") or []) if str(arg).strip() != ""]
-            if isinstance(block.get("args"), list)
+            "id": _string(raw.get("id")).strip() or f"profile-{index + 1}",
+            "name": _string(raw.get("name")).strip() or preset or f"profile-{index + 1}",
+            "preset": preset,
+            "enabled": _coerce_bool(raw.get("enabled"), True),
+            "command": _string(raw.get("command")).strip(),
+            "args": [str(arg) for arg in (raw.get("args") or []) if str(arg).strip() != ""]
+            if isinstance(raw.get("args"), list)
             else [],
-            "env": _env_map(block.get("env")),
-            "url": _string(block.get("url")).strip(),
-            "turn_path": _string(block.get("turn_path")).strip() or "/agent/turn",
-            "headers": _env_map(block.get("headers")),
-            "api_key": _string(block.get("api_key")),
+            "env": _env_map(raw.get("env")),
+            "url": _string(raw.get("url")).strip(),
+            "turn_path": _string(raw.get("turn_path")).strip() or "/agent/turn",
+            "headers": _env_map(raw.get("headers")),
+            "api_key": _string(raw.get("api_key")),
             "timeout_seconds": _coerce_clamped_int(
-                block.get("timeout_seconds"),
-                DEFAULT_SYSTEM_SETTINGS["agent_loop"]["timeout_seconds"],
-                *AGENT_LOOP_TIMEOUT_RANGE,
+                raw.get("timeout_seconds"), 900, *AGENT_LOOP_TIMEOUT_RANGE
             ),
-            "session_workspace": _coerce_bool(block.get("session_workspace"), True),
+            "session_workspace": _coerce_bool(raw.get("session_workspace"), True),
+            "consult_enabled": _coerce_bool(raw.get("consult_enabled"), True),
         }
+
+    @staticmethod
+    def _dedupe_agent_loop_ids(profiles: list[dict[str, Any]]) -> None:
+        seen: set[str] = set()
+        for profile in profiles:
+            candidate = profile["id"]
+            suffix = 2
+            while candidate in seen:
+                candidate = f"{profile['id']}-{suffix}"
+                suffix += 1
+            profile["id"] = candidate
+            seen.add(candidate)
 
     def _normalize_system(self, settings: dict[str, Any]) -> dict[str, Any]:
         public_api_base = _string(settings.get("next_public_api_base_external")) or _string(
@@ -1305,6 +1405,34 @@ def ensure_runtime_settings_files() -> None:
     from .model_catalog import get_model_catalog_service
 
     get_model_catalog_service().load()
+
+
+def _auto_primary_agent_loop(profiles: list[dict[str, Any]]) -> str:
+    """Pick the default primary profile: a local Intellect (community or
+    enterprise) first, then any local profile, then the first enabled one.
+    ``""`` when nothing is enabled — the shell stub."""
+    enabled = [profile for profile in profiles if profile.get("enabled")]
+    if not enabled:
+        return ""
+    from kagweb.services.agent_loop.builtin import PRESETS
+
+    def _is_local(profile: dict[str, Any]) -> bool:
+        preset = PRESETS.get(str(profile.get("preset") or ""))
+        if preset is not None:
+            return preset.family == "cli"
+        from urllib.parse import urlsplit
+
+        host = (urlsplit(str(profile.get("url") or "")).hostname or "").lower()
+        return host in {"localhost", "::1", "0.0.0.0"} or host.startswith("127.")
+
+    for wanted in (
+        [profile for profile in enabled if profile.get("preset") in AGENT_LOOP_INTELLECT_PRESETS],
+        [profile for profile in enabled if _is_local(profile)],
+        enabled,
+    ):
+        if wanted:
+            return str(wanted[0]["id"])
+    return ""
 
 
 def load_system_settings() -> dict[str, Any]:

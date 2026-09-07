@@ -2,6 +2,7 @@
 
 import {
   AudioLines,
+  Bot,
   Boxes,
   Brain,
   Clapperboard,
@@ -193,6 +194,18 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
 
 const CHAT_CHILDREN: SettingsLeaf[] = [
   {
+    key: "agent-loop",
+    href: "/settings#agent-loop",
+    label: { zh: "Agent Loop", en: "Agent Loop" },
+    blurb: {
+      zh: "选择驱动对话的智能体后端（Intellect、HERMES、AgentScope…）。",
+      en: "Choose the agent backend that drives conversations.",
+    },
+    icon: Bot,
+    tile: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    adminOnly: true,
+  },
+  {
     key: "video-learning",
     href: "/settings#video-learning",
     label: { zh: "视频学习", en: "Video Learning" },
@@ -291,8 +304,8 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     key: "chat",
     label: { zh: "聊天", en: "Chat" },
     blurb: {
-      zh: "工具、能力与附件",
-      en: "Tools, capabilities, and attachments",
+      zh: "Agent Loop、工具、能力与附件",
+      en: "Agent Loop, tools, capabilities, and attachments",
     },
     icon: MessagesSquare,
     href: "/settings#chat",
@@ -372,6 +385,7 @@ const STORAGE_PATHS: Record<string, string> = {
   tools: "data/user/settings/interface.json",
   attachments: "data/user/settings/system.json",
   capabilities: "data/user/settings/main.yaml",
+  "agent-loop": "data/user/settings/system.json",
 };
 
 export function storagePathFor(

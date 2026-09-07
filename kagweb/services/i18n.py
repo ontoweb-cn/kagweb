@@ -88,6 +88,28 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.empty_answer": (
             "The agent-loop backend {backend!r} finished without producing an answer."
         ),
+        "agent_loop.consult_manifest": (
+            "<agent-consultation>\n"
+            "Other agent backends are available for consultation:\n"
+            "{agents}\n"
+            "If consulting one would materially improve the answer, end your reply "
+            "with ONLY this fenced block and nothing after it:\n"
+            "```{fence}\n"
+            '{{"agent": "<backend id from the list>", "question": "<the question to ask>"}}\n'
+            "```\n"
+            "You will then receive the consultation result and must answer the user "
+            "directly. At most {budget} consultation(s) this turn. When no consultation "
+            "is needed, just answer the user.\n"
+            "</agent-consultation>"
+        ),
+        "agent_loop.consult_followup": (
+            "The consultation result is attached as the last message. "
+            "Produce your final answer for the user now."
+        ),
+        "agent_loop.consult_unknown_agent": (
+            "Consult request referenced unknown agent '{agent}'; answering directly."
+        ),
+        "agent_loop.consult_empty": "(the consulted agent returned no answer)",
     },
     "zh": {
         "api.content_required": "content 不能为空",
@@ -146,6 +168,26 @@ _MESSAGES: dict[str, dict[str, str]] = {
             'Agent-loop 后端 {backend!r} 需要服务地址，请在 "agent_loop" 配置中设置 "url"。'
         ),
         "agent_loop.empty_answer": "Agent-loop 后端 {backend!r} 结束但未产生回答。",
+        "agent_loop.consult_manifest": (
+            "<agent-consultation>\n"
+            "以下智能体后端可供咨询：\n"
+            "{agents}\n"
+            "如果咨询其中之一能实质性地改善回答，请只以下面的围栏代码块结束回复，"
+            "块后不要有任何内容：\n"
+            "```{fence}\n"
+            '{{"agent": "<列表中的后端 id>", "question": "<要提出的问题>"}}\n'
+            "```\n"
+            "随后你会收到咨询结果，并必须直接回答用户。本回合最多 {budget} 次咨询。"
+            "无需咨询时直接回答即可。\n"
+            "</agent-consultation>"
+        ),
+        "agent_loop.consult_followup": (
+            "咨询结果已作为最后一条消息附上。请现在给出面向用户的最终回答。"
+        ),
+        "agent_loop.consult_unknown_agent": (
+            "咨询请求引用了未知智能体 '{agent}'，改为直接回答。"
+        ),
+        "agent_loop.consult_empty": "（被咨询的智能体未返回内容）",
     },
 }
 
