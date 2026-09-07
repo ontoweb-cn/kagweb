@@ -1,7 +1,6 @@
 # KAGWeb
 
-KAGWeb is an agent-native intelligent learning companion framework, derived
-from [DeepMentor](https://openkg.cn) (OPENKG, Apache-2.0).
+KAGWeb is an agent-native Web UI framework, for OPENKG KAG and ONTOWEB Intellect Agent.
 
 This fork strips the product capability layer down to a **framework shell** and
 prepares the codebase for a custom KAG backend integration:
@@ -11,9 +10,6 @@ prepares the codebase for a custom KAG backend integration:
   with capability/tool registries, the streaming event bus, SQLite + PocketBase
   session storage, runtime settings, multi-user/auth/grants, Partners (IM
   channels), the Next.js web front end, and CLI/SDK entry points.
-- **Removed** — the agent-loop capability graph (chat loop, deep research,
-  question generation, mastery/reading/course surfaces), the RAG / knowledge
-  base layer, memory, skills, cron, sandbox execution, and their UIs.
 - **Next** — the default `chat` capability is a stub that completes every turn
   with a localized shell notice; the KAG backend plugs in at
   `kagweb/runtime/orchestrator.py` -> `kagweb/capabilities/chat/`.
