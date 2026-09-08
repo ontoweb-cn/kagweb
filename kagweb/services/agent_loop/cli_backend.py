@@ -107,6 +107,37 @@ def _error_event(text: str) -> AgentLoopEvent:
     return AgentLoopEvent("error", text=text)
 
 
+def _tool_result_text(content: Any) -> str:
+    """Flatten a ``tool_result`` payload to text, keeping images out of the event.
+
+    Claude Code can return content as a block list; an image block carries the
+    raw base64 in ``source.data``, which would otherwise be inlined verbatim
+    (megabytes per screenshot, and close to the per-line cap). Images are
+    summarised instead — the stream has no image event to carry them.
+    """
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return "" if content is None else json.dumps(content, ensure_ascii=False, default=str)
+    parts: list[str] = []
+    for block in content:
+        if not isinstance(block, dict):
+            continue
+        block_type = str(block.get("type") or "")
+        if block_type == "text":
+            parts.append(str(block.get("text") or ""))
+        elif block_type == "image":
+            source = block.get("source") if isinstance(block.get("source"), dict) else {}
+            data = source.get("data")
+            parts.append(
+                f"[image {source.get('media_type') or 'unknown'}, "
+                f"{len(data) if isinstance(data, str) else 0} base64 chars]"
+            )
+        else:
+            parts.append(json.dumps(block, ensure_ascii=False, default=str))
+    return "\n".join(part for part in parts if part)
+
+
 def translate_claude_code(obj: dict[str, Any], state: dict[str, Any]) -> list[AgentLoopEvent]:
     """Claude Code ``--output-format stream-json`` lines (best effort).
 
@@ -150,21 +181,33 @@ def translate_claude_code(obj: dict[str, Any], state: dict[str, Any]) -> list[Ag
     elif kind == "user" and isinstance(blocks, list):
         for block in blocks:
             if isinstance(block, dict) and str(block.get("type") or "") == "tool_result":
-                content = block.get("content")
-                text = (
-                    content
-                    if isinstance(content, str)
-                    else json.dumps(content, ensure_ascii=False, default=str)
-                )
                 tool_id = str(block.get("tool_use_id") or "")
                 events.append(
                     AgentLoopEvent(
                         "tool_result",
                         name=str((state.get("tool_names") or {}).get(tool_id) or ""),
-                        text=text,
+                        text=_tool_result_text(block.get("content")),
                         data={"id": tool_id, "is_error": bool(block.get("is_error"))},
                     )
                 )
+    elif kind == "system":
+        # The init line names what actually ran; without it the trace cannot
+        # say which model or permission mode produced the turn.
+        if str(obj.get("subtype") or "") == "init":
+            model = str(obj.get("model") or "")
+            permission = str(obj.get("permissionMode") or "")
+            tools = obj.get("tools") if isinstance(obj.get("tools"), list) else []
+            bits = [
+                bit
+                for bit in (
+                    f"model={model}" if model else "",
+                    f"permission={permission}" if permission else "",
+                    f"tools={len(tools)}" if tools else "",
+                )
+                if bit
+            ]
+            if bits:
+                events.append(AgentLoopEvent("progress", text=" · ".join(bits)))
     elif kind == "result":
         result_text = str(obj.get("result") or "")
         if result_text and result_text != state.get("last_assistant_text"):

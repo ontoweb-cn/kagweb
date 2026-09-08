@@ -472,6 +472,58 @@ def test_claude_code_translator_pairs_tool_call_and_result() -> None:
     assert events[0].data == {"id": "call_1", "is_error": True}
 
 
+def test_claude_code_translator_summarises_image_tool_results() -> None:
+    """An image tool_result would otherwise inline its base64 verbatim."""
+    events = translate_claude_code(
+        {
+            "type": "user",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "call_1",
+                        "content": [
+                            {"type": "text", "text": "screenshot taken"},
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/png",
+                                    "data": "A" * 4096,
+                                },
+                            },
+                        ],
+                    }
+                ]
+            },
+        },
+        {},
+    )
+    assert [e.kind for e in events] == ["tool_result"]
+    assert events[0].text == "screenshot taken\n[image image/png, 4096 base64 chars]"
+    assert "AAAA" not in events[0].text
+
+
+def test_claude_code_translator_surfaces_the_init_line() -> None:
+    """The init line names the model and permission mode the turn ran under."""
+    events = translate_claude_code(
+        {
+            "type": "system",
+            "subtype": "init",
+            "model": "claude-sonnet-5",
+            "permissionMode": "acceptEdits",
+            "tools": ["Bash", "Read"],
+            "session_id": "vendor-1",
+        },
+        {},
+    )
+    assert [e.kind for e in events] == ["progress"]
+    assert events[0].text == "model=claude-sonnet-5 · permission=acceptEdits · tools=2"
+
+    # Other system lines carry no user-facing payload and stay silent.
+    assert translate_claude_code({"type": "system", "subtype": "hook"}, {}) == []
+
+
 def test_cli_backend_folds_history_into_the_prompt() -> None:
     """argv is a CLI's only input channel, so the transcript travels with the
     prompt; unknown roles are ignored rather than mislabelled."""
