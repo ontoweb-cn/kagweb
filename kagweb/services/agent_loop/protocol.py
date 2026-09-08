@@ -62,8 +62,10 @@ class AgentLoopRequest:
 
     ``prompt`` is the complete user-side input (persona / grounding blocks
     already folded in by the caller); ``history`` is the prior conversation
-    in OpenAI message shape for backends that accept context; ``workdir``
-    is a per-session working directory for backends that create files.
+    in OpenAI message shape — the HTTP family sends it as its own field, the
+    CLI family folds it into the prompt because argv is its only input
+    channel; ``workdir`` is a per-session working directory for backends
+    that create files.
     """
 
     prompt: str

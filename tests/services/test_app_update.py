@@ -65,7 +65,9 @@ async def test_version_check_falls_back_to_latest_redirect_when_api_is_rate_limi
             return httpx.Response(403, json={"message": "API rate limit exceeded"})
         return httpx.Response(
             302,
-            headers={"location": "https://github.com/example/kagweb/releases/tag/v1.6.1"},
+            # Deliberately older than any shipped version so the assertion below
+            # stays true across version bumps.
+            headers={"location": "https://github.com/example/kagweb/releases/tag/v0.1.0"},
         )
 
     service = VersionCheckService(
@@ -78,8 +80,8 @@ async def test_version_check_falls_back_to_latest_redirect_when_api_is_rate_limi
         ("GET", app_update.GITHUB_LATEST_RELEASE_URL),
         ("HEAD", app_update.GITHUB_LATEST_RELEASE_WEB_URL),
     ]
-    assert result.release.version == "1.6.1"
-    assert result.release.url == "https://github.com/example/kagweb/releases/tag/v1.6.1"
+    assert result.release.version == "0.1.0"
+    assert result.release.url == "https://github.com/example/kagweb/releases/tag/v0.1.0"
     assert result.update_available is False
 
 

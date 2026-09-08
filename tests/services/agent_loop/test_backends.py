@@ -430,6 +430,75 @@ def test_claude_code_translator_error_subtype() -> None:
     assert any(e.kind == "error" for e in events)
 
 
+def test_claude_code_translator_pairs_tool_call_and_result() -> None:
+    """A tool_result block carries only the tool_use id, so the call's name is
+    remembered to label the result — and the id travels on both events so the
+    trace can pair them."""
+    state: dict[str, Any] = {}
+    events = translate_claude_code(
+        {
+            "type": "assistant",
+            "message": {
+                "content": [
+                    {"type": "tool_use", "id": "call_1", "name": "Bash", "input": {"command": "ls"}}
+                ]
+            },
+        },
+        state,
+    )
+    assert [e.kind for e in events] == ["tool_call"]
+    assert events[0].name == "Bash"
+    assert events[0].data == {"args": {"command": "ls"}, "id": "call_1"}
+
+    events = translate_claude_code(
+        {
+            "type": "user",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "call_1",
+                        "is_error": True,
+                        "content": "boom",
+                    }
+                ]
+            },
+        },
+        state,
+    )
+    assert [e.kind for e in events] == ["tool_result"]
+    assert events[0].name == "Bash"
+    assert events[0].text == "boom"
+    assert events[0].data == {"id": "call_1", "is_error": True}
+
+
+def test_cli_backend_folds_history_into_the_prompt() -> None:
+    """argv is a CLI's only input channel, so the transcript travels with the
+    prompt; unknown roles are ignored rather than mislabelled."""
+    backend = build_agent_loop_backend(
+        {"backend": "custom-cli", "command": "a", "args": ["{prompt}"]}
+    )
+    request = _request(
+        "What is my name?",
+        history=[
+            {"role": "user", "content": "My name is Alice"},
+            {"role": "assistant", "content": "Hi Alice"},
+            {"role": "tool", "content": "ignored"},
+        ],
+    )
+    assert backend.build_argv(request) == [
+        "a",
+        "Conversation so far:\n\nUser: My name is Alice\n\nAssistant: Hi Alice\n\nWhat is my name?",
+    ]
+
+
+def test_cli_backend_without_history_uses_the_bare_prompt() -> None:
+    backend = build_agent_loop_backend(
+        {"backend": "custom-cli", "command": "a", "args": ["{prompt}"]}
+    )
+    assert backend.build_argv(_request("Q")) == ["a", "Q"]
+
+
 def test_codex_translator_event_types() -> None:
     state: dict[str, Any] = {}
     out: list[tuple[str, str]] = []

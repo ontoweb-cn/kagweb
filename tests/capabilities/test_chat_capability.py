@@ -116,9 +116,12 @@ async def test_configured_backend_streams_and_publishes_result(monkeypatch) -> N
         {"role": "assistant", "content": "reply"},
     ]
     assert request.session_id == "sess-1"
-    # The answer is the concatenated content; the RESULT envelope names the
-    # backend that produced it.
-    assert context.capability_output.agent_output == "ab"
+    # Content events are separate blocks, so the answer joins them as
+    # paragraphs (and the live stream carries the break with the later block);
+    # the RESULT envelope names the backend that produced it.
+    contents = [payload for kind, payload in events if kind == "content"]
+    assert contents == ["a", "\n\nb"]
+    assert context.capability_output.agent_output == "a\n\nb"
     assert context.capability_output.answer_published is True
     result = events[-1]
     assert result[0] == "result"

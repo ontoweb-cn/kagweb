@@ -135,8 +135,17 @@ def translate_claude_code(obj: dict[str, Any], state: dict[str, Any]) -> list[Ag
                 events.append(AgentLoopEvent("thinking", text=str(block.get("thinking") or "")))
             elif block_type == "tool_use":
                 name = str(block.get("name") or "tool")
+                tool_id = str(block.get("id") or "")
+                if tool_id:
+                    # Remembered so the matching tool_result can name its tool:
+                    # the result block carries only the id, not the name.
+                    state.setdefault("tool_names", {})[tool_id] = name
                 events.append(
-                    AgentLoopEvent("tool_call", name=name, data={"args": block.get("input") or {}})
+                    AgentLoopEvent(
+                        "tool_call",
+                        name=name,
+                        data={"args": block.get("input") or {}, "id": tool_id},
+                    )
                 )
     elif kind == "user" and isinstance(blocks, list):
         for block in blocks:
@@ -147,7 +156,15 @@ def translate_claude_code(obj: dict[str, Any], state: dict[str, Any]) -> list[Ag
                     if isinstance(content, str)
                     else json.dumps(content, ensure_ascii=False, default=str)
                 )
-                events.append(AgentLoopEvent("tool_result", text=text))
+                tool_id = str(block.get("tool_use_id") or "")
+                events.append(
+                    AgentLoopEvent(
+                        "tool_result",
+                        name=str((state.get("tool_names") or {}).get(tool_id) or ""),
+                        text=text,
+                        data={"id": tool_id, "is_error": bool(block.get("is_error"))},
+                    )
+                )
     elif kind == "result":
         result_text = str(obj.get("result") or "")
         if result_text and result_text != state.get("last_assistant_text"):
@@ -349,8 +366,35 @@ class CliAgentLoopBackend(AgentLoopBackend):
         self.timeout_seconds = float(timeout_seconds) if timeout_seconds else 0.0
         self.translator = translator
 
+    @staticmethod
+    def _prompt_with_history(request: AgentLoopRequest) -> str:
+        """Fold the transcript into the prompt.
+
+        A CLI is spawned fresh for every turn and argv is its only input
+        channel, so the prior conversation has to travel with the prompt —
+        unlike the HTTP family, which POSTs ``history`` as its own field. The
+        caller already budgets the transcript (ContextBuilder keeps it inside
+        a rolling-summary budget), so this cannot grow without bound.
+        """
+        labels = {"user": "User", "assistant": "Assistant", "system": "System"}
+        lines: list[str] = []
+        for item in request.history or []:
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role") or "").strip().lower()
+            content = str(item.get("content") or "").strip()
+            # Unknown roles are dropped rather than mislabelled: only the
+            # three roles a conversation actually has are named.
+            if role not in labels or not content:
+                continue
+            lines.append(f"{labels[role]}: {content}")
+        if not lines:
+            return request.prompt
+        transcript = "\n\n".join(lines)
+        return f"Conversation so far:\n\n{transcript}\n\n{request.prompt}"
+
     def build_argv(self, request: AgentLoopRequest) -> list[str]:
-        prompt = request.prompt
+        prompt = self._prompt_with_history(request)
         argv = [self.command, *self.base_args]
         if any("{prompt}" in arg for arg in self.extra_args):
             # Custom backends may pin the prompt anywhere in the argv.

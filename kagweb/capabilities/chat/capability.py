@@ -217,12 +217,20 @@ class ChatCapability(TurnCapability):
         answer_parts: list[str] = []
         usage: dict[str, Any] = {}
         async for event in backend.run(request):
-            await _emit_agent_loop_event(stream, event, source="chat", stage="responding")
             if event.kind == "content" and event.text:
+                # A content event is one complete block, not a delta: an agent
+                # loop emits a separate block for the text before and after a
+                # tool call, and those are distinct paragraphs. Join with the
+                # break folded into the later block so the live stream and the
+                # persisted answer read identically.
+                text = f"\n\n{event.text}" if answer_parts else event.text
                 answer_parts.append(event.text)
-            elif event.kind == "usage":
+                await stream.content(text, source="chat", stage="responding")
+                continue
+            await _emit_agent_loop_event(stream, event, source="chat", stage="responding")
+            if event.kind == "usage":
                 usage.update({k: v for k, v in event.data.items() if v is not None})
-        return "".join(answer_parts).strip(), usage
+        return "\n\n".join(answer_parts).strip(), usage
 
     async def _run_consult(
         self,
@@ -270,7 +278,7 @@ class ChatCapability(TurnCapability):
         except AgentLoopError as exc:
             await stream.error(str(exc), source=f"consult:{name}", stage="responding")
             return str(exc)
-        return "".join(answer_parts).strip()
+        return "\n\n".join(answer_parts).strip()
 
 
 def _build_request(
@@ -333,15 +341,37 @@ async def _emit_agent_loop_event(stream, event: AgentLoopEvent, *, source: str, 
         await stream.thinking(event.text, source=source, stage=stage)
     elif event.kind == "tool_call":
         args = event.data.get("args") if isinstance(event.data.get("args"), dict) else None
+        metadata: dict[str, Any] = {}
+        if event.text:
+            metadata["text"] = event.text
+        call_id = str(event.data.get("id") or "")
+        if call_id:
+            # The same id the matching tool_result carries, so the trace can
+            # pair a call with its result instead of listing both loose.
+            metadata.update({"call_id": call_id, "call_state": "running"})
         await stream.tool_call(
             event.name or "tool",
             args if args is not None else {"input": event.text},
             source=source,
             stage=stage,
-            metadata={"text": event.text} if event.text else None,
+            metadata=metadata or None,
         )
     elif event.kind == "tool_result":
-        await stream.tool_result(event.name or "tool", event.text, source=source, stage=stage)
+        metadata = {}
+        call_id = str(event.data.get("id") or "")
+        if call_id:
+            metadata["call_id"] = call_id
+        is_error = event.data.get("is_error")
+        if is_error is not None:
+            metadata["is_error"] = bool(is_error)
+            metadata["call_state"] = "error" if is_error else "complete"
+        await stream.tool_result(
+            event.name or "tool",
+            event.text,
+            source=source,
+            stage=stage,
+            metadata=metadata or None,
+        )
     elif event.kind == "progress":
         await stream.progress(event.text, source=source, stage=stage)
     elif event.kind == "error":
