@@ -1529,6 +1529,31 @@ export function ChatStateAdapterProvider({
               );
             }
           },
+          (failure) => {
+            // A refused command never starts a turn, so nothing else ends the
+            // optimistic "generating" state the send created — do it here and
+            // tell the user why instead of spinning forever.
+            console.error(
+              `turn protocol error; code=${failure.error_code}; message=${failure.message}`,
+            );
+            const session = stateRef.current.sessions[record.key];
+            if (session?.isStreaming) {
+              dispatch({
+                type: "STREAM_END",
+                key: record.key,
+                status: "failed",
+              });
+            }
+            notify(
+              i18n.t(
+                "The server rejected this message. Check your Agent Loop settings and try again.",
+              ),
+              {
+                tone: "error",
+                durationMs: 6000,
+              },
+            );
+          },
         ),
       };
       runnersRef.current.set(key, record);

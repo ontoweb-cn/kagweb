@@ -34,11 +34,16 @@ export default function ChatMarkdownNoteTab({
   }));
   const { title, content } = draft;
 
-  useEffect(() => {
-    if (!ownerId || !draftScope) return;
-    setDraft(loadChatMarkdownNoteDraft(ownerId, sessionId));
+  // Adopt the persisted draft once the owner + session scope is known.
+  // Adjusting state during render (React's "reset state when a prop changes"
+  // pattern) re-renders before paint; doing it in an effect would cascade a
+  // second commit, and the synchronous localStorage read has no external
+  // system to synchronize with anyway. ``ownerId`` is null until the auth
+  // fetch resolves, so this never fires during hydration.
+  if (ownerId && draftScope && loadedScope !== draftScope) {
     setLoadedScope(draftScope);
-  }, [draftScope, ownerId, sessionId]);
+    setDraft(loadChatMarkdownNoteDraft(ownerId, sessionId));
+  }
 
   useEffect(() => {
     if (!ownerId || loadedScope !== draftScope) return;

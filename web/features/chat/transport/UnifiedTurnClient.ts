@@ -1,5 +1,6 @@
 import type {
   ClientCommand,
+  ProtocolErrorEvent,
   ServerEvent,
 } from "@/contracts/generated/turn-protocol";
 
@@ -71,9 +72,22 @@ export class UnifiedTurnClient {
   private connectionState: RuntimeConnectionState = "idle";
   private closeNotified = false;
 
-  constructor(onEvent: (event: StreamEvent) => void, onClose?: () => void) {
+  constructor(
+    onEvent: (event: StreamEvent) => void,
+    onClose?: () => void,
+    /**
+     * A command the server refused to run. These are not stream events, so
+     * they never reach ``onEvent``; without this hook a rejected turn would
+     * leave the caller waiting on a stream that never starts.
+     */
+    onProtocolError?: (event: ProtocolErrorEvent) => void,
+  ) {
     this.runtime = new TurnRuntimeClient({
       onEvent(event) {
+        if (event.type === "protocol_error") {
+          onProtocolError?.(event);
+          return;
+        }
         const streamEvent = toStreamEvent(event);
         if (streamEvent) onEvent(streamEvent);
       },

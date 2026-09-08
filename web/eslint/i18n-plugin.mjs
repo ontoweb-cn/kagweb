@@ -20,7 +20,20 @@ export default {
           description:
             "Disallow literal UI text in JSX (use i18n t() instead).",
         },
-        schema: [],
+        schema: [
+          {
+            type: "object",
+            properties: {
+              /**
+               * Exact strings that are deliberately not UI copy — brand names,
+               * file names, and other text that must read the same in every
+               * locale. Translating them would be wrong, not missing.
+               */
+              allow: { type: "array", items: { type: "string" } },
+            },
+            additionalProperties: false,
+          },
+        ],
         messages: {
           jsxText: "Avoid literal UI text in JSX. Use t(\"...\") instead.",
           jsxAttr:
@@ -28,6 +41,7 @@ export default {
         },
       },
       create(context) {
+        const allowed = new Set(context.options[0]?.allow ?? []);
         return {
           JSXText(node) {
             const raw = node.value ?? "";
@@ -36,6 +50,7 @@ export default {
             // allow single separators
             if (text.length <= 1) return;
             if (!hasHumanText(text)) return;
+            if (allowed.has(text)) return;
             context.report({ node, messageId: "jsxText" });
           },
           JSXAttribute(node) {
@@ -47,6 +62,7 @@ export default {
             // Only flag literal string values: title="..."
             if (v.type === "Literal" && typeof v.value === "string") {
               if (!hasHumanText(v.value)) return;
+              if (allowed.has(v.value.trim())) return;
               context.report({ node: v, messageId: "jsxAttr", data: { name } });
             }
           },

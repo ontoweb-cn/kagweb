@@ -555,6 +555,7 @@
   "Dialog": "对话框",
   "Reference space": "引用空间",
   "Connection lost while generating. Please retry your message.": "生成过程中连接已断开，请重新发送消息。",
+  "The server rejected this message. Check your Agent Loop settings and try again.": "服务器拒绝了这条消息。请检查 Agent Loop 设置后重试。",
   "Couldn't reach the server. Please check your connection and retry.": "无法连接到服务器，请检查网络后重试。",
   "Today": "今天",
   "Yesterday": "昨天",

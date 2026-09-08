@@ -555,6 +555,7 @@
   "Dialog": "Dialog",
   "Reference space": "Reference space",
   "Connection lost while generating. Please retry your message.": "Connection lost while generating. Please retry your message.",
+  "The server rejected this message. Check your Agent Loop settings and try again.": "The server rejected this message. Check your Agent Loop settings and try again.",
   "Couldn't reach the server. Please check your connection and retry.": "Couldn't reach the server. Please check your connection and retry.",
   "Today": "Today",
   "Yesterday": "Yesterday",

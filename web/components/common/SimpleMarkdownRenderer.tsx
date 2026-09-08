@@ -377,6 +377,10 @@ export default function SimpleMarkdownRenderer({
       );
     },
     img: ({ node, src, alt, ...props }: any) => (
+      // Markdown references arbitrary remote images. next/image cannot
+      // optimize unknown hosts and would need every one allowlisted in
+      // next.config.js, so a plain lazy <img> is the right element here.
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={src}
         alt={alt || ""}
