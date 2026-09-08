@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 
 from kagweb.multi_user.context import get_current_user
 from kagweb.multi_user.model_access import allowed_llm_options
+from kagweb.multi_user.paths import get_admin_path_service
+from kagweb.services.agent_loop.workdir import (
+    normalize_workdir_roots,
+    resolve_allowed_workdir,
+)
 from kagweb.services.codebuddy_auth import get_codebuddy_auth_service
 from kagweb.services.codex_auth import (
     CodexAuthError,
@@ -42,6 +47,7 @@ from kagweb.services.config.runtime_settings import (
     CHAT_ATTACHMENT_CHARS_RANGE,
     CHAT_ATTACHMENT_MAX_FILE_MB_RANGE,
     CHAT_ATTACHMENT_MAX_TOTAL_MB_RANGE,
+    DEFAULT_WORKDIR_ROOT,
     compute_ws_max_size,
 )
 from kagweb.services.config.settings_draft import (
@@ -290,6 +296,9 @@ class AgentLoopProfileUpdate(BaseModel):
     )
     session_workspace: bool = True
     consult_enabled: bool = True
+    #: CLI family only. Empty = the per-session workspace; a non-empty value
+    #: must sit inside ``allowed_workdir_roots``.
+    workdir: str = ""
 
 
 class AgentLoopSettingsUpdate(BaseModel):
@@ -305,6 +314,7 @@ class AgentLoopSettingsUpdate(BaseModel):
     consult_budget: int = Field(
         default=3, ge=AGENT_LOOP_CONSULT_BUDGET_RANGE[0], le=AGENT_LOOP_CONSULT_BUDGET_RANGE[1]
     )
+    allowed_workdir_roots: List[str] = Field(default_factory=lambda: [DEFAULT_WORKDIR_ROOT])
 
 
 class MinerUSettingsUpdate(BaseModel):
@@ -993,6 +1003,7 @@ def _agent_loop_profile_block(
         "timeout_seconds": profile.timeout_seconds,
         "session_workspace": profile.session_workspace,
         "consult_enabled": profile.consult_enabled,
+        "workdir": profile.workdir.strip(),
     }
 
 
@@ -1021,6 +1032,12 @@ def _agent_loop_settings_block(payload: AgentLoopSettingsUpdate) -> dict[str, An
         # "" = the explicit shell stub.
         "primary": payload.primary,
         "consult_budget": payload.consult_budget,
+        # Same normalization as the file layer, so the response, the persisted
+        # block, and the runtime check cannot disagree. An empty list survives
+        # (that is "no workdirs allowed").
+        "allowed_workdir_roots": normalize_workdir_roots(
+            payload.allowed_workdir_roots, default=DEFAULT_WORKDIR_ROOT
+        ),
     }
 
 
@@ -1097,15 +1114,50 @@ async def get_agent_loop_settings():
     return _agent_loop_payload()
 
 
+def _reject_unauthorized_workdirs(block: dict[str, Any]) -> None:
+    """Refuse a profile workdir outside the allowed roots while saving.
+
+    The turn-time check (``chat/capability.py``) is the authoritative one — a
+    config can be saved before the roots change — but catching it here turns a
+    silent trace note into an error the settings page shows next to the field.
+
+    Only enabled CLI profiles are checked: a disabled profile never spawns, and
+    the HTTP family never reads ``workdir``, so a stale value there must not
+    block an unrelated save.
+    """
+    from kagweb.services.agent_loop.builtin import PRESETS
+
+    roots = list(block.get("allowed_workdir_roots") or [])
+    base = get_admin_path_service().project_root
+    for profile in block.get("profiles") or []:
+        if not profile.get("enabled"):
+            continue
+        preset = PRESETS.get(str(profile.get("preset") or ""))
+        if preset is None or preset.family != "cli":
+            continue
+        workdir = str(profile.get("workdir") or "").strip()
+        if workdir and resolve_allowed_workdir(workdir, roots, base=base) is None:
+            label = profile.get("name") or profile.get("id") or "profile"
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Profile {label!r}: workdir {workdir!r} is outside the allowed "
+                    f"roots ({', '.join(roots) or 'none configured'})."
+                ),
+            )
+
+
 @router.put("/agent-loop")
 async def update_agent_loop_settings(payload: AgentLoopSettingsUpdate):
     _require_settings_admin()
     service = get_runtime_settings_service()
     current = service.load_system(include_process_overrides=False)
+    block = _agent_loop_settings_block(payload)
+    _reject_unauthorized_workdirs(block)
     # save_system re-normalizes (migration of odd shapes, id dedupe, the
     # auto-primary rule, clamps) exactly as it does for every other
     # system.json block, so the response is the truth.
-    service.save_system({**current, "agent_loop": _agent_loop_settings_block(payload)})
+    service.save_system({**current, "agent_loop": block})
     return _agent_loop_payload()
 
 

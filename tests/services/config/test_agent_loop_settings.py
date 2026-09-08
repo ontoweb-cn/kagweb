@@ -172,6 +172,40 @@ def test_env_overrides_pin_the_primary_profile(tmp_path: Path) -> None:
     assert block["primary"] == "li"
 
 
+def test_workdir_roots_default_when_missing_but_honour_an_empty_list() -> None:
+    """Absent means "not configured" → default; explicitly empty means
+    "no per-profile workdirs" and must survive normalization."""
+    assert _normalize_agent_loop({})["allowed_workdir_roots"] == ["data/user"]
+    assert _normalize_agent_loop({"allowed_workdir_roots": []})["allowed_workdir_roots"] == []
+    assert _normalize_agent_loop({"allowed_workdir_roots": ["  D:/p  ", ""]})[
+        "allowed_workdir_roots"
+    ] == ["D:/p"]
+
+
+def test_env_override_preserves_the_workdir_allowlist(tmp_path: Path) -> None:
+    """The override path rebuilds the block; dropping the roots there would
+    silently re-default a widened allowlist in env-pinned deployments."""
+    service = RuntimeSettingsService(
+        tmp_path,
+        process_env={"KAGWEB_AGENT_LOOP_BACKEND": "custom-cli"},
+    )
+    stored = service.load_system(include_process_overrides=False)
+    service.save_system(
+        {
+            **stored,
+            "agent_loop": {
+                "version": 2,
+                "profiles": [],
+                "primary": "",
+                "consult_budget": 3,
+                "allowed_workdir_roots": ["D:/projects"],
+            },
+        }
+    )
+    block = service.load_system(include_process_overrides=True)["agent_loop"]
+    assert block["allowed_workdir_roots"] == ["D:/projects"]
+
+
 def test_kagweb_prefixed_api_key_no_longer_applies(tmp_path: Path) -> None:
     """The credential override moved to the KAG_ prefix; the old name is inert."""
     service = RuntimeSettingsService(

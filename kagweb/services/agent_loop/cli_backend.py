@@ -390,6 +390,8 @@ TRANSLATORS: dict[str, Translator] = {
 class CliAgentLoopBackend(AgentLoopBackend):
     """Spawn the configured agent CLI and translate its NDJSON stdout."""
 
+    uses_workdir = True
+
     def __init__(
         self,
         *,

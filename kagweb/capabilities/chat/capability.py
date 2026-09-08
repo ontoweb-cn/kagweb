@@ -18,6 +18,7 @@ transport-agnostic.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from kagweb.capabilities._shared import emit_capability_result
@@ -107,9 +108,23 @@ class ChatCapability(TurnCapability):
         budget = max(0, read_consult_budget(settings))
         consults = consult_profiles(settings) if budget > 0 else []
         language = context.language or "en"
+        # Only the CLI family runs in a working directory; the HTTP family
+        # executes in the operator's own service, so resolving or creating one
+        # on its behalf would be a pointless filesystem side effect.
+        workdir = ""
+        # getattr, not an attribute read: a duck-typed backend that predates
+        # the field simply gets no working directory, which is the safe default.
+        if getattr(backend, "uses_workdir", False):
+            workdir = await _prepare_workdir(
+                _resolve_profile_workdir(primary, settings),
+                stream,
+                source=self.name,
+                language=language,
+            )
         request = _build_request(
             context,
             session_workspace=bool(primary.get("session_workspace")),
+            workdir=workdir,
             consult_manifest=(
                 consult_manifest(consults, budget=budget, language=language) if consults else None
             ),
@@ -249,10 +264,22 @@ class ChatCapability(TurnCapability):
             return str(exc)
         if consult_backend is None:  # pragma: no cover - consult_profiles filters
             return ""
+        # A consult CLI profile runs in its own configured directory too; the
+        # settings page offers the field for every CLI profile, so ignoring it
+        # here would make the control a lie.
+        consult_workdir = ""
+        if getattr(consult_backend, "uses_workdir", False):
+            consult_workdir = await _prepare_workdir(
+                _resolve_profile_workdir(profile, settings),
+                stream,
+                source=f"consult:{name}",
+                language=language,
+            )
         consult_request = AgentLoopRequest(
             prompt=question,
             session_id=consult_session_id(request, str(profile.get("id"))),
             language=language,
+            workdir=consult_workdir,
         )
         answer_parts: list[str] = []
         try:
@@ -276,10 +303,75 @@ class ChatCapability(TurnCapability):
         return "\n\n".join(answer_parts).strip()
 
 
+def _resolve_profile_workdir(profile: dict[str, Any], settings: dict[str, Any]) -> tuple[str, str]:
+    """``(resolved path, refused path)`` for one profile's configured workdir.
+
+    A workdir outside the block's ``allowed_workdir_roots`` is refused: the CLI
+    family runs with the server's privileges, so an unchecked path would be an
+    arbitrary-directory grant. Roots resolve against the *admin* scope, not the
+    requesting user's, because the allowlist is deployment config — a relative
+    root must mean the same directory at save time and at every user's turn.
+    """
+    configured = str(profile.get("workdir") or "").strip()
+    if not configured:
+        return "", ""
+    try:
+        from kagweb.multi_user.paths import get_admin_path_service
+        from kagweb.services.agent_loop.workdir import resolve_allowed_workdir
+
+        resolved = resolve_allowed_workdir(
+            configured,
+            list(settings.get("allowed_workdir_roots") or []),
+            base=get_admin_path_service().project_root,
+        )
+    except Exception:
+        # An unusable base must not grant the directory.
+        return "", configured
+    if resolved is None:
+        return "", configured
+    return str(resolved), ""
+
+
+async def _prepare_workdir(
+    resolved: tuple[str, str],
+    stream,  # noqa: ANN001
+    *,
+    source: str,
+    language: str,
+) -> str:
+    """Create the resolved workdir, reporting a refusal or a failure.
+
+    Returns the directory to run in, or "" to leave the backend on its default.
+    """
+    path, refused = resolved
+    if refused:
+        await stream.progress(
+            t("agent_loop.workdir_not_allowed", path=refused, language=language),
+            source=source,
+            stage="responding",
+        )
+        return ""
+    if not path:
+        return ""
+    try:
+        Path(path).mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        # Distinct from "refused": the operator configured an allowed path that
+        # cannot be created, which they can only fix if they can see it.
+        await stream.progress(
+            t("agent_loop.workdir_unusable", path=path, error=str(exc), language=language),
+            source=source,
+            stage="responding",
+        )
+        return ""
+    return path
+
+
 def _build_request(
     context: UnifiedContext,
     *,
     session_workspace: bool,
+    workdir: str = "",
     consult_manifest: str | None = None,
 ) -> Any:
     from kagweb.services.agent_loop.protocol import AgentLoopRequest
@@ -298,8 +390,10 @@ def _build_request(
     ]
     prompt = "\n\n".join([*blocks, context.user_message])
 
-    workdir = ""
-    if session_workspace and context.session_id:
+    # The operator workdir arrives already resolved, allowlisted and created
+    # (see _prepare_workdir); only the session workspace is created here.
+    resolved_workdir = workdir
+    if not resolved_workdir and session_workspace and context.session_id:
         try:
             from kagweb.services.path_service import get_path_service
 
@@ -307,11 +401,11 @@ def _build_request(
             # get_task_workspace is a pure path join — create it here or the
             # subprocess spawn fails with a missing cwd on the first turn.
             workdir_path.mkdir(parents=True, exist_ok=True)
-            workdir = str(workdir_path)
+            resolved_workdir = str(workdir_path)
         except Exception:
             # A missing workspace must degrade to the server cwd, never
             # fail the turn.
-            workdir = ""
+            resolved_workdir = ""
 
     history = [
         item
@@ -325,7 +419,7 @@ def _build_request(
         history=history,
         session_id=context.session_id,
         language=context.language or "en",
-        workdir=workdir,
+        workdir=resolved_workdir,
     )
 
 

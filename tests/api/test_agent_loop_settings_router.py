@@ -240,3 +240,68 @@ def test_test_endpoint_cli_path_probe(client: TestClient) -> None:
     ).json()
     assert missing["ok"] is False
     assert "PATH" in missing["message"]
+
+
+def test_workdir_inside_allowed_roots_is_persisted(client: TestClient) -> None:
+    body = _put(
+        client,
+        [_profile(id="p1", name="p1", preset="claude-code", workdir="data/user/projects/app")],
+        allowed_workdir_roots=["data/user"],
+    )
+    assert body["settings"]["profiles"][0]["workdir"] == "data/user/projects/app"
+    assert body["settings"]["allowed_workdir_roots"] == ["data/user"]
+
+
+def test_disabled_or_http_profile_workdir_does_not_block_a_save(client: TestClient) -> None:
+    """Only enabled CLI profiles can spawn, so a stale workdir on a profile
+    that never runs must not wedge unrelated settings changes."""
+    body = _put(
+        client,
+        [
+            _profile(
+                id="off",
+                name="off",
+                preset="claude-code",
+                enabled=False,
+                workdir="../outside",
+            ),
+            _profile(
+                id="http", name="http", preset="hermes", url="https://h", workdir="../outside"
+            ),
+        ],
+        allowed_workdir_roots=["data/user"],
+    )
+    assert body["settings"]["profiles"][0]["workdir"] == "../outside"
+
+
+def test_empty_workdir_roots_forbid_every_profile_workdir(client: TestClient) -> None:
+    """Clearing the list is the operator's "no workdirs" switch; it must not be
+    silently replaced by the default."""
+    body = _put(client, [], allowed_workdir_roots=[])
+    assert body["settings"]["allowed_workdir_roots"] == []
+
+    response = client.put(
+        "/api/settings/agent-loop",
+        json={
+            "profiles": [
+                _profile(id="p1", name="p1", preset="claude-code", workdir="data/user/app")
+            ],
+            "allowed_workdir_roots": [],
+        },
+    )
+    assert response.status_code == 400
+    assert "none configured" in response.json()["detail"]
+
+
+def test_workdir_outside_allowed_roots_is_rejected(client: TestClient) -> None:
+    """The loop runs with the server's privileges, so a save that points it
+    anywhere else must fail loudly rather than land in the trace later."""
+    response = client.put(
+        "/api/settings/agent-loop",
+        json={
+            "profiles": [_profile(id="p1", name="p1", preset="claude-code", workdir="../outside")],
+            "allowed_workdir_roots": ["data/user"],
+        },
+    )
+    assert response.status_code == 400
+    assert "outside the allowed roots" in response.json()["detail"]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -17,6 +18,8 @@ pytestmark = pytest.mark.asyncio
 
 class _RecordingBackend:
     name = "recording"
+    #: The CLI family is the one that runs in a working directory.
+    uses_workdir = True
 
     def __init__(self, events: list[AgentLoopEvent]) -> None:
         self.events = events
@@ -125,6 +128,120 @@ async def test_configured_backend_streams_and_publishes_result(monkeypatch) -> N
     assert context.capability_output.answer_published is True
     result = events[-1]
     assert result[0] == "result"
+
+
+async def test_configured_workdir_inside_roots_is_used(monkeypatch, tmp_path) -> None:
+    backend = _RecordingBackend([AgentLoopEvent("content", text="ok")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {
+            "backend": "recording",
+            "session_workspace": False,
+            "workdir": "data/user/app",
+            "allowed_workdir_roots": ["data/user"],
+        },
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(
+        "kagweb.multi_user.paths.get_admin_path_service",
+        lambda: SimpleNamespace(project_root=tmp_path),
+    )
+    context = UnifiedContext(session_id="s", user_message="hi", language="en")
+    events = await _run_capability(context, StreamBus())
+
+    assert backend.requests[0].workdir == str((tmp_path / "data" / "user" / "app").resolve())
+    assert all(kind != "progress" for kind, _ in events)
+
+
+async def test_workdir_outside_roots_falls_back_and_warns(monkeypatch, tmp_path) -> None:
+    """A path the allowlist forbids must not reach the subprocess, and the
+    trace has to say why instead of silently running elsewhere."""
+    backend = _RecordingBackend([AgentLoopEvent("content", text="ok")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {
+            "backend": "recording",
+            "session_workspace": False,
+            "workdir": "elsewhere",
+            "allowed_workdir_roots": ["data/user"],
+        },
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(
+        "kagweb.multi_user.paths.get_admin_path_service",
+        lambda: SimpleNamespace(project_root=tmp_path),
+    )
+    context = UnifiedContext(session_id="s", user_message="hi", language="en")
+    events = await _run_capability(context, StreamBus())
+
+    assert backend.requests[0].workdir == ""
+    assert any(kind == "progress" for kind, _ in events)
+
+
+async def test_empty_allowlist_refuses_every_workdir(monkeypatch, tmp_path) -> None:
+    """Clearing the roots list is how an operator forbids per-profile workdirs."""
+    backend = _RecordingBackend([AgentLoopEvent("content", text="ok")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {
+            "backend": "recording",
+            "session_workspace": False,
+            "workdir": "data/user/app",
+            "allowed_workdir_roots": [],
+        },
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(
+        "kagweb.multi_user.paths.get_admin_path_service",
+        lambda: SimpleNamespace(project_root=tmp_path),
+    )
+    context = UnifiedContext(session_id="s", user_message="hi", language="en")
+    events = await _run_capability(context, StreamBus())
+
+    assert backend.requests[0].workdir == ""
+    assert any(kind == "progress" for kind, _ in events)
+
+
+async def test_http_family_ignores_the_workdir_setting(monkeypatch, tmp_path) -> None:
+    """The HTTP family runs in the operator's own service: a configured workdir
+    must not be resolved, created, or warned about on its behalf."""
+
+    class _HttpishBackend(_RecordingBackend):
+        uses_workdir = False
+
+    backend = _HttpishBackend([AgentLoopEvent("content", text="ok")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {
+            "backend": "recording",
+            "session_workspace": False,
+            "workdir": "data/user/app",
+            "allowed_workdir_roots": ["data/user"],
+        },
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(
+        "kagweb.multi_user.paths.get_admin_path_service",
+        lambda: SimpleNamespace(project_root=tmp_path),
+    )
+    context = UnifiedContext(session_id="s", user_message="hi", language="en")
+    events = await _run_capability(context, StreamBus())
+
+    assert backend.requests[0].workdir == ""
+    assert all(kind != "progress" for kind, _ in events)
+    assert not (tmp_path / "data" / "user" / "app").exists()
 
 
 async def test_backend_error_fails_the_turn(monkeypatch) -> None:

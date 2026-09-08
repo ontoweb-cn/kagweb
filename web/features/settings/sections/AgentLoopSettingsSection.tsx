@@ -43,6 +43,7 @@ type StoredProfile = {
   timeout_seconds: number;
   session_workspace: boolean;
   consult_enabled: boolean;
+  workdir: string;
   api_key_set?: boolean;
 };
 
@@ -51,11 +52,13 @@ type AgentLoopPayload = {
     profiles: StoredProfile[];
     primary: string;
     consult_budget: number;
+    allowed_workdir_roots: string[];
   };
   effective: {
     profiles: StoredProfile[];
     primary: string;
     consult_budget: number;
+    allowed_workdir_roots: string[];
   };
   auto_primary: string;
   env_overrides: Record<string, boolean>;
@@ -183,6 +186,7 @@ function draftToRequest(draft: DraftProfile) {
     timeout_seconds: draft.timeout_seconds,
     session_workspace: draft.session_workspace,
     consult_enabled: draft.consult_enabled,
+    workdir: draft.workdir,
   };
 }
 
@@ -248,6 +252,7 @@ export default function AgentLoopSettingsPage() {
   const [drafts, setDrafts] = useState<DraftProfile[] | null>(null);
   const [primaryMode, setPrimaryMode] = useState<string>("__auto__");
   const [consultBudget, setConsultBudget] = useState<number>(3);
+  const [workdirRoots, setWorkdirRoots] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detecting, setDetecting] = useState(false);
@@ -283,7 +288,12 @@ export default function AgentLoopSettingsPage() {
         const next = data as AgentLoopPayload;
         setPayload(next);
         const pending = pendingExtensionPayload("agent-loop") as
-          | { drafts?: DraftProfile[]; primaryMode?: string; consultBudget?: number }
+          | {
+              drafts?: DraftProfile[];
+              primaryMode?: string;
+              consultBudget?: number;
+              workdirRoots?: string[];
+            }
           | undefined;
         setDrafts(pending?.drafts ?? next.settings.profiles.map(toDraft));
         const savedPrimary = next.settings.primary;
@@ -294,6 +304,9 @@ export default function AgentLoopSettingsPage() {
               : savedPrimary || "__auto__"),
         );
         setConsultBudget(pending?.consultBudget ?? next.settings.consult_budget);
+        setWorkdirRoots(
+          pending?.workdirRoots ?? next.settings.allowed_workdir_roots ?? [],
+        );
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : String(err));
@@ -331,9 +344,21 @@ export default function AgentLoopSettingsPage() {
     runDetect();
   }, [runDetect]);
 
+  // The roots editor keeps raw lines so Enter works while typing; blanks and
+  // stray whitespace are dropped only when the draft is compared or saved.
+  const rootsForSave = useMemo(
+    () => parseArgLines(workdirRoots.join("\n")),
+    [workdirRoots],
+  );
+
   const dirty = useMemo(() => {
     if (!payload || !drafts) return false;
     if (consultBudget !== payload.settings.consult_budget) return true;
+    if (
+      JSON.stringify(rootsForSave) !==
+      JSON.stringify(payload.settings.allowed_workdir_roots ?? [])
+    )
+      return true;
     const savedPrimary = payload.settings.primary;
     const savedMode =
       savedPrimary && savedPrimary === payload.auto_primary
@@ -346,14 +371,18 @@ export default function AgentLoopSettingsPage() {
       if (!draft) return true;
       return JSON.stringify(toDraft(stored)) !== JSON.stringify(draft);
     });
-  }, [consultBudget, drafts, payload, primaryMode]);
+  }, [consultBudget, drafts, payload, primaryMode, rootsForSave]);
 
   // Flush through the global Apply (top toolbar) instead of a local button.
-  const stateRef = useRef({ drafts, primaryMode, consultBudget });
-  stateRef.current = { drafts, primaryMode, consultBudget };
+  const stateRef = useRef({ drafts, primaryMode, consultBudget, rootsForSave });
+  stateRef.current = { drafts, primaryMode, consultBudget, rootsForSave };
   const save = useCallback(async () => {
-    const { drafts: current, primaryMode: mode, consultBudget: budget } =
-      stateRef.current;
+    const {
+      drafts: current,
+      primaryMode: mode,
+      consultBudget: budget,
+      rootsForSave: roots,
+    } = stateRef.current;
     if (!current) return;
     setError(null);
     try {
@@ -365,6 +394,7 @@ export default function AgentLoopSettingsPage() {
           primary:
             mode === "__auto__" ? null : mode === "__none__" ? "" : mode,
           consult_budget: budget,
+          allowed_workdir_roots: roots,
         }),
       });
       const data = (await response.json().catch(() => ({}))) as unknown;
@@ -383,6 +413,7 @@ export default function AgentLoopSettingsPage() {
           : next.settings.primary || "__auto__",
       );
       setConsultBudget(next.settings.consult_budget);
+      setWorkdirRoots(next.settings.allowed_workdir_roots ?? []);
       runDetect();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -397,10 +428,11 @@ export default function AgentLoopSettingsPage() {
         drafts,
         primaryMode,
         consultBudget: consultBudget,
+        workdirRoots,
       },
     });
     return () => registerExtension("agent-loop", null);
-  }, [dirty, save, drafts, primaryMode, consultBudget, registerExtension]);
+  }, [dirty, save, drafts, primaryMode, consultBudget, workdirRoots, registerExtension]);
 
   const runTest = useCallback(
     async (draft: DraftProfile) => {
@@ -463,6 +495,7 @@ export default function AgentLoopSettingsPage() {
       timeout_seconds: 900,
       session_workspace: true,
       consult_enabled: true,
+      workdir: "",
     });
     setDrafts((current) => [...(current ?? []), draft]);
     setExpanded(tempId);
@@ -632,6 +665,24 @@ export default function AgentLoopSettingsPage() {
               )}
             </div>
           )}
+
+          <SettingSection
+            title={t("Allowed working directories")}
+            description={t(
+              "A CLI profile's working directory must sit inside one of these roots — the loop runs with the server's privileges, so an unchecked path would be an arbitrary-directory grant. One per line, resolved against the project root.",
+            )}
+          >
+            <div className="py-4">
+              <textarea
+                className={`${inputClass} min-h-20 w-full resize-y font-mono text-[12.5px] leading-relaxed`}
+                placeholder={"data/user"}
+                value={workdirRoots.join("\n")}
+                onChange={(event) =>
+                  setWorkdirRoots(event.target.value.split("\n"))
+                }
+              />
+            </div>
+          </SettingSection>
 
           <SettingSection
             title={t("Agent loops")}
@@ -868,6 +919,22 @@ export default function AgentLoopSettingsPage() {
                                   checked={draft.session_workspace}
                                   onChange={(next) =>
                                     update(draft.id, { session_workspace: next })
+                                  }
+                                />
+                              }
+                            />
+                            <SettingRow
+                              title={t("Working directory")}
+                              description={t(
+                                "Where the CLI runs. Leave blank for the per-session workspace; a path here must sit inside an allowed root below.",
+                              )}
+                              control={
+                                <input
+                                  className={`${inputClass} w-[360px] max-w-[48vw] font-mono`}
+                                  placeholder="D:/projects/my-app"
+                                  value={draft.workdir}
+                                  onChange={(event) =>
+                                    update(draft.id, { workdir: event.target.value })
                                   }
                                 />
                               }

@@ -7,10 +7,16 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
+from kagweb.services.agent_loop.workdir import normalize_workdir_roots
 from kagweb.services.file_io import atomic_write_json as _atomic_write_json
 from kagweb.services.path_service import get_path_service
 
 from .origins import normalize_origins
+
+#: Root every deployment may write to, relative to the project root. Single
+#: source for the agent-loop workdir default: the system-settings default and
+#: the API payload default both read it.
+DEFAULT_WORKDIR_ROOT = "data/user"
 
 DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
     "version": 1,
@@ -65,6 +71,11 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
         "profiles": [],
         "primary": "",
         "consult_budget": 3,
+        # Roots a CLI profile's ``workdir`` may point into. Defaults to the
+        # workspace tree the app already owns; widen deliberately, since a CLI
+        # loop runs with the server's privileges. An explicitly empty list is
+        # honoured — that is how an operator forbids per-profile workdirs.
+        "allowed_workdir_roots": [DEFAULT_WORKDIR_ROOT],
     },
 }
 
@@ -857,6 +868,9 @@ class RuntimeSettingsService:
                     "profiles": profiles,
                     "primary": target["id"],
                     "consult_budget": normalized["consult_budget"],
+                    # Carried through: dropping it would silently re-default a
+                    # widened allowlist in every env-pinned deployment.
+                    "allowed_workdir_roots": list(normalized["allowed_workdir_roots"]),
                 }
             }
         )
@@ -1232,6 +1246,12 @@ class RuntimeSettingsService:
                 DEFAULT_SYSTEM_SETTINGS["agent_loop"]["consult_budget"],
                 *AGENT_LOOP_CONSULT_BUDGET_RANGE,
             ),
+            # A missing key means "not configured" and takes the default; an
+            # explicitly empty list is honoured, because that is how an
+            # operator forbids every per-profile workdir.
+            "allowed_workdir_roots": normalize_workdir_roots(
+                block.get("allowed_workdir_roots"), default=DEFAULT_WORKDIR_ROOT
+            ),
         }
 
     def _normalize_agent_loop_profile(self, raw: dict[str, Any], *, index: int) -> dict[str, Any]:
@@ -1266,6 +1286,9 @@ class RuntimeSettingsService:
             ),
             "session_workspace": _coerce_bool(raw.get("session_workspace"), True),
             "consult_enabled": _coerce_bool(raw.get("consult_enabled"), True),
+            # Empty = the per-session workspace. A non-empty value is honoured
+            # only inside the block's allowed_workdir_roots (see workdir.py).
+            "workdir": _string(raw.get("workdir")).strip(),
         }
 
     @staticmethod

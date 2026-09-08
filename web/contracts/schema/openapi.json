@@ -115,6 +115,11 @@
             "default": "",
             "title": "Url",
             "type": "string"
+          },
+          "workdir": {
+            "default": "",
+            "title": "Workdir",
+            "type": "string"
           }
         },
         "required": [
@@ -126,6 +131,13 @@
       "AgentLoopSettingsUpdate": {
         "description": "The whole ``agent_loop`` v2 block, as the settings UI holds it.\n\n``primary`` is ``None`` for \"let the default rule pick\" (local Intellect\nfirst — resolved and persisted on save), a profile id to pin one, or \"\"\nfor the explicit shell-stub choice.",
         "properties": {
+          "allowed_workdir_roots": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Workdir Roots",
+            "type": "array"
+          },
           "consult_budget": {
             "default": 3,
             "maximum": 12.0,

@@ -3421,6 +3421,11 @@ export interface components {
        * @default
        */
       readonly url: string;
+      /**
+       * Workdir
+       * @default
+       */
+      readonly workdir: string;
     };
     /**
      * AgentLoopSettingsUpdate
@@ -3431,6 +3436,8 @@ export interface components {
      *     for the explicit shell-stub choice.
      */
     readonly AgentLoopSettingsUpdate: {
+      /** Allowed Workdir Roots */
+      readonly allowed_workdir_roots?: readonly string[];
       /**
        * Consult Budget
        * @default 3

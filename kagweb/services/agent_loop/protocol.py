@@ -95,6 +95,12 @@ class AgentLoopBackend(ABC):
 
     name: str = ""
 
+    #: Whether this family runs with ``request.workdir`` as its working
+    #: directory. The CLI family spawns a subprocess and does; an HTTP service
+    #: runs in the operator's own process and ignores it, so callers must not
+    #: create a directory or enforce the workdir allowlist on its behalf.
+    uses_workdir: bool = False
+
     @abstractmethod
     def run(self, request: AgentLoopRequest) -> Any:  # pragma: no cover - ABC
         """Yield :class:`AgentLoopEvent` objects for one turn."""

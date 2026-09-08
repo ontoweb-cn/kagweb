@@ -110,6 +110,13 @@ _MESSAGES: dict[str, dict[str, str]] = {
             "Consult request referenced unknown agent '{agent}'; answering directly."
         ),
         "agent_loop.consult_empty": "(the consulted agent returned no answer)",
+        "agent_loop.workdir_not_allowed": (
+            "Agent-loop workdir {path!r} is outside the allowed roots and was ignored."
+        ),
+        "agent_loop.workdir_unusable": (
+            "Agent-loop workdir {path!r} could not be created ({error}); "
+            "using the default directory."
+        ),
     },
     "zh": {
         "api.content_required": "content 不能为空",
@@ -186,6 +193,10 @@ _MESSAGES: dict[str, dict[str, str]] = {
         ),
         "agent_loop.consult_unknown_agent": ("咨询请求引用了未知智能体 '{agent}'，改为直接回答。"),
         "agent_loop.consult_empty": "（被咨询的智能体未返回内容）",
+        "agent_loop.workdir_not_allowed": "Agent-loop 工作目录 {path!r} 不在允许的根目录内，已忽略。",
+        "agent_loop.workdir_unusable": (
+            "Agent-loop 工作目录 {path!r} 无法创建（{error}），改用默认目录。"
+        ),
     },
 }
 
