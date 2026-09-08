@@ -57,9 +57,7 @@ register_init(app)
 def run_capability(
     capability: str = typer.Argument(
         ...,
-        help=(
-            "Capability name (currently: chat)."
-        ),
+        help=("Capability name (currently: chat)."),
     ),
     message: str = typer.Argument(..., help="Message to send."),
     session: str | None = typer.Option(None, "--session", help="Existing session id."),
@@ -152,8 +150,7 @@ def serve(
         import uvicorn
     except ImportError:
         console.print(
-            "[bold red]Error:[/] API server dependencies not installed.\n"
-            "Run: pip install -U kagweb"
+            "[bold red]Error:[/] API server dependencies not installed.\nRun: pip install -U kagweb"
         )
         raise typer.Exit(code=1)
 

@@ -11,7 +11,6 @@ intentionally thin so the order of steps is easy to read top-to-bottom.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from rich.console import Console
 import typer
@@ -183,6 +182,8 @@ def _probe_llm_with_retry(console: Console, strings: dict, choice: wiz.LLMChoice
         )
         if not typer.confirm(strings["init.probe_retry"], default=False):
             return
+
+
 def _search_step(
     console: Console,
     strings: dict,

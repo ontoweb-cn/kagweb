@@ -76,7 +76,11 @@ def test_auto_primary_prefers_local_intellect() -> None:
         {
             "profiles": [
                 {"id": "remote", "preset": "hermes", "url": "https://remote", "enabled": True},
-                {"id": "local-intellect", "preset": "intellect-team", "url": "http://127.0.0.1:8083"},
+                {
+                    "id": "local-intellect",
+                    "preset": "intellect-team",
+                    "url": "http://127.0.0.1:8083",
+                },
                 {"id": "local-cli", "preset": "claude-code"},
             ]
         }
@@ -146,7 +150,10 @@ def test_env_overrides_apply(tmp_path: Path) -> None:
 def test_env_overrides_pin_the_primary_profile(tmp_path: Path) -> None:
     service = RuntimeSettingsService(
         tmp_path,
-        process_env={"KAGWEB_AGENT_LOOP_BACKEND": "hermes", "KAGWEB_AGENT_LOOP_URL": "http://h:9000"},
+        process_env={
+            "KAGWEB_AGENT_LOOP_BACKEND": "hermes",
+            "KAGWEB_AGENT_LOOP_URL": "http://h:9000",
+        },
     )
     service.save_system(
         {

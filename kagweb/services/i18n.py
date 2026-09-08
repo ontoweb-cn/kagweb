@@ -184,9 +184,7 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.consult_followup": (
             "咨询结果已作为最后一条消息附上。请现在给出面向用户的最终回答。"
         ),
-        "agent_loop.consult_unknown_agent": (
-            "咨询请求引用了未知智能体 '{agent}'，改为直接回答。"
-        ),
+        "agent_loop.consult_unknown_agent": ("咨询请求引用了未知智能体 '{agent}'，改为直接回答。"),
         "agent_loop.consult_empty": "（被咨询的智能体未返回内容）",
     },
 }

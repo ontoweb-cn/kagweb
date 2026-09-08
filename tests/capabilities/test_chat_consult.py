@@ -40,11 +40,7 @@ class _ScriptedBackend:
 
 
 def _directive_answer(agent: str, question: str) -> str:
-    return (
-        f"```consult\n"
-        f"{json.dumps({'agent': agent, 'question': question})}\n"
-        f"```"
-    )
+    return f"```consult\n{json.dumps({'agent': agent, 'question': question})}\n```"
 
 
 def _settings(
@@ -125,9 +121,7 @@ async def test_consult_flow_runs_secondary_and_converges(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "kagweb.capabilities.chat.capability.build_agent_loop_backend",
-        lambda profile: (
-            primary if profile.get("id") == "primary" else consult_backend
-        ),
+        lambda profile: primary if profile.get("id") == "primary" else consult_backend,
     )
 
     context = UnifiedContext(session_id="chat-1", user_message="what about X?", language="en")

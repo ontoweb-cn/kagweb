@@ -111,9 +111,7 @@ class ChatCapability(TurnCapability):
             context,
             session_workspace=bool(primary.get("session_workspace")),
             consult_manifest=(
-                consult_manifest(consults, budget=budget, language=language)
-                if consults
-                else None
+                consult_manifest(consults, budget=budget, language=language) if consults else None
             ),
         )
 
@@ -127,9 +125,7 @@ class ChatCapability(TurnCapability):
             answer, pass_usage = await self._run_single_pass(stream, backend, request)
             usage.update({k: v for k, v in pass_usage.items() if v is not None})
             directive = (
-                parse_consult_directive(answer)
-                if consults and consults_done < budget
-                else None
+                parse_consult_directive(answer) if consults and consults_done < budget else None
             )
             if directive is None:
                 break
@@ -174,8 +170,7 @@ class ChatCapability(TurnCapability):
                 request,
                 pass_answer=answer,
                 consult_name=str(profile.get("name")),
-                consult_answer=consult_answer
-                or t("agent_loop.consult_empty", language=language),
+                consult_answer=consult_answer or t("agent_loop.consult_empty", language=language),
                 language=language,
             )
 

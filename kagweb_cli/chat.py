@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from contextlib import suppress
 from dataclasses import dataclass, field
 import json
 import shlex
@@ -298,7 +297,6 @@ def _parse_config_assignment(parts: list[str]) -> tuple[str, str] | None:
         value = " ".join(parts[3:]).strip()
         return (key, value) if key and value else None
     return None
-
 
 
 def _parse_config_value(raw_value: str) -> Any:

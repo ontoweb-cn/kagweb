@@ -25,9 +25,9 @@ through the session id our contract already carries.
 
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 import re
-from dataclasses import replace
 from typing import Any
 
 from kagweb.services.agent_loop.protocol import AgentLoopRequest
@@ -103,9 +103,7 @@ def followup_request(
     history.append(
         {"role": "assistant", "content": strip_consult_directive(pass_answer) or "(consulting)"}
     )
-    history.append(
-        {"role": "user", "content": f"[consult:{consult_name}]\n{consult_answer}"}
-    )
+    history.append({"role": "user", "content": f"[consult:{consult_name}]\n{consult_answer}"})
     prompt = t("agent_loop.consult_followup", language=language)
     return replace(request, prompt=prompt, history=history)
 

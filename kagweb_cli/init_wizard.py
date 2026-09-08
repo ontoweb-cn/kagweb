@@ -14,7 +14,6 @@ from dataclasses import dataclass
 import os
 import time
 from typing import Any
-from urllib.parse import parse_qsl, urlparse
 
 import httpx
 from rich.console import Console
@@ -76,6 +75,7 @@ LLM_FALLBACK_MODELS: dict[str, tuple[str, ...]] = {
     ),
     "ollama": ("llama3.2", "qwen2.5", "mistral"),
 }
+
 
 @dataclass(frozen=True)
 class SearchProviderSpec:

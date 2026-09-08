@@ -112,9 +112,7 @@ def consult_profiles(block: dict[str, Any] | None = None) -> list[dict[str, Any]
     ]
 
 
-def find_consult_profile(
-    block: dict[str, Any], reference: str
-) -> dict[str, Any] | None:
+def find_consult_profile(block: dict[str, Any], reference: str) -> dict[str, Any] | None:
     """Resolve a consult directive's ``agent`` reference to a profile.
 
     Matches by id, then display name, then preset name (all

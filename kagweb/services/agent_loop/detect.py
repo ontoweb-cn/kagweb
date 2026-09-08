@@ -21,8 +21,8 @@ machine" for the settings preset picker; profile-level probes answer "is
 from __future__ import annotations
 
 import asyncio
-import shutil
 from dataclasses import asdict, dataclass
+import shutil
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -104,11 +104,7 @@ async def detect_agent_loops(block: dict[str, Any] | None = None) -> list[Detect
     from .settings import get_agent_loop_settings
 
     settings = block if block is not None else get_agent_loop_settings()
-    profiles = [
-        item
-        for item in (settings.get("profiles") or [])
-        if isinstance(item, dict)
-    ]
+    profiles = [item for item in (settings.get("profiles") or []) if isinstance(item, dict)]
 
     cli_results: list[DetectResult] = []
     profile_coros = []
@@ -125,9 +121,7 @@ async def detect_agent_loops(block: dict[str, Any] | None = None) -> list[Detect
             command = str(profile.get("command") or "").strip()
             if command:
                 profile_coros.append(
-                    asyncio.to_thread(
-                        detect_cli, str(profile.get("id")), label, command
-                    )
+                    asyncio.to_thread(detect_cli, str(profile.get("id")), label, command)
                 )
         elif str(profile.get("url") or "").strip():
             profile_coros.append(

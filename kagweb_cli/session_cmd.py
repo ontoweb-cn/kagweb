@@ -55,9 +55,7 @@ def register(app: typer.Typer) -> None:
     @app.command("trace")
     def session_trace(
         session_id: str = typer.Argument(..., help="Session id."),
-        fmt: str = typer.Option(
-            "dsl", "--format", help="Output format: dsl | mermaid."
-        ),
+        fmt: str = typer.Option("dsl", "--format", help="Output format: dsl | mermaid."),
         stable: bool = typer.Option(
             False, "--stable", help="Strip volatile fields (diff/snapshot friendly)."
         ),
@@ -72,17 +70,13 @@ def register(app: typer.Typer) -> None:
         ),
     ) -> None:
         """Export a session's reasoning chain as Session DSL JSON or Mermaid."""
-        maybe_run(
-            _session_trace(session_id, fmt, stable, normalize_ids, include_text, out)
-        )
+        maybe_run(_session_trace(session_id, fmt, stable, normalize_ids, include_text, out))
 
     @app.command("diff")
     def session_diff(
         a: Path = typer.Argument(..., help="First DSL export (.json)."),
         b: Path = typer.Argument(..., help="Second DSL export (.json)."),
-        as_json: bool = typer.Option(
-            False, "--json", help="Emit a machine-readable JSON summary."
-        ),
+        as_json: bool = typer.Option(False, "--json", help="Emit a machine-readable JSON summary."),
     ) -> None:
         """Structurally diff two Session DSL exports.
 
@@ -152,8 +146,7 @@ def _load_dsl_document(path: Path) -> dict:
         raise typer.Exit(code=1) from exc
     if not isinstance(doc, dict) or not isinstance(doc.get("trace"), list):
         console.print(
-            f"[red]Not a Session DSL export:[/] {path} "
-            "(expected a JSON object with a `trace` list)"
+            f"[red]Not a Session DSL export:[/] {path} (expected a JSON object with a `trace` list)"
         )
         raise typer.Exit(code=1)
     return doc
@@ -180,9 +173,7 @@ def _session_diff(a: Path, b: Path, as_json: bool) -> None:
         return
 
     if is_empty(result):
-        console.print(
-            f"[green]No differences[/] — {result['a_turns']} turns compared."
-        )
+        console.print(f"[green]No differences[/] — {result['a_turns']} turns compared.")
         return
 
     table = Table(title="Session DSL diff")

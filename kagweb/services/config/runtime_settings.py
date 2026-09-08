@@ -1239,9 +1239,7 @@ class RuntimeSettingsService:
             if not isinstance(value, dict):
                 return {}
             return {
-                str(key): str(item)
-                for key, item in value.items()
-                if str(key).strip() and str(item)
+                str(key): str(item) for key, item in value.items() if str(key).strip() and str(item)
             }
 
         # CLI profiles: the ONLY credentials the agent subprocess receives —

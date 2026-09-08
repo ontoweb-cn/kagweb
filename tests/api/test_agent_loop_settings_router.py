@@ -4,12 +4,12 @@ keys, auto-primary, detection, and the no-live-turn configuration check."""
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 from kagweb.api import main as api_main
 from kagweb.api.routers import settings as settings_router
@@ -31,9 +31,7 @@ def client(settings_dir: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         return RuntimeSettingsService(settings_dir, process_env={})
 
     monkeypatch.setattr(settings_router, "get_runtime_settings_service", _service)
-    monkeypatch.setattr(
-        settings_router, "get_current_user", lambda: SimpleNamespace(is_admin=True)
-    )
+    monkeypatch.setattr(settings_router, "get_current_user", lambda: SimpleNamespace(is_admin=True))
     return TestClient(api_main.app)
 
 

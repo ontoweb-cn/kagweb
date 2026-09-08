@@ -1080,9 +1080,7 @@ def _agent_loop_payload() -> dict[str, Any]:
     }
 
 
-def _primary_field_differs(
-    stored: dict[str, Any], effective: dict[str, Any], key: str
-) -> bool:
+def _primary_field_differs(stored: dict[str, Any], effective: dict[str, Any], key: str) -> bool:
     def _field(block: dict[str, Any]) -> Any:
         primary_id = str(block.get("primary") or "")
         for profile in block.get("profiles") or []:
@@ -1107,9 +1105,7 @@ async def update_agent_loop_settings(payload: AgentLoopSettingsUpdate):
     # save_system re-normalizes (migration of odd shapes, id dedupe, the
     # auto-primary rule, clamps) exactly as it does for every other
     # system.json block, so the response is the truth.
-    service.save_system(
-        {**current, "agent_loop": _agent_loop_settings_block(payload)}
-    )
+    service.save_system({**current, "agent_loop": _agent_loop_settings_block(payload)})
     return _agent_loop_payload()
 
 
@@ -1124,9 +1120,7 @@ async def detect_agent_loops():
 
     # Read through the router's settings service (not the module singleton)
     # so probes follow the same settings directory as every other endpoint.
-    block = (
-        get_runtime_settings_service().load_system().get("agent_loop") or {}
-    )
+    block = get_runtime_settings_service().load_system().get("agent_loop") or {}
     results = await run_detect(block)
     return {"results": [result.to_dict() for result in results]}
 
