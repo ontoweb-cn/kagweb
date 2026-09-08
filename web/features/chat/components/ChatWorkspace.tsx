@@ -13,7 +13,6 @@ import { ChatMessageList } from '@/features/chat/messages'
 import { TurnNavigator } from '@/components/chat/home/TurnNavigator'
 import SessionLoadingView from '@/components/chat/home/SessionLoadingView'
 import { SESSION_LOAD_TIMEOUT_MS, shouldSurfaceLoadFailure } from '@/lib/session-load'
-import StarterSuggestions from '@/components/chat/home/StarterSuggestions'
 // Imported eagerly so the drawer shell is always mounted off-screen —
 // clicking a chip becomes a single CSS class flip, no chunk fetch + double
 // render. The heavy renderers inside still load lazily.
@@ -46,7 +45,6 @@ import { useChatAutoScroll } from '@/hooks/useChatAutoScroll'
 import { useMeasuredHeight } from '@/hooks/useMeasuredHeight'
 import { useSetupSync } from '@/hooks/useSetupSync'
 import { consumePendingPrompt } from '@/lib/pending-prompt'
-import { fetchSessionAskHint } from '@/lib/session-api'
 import { useLLMOptions } from '@/hooks/useLLMOptions'
 import { getEnabledOptionalTools, invalidateEnabledOptionalToolsCache } from '@/lib/tools-settings'
 import { ALL_TOOLS, getChatCapability, type ToolName } from '@/features/capabilities/presentation'
@@ -419,26 +417,6 @@ export default function ChatWorkspace() {
   // "done" while nothing visibly changes.
   useSetupSync(state.messages)
   const hasMessages = state.messages.length > 0
-  // A line the user might type next, written by the task model against the
-  // conversation's own tail — general prediction, not a question to ask,
-  // unlike the mastery/reading composers' hint. Empty conversations already
-  // get their own richer suggestions from StarterSuggestions below, so this
-  // only ever runs once there is something to continue. Cleared on session
-  // switch so a prior chat's guess never lingers as this one's placeholder.
-  const [askHint, setAskHint] = useState('')
-  useEffect(() => {
-    setAskHint('')
-  }, [state.sessionId])
-  useEffect(() => {
-    if (state.isStreaming || !hasMessages || !state.sessionId) return
-    let cancelled = false
-    void fetchSessionAskHint(state.sessionId).then(hint => {
-      if (!cancelled) setAskHint(hint)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [state.isStreaming, hasMessages, state.sessionId, state.messages.length])
   // Time-of-day greeting: seeded once on mount from the user's local clock so
   // the heading stays stable while they're on the page. State (not useMemo)
   // because the random pick would otherwise mismatch SSR ↔ client hydration.
@@ -1464,21 +1442,7 @@ export default function ChatWorkspace() {
             onSelectCapability={handleSelectCapability}
             onCancelStreaming={cancelStreamingTurn}
             prefillInputRef={prefillInputRef}
-            inputPlaceholder={askHint || undefined}
-            inputPlaceholderCompletion={askHint}
           />
-          {/* Starter chips sit between the composer and the spacer, so they
-            ride up with the composer on the empty screen and disappear the
-            moment the conversation has a first message. Clicking one sends
-            it through the normal send path: this page is already a draft
-            session when it has no messages, so that both creates the
-            session and starts it on the topic. */}
-          {!hasMessages ? (
-            <StarterSuggestions
-              onPick={prompt => void handleSend(prompt)}
-              disabled={state.isStreaming}
-            />
-          ) : null}
           <div
             aria-hidden="true"
             className="shrink-0"

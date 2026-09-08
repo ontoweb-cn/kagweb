@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   KeyRound,
-  Library,
   Save,
   ShieldOff,
   SlidersHorizontal,
@@ -12,24 +11,18 @@ import { useTranslation } from "react-i18next";
 
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
-  getGuardianMaterials,
-  getGuardianReport,
   getGuardianRestrictions,
   listGuardianRelationships,
   resetLearnerCredentials,
   revokeMyGuardianRelationship,
-  saveGuardianMaterials,
   saveGuardianRestrictions,
   type GuardianExtension,
-  type GuardianMaterial,
   type GuardianRelationship,
-  type GuardianReport,
   type GuardianRestrictions,
 } from "@/lib/guardian-api";
 
 type BusyAction =
   | "loading"
-  | "materials"
   | "restrictions"
   | "credentials"
   | "revoke"
@@ -50,9 +43,6 @@ export default function GuardianSettingsPage() {
   );
   const [selectedRelationship, setSelectedRelationship] =
     useState<GuardianRelationship | null>(null);
-  const [report, setReport] = useState<GuardianReport | null>(null);
-  const [materials, setMaterials] = useState<GuardianMaterial[]>([]);
-  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
   const [restrictions, setRestrictions] = useState<GuardianRestrictions | null>(
     null,
   );
@@ -86,9 +76,6 @@ export default function GuardianSettingsPage() {
 
   const selectLearner = async (relationship: GuardianRelationship) => {
     setSelectedRelationship(relationship);
-    setReport(null);
-    setMaterials([]);
-    setSelectedMaterialIds([]);
     setRestrictions(null);
     setExtensions([]);
     setNewPassword("");
@@ -96,57 +83,15 @@ export default function GuardianSettingsPage() {
     setError(null);
     setBusy("loading");
     try {
-      const [nextReport, nextMaterials, nextRestrictions] = await Promise.all([
-        relationship.permissions.includes("view_reports")
-          ? getGuardianReport(relationship.learner_user_id)
-          : Promise.resolve(null),
-        relationship.permissions.includes("assign_materials")
-          ? getGuardianMaterials(relationship.learner_user_id)
-          : Promise.resolve(null),
-        relationship.permissions.includes("manage_restrictions")
-          ? getGuardianRestrictions(relationship.learner_user_id)
-          : Promise.resolve(null),
-      ]);
-      setReport(nextReport);
-      if (nextMaterials) {
-        setMaterials(nextMaterials);
-        setSelectedMaterialIds(
-          nextMaterials
-            .filter((item) => item.assigned)
-            .map((item) => item.book_id),
-        );
-      }
+      const nextRestrictions = relationship.permissions.includes(
+        "manage_restrictions",
+      )
+        ? await getGuardianRestrictions(relationship.learner_user_id)
+        : null;
       if (nextRestrictions) {
         setRestrictions(nextRestrictions.restrictions);
         setExtensions(nextRestrictions.available_extensions);
       }
-    } catch (reason) {
-      setError((reason as Error).message);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const saveMaterials = async () => {
-    if (!selectedRelationship || !can("assign_materials")) return;
-    setBusy("materials");
-    setError(null);
-    setMessage(null);
-    try {
-      await saveGuardianMaterials(
-        selectedRelationship.learner_user_id,
-        selectedMaterialIds,
-      );
-      const nextMaterials = await getGuardianMaterials(
-        selectedRelationship.learner_user_id,
-      );
-      setMaterials(nextMaterials);
-      if (can("view_reports")) {
-        setReport(
-          await getGuardianReport(selectedRelationship.learner_user_id),
-        );
-      }
-      setMessage(t("Approved materials saved."));
     } catch (reason) {
       setError((reason as Error).message);
     } finally {
@@ -214,7 +159,6 @@ export default function GuardianSettingsPage() {
         current.filter((item) => item.id !== selectedRelationship.id),
       );
       setSelectedRelationship(null);
-      setReport(null);
       setMessage(t("Guardian access revoked."));
     } catch (reason) {
       setError((reason as Error).message);
@@ -279,8 +223,7 @@ export default function GuardianSettingsPage() {
         <section className="mt-8 space-y-6 border-t border-[var(--border)] pt-6">
           <div className="flex items-start justify-between gap-3">
             <h2 className="font-medium">
-              {report?.learner.username ??
-                selectedRelationship.learner_username}
+              {selectedRelationship.learner_username}
             </h2>
             <button
               type="button"
@@ -297,81 +240,7 @@ export default function GuardianSettingsPage() {
             <p className="text-sm text-[var(--muted-foreground)]">
               {t("Loading learner details…")}
             </p>
-          ) : can("view_reports") && report ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-[var(--border)] p-4">
-                <Library className="mb-2 h-4 w-4 text-[var(--muted-foreground)]" />
-                <div className="text-xs text-[var(--muted-foreground)]">
-                  {t("Approved materials")}
-                </div>
-                <div className="mt-1 text-lg font-semibold">
-                  {report.assigned_materials.length}
-                </div>
-              </div>
-              <div className="rounded-lg border border-[var(--border)] p-4">
-                <div className="text-xs text-[var(--muted-foreground)]">
-                  {t("Enabled learning resources")}
-                </div>
-                <div className="mt-1 text-lg font-semibold">
-                  {report.grant_summary.model_count +
-                    report.grant_summary.skill_count}
-                </div>
-              </div>
-            </div>
-          ) : !can("view_reports") ? (
-            <p className="text-sm text-[var(--muted-foreground)]">
-              {t("You are not authorized to view this learner report.")}
-            </p>
           ) : null}
-
-          {can("assign_materials") && (
-            <div className="rounded-lg border border-[var(--border)] p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="text-sm font-medium">
-                  {t("Approved materials")}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => void saveMaterials()}
-                  disabled={busy !== null}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[var(--primary)] px-3 py-1.5 text-xs text-[var(--primary-foreground)] disabled:opacity-50"
-                >
-                  <Save className="h-3.5 w-3.5" />
-                  {busy === "materials" ? t("Saving…") : t("Save materials")}
-                </button>
-              </div>
-              {materials.length === 0 ? (
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  {t("No approved materials are available.")}
-                </p>
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {materials.map((material) => (
-                    <label
-                      key={material.book_id}
-                      className="flex items-center gap-2 rounded-md border border-[var(--border)] px-3 py-2 text-xs"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedMaterialIds.includes(material.book_id)}
-                        disabled={busy !== null}
-                        onChange={() =>
-                          setSelectedMaterialIds((current) =>
-                            current.includes(material.book_id)
-                              ? current.filter((id) => id !== material.book_id)
-                              : [...current, material.book_id],
-                          )
-                        }
-                      />
-                      <span className="truncate">
-                        {material.title || material.book_id}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {can("manage_restrictions") && restrictions && (
             <div className="rounded-lg border border-[var(--border)] p-4">

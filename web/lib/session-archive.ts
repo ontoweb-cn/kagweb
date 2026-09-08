@@ -12,10 +12,21 @@
  * tested on their own.
  */
 
-import type { MasteryTopicLabel } from "@/lib/learning-api";
 import { masteryPathIdOf, readingWorkspaceIdOf } from "@/lib/mastery-session";
-import type { ReadingCollectionLabel } from "@/lib/reading-workspace-api";
 import type { SessionSummary } from "@/lib/session-api";
+
+/** Just enough to name a topic, for the archive's container column. */
+export interface MasteryTopicLabel {
+  path_id: string;
+  name: string;
+  emoji: string;
+}
+
+/** Just enough to name a collection, for the archive's container column. */
+export interface ReadingCollectionLabel {
+  workspace_id: string;
+  title: string;
+}
 
 /** Which surface an archived conversation was held in. */
 export type ArchiveKind = "chat" | "mastery" | "reading";

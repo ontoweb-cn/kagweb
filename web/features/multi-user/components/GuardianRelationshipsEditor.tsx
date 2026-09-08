@@ -8,12 +8,10 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { UserRecord } from "@/lib/admin-api";
 import {
   authorizeGuardianRelationship,
-  getGuardianReport,
   listAdminGuardianRelationships,
   resetLearnerCredentials,
   revokeGuardianRelationship,
   type GuardianRelationship,
-  type GuardianReport,
 } from "@/lib/guardian-api";
 
 const PERMISSIONS = [
@@ -43,7 +41,6 @@ export function GuardianRelationshipsEditor({
   const [relationships, setRelationships] = useState<GuardianRelationship[]>(
     [],
   );
-  const [report, setReport] = useState<GuardianReport | null>(null);
   const [guardianId, setGuardianId] = useState("");
   const [permissions, setPermissions] = useState<string[]>([...PERMISSIONS]);
   const [newPassword, setNewPassword] = useState("");
@@ -59,18 +56,14 @@ export function GuardianRelationshipsEditor({
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      listAdminGuardianRelationships(),
-      getGuardianReport(learnerId),
-    ])
-      .then(([allRelationships, nextReport]) => {
+    listAdminGuardianRelationships()
+      .then((allRelationships) => {
         if (cancelled) return;
         setRelationships(
           allRelationships.filter(
             (relationship) => relationship.learner_user_id === learnerId,
           ),
         );
-        setReport(nextReport);
       })
       .catch((reason: unknown) => {
         if (!cancelled) setError((reason as Error).message);
@@ -258,20 +251,6 @@ export function GuardianRelationshipsEditor({
               ))}
             </div>
           </div>
-
-          {report && (
-            <p className="mt-3 text-xs text-[var(--muted-foreground)]">
-              {t(
-                "{{materials}} approved materials · {{resources}} enabled resources",
-                {
-                  materials: report.assigned_materials.length,
-                  resources:
-                    report.grant_summary.model_count +
-                    report.grant_summary.skill_count,
-                },
-              )}
-            </p>
-          )}
 
           <div className="mt-3 rounded-lg border border-[var(--border)] p-3">
             <label className="text-xs">

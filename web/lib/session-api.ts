@@ -184,28 +184,6 @@ export async function getSession(
   return expectJson<SessionDetail>(response);
 }
 
-/**
- * One line the user is likely to type next, for the home composer's
- * placeholder — "" when there is nothing worth offering (no exchange yet,
- * a timeout, a model that didn't come back with something usable).
- */
-export async function fetchSessionAskHint(
-  sessionId: string,
-  init?: RequestInit,
-): Promise<string> {
-  try {
-    const response = await apiFetch(
-      apiUrl(`/api/sessions/${sessionId}/ask-hint`),
-      { cache: "no-store", ...init },
-    );
-    const result = await expectJson<{ hint?: string }>(response);
-    return typeof result.hint === "string" ? result.hint : "";
-  } catch {
-    // A missing hint is not a failure the composer should ever surface.
-    return "";
-  }
-}
-
 export async function updateSessionTitle(
   sessionId: string,
   title: string,

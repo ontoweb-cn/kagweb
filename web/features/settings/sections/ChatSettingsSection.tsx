@@ -11,10 +11,6 @@ const AgentLoopSettingsPage = dynamic(
   () => import("./AgentLoopSettingsSection"),
   { loading },
 );
-const VideoLearningSettingsPage = dynamic(
-  () => import("./VideoLearningSettingsSection"),
-  { loading },
-);
 const ToolsSettingsPage = dynamic(() => import("./ToolsSettingsSection"), {
   loading,
 });
@@ -33,7 +29,6 @@ const AttachmentSettingsPage = dynamic(
 
 const CHAT_SECTIONS = [
   { key: "agent-loop", Component: AgentLoopSettingsPage },
-  { key: "video-learning", Component: VideoLearningSettingsPage },
   { key: "tools", Component: ToolsSettingsPage },
   { key: "capabilities", Component: CapabilitiesSettingsPage },
   { key: "starters", Component: StarterSettingsPage },

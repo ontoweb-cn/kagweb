@@ -1,6 +1,7 @@
 "use client";
 
-import type { UnitKind } from "@/lib/reading-api";
+/** The reading material unit the reference points at. */
+export type UnitKind = "page" | "chapter" | "slide" | "section" | "segment";
 
 export const MAX_READING_REFERENCE_MATERIALS = 8;
 export const MAX_READING_REFERENCE_UNITS = 24;

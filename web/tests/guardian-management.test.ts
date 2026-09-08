@@ -45,12 +45,9 @@ test("guardian credential reset never returns or renders a plaintext credential"
 });
 
 test("guardian actions follow each relationship permission", () => {
-  assert.match(page, /can\("view_reports"\)/);
-  assert.match(page, /can\("assign_materials"\)/);
   assert.match(page, /can\("manage_restrictions"\)/);
   assert.match(page, /can\("reset_credentials"\)/);
   assert.match(page, /revokeMyGuardianRelationship/);
-  assert.match(page, /saveGuardianMaterials/);
   assert.match(page, /saveGuardianRestrictions/);
   assert.match(page, /<ConfirmDialog/);
 });
@@ -59,7 +56,6 @@ test("administrators can create, review, revoke, and reset guardian access", () 
   assert.match(adminEditor, /listAdminGuardianRelationships/);
   assert.match(adminEditor, /authorizeGuardianRelationship/);
   assert.match(adminEditor, /revokeGuardianRelationship/);
-  assert.match(adminEditor, /getGuardianReport/);
   assert.match(adminEditor, /resetLearnerCredentials/);
   assert.match(adminEditor, /PERMISSIONS/);
 });

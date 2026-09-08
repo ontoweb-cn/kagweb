@@ -13,7 +13,6 @@ import {
   type AccountPreset,
 } from "@/lib/admin-api";
 import { GrantEditor } from "@/features/multi-user/components/GrantEditor";
-import { BookPermissionEditor } from "@/features/multi-user/components/BookPermissionEditor";
 import { LearnerProfileEditor } from "@/features/multi-user/components/LearnerProfileEditor";
 import { GuardianRelationshipsEditor } from "@/features/multi-user/components/GuardianRelationshipsEditor";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -477,7 +476,6 @@ export default function AdminUsersPage() {
                               userId={user.id}
                               lockLearningPolicy={user.preset === "learner"}
                             />
-                            <BookPermissionEditor userId={user.id} />
                             {user.preset === "learner" && (
                               <>
                                 <GuardianRelationshipsEditor
