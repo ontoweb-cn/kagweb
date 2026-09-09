@@ -5,7 +5,7 @@
  * fields and the serializer never receives messages, so a leak is
  * unrepresentable by construction.
  */
-import { insightMetaOf } from "@/lib/turn-insight";
+import { nodeInkColor, type InsightType } from "@/lib/turn-insight";
 
 export interface ThoughtMapNode {
   id: string;
@@ -13,8 +13,13 @@ export interface ThoughtMapNode {
       lays nodes out on a simple grid; it never sees a live canvas. */
   level: number;
   row: number;
+  /** Position in message order, for the time-ink gradient. Falls back to
+      `row` when a caller has no ordering to offer. */
+  order?: number;
   kind: "user" | "assistant" | "other";
-  insightType?: string;
+  /** The judge's badge type; `InsightType` rather than `string` so no
+      free-form text can reach the caption. */
+  insightType?: InsightType;
 }
 
 export interface ThoughtMapEdge {
@@ -41,15 +46,23 @@ function esc(s: string): string {
 export function buildThoughtMapSvg(input: ThoughtMapInput): string {
   const pos = new Map<string, { x: number; y: number }>();
   let maxLevel = 0;
+  let maxRow = 0;
   for (const n of input.nodes) {
     maxLevel = Math.max(maxLevel, n.level);
+    maxRow = Math.max(maxRow, n.row);
     pos.set(n.id, { x: M + n.level * W, y: M + n.row * H });
   }
+  // Sized from the deepest row, not the node count: a level holding k nodes
+  // reaches y = M + (k-1)*H, which a count-based height clips.
   const width = M * 2 + Math.max(1, maxLevel + 1) * W;
-  const height = M * 2 + Math.max(1, input.nodes.length) * H * 0.6;
+  const height = M * 2 + Math.max(1, maxRow + 1) * H;
 
+  // Time ink follows message order, not the row within a level — a linear
+  // session has one node per level, so a row-based gradient would be flat.
   const ink = (n: ThoughtMapNode): number =>
-    n.kind === "assistant" ? 0.45 + 0.55 * Math.min(1, n.row / 12) : 1;
+    n.kind === "assistant"
+      ? 0.45 + 0.55 * Math.min(1, (n.order ?? n.row) / 12)
+      : 1;
 
   const edges = input.edges
     .filter((e) => pos.has(e.source) && pos.has(e.target))
@@ -64,13 +77,9 @@ export function buildThoughtMapSvg(input: ThoughtMapInput): string {
   const nodes = input.nodes
     .map((n) => {
       const p = pos.get(n.id)!;
-      // Badge colours come from the shared palette, so the export can never
-      // disagree with the chip rendered in the activity header.
-      const color = n.insightType
-        ? insightMetaOf(n.insightType).color
-        : n.kind === "user"
-          ? "#64748b"
-          : "#0f172a";
+      // Shared ink helper: the badge palette when there is a badge, else the
+      // neutral kind colour — the same rule the DAG canvas applies.
+      const color = nodeInkColor(n.insightType, n.kind);
       if (n.kind === "user") {
         return `<rect x="${p.x - 5}" y="${p.y - 5}" width="10" height="10" rx="2" fill="${color}" opacity="${ink(n)}"/>`;
       }

@@ -13,7 +13,7 @@
  * either. That kernel owns the rule (and its docstring is the specification).
  */
 import type { StreamEvent } from "@/features/chat/model/protocol";
-import type { InsightType } from "@/lib/turn-insight";
+import type { TurnInsight } from "@/lib/turn-insight";
 import {
   classifyTraceGroup,
   getCallProvider,
@@ -47,7 +47,7 @@ export interface DagMessage {
   capability?: string;
   events?: StreamEvent[];
   /** Judge-written turn badge (assistant rows, multi-round turns). */
-  turnInsight?: { takeaway: string; type: InsightType };
+  turnInsight?: TurnInsight;
   parentMessageId?: number | null;
 }
 

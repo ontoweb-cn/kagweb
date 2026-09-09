@@ -11,7 +11,7 @@
 import { useEffect, useRef } from "react";
 import type { Core, ElementDefinition, LayoutOptions, StylesheetStyle } from "cytoscape";
 import { nextZoomTier, type DagZoomTier } from "@/lib/dag-zoom";
-import { insightMetaOf } from "@/lib/turn-insight";
+import { nodeInkColor } from "@/lib/turn-insight";
 import type { SessionDag } from "./model";
 
 /** Available canvas layouts. dagre (layered, edge-aware) is the default;
@@ -38,8 +38,10 @@ export interface CytoscapeDagProps {
 
 const APPLY_DEBOUNCE_MS = 500;
 /** Never shrink a dense trace into unreadable thumbnail text. Larger graphs
- * stay pannable within the canvas instead of being forced into view. */
-const MIN_READABLE_ZOOM = 0.58;
+ * stay pannable within the canvas instead of being forced into view. Below
+ * the plaque tier the labels give way to the glyph dots, so the floor sits
+ * under the glyph threshold rather than above it. */
+const MIN_READABLE_ZOOM = 0.3;
 /** Upper bound between rebuilds while updates keep arriving (debounce alone
  * would starve: streaming turns change `dag` more often than the debounce
  * window, resetting the timer indefinitely). */
@@ -137,23 +139,10 @@ function buildStylesheet(): StylesheetStyle[] {
         height: "36",
       },
     },
-    { selector: 'node[expandable = "true"]', style: { "border-style": "dashed" } },
-    { selector: 'node[state = "running"]', style: { "border-color": primary, color: primary } },
-    { selector: 'node[state = "error"]', style: { "border-color": destructive, color: destructive } },
-    {
-      selector: "node:selected",
-      style: {
-        "border-width": "2",
-        "border-color": primary,
-        "background-color": primary,
-        color: primaryFg,
-      },
-    },
-    // Search hit (#79): the visible subgraph IS the hit set, so the accent
-    // is a confirmation, not the only signal.
-    { selector: "node.match", style: { "border-color": primary, "border-width": "2" } },
-    // Semantic zoom tiers (dag-zoom.ts): classes are applied en masse on
-    // tier change — plaque shows the takeaway line, glyph is one dot.
+    // Semantic zoom tiers (dag-zoom.ts). Deliberately BEFORE the state
+    // selectors: cytoscape resolves conflicts by stylesheet order (last
+    // wins), and an error ring or selection accent must survive a tier
+    // change. These rules own only label/geometry/ink.
     {
       selector: "node.plaque",
       style: {
@@ -177,6 +166,21 @@ function buildStylesheet(): StylesheetStyle[] {
         "border-width": "0",
       },
     },
+    { selector: 'node[expandable = "true"]', style: { "border-style": "dashed" } },
+    { selector: 'node[state = "running"]', style: { "border-color": primary, color: primary } },
+    { selector: 'node[state = "error"]', style: { "border-color": destructive, color: destructive } },
+    {
+      selector: "node:selected",
+      style: {
+        "border-width": "2",
+        "border-color": primary,
+        "background-color": primary,
+        color: primaryFg,
+      },
+    },
+    // Search hit (#79): the visible subgraph IS the hit set, so the accent
+    // is a confirmation, not the only signal.
+    { selector: "node.match", style: { "border-color": primary, "border-width": "2" } },
     {
       selector: 'edge[kind = "conversation"]',
       style: { "line-color": border, "target-arrow-color": border, "target-arrow-shape": "triangle", "arrow-scale": 0.7, width: 1.5 },
@@ -229,9 +233,14 @@ function toElements(
         label: `${base}${badge}`,
         kind: node.kind,
         state: node.meta.callState ?? "",
-        // Plaque/glyph tiers: the takeaway one-liner and the badge colour.
+        // Plaque/glyph tiers: the takeaway one-liner and the node's ink —
+        // the badge colour when it has one, else the neutral kind colour,
+        // so a plain turn is never painted like an "insight" badge.
         plaque: insight?.takeaway ?? base,
-        badgeColor: insightMetaOf(insight?.type).color,
+        badgeColor: nodeInkColor(
+          insight?.type,
+          node.kind === "user" ? "user" : node.kind === "assistant" ? "assistant" : "other",
+        ),
         // Cytoscape's `[field = "value"]` compares with strict equality (see
         // its selector `valCmp`), so data must be stringified to match.
         expandable: dag.expandable.has(node.id) ? "true" : "false",
@@ -417,7 +426,19 @@ function applyToCanvas(
     cy.fit(undefined, 40);
     if (positions) panToTimelineStart(cy);
   }
+  // Rebuilds create fresh elements with no classes, so the tier has to be
+  // re-applied here rather than only from the zoom handler (whose guard
+  // would see an unchanged tier and skip).
+  applyZoomTier(cy, nextZoomTier("turn", cy.zoom()));
   return positions !== null;
+}
+
+/** Restyle the canvas for a semantic-zoom tier. */
+function applyZoomTier(cy: Core, tier: DagZoomTier): void {
+  cy.batch(() => {
+    cy.nodes(".plaque, .glyph").removeClass("plaque glyph");
+    if (tier !== "turn") cy.nodes().addClass(tier);
+  });
 }
 
 export default function CytoscapeDag({
@@ -492,12 +513,7 @@ export default function CytoscapeDag({
         const next = nextZoomTier(tierRef.current, cy.zoom());
         if (next === tierRef.current) return;
         tierRef.current = next;
-        cy.batch(() => {
-          cy.nodes().forEach((node) => {
-            node.removeClass("plaque glyph");
-            if (next !== "turn") node.addClass(next);
-          });
-        });
+        applyZoomTier(cy, next);
       });
 
       cy.on("tap", (event) => {

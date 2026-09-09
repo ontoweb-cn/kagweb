@@ -2,12 +2,13 @@
  * Semantic zoom tiers for the session DAG: zoom level is a *reading intent*,
  * not a geometry scale —
  *
- *   turn   (zoom ≥ 0.8)    full message cards
- *   plaque (0.35 – 0.8)    badge + one-line takeaway
- *   glyph  (< 0.35)        one colored dot per node
+ *   turn    full message cards      leave below 0.8
+ *   plaque  badge + one-line takeaway  leave below 0.32, return at 0.9
+ *   glyph   one colored dot per node   return at 0.4, then 0.9 for turn
  *
  * Dual thresholds per boundary (hysteresis) prevent flapping when the zoom
- * sits exactly on a cutoff.
+ * sits exactly on a cutoff. The bands are relative to the canvas's
+ * `MIN_READABLE_ZOOM` (0.3), so all three tiers are reachable.
  */
 export type DagZoomTier = "turn" | "plaque" | "glyph";
 

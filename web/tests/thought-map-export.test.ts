@@ -6,6 +6,7 @@ import {
   type ThoughtMapInput,
   type ThoughtMapNode,
 } from "../lib/thought-map-export";
+import { INSIGHT_TYPES } from "../lib/turn-insight";
 
 const input: ThoughtMapInput = {
   nodes: [
@@ -31,10 +32,42 @@ test("thought map svg carries nodes, edges and the caption", () => {
 
 test("badge colours come from the shared insight palette", () => {
   const svg = buildThoughtMapSvg(input);
-  // The same hex the activity-header chip uses, so the two surfaces cannot
-  // disagree about what a "ruleout" looks like.
-  assert.match(svg, /fill="#ef4444"/);
-  assert.match(svg, /fill="#6B5CE7"/);
+  // Asserted against the palette, not a literal: the point is that the export
+  // reads the same table the activity-header chip does.
+  assert.ok(svg.includes(INSIGHT_TYPES.ruleout.color));
+  assert.ok(svg.includes(INSIGHT_TYPES.decision.color));
+  // A node without a badge gets the neutral ink, never a badge colour.
+  assert.ok(svg.includes("#64748b")); // user
+});
+
+test("the canvas is tall enough for the deepest row", () => {
+  // Five siblings share one level (rows 0-4): the old count-based height
+  // clipped the last one out of the viewBox.
+  const stacked = buildThoughtMapSvg({
+    nodes: Array.from({ length: 5 }, (_, row) => ({
+      id: `n${row}`,
+      level: 0,
+      row,
+      kind: "assistant" as const,
+    })),
+    edges: [],
+  });
+  const height = Number(/height="(\d+)"/.exec(stacked)?.[1]);
+  const maxCy = Math.max(...[...stacked.matchAll(/cy="(\d+)"/g)].map((m) => Number(m[1])));
+  assert.ok(maxCy + 8 <= height, `last circle (${maxCy}) escapes the viewBox (${height})`);
+});
+
+test("the time ink follows message order, not the row within a level", () => {
+  const chain = buildThoughtMapSvg({
+    nodes: [
+      { id: "a", level: 0, row: 0, order: 0, kind: "assistant" as const },
+      { id: "b", level: 1, row: 0, order: 12, kind: "assistant" as const },
+    ],
+    edges: [],
+  });
+  // order 0 → 0.45, order 12 → 1.0: a chain must still fade.
+  const opacities = [...chain.matchAll(/<circle[^>]*opacity="([\d.]+)"/g)].map((m) => m[1]);
+  assert.notEqual(opacities[0], opacities[1]);
 });
 
 test("thought map svg never contains conversation text", () => {

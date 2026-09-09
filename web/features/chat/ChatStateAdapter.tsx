@@ -34,7 +34,7 @@ import {
   type SessionMessage,
 } from "@/lib/session-api";
 import { normalizeMarkdownForDisplay } from "@/lib/markdown-display";
-import { isInsightType, type InsightType } from "@/lib/turn-insight";
+import { isInsightType, type TurnInsight } from "@/lib/turn-insight";
 import { normalizeMessageContent } from "@/lib/message-content";
 import {
   buildVisiblePath,
@@ -199,10 +199,7 @@ export interface MessageRequestSnapshot {
   readingMaterialRevision?: number;
 }
 
-export interface TurnInsight {
-  takeaway: string;
-  type: InsightType;
-}
+export type { TurnInsight } from "@/lib/turn-insight";
 
 export interface MessageItem {
   id?: number;

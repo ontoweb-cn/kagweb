@@ -16,6 +16,27 @@ export interface InsightTypeMeta {
   labelKey: string;
 }
 
+/** The judge-written badge. Declared here — the single frontend source — so
+ *  the message store, the DAG IR and the canvas all carry one shape. */
+export interface TurnInsight {
+  takeaway: string;
+  type: InsightType;
+}
+
+/** Ink for a node without a badge: a user message reads lighter than the
+ *  assistant/execution spine. Shared by the DAG canvas and the SVG export so
+ *  the two can never disagree about what "no badge" looks like. */
+export const NEUTRAL_USER_INK = "#64748b";
+export const NEUTRAL_NODE_INK = "#0f172a";
+
+export function nodeInkColor(
+  insightType: string | undefined,
+  kind: "user" | "assistant" | "other",
+): string {
+  if (insightType) return insightMetaOf(insightType).color;
+  return kind === "user" ? NEUTRAL_USER_INK : NEUTRAL_NODE_INK;
+}
+
 export const INSIGHT_TYPES = {
   insight: { color: "#0284c7", labelKey: "Insight" },
   ruleout: { color: "#ef4444", labelKey: "Ruled out" },
