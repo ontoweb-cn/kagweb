@@ -16,3 +16,8 @@ docker-compose.*.yml text eol=lf
 *.toml text eol=lf
 *.cfg text eol=lf
 *.ini text eol=lf
+
+# Generated contract artifacts are written with LF by
+# web/scripts/generate-contracts.mjs, and `contracts:check` compares raw bytes
+# — pin them so a Windows checkout cannot drift into CRLF and fail the check.
+web/contracts/generated/*.ts text eol=lf
