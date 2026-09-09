@@ -214,3 +214,27 @@ def test_kagweb_prefixed_api_key_no_longer_applies(tmp_path: Path) -> None:
     )
     block = service.load_system()["agent_loop"]
     assert block["profiles"] == []
+
+
+def test_reserved_picker_ids_are_regenerated() -> None:
+    """The primary picker uses ``__auto__`` / ``__none__`` as mode sentinels, so
+    a profile carrying one as its id would render a second radio with the same
+    key and the same ``checked`` condition as the sentinel."""
+    block = _normalize_agent_loop(
+        {
+            "profiles": [
+                {"id": "__none__", "preset": "claude-code"},
+                {"id": "__auto__", "preset": "codex"},
+                {"id": "claude-local", "preset": "claude-code"},
+            ],
+            "primary": "__none__",
+        }
+    )
+
+    assert [profile["id"] for profile in block["profiles"]] == [
+        "profile-1",
+        "profile-2",
+        "claude-local",
+    ]
+    # The dangling sentinel primary is healed by the auto rule.
+    assert block["primary"] not in {"__auto__", "__none__"}
