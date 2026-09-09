@@ -10,6 +10,8 @@
  */
 import { useEffect, useRef } from "react";
 import type { Core, ElementDefinition, LayoutOptions, StylesheetStyle } from "cytoscape";
+import { nextZoomTier, type DagZoomTier } from "@/lib/dag-zoom";
+import { insightMetaOf } from "@/lib/turn-insight";
 import type { SessionDag } from "./model";
 
 /** Available canvas layouts. dagre (layered, edge-aware) is the default;
@@ -150,6 +152,31 @@ function buildStylesheet(): StylesheetStyle[] {
     // Search hit (#79): the visible subgraph IS the hit set, so the accent
     // is a confirmation, not the only signal.
     { selector: "node.match", style: { "border-color": primary, "border-width": "2" } },
+    // Semantic zoom tiers (dag-zoom.ts): classes are applied en masse on
+    // tier change — plaque shows the takeaway line, glyph is one dot.
+    {
+      selector: "node.plaque",
+      style: {
+        label: "data(plaque)",
+        width: "132",
+        height: "30",
+        "font-size": "10",
+        "text-max-width": "120",
+        "border-width": "2.5",
+        "border-color": "data(badgeColor)",
+      },
+    },
+    {
+      selector: "node.glyph",
+      style: {
+        label: "",
+        width: "16",
+        height: "16",
+        shape: "ellipse",
+        "background-color": "data(badgeColor)",
+        "border-width": "0",
+      },
+    },
     {
       selector: 'edge[kind = "conversation"]',
       style: { "line-color": border, "target-arrow-color": border, "target-arrow-shape": "triangle", "arrow-scale": 0.7, width: 1.5 },
@@ -194,6 +221,7 @@ function toElements(
     const hidden = childCounts.get(node.id);
     const badge =
       hidden != null && hidden > 0 && !materialized.has(node.id) ? `  ·  ${hidden}` : "";
+    const insight = node.meta.turnInsight;
     return {
       group: "nodes" as const,
       data: {
@@ -201,6 +229,9 @@ function toElements(
         label: `${base}${badge}`,
         kind: node.kind,
         state: node.meta.callState ?? "",
+        // Plaque/glyph tiers: the takeaway one-liner and the badge colour.
+        plaque: insight?.takeaway ?? base,
+        badgeColor: insightMetaOf(insight?.type).color,
         // Cytoscape's `[field = "value"]` compares with strict equality (see
         // its selector `valCmp`), so data must be stringified to match.
         expandable: dag.expandable.has(node.id) ? "true" : "false",
@@ -403,6 +434,7 @@ export default function CytoscapeDag({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const latestRef = useRef({ dag, labels, childCounts, selectedNode, layout, highlightIds });
+  const tierRef = useRef<DagZoomTier>("turn");
   const lastApplyRef = useRef(0);
   const pendingFitRef = useRef(false);
 
@@ -453,6 +485,21 @@ export default function CytoscapeDag({
           onSelectNode(id);
         }
       });
+      // Semantic zoom (dag-zoom.ts): on tier change, restyle nodes en masse —
+      // nodes carrying an insight become plaques / colored dots. The tier
+      // guard keeps this off the high-frequency zoom handler's hot path.
+      cy.on("zoom", () => {
+        const next = nextZoomTier(tierRef.current, cy.zoom());
+        if (next === tierRef.current) return;
+        tierRef.current = next;
+        cy.batch(() => {
+          cy.nodes().forEach((node) => {
+            node.removeClass("plaque glyph");
+            if (next !== "turn") node.addClass(next);
+          });
+        });
+      });
+
       cy.on("tap", (event) => {
         if (event.target === cy) onSelectNode(null);
       });

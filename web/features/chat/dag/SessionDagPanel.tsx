@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Maximize2, Download, Code2, Upload, ArrowLeft, Network, ListTree, LocateFixed, Search } from "lucide-react";
+import { Maximize2, Download, Code2, Upload, ArrowLeft, Network, ListTree, LocateFixed, Search, Map as MapIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { ActivityDetailGrid, type DetailRow } from "@/components/activity";
 import Tooltip from "@/components/common/Tooltip";
@@ -25,6 +25,7 @@ import {
   type DslDocument,
 } from "./dsl";
 import { dslToMermaid } from "./dsl-mermaid";
+import { buildThoughtMapSvg, downloadThoughtMapSvg } from "@/lib/thought-map-export";
 import { dslToDag } from "./dsl-import";
 import type { DagNode, SessionDag } from "./model";
 import type { DagLayoutName } from "./CytoscapeDag";
@@ -269,6 +270,68 @@ export default function SessionDagPanel({
     URL.revokeObjectURL(url);
   }, [messages, selectedBranches, sessionId]);
 
+  const handleExportThoughtMap = useCallback(() => {
+    if (!dag) return;
+    // Layer levels by longest path from the roots (nodes without incoming
+    // conversation/drilldown edges); rows enumerate within a level.
+    const incoming = new Map<string, number>();
+    for (const edge of dag.edges) {
+      if (edge.kind === "sibling") continue;
+      incoming.set(edge.target, (incoming.get(edge.target) ?? 0) + 1);
+    }
+    const level = new Map<string, number>();
+    const queue: string[] = [];
+    for (const node of dag.nodes) {
+      if (!incoming.get(node.id)) {
+        level.set(node.id, 0);
+        queue.push(node.id);
+      }
+    }
+    const childrenOf = new Map<string, string[]>();
+    for (const edge of dag.edges) {
+      if (edge.kind === "sibling") continue;
+      childrenOf.set(edge.source, [...(childrenOf.get(edge.source) ?? []), edge.target]);
+    }
+    let head = 0;
+    while (head < queue.length) {
+      const id = queue[head++];
+      for (const child of childrenOf.get(id) ?? []) {
+        level.set(child, Math.max(level.get(child) ?? 0, (level.get(id) ?? 0) + 1));
+        queue.push(child);
+      }
+    }
+    const rows = new Map<string, number>();
+    const perLevel = new Map<number, number>();
+    for (const node of dag.nodes) {
+      const lvl = level.get(node.id) ?? 0;
+      const row = perLevel.get(lvl) ?? 0;
+      rows.set(node.id, row);
+      perLevel.set(lvl, row + 1);
+    }
+    const input = {
+      nodes: dag.nodes.map((node) => ({
+        id: node.id,
+        level: level.get(node.id) ?? 0,
+        row: rows.get(node.id) ?? 0,
+        kind:
+          node.kind === "user"
+            ? ("user" as const)
+            : node.kind === "assistant"
+              ? ("assistant" as const)
+              : ("other" as const),
+        insightType: node.meta.turnInsight?.type,
+      })),
+      edges: dag.edges
+        .filter((e) => e.kind !== "sibling")
+        .map((e) => ({ source: e.source, target: e.target, dashed: e.kind === "drilldown" })),
+      title: sessionId,
+    };
+    downloadThoughtMapSvg(
+      buildThoughtMapSvg(input),
+      `thought-map-${sessionId || "export"}.svg`,
+    );
+  }, [dag, sessionId]);
+
   // Import a DSL export and preview it as a DAG (module 11). Rendering-only:
   // the parsed document never touches session state or persistence.
   const handleImportDsl = useCallback(async (file: File) => {
@@ -367,6 +430,15 @@ export default function SessionDagPanel({
                   aria-label={t("Export Mermaid")}
                 >
                   <Code2 size={16} />
+                </button>
+              </Tooltip>
+              <Tooltip label={t("Export thought map (shape only, no text)")} side="bottom">
+                <button
+                  onClick={handleExportThoughtMap}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+                  aria-label={t("Export thought map (shape only, no text)")}
+                >
+                  <MapIcon size={16} />
                 </button>
               </Tooltip>
             </>

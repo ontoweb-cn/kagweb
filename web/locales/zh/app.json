@@ -482,6 +482,7 @@
   "Execution steps": "执行步骤",
   "Export DSL": "导出 DSL",
   "Export Mermaid": "导出 Mermaid",
+  "Export thought map (shape only, no text)": "导出思维导图（仅结构，不含文字）",
   "Import DSL": "导入 DSL",
   "Imported DSL view: {{file}}": "已导入 DSL 视图：{{file}}",
   "Back to session": "返回会话",

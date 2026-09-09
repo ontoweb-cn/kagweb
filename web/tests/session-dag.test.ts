@@ -71,6 +71,20 @@ test("expanding materializes round → tool hierarchy with drilldown edges", () 
   assert.equal(tool.meta.toolName, "rag");
 });
 
+test("a message's turn insight reaches its DAG node", () => {
+  // The badge colours the plaque/glyph zoom tiers and the thought-map export,
+  // so the node meta must carry it, not just the message.
+  const msg = assistantMsg(1, [ev("thinking", { call_id: "r1" }, "plan")]);
+  msg.turnInsight = { takeaway: "排除了缓存路径", type: "ruleout" };
+  const dag = computeSessionDag({ messages: [msg] });
+
+  const assistant = dag.nodes.find((n) => n.kind === "assistant");
+  assert.deepEqual(assistant?.meta.turnInsight, {
+    takeaway: "排除了缓存路径",
+    type: "ruleout",
+  });
+});
+
 test("an untagged tool group is a tool node, not a round", () => {
   // A turn persisted before the trace contract: the call carries a call_id and
   // a state, but no call_kind/trace_group. The inline activity trace renders it

@@ -482,6 +482,7 @@
   "Execution steps": "Execution steps",
   "Export DSL": "Export DSL",
   "Export Mermaid": "Export Mermaid",
+  "Export thought map (shape only, no text)": "Export thought map (shape only, no text)",
   "Import DSL": "Import DSL",
   "Imported DSL view: {{file}}": "Imported DSL view: {{file}}",
   "Back to session": "Back to session",

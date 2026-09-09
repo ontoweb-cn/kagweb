@@ -6,6 +6,7 @@
  * Pure types only: no React, no cytoscape, no i18n imports so the aggregate
  * layer stays testable under node:test without a DOM.
  */
+import type { InsightType } from "@/lib/turn-insight";
 
 export type DagNodeKind =
   | "root"
@@ -48,6 +49,9 @@ export interface DagNodeMeta {
   durationMs?: number;
   textPreview?: string;
   error?: string;
+  /** Judge-written turn badge — colours the plaque/glyph zoom tiers and the
+   *  thought-map export. */
+  turnInsight?: { takeaway: string; type: InsightType };
   // —— UI ——
   /** Hidden child count while the assistant node is collapsed. */
   childCount: number;
