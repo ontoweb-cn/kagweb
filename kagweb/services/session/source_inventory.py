@@ -233,13 +233,13 @@ def _add_fresh(
     for rec in attachment_records:
         filename = str(rec.get("filename") or "file")
         extracted = str(rec.get("extracted_text") or "")
-        inv.entries.append(
+        inv.add(
             SourceEntry(
                 sid=f"att-{hashlib.sha1(filename.encode('utf-8')).hexdigest()[:12]}",
                 kind="attachment",
                 name=filename,
-                preview=_clip_preview(extracted or filename),
                 full_text=extracted,
+                fresh=True,
                 first_seen_turn=current_turn_ordinal,
             )
         )
