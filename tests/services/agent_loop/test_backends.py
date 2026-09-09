@@ -433,7 +433,7 @@ def test_claude_code_translator_error_subtype() -> None:
 def test_claude_code_translator_pairs_tool_call_and_result() -> None:
     """A tool_result block carries only the tool_use id, so the call's name is
     remembered to label the result — and the id travels on both events so the
-    trace can pair them."""
+    trace can pair them. The name is KAGWeb's, not the vendor's."""
     state: dict[str, Any] = {}
     events = translate_claude_code(
         {
@@ -447,7 +447,7 @@ def test_claude_code_translator_pairs_tool_call_and_result() -> None:
         state,
     )
     assert [e.kind for e in events] == ["tool_call"]
-    assert events[0].name == "Bash"
+    assert events[0].name == "exec"
     assert events[0].data == {"args": {"command": "ls"}, "id": "call_1"}
 
     events = translate_claude_code(
@@ -467,9 +467,140 @@ def test_claude_code_translator_pairs_tool_call_and_result() -> None:
         state,
     )
     assert [e.kind for e in events] == ["tool_result"]
-    assert events[0].name == "Bash"
+    assert events[0].name == "exec"
     assert events[0].text == "boom"
     assert events[0].data == {"id": "call_1", "is_error": True}
+
+
+def test_claude_code_tool_names_map_to_kagweb_vocabulary() -> None:
+    """The activity row's verb and chip come from KAGWeb's tool vocabulary, so
+    the vendor's name *and* its argument keys are translated at this boundary.
+    An unknown tool still travels under the vendor's own name."""
+
+    def translate(name: str, tool_input: dict[str, Any]) -> Any:
+        events = translate_claude_code(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {"type": "tool_use", "id": "call_1", "name": name, "input": tool_input}
+                    ]
+                },
+            },
+            {},
+        )
+        return events[0]
+
+    assert translate("Read", {"file_path": "a/b.py"}).name == "read_file"
+    assert translate("Read", {"file_path": "a/b.py"}).data["args"] == {"path": "a/b.py"}
+    assert translate("Skill", {"skill": "dataviz", "args": "x"}).name == "read_skill"
+    assert translate("Skill", {"skill": "dataviz", "args": "x"}).data["args"] == {
+        "name": "dataviz",
+        "args": "x",
+    }
+    assert translate("Glob", {"pattern": "**/*.ts"}).name == "glob"
+    assert translate("Glob", {"pattern": "**/*.ts"}).data["args"] == {"pattern": "**/*.ts"}
+    assert translate("Grep", {"pattern": "TODO"}).name == "grep"
+    assert translate("MultiEdit", {"file_path": "a.py"}).name == "edit_file"
+    # Unmapped vendor tools keep their own name and args.
+    assert translate("TodoWrite", {"todos": []}).name == "TodoWrite"
+    assert translate("TodoWrite", {"todos": []}).data["args"] == {"todos": []}
+
+
+def test_codex_translator_names_shell_and_patch_in_kagweb_vocabulary() -> None:
+    """Codex's `shell`/`file_change` items map onto the same row vocabulary,
+    and the command travels in `args` so the row's chip can show it."""
+    events = translate_codex(
+        {
+            "msg": {
+                "type": "item.started",
+                "item": {"type": "command_execution", "id": "item-1", "command": "ls"},
+            }
+        },
+        {},
+    )
+    assert events[0].name == "exec"
+    assert events[0].data["args"] == {"command": "ls"}
+    assert events[0].data["id"] == "item-1"
+
+    events = translate_codex(
+        {
+            "msg": {
+                "type": "item.started",
+                "item": {"type": "file_change", "changes": [{"path": "a.py"}]},
+            }
+        },
+        {},
+    )
+    assert events[0].name == "edit_file"
+    assert events[0].data["args"] == {"path": "a.py"}
+
+
+def test_codex_item_updated_is_not_a_second_call() -> None:
+    """`item.updated` reports progress on an item that already opened. Treating
+    it as a new call renders duplicate rows that never receive a result."""
+    assert (
+        translate_codex(
+            {
+                "msg": {
+                    "type": "item.updated",
+                    "item": {"type": "command_execution", "command": "ls"},
+                }
+            },
+            {},
+        )
+        == []
+    )
+
+
+def test_codex_completed_command_reports_failure() -> None:
+    """The trace row reads `is_error`; without it a failed command renders as a
+    clean finish."""
+    failed = translate_codex(
+        {
+            "msg": {
+                "type": "item.completed",
+                "item": {
+                    "type": "command_execution",
+                    "aggregated_output": "1 failed",
+                    "exit_code": 1,
+                },
+            }
+        },
+        {},
+    )
+    assert failed[0].kind == "tool_result"
+    assert failed[0].data["is_error"] is True
+
+    ok = translate_codex(
+        {
+            "msg": {
+                "type": "item.completed",
+                "item": {"type": "command_execution", "aggregated_output": "ok", "exit_code": 0},
+            }
+        },
+        {},
+    )
+    assert ok[0].data["is_error"] is False
+
+
+def test_codex_mcp_result_reports_its_output_not_its_arguments() -> None:
+    events = translate_codex(
+        {
+            "msg": {
+                "type": "item.completed",
+                "item": {
+                    "type": "mcp_tool_call",
+                    "tool": "search",
+                    "arguments": {"q": "x"},
+                    "result": {"content": [{"type": "text", "text": "42 hits"}]},
+                },
+            }
+        },
+        {},
+    )
+    assert events[0].kind == "tool_result"
+    assert events[0].text == "42 hits"
 
 
 def test_claude_code_translator_summarises_image_tool_results() -> None:

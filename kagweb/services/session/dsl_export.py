@@ -174,7 +174,15 @@ def _walk_call_groups(events: list[dict[str, Any]] | None) -> list[dict[str, Any
 
         group = _first_meta(group_events, "trace_group")
         role = _first_meta(group_events, "trace_role")
-        if kind == "tool_planning" or group == "tool_call":
+        # A group carrying a tool call is a tool call even when it arrived
+        # untagged (a turn persisted before the trace contract) — the same rule
+        # the inline activity trace applies.
+        untagged_tool_call = (
+            not kind
+            and not group
+            and any(event.get("type") == "tool_call" for event in group_events)
+        )
+        if kind == "tool_planning" or group == "tool_call" or untagged_tool_call:
             node_kind = "tool_call"
         elif role == "retrieve":
             node_kind = "retrieve"

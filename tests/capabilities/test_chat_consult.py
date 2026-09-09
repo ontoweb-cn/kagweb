@@ -151,6 +151,17 @@ async def test_consult_flow_runs_secondary_and_converges(monkeypatch) -> None:
     result = _of(events, "result")[-1]
     assert result.metadata["agent_loop"]["consults"] == 1
 
+    # Only the turn's last pass closes as final. The run-up pass settles as an
+    # intermediate round, or the activity trace would fold mid-turn (the
+    # frontend treats any completed "finish" round as the answer phase).
+    closes = [
+        event.metadata.get("call_role")
+        for event in _of(events, "progress")
+        if event.metadata.get("trace_kind") == "call_status"
+        and event.metadata.get("call_state") == "complete"
+    ]
+    assert closes == ["round", "finish"]
+
 
 async def test_consult_budget_is_enforced(monkeypatch) -> None:
     directive = _directive_answer("hermes", "again?")

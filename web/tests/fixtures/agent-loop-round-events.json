@@ -1,0 +1,284 @@
+{
+  "_comment": [
+    "One Claude-Code-CLI-backed chat turn, in the shape the chat capability now",
+    "emits (kagweb/capabilities/chat/capability.py: _AgentLoopRoundBridge).",
+    "Derived from a recorded turn in data/user/chat_history.db (message 60): the",
+    "vendor tool names and argument keys have been translated to KAGWeb's",
+    "vocabulary, and the round markers the bridge adds are present. The frontend",
+    "cannot be tested against a pre-fix recording: untagged events render as",
+    "'Responding', which is the bug this fixture pins the fix for."
+  ],
+  "turn": [
+    {
+      "type": "progress",
+      "source": "chat",
+      "stage": "responding",
+      "content": "model=claude-opus-4-8 · permission=default · tools=26",
+      "metadata": { "current": 0, "total": 0 },
+      "timestamp": 1
+    },
+    {
+      "type": "progress",
+      "source": "chat",
+      "stage": "responding",
+      "content": "Exploring",
+      "metadata": {
+        "call_id": "chat-round-1",
+        "phase": "responding",
+        "label": "Exploring",
+        "call_kind": "agent_loop_round",
+        "trace_id": "chat-round-1",
+        "trace_role": "explore",
+        "trace_group": "stage",
+        "trace_kind": "call_status",
+        "call_state": "running"
+      },
+      "timestamp": 2
+    },
+    {
+      "type": "thinking",
+      "source": "chat",
+      "stage": "responding",
+      "content": "The user wants to test whether the frontend can display tool and SKILL invocation traces.",
+      "metadata": {
+        "call_id": "chat-round-1",
+        "phase": "responding",
+        "label": "Exploring",
+        "call_kind": "agent_loop_round",
+        "trace_id": "chat-round-1",
+        "trace_role": "explore",
+        "trace_group": "stage",
+        "trace_kind": "llm_chunk"
+      },
+      "timestamp": 3
+    },
+    {
+      "type": "content",
+      "source": "chat",
+      "stage": "responding",
+      "content": "I'll fire off a few tool calls and one skill invocation so you can see the traces render.",
+      "metadata": {
+        "call_id": "chat-round-1",
+        "phase": "responding",
+        "label": "Exploring",
+        "call_kind": "agent_loop_round",
+        "trace_id": "chat-round-1",
+        "trace_role": "explore",
+        "trace_group": "stage",
+        "trace_kind": "llm_chunk"
+      },
+      "timestamp": 4
+    },
+    {
+      "type": "progress",
+      "source": "chat",
+      "stage": "responding",
+      "content": "",
+      "metadata": {
+        "call_id": "chat-round-1",
+        "phase": "responding",
+        "label": "Exploring",
+        "call_kind": "agent_loop_round",
+        "trace_id": "chat-round-1",
+        "trace_role": "explore",
+        "trace_group": "stage",
+        "trace_kind": "call_status",
+        "call_state": "complete",
+        "call_role": "round"
+      },
+      "timestamp": 5
+    },
+    {
+      "type": "tool_call",
+      "source": "chat",
+      "stage": "responding",
+      "content": "exec",
+      "metadata": {
+        "args": { "command": "ls -la" },
+        "call_id": "tool_00",
+        "phase": "responding",
+        "label": "exec",
+        "call_kind": "tool_planning",
+        "trace_id": "tool_00",
+        "trace_role": "tool",
+        "trace_group": "tool_call",
+        "trace_kind": "tool_call",
+        "tool_name": "exec",
+        "call_state": "running"
+      },
+      "timestamp": 6
+    },
+    {
+      "type": "tool_call",
+      "source": "chat",
+      "stage": "responding",
+      "content": "glob",
+      "metadata": {
+        "args": { "pattern": "**/*.ts" },
+        "call_id": "tool_01",
+        "phase": "responding",
+        "label": "glob",
+        "call_kind": "tool_planning",
+        "trace_id": "tool_01",
+        "trace_role": "tool",
+        "trace_group": "tool_call",
+        "trace_kind": "tool_call",
+        "tool_name": "glob",
+        "call_state": "running"
+      },
+      "timestamp": 7
+    },
+    {
+      "type": "tool_call",
+      "source": "chat",
+      "stage": "responding",
+      "content": "read_skill",
+      "metadata": {
+        "args": { "name": "dataviz" },
+        "call_id": "tool_02",
+        "phase": "responding",
+        "label": "read_skill",
+        "call_kind": "tool_planning",
+        "trace_id": "tool_02",
+        "trace_role": "tool",
+        "trace_group": "tool_call",
+        "trace_kind": "tool_call",
+        "tool_name": "read_skill",
+        "call_state": "running"
+      },
+      "timestamp": 8
+    },
+    {
+      "type": "tool_result",
+      "source": "chat",
+      "stage": "responding",
+      "content": "/d/workspace/kagweb . ..",
+      "metadata": {
+        "tool": "exec",
+        "call_id": "tool_00",
+        "phase": "responding",
+        "label": "exec",
+        "call_kind": "tool_planning",
+        "trace_id": "tool_00",
+        "trace_role": "tool",
+        "trace_group": "tool_call",
+        "trace_kind": "tool_result",
+        "tool_name": "exec",
+        "call_state": "complete"
+      },
+      "timestamp": 9
+    },
+    {
+      "type": "tool_result",
+      "source": "chat",
+      "stage": "responding",
+      "content": "No files found",
+      "metadata": {
+        "tool": "glob",
+        "call_id": "tool_01",
+        "phase": "responding",
+        "label": "glob",
+        "call_kind": "tool_planning",
+        "trace_id": "tool_01",
+        "trace_role": "tool",
+        "trace_group": "tool_call",
+        "trace_kind": "tool_result",
+        "tool_name": "glob",
+        "call_state": "complete"
+      },
+      "timestamp": 10
+    },
+    {
+      "type": "tool_result",
+      "source": "chat",
+      "stage": "responding",
+      "content": "Execute skill: dataviz",
+      "metadata": {
+        "tool": "read_skill",
+        "call_id": "tool_02",
+        "phase": "responding",
+        "label": "read_skill",
+        "call_kind": "tool_planning",
+        "trace_id": "tool_02",
+        "trace_role": "tool",
+        "trace_group": "tool_call",
+        "trace_kind": "tool_result",
+        "tool_name": "read_skill",
+        "call_state": "error",
+        "is_error": true
+      },
+      "timestamp": 11
+    },
+    {
+      "type": "progress",
+      "source": "chat",
+      "stage": "responding",
+      "content": "Exploring",
+      "metadata": {
+        "call_id": "chat-round-2",
+        "phase": "responding",
+        "label": "Exploring",
+        "call_kind": "agent_loop_round",
+        "trace_id": "chat-round-2",
+        "trace_role": "explore",
+        "trace_group": "stage",
+        "trace_kind": "call_status",
+        "call_state": "running"
+      },
+      "timestamp": 12
+    },
+    {
+      "type": "thinking",
+      "source": "chat",
+      "stage": "responding",
+      "content": "The skill invocation returned a receipt, not content. Let me report what went out.",
+      "metadata": {
+        "call_id": "chat-round-2",
+        "phase": "responding",
+        "label": "Exploring",
+        "call_kind": "agent_loop_round",
+        "trace_id": "chat-round-2",
+        "trace_role": "explore",
+        "trace_group": "stage",
+        "trace_kind": "llm_chunk"
+      },
+      "timestamp": 13
+    },
+    {
+      "type": "content",
+      "source": "chat",
+      "stage": "responding",
+      "content": "Test fired — here's what went out.",
+      "metadata": {
+        "call_id": "chat-round-2",
+        "phase": "responding",
+        "label": "Exploring",
+        "call_kind": "agent_loop_round",
+        "trace_id": "chat-round-2",
+        "trace_role": "explore",
+        "trace_group": "stage",
+        "trace_kind": "llm_chunk"
+      },
+      "timestamp": 14
+    }
+  ],
+  "finish": {
+    "type": "progress",
+    "source": "chat",
+    "stage": "responding",
+    "content": "",
+    "metadata": {
+      "call_id": "chat-round-2",
+      "phase": "responding",
+      "label": "Exploring",
+      "call_kind": "agent_loop_round",
+      "trace_id": "chat-round-2",
+      "trace_role": "explore",
+      "trace_group": "stage",
+      "trace_kind": "call_status",
+      "call_state": "complete",
+      "call_role": "finish"
+    },
+    "timestamp": 15
+  }
+}

@@ -99,6 +99,20 @@ def _format_tool_hint(tool_name: str, args: Any) -> str:
     return hint
 
 
+def _already_streamed(streamed_rounds: dict[str, str], final_text: str) -> bool:
+    """Whether the live-streamed text already delivered the reply.
+
+    Compared across every segment rather than one at a time: an agent-loop turn
+    streams one segment per round, so no single segment equals the joined
+    answer, and the native loop's narration prefixes the finish text — which is
+    why this is a suffix test. A stream that stopped early is a prefix and
+    still needs the full send.
+    """
+    if not final_text:
+        return False
+    return "".join(streamed_rounds.values()).strip().endswith(final_text)
+
+
 class PartnerRunner:
     """Consume a partner's inbound bus and answer with the chat agent loop."""
 
@@ -484,10 +498,14 @@ class PartnerRunner:
                                 await self._publish_hint(msg, hint, tool_hint=True)
 
                         elif event.type == StreamEventType.PROGRESS:
+                            # Both marker roles close a round: "narration" is
+                            # the native loop's preamble, "round" an external
+                            # agent loop's intermediate round. Either way the
+                            # round's text stops streaming here.
                             if (
                                 meta.get("trace_kind") == "call_status"
                                 and meta.get("call_state") == "complete"
-                                and meta.get("call_role") == "narration"
+                                and meta.get("call_role") in {"narration", "round"}
                             ):
                                 call_id = str(meta.get("call_id") or "")
                                 raw_text = "".join(round_buffers.pop(call_id, []))
@@ -554,14 +572,8 @@ class PartnerRunner:
         for call_id in streamed_rounds:
             if call_id not in ended_rounds:
                 await self._publish_stream_end(msg, turn_id, call_id)
-                # The reply is "already delivered" only when the live-streamed
-                # text matches what the caller is about to send.
-                if (
-                    delivery_meta is not None
-                    and final_text
-                    and streamed_rounds[call_id].strip() == final_text
-                ):
-                    delivery_meta["_streamed"] = True
+        if delivery_meta is not None and _already_streamed(streamed_rounds, final_text):
+            delivery_meta["_streamed"] = True
 
         return final_text, errors, turn_events
 

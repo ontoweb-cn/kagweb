@@ -140,3 +140,62 @@ test("streaming mode follows the latest meaningful event", () => {
   );
   assert.equal(detectStreamingMode([], true, false), "responded");
 });
+
+test("an agent-loop round and its tool call drive the live status label", () => {
+  // The external loop's events are what the header used to fall through on,
+  // leaving it on the "reasoning" default while tools were running.
+  const chunk = event(
+    "thinking",
+    "chat-round-1",
+    { call_kind: "agent_loop_round", trace_kind: "llm_chunk" },
+    "pondering",
+  );
+  assert.equal(detectStreamingMode([chunk], false, true), "exploring");
+
+  const call = {
+    ...event(
+      "tool_call",
+      "chat-tool-1",
+      { call_kind: "tool_planning", trace_group: "tool_call" },
+      "exec",
+    ),
+    // The agent-loop family streams under the chat stage, not "exploring".
+    stage: "responding",
+  };
+  assert.equal(detectStreamingMode([chunk, call], true, true), "tool_using");
+});
+
+test("an agent-loop round settles on its own marker and stays renderable", () => {
+  // `call_role: "round"` is the intermediate close: it must settle the row
+  // without being read as narration (which would strip the prose from the
+  // answer) and without collapsing the trace as a final answer would.
+  const events = [
+    event("progress", "chat-round-1", { call_state: "running" }),
+    event(
+      "thinking",
+      "chat-round-1",
+      { call_kind: "agent_loop_round", trace_kind: "llm_chunk" },
+      "pondering",
+    ),
+    event(
+      "content",
+      "chat-round-1",
+      { call_kind: "agent_loop_round", trace_kind: "llm_chunk" },
+      "Let me look.",
+    ),
+    event("progress", "chat-round-1", {
+      trace_kind: "call_status",
+      call_state: "complete",
+      call_role: "round",
+    }),
+  ];
+
+  assert.equal(isTracePending(events), false);
+  assert.equal(isNarrationRound(events), false);
+  assert.equal(hasRenderableCallTrace(events), true);
+  const items = selectTraceDisplayItems(groupTraceEvents(events));
+  assert.deepEqual(
+    items.map((item) => item.kind),
+    ["trace"],
+  );
+});

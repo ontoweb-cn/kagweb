@@ -10,6 +10,7 @@
  * Group classification mirrors `TracePresentation`'s canonical rules so the
  * DAG never disagrees with the inline activity trace:
  *   tool     → trace_group === "tool_call" || call_kind === "tool_planning"
+ *              || an untagged group that carries a tool_call event
  *   retrieve → trace_role === "retrieve" (only KB-prefetch seeds form their
  *              own group; retrieval events reusing a tool's call_id are
  *              merged into that tool's group — see walkCallGroups)
@@ -90,8 +91,14 @@ function walkCallGroups(events: StreamEvent[] | undefined): CallGroup[] {
 
     const group = getTraceGroup(groupEvents);
     const role = getTraceRole(groupEvents);
+    // A group carrying a tool call is a tool call even when it arrived
+    // untagged (a turn persisted before the trace contract). The inline trace
+    // applies the same rule — see `TracePresentation.isToolRow` — so the DAG
+    // cannot classify a row differently from the activity feed.
+    const untaggedToolCall =
+      !kind && !group && groupEvents.some((event) => event.type === "tool_call");
     let nodeKind: CallGroup["kind"];
-    if (kind === "tool_planning" || group === "tool_call") {
+    if (kind === "tool_planning" || group === "tool_call" || untaggedToolCall) {
       nodeKind = "tool_call";
     } else if (role === "retrieve") {
       nodeKind = "retrieve";

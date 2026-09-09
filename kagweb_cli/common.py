@@ -306,10 +306,12 @@ class TurnStreamRenderer:
     and only labels the round once it completes — a ``call_status`` marker
     whose ``call_role`` says whether that text was ``narration`` (preamble
     to tool calls; rendered dim, in place, before its tools) or the
-    ``finish`` (the user-facing answer; rendered as Markdown). Chunks are
-    therefore buffered per ``call_id`` and settled when the round's marker
-    arrives — the marker is emitted before the round's tool calls
-    dispatch, so terminal order matches the model's order.
+    ``finish`` (the user-facing answer; rendered as Markdown). An external
+    agent loop labels its intermediate rounds ``round``, which renders the
+    same way narration does. Chunks are therefore buffered per ``call_id``
+    and settled when the round's marker arrives — the marker is emitted
+    before the round's tool calls dispatch, so terminal order matches the
+    model's order.
 
     Content without that trace metadata (other capabilities) keeps the
     legacy behaviour: buffer and render at stage boundaries / done.
@@ -417,8 +419,14 @@ class TurnStreamRenderer:
         call_state = str(metadata.get("call_state") or "")
         if call_state == "complete":
             call_role = str(metadata.get("call_role") or "")
-            if call_role in {"narration", "finish"}:
-                if call_role == "narration" and metadata.get("answer_visible") is True:
+            # "round" is an external agent loop's intermediate round. Unlike a
+            # native loop's narration, its prose is part of the answer (the web
+            # keeps it in the message bubble), so it prints as answer Markdown,
+            # in order, rather than as dim preamble.
+            if call_role in {"narration", "finish", "round"}:
+                if call_role == "round":
+                    call_role = "finish"
+                elif call_role == "narration" and metadata.get("answer_visible") is True:
                     call_role = "finish"
                 self._settle_round(str(metadata.get("call_id") or ""), role=call_role)
                 return
@@ -623,6 +631,13 @@ class TurnStreamRenderer:
         """
         for call_id in list(self._round_order):
             self._settle_round(call_id, role="finish")
+        # Reasoning from a round that never settled (abort, crash, a pass that
+        # ended on a tool call) is otherwise dropped before `/show` can reach
+        # it — keep it in the buffer even though its round never completed.
+        for call_id in list(self._thinking_bufs):
+            thinking = self._thinking_bufs.pop(call_id, "").strip()
+            if thinking:
+                tool_results.remember("thinking", thinking)
         if self._legacy_buf:
             self._status_stop()
             console.print(Markdown(self._legacy_buf))

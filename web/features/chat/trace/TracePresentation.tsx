@@ -251,6 +251,19 @@ function describeToolCall(
         chip: basename(str(a.path)) || null,
         mono: true,
       }
+    case 'glob':
+      // A file-pattern search: the pattern is the artifact, not a path.
+      return {
+        verb: t('Finding files'),
+        chip: clip(str(a.pattern)) || null,
+        mono: true,
+      }
+    case 'grep':
+      return {
+        verb: t('Searching files'),
+        chip: clip(str(a.pattern)) || null,
+        mono: true,
+      }
     case 'write_note':
       return {
         verb: t('Writing note'),
@@ -957,7 +970,14 @@ function TraceRowItem({
   const expandable = hasExpandableContent(callEvents, group, role)
   if (!expandable && !active) return null
 
-  const isToolRow = kind === 'tool_planning' || group === 'tool_call'
+  const toolCallEvent = callEvents.find(event => event.type === 'tool_call')
+  // A group that carries a tool call is a tool row even when it arrived
+  // untagged. Without the third test, an integration that predates the trace
+  // contract — or a turn persisted before it — has neither `call_kind` nor
+  // `trace_group`, so the row would title itself with the stage name
+  // ("Responding") and never reach `describeToolCall` at all.
+  const isToolRow =
+    kind === 'tool_planning' || group === 'tool_call' || Boolean(toolCallEvent && !kind && !group)
   const isChatRound = kind === 'agent_loop_round'
   const isRetrieve = role === 'retrieve'
   const narration = isNarrationRound(callEvents)
@@ -981,7 +1001,6 @@ function TraceRowItem({
   // be, since a settled round folds itself and the text has to be reachable.
   const canToggle = expandable
 
-  const toolCallEvent = callEvents.find(event => event.type === 'tool_call')
   const toolName = String(
     (toolCallEvent && (getTraceMeta(toolCallEvent).tool_name || toolCallEvent.metadata?.tool)) ||
       toolCallEvent?.content ||

@@ -71,6 +71,25 @@ test("expanding materializes round → tool hierarchy with drilldown edges", () 
   assert.equal(tool.meta.toolName, "rag");
 });
 
+test("an untagged tool group is a tool node, not a round", () => {
+  // A turn persisted before the trace contract: the call carries a call_id and
+  // a state, but no call_kind/trace_group. The inline activity trace renders it
+  // as a tool row, so the DAG has to classify it the same way.
+  const events = [
+    ev("tool_call", { call_id: "legacy-1", call_state: "running" }, "Bash"),
+    ev("tool_result", { call_id: "legacy-1", call_state: "complete" }, "files"),
+  ];
+  const dag = computeSessionDag(
+    { messages: [assistantMsg(1, events)] },
+    new Set(["msg:1"]),
+  );
+  const kinds = dag.nodes.map((n) => n.kind);
+  assert.deepEqual(kinds, ["root", "assistant", "tool_call"]);
+  const tool = dag.nodes.find((n) => n.kind === "tool_call");
+  assert.ok(tool);
+  assert.equal(tool.meta.toolName, "Bash");
+});
+
 test("subagent events sharing the tool call_id become subagent child nodes", () => {
   const events = [
     ev("tool_call", { call_id: "t1", trace_group: "tool_call", tool_name: "consult_subagent" }, "go"),
