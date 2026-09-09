@@ -189,11 +189,14 @@ def test_detect_reports_cli_presets_and_http_profiles(client: TestClient) -> Non
         assert isinstance(result["available"], bool)
         assert result["detail"]
 
-    http = [r for r in results if r["family"] == "http"]
+    http = {r["key"]: r for r in results if r["family"] == "http"}
     # The unreachable loopback profile is probed and reported unavailable.
-    assert any(not r["available"] and r["local"] for r in http)
+    assert any(
+        not r["available"] and r["local"] for key, r in http.items() if key != "intellect-runs"
+    )
     # Profiles without a URL are not probed at all.
-    assert len(http) == 1
+    assert len(http) == 2  # the agentscope profile + the intellect-runs preset probe
+    assert http["intellect-runs"]["local"] is True  # preset-level local gateway probe
 
 
 def test_test_endpoint_reports_stub_and_unknown_backend(client: TestClient) -> None:
