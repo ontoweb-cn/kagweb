@@ -7,16 +7,10 @@
  * assistant message's call tree is materialized on demand via the
  * `expandedMessages` set.
  *
- * Group classification mirrors `TracePresentation`'s canonical rules so the
- * DAG never disagrees with the inline activity trace:
- *   tool     → trace_group === "tool_call" || call_kind === "tool_planning"
- *              || an untagged group that carries a tool_call event
- *   retrieve → trace_role === "retrieve" (only KB-prefetch seeds form their
- *              own group; retrieval events reusing a tool's call_id are
- *              merged into that tool's group — see walkCallGroups)
- *   round    → everything else (stage / plan / quiz / agent_loop_round / …)
- * Skipped, exactly like the trace view: `llm_final_response`, groups
- * absorbed into the final answer, and groups without trace substance.
+ * Group classification is not decided here: `walkCallGroups` asks
+ * `classifyTraceGroup` (`trace/selectors.ts`), the same kernel the inline
+ * activity trace and the DSL export use, so the DAG cannot disagree with
+ * either. That kernel owns the rule (and its docstring is the specification).
  */
 import type { StreamEvent } from "@/features/chat/model/protocol";
 import {
@@ -26,6 +20,7 @@ import {
   getTraceGroup,
   getTraceMeta,
   groupTraceEvents,
+  type TraceGroupClass,
 } from "@/features/chat/trace/selectors";
 import { buildVisiblePath } from "@/lib/message-branches";
 import { isConfirmedResearchFollowup } from "@/lib/deep-research-report";
@@ -61,12 +56,9 @@ export interface SessionDagInput {
 const TEXT_PREVIEW_LIMIT = 140;
 
 /** One materializable group from a message's call tree. */
-interface CallGroup {
-  kind: "round" | "tool_call" | "retrieve";
+interface CallGroup extends TraceGroupClass {
   callId: string;
   events: StreamEvent[];
-  /** Distinct (name, consultIndex) subagent markers inside a tool group. */
-  subagents: Array<{ name: string; consultIndex: number | undefined }>;
 }
 
 /**

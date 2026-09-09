@@ -121,6 +121,29 @@ test("classifyTraceGroup collects distinct subagent markers for tool groups only
   );
 });
 
+test("classifyTraceGroup accepts a marker only with a real name and finite index", () => {
+  // The metadata field is unvalidated JSON, so `null` / `true` / `"2"` arrive
+  // in practice. The Python mirror (`dsl_export._subagent_markers`) applies
+  // exactly this rule — a mismatch grows a phantom subagent node in the DAG
+  // that the CLI/DSL export does not have.
+  const classified = classifyTraceGroup([
+    event("tool_call", "t1", { trace_group: "tool_call" }, "go"),
+    event("progress", "t1", { subagent_name: null }, "x"),
+    event("progress", "t1", { subagent_name: true }, "x"),
+    event("progress", "t1", { subagent_name: "" }, "x"),
+    event("progress", "t1", { subagent_name: "a", consult_index: true }, "x"),
+    event("progress", "t1", { subagent_name: "b", consult_index: 1.5 }, "x"),
+    event("progress", "t1", { subagent_name: "c", consult_index: "2" }, "x"),
+    event("tool_result", "t1", { trace_group: "tool_call" }, "ok"),
+  ]);
+
+  assert.deepEqual(classified?.subagents, [
+    { name: "a", consultIndex: undefined },
+    { name: "b", consultIndex: 1.5 },
+    { name: "c", consultIndex: undefined },
+  ]);
+});
+
 test("pending state ends only when its own call reports a terminal marker", () => {
   const running = [event("progress", "a", { call_state: "running" })];
   assert.equal(isTracePending(running), true);

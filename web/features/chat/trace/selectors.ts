@@ -183,6 +183,26 @@ export interface TraceGroupClass {
 export function classifyTraceGroup(
   events: StreamEvent[],
 ): TraceGroupClass | null {
+  // The same group is classified by the display-item pass, the DAG and then
+  // each rendered row; on the streaming hot path that is up to four full
+  // scans per group per frame. The group's event array is stable for a render
+  // pass and events are treated as immutable everywhere (the reducer appends
+  // new arrays), so identity is a safe cache key.
+  const cached = classificationCache.get(events);
+  if (cached !== undefined) return cached;
+  const classified = classifyTraceGroupUncached(events);
+  classificationCache.set(events, classified);
+  return classified;
+}
+
+const classificationCache = new WeakMap<
+  StreamEvent[],
+  TraceGroupClass | null
+>();
+
+function classifyTraceGroupUncached(
+  events: StreamEvent[],
+): TraceGroupClass | null {
   const kind = getTraceCallKind(events);
   if (kind === "llm_final_response") return null;
   if (events.some((event) => getTraceMeta(event).absorbed_into_final === true)) {
@@ -213,10 +233,19 @@ export function classifyTraceGroup(
     const seen = new Set<string>();
     for (const event of events) {
       const meta = getTraceMeta(event);
-      if (meta.subagent_name === undefined) continue;
-      const name = String(meta.subagent_name);
+      // A marker needs a real name, and its index counts only when it is a
+      // finite number. `null` / `true` / `"1.5"` arrive from unvalidated JSON
+      // (`StreamEvent.metadata` is `Record<string, unknown>`), and the Python
+      // mirror (`dsl_export._subagent_markers`) applies exactly this rule —
+      // otherwise the DAG would grow a phantom `"null"` subagent node that the
+      // CLI/DSL export does not have.
+      const name = meta.subagent_name;
+      if (typeof name !== "string" || !name) continue;
+      const rawIndex = meta.consult_index;
       const consultIndex =
-        typeof meta.consult_index === "number" ? meta.consult_index : undefined;
+        typeof rawIndex === "number" && Number.isFinite(rawIndex)
+          ? rawIndex
+          : undefined;
       const key = `${name}:${consultIndex ?? ""}`;
       if (seen.has(key)) continue;
       seen.add(key);

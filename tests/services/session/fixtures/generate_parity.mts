@@ -1,15 +1,21 @@
 /**
  * Session DSL parity fixture generator — run with tsx from the repo root:
  *
- *   npx tsx tests/services/session/fixtures/generate_parity.mts
+ *   npx tsx --tsconfig web/tsconfig.json tests/services/session/fixtures/generate_parity.mts
+ *
+ * The `--tsconfig` is required: the DSL derivation imports `@/…` aliases that
+ * only the web tsconfig maps (there is no root tsconfig, so a bare `npx tsx`
+ * dies on `Cannot find module '@/lib/message-branches'`).
  *
  * Regenerates `session_dsl_expected.json` (DSL documents) and
  * `session_dsl_expected.mmd` (Mermaid codegen) from the TypeScript
  * implementation. The Python port (`kagweb/services/session/dsl_export.py`)
  * must match these outputs exactly — if you change the web derivation rules,
  * regenerate here AND update the Python port in the same commit (#53/#64).
+ * `tests/services/session/test_dsl_parity.py` is the Python half of that lock.
  */
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { buildSessionDslDocument } from "../../../../web/features/chat/dag/dsl";
 import { dslToMermaid } from "../../../../web/features/chat/dag/dsl-mermaid";
 
@@ -123,7 +129,9 @@ const fixture = {
   expected: { stable_normalized: stableNormalized, raw },
 };
 
-const outDir = new URL(".", import.meta.url).pathname;
+// fileURLToPath, not `new URL(...).pathname`: on Windows the latter yields
+// `/D:/…`, which string-concatenation turns into `D:\D:\…`.
+const outDir = fileURLToPath(new URL(".", import.meta.url));
 writeFileSync(
   `${outDir}session_dsl_expected.json`,
   JSON.stringify(fixture, null, 2) + "\n",

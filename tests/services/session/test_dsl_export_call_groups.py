@@ -49,9 +49,16 @@ def test_tool_precedence_beats_retrieve_for_a_shared_call_id() -> None:
     ]
 
     assert _classify_trace_group(group_events) == "tool_call"
-    assert _classify_trace_group(
-        [_event("progress", content="searching", call_id="r1", trace_role="retrieve", query="q")]
-    ) == "retrieve"
+    assert (
+        _classify_trace_group(
+            [
+                _event(
+                    "progress", content="searching", call_id="r1", trace_role="retrieve", query="q"
+                )
+            ]
+        )
+        == "retrieve"
+    )
 
 
 def test_skip_rules_drop_final_absorbed_and_substanceless_groups() -> None:
@@ -70,12 +77,50 @@ def test_skip_rules_drop_final_absorbed_and_substanceless_groups() -> None:
     assert _classify_trace_group([_event("thinking", call_id="e1")]) is None
 
 
+def test_tool_planning_call_kind_is_a_tool_call() -> None:
+    """The native loop's shape: a tagged `call_kind` with no `trace_group`."""
+    assert (
+        _classify_trace_group(
+            [_event("tool_call", content="rag", call_id="t1", call_kind="tool_planning")]
+        )
+        == "tool_call"
+    )
+
+
+def test_marker_types_mirror_the_typescript_rule() -> None:
+    """Unvalidated JSON metadata: a marker needs a non-empty string name and a
+    finite numeric index. `null` / `true` / `""` / `"2"` are dropped on both
+    sides, or the DAG grows a phantom `"null"` subagent the CLI export lacks."""
+    groups = _walk_call_groups(
+        [
+            _event("tool_call", content="go", call_id="t1", trace_group="tool_call"),
+            _event("progress", content="x", call_id="t1", subagent_name=None),
+            _event("progress", content="x", call_id="t1", subagent_name=True),
+            _event("progress", content="x", call_id="t1", subagent_name=""),
+            _event("progress", content="x", call_id="t1", subagent_name="a", consult_index=True),
+            _event("progress", content="x", call_id="t1", subagent_name="b", consult_index=1.5),
+            _event("progress", content="x", call_id="t1", subagent_name="c", consult_index="2"),
+            _event("tool_result", content="ok", call_id="t1", trace_group="tool_call"),
+        ]
+    )
+
+    assert groups[0]["subagents"] == [
+        {"name": "a", "consult_index": None},
+        {"name": "b", "consult_index": 1.5},
+        {"name": "c", "consult_index": None},
+    ]
+
+
 def test_subagent_markers_are_deduplicated_and_tool_only() -> None:
     groups = _walk_call_groups(
         [
             _event("tool_call", content="go", call_id="t1", trace_group="tool_call"),
-            _event("progress", content="working", call_id="t1", subagent_name="math", consult_index=1),
-            _event("progress", content="again", call_id="t1", subagent_name="math", consult_index=1),
+            _event(
+                "progress", content="working", call_id="t1", subagent_name="math", consult_index=1
+            ),
+            _event(
+                "progress", content="again", call_id="t1", subagent_name="math", consult_index=1
+            ),
             _event("progress", content="working", call_id="t1", subagent_name="writer"),
             _event("tool_result", content="ok", call_id="t1", trace_group="tool_call"),
         ]
@@ -88,7 +133,15 @@ def test_subagent_markers_are_deduplicated_and_tool_only() -> None:
 
     # A round group never carries subagent markers.
     rounds = _walk_call_groups(
-        [_event("thinking", content="p", call_id="r1", call_kind="agent_loop_round", subagent_name="math")]
+        [
+            _event(
+                "thinking",
+                content="p",
+                call_id="r1",
+                call_kind="agent_loop_round",
+                subagent_name="math",
+            )
+        ]
     )
     assert rounds[0]["kind"] == "round"
     assert rounds[0]["subagents"] == []
