@@ -39,6 +39,12 @@ class AgentLoopPreset:
     transport: str = "one-shot"
     # HTTP family defaults.
     turn_path: str = "/agent/turn"
+    # HTTP wire variant: ``turn`` posts a single streaming turn;
+    # ``runs`` starts a run (202 + run_id), subscribes to its event stream
+    # and answers approvals through the run control endpoints.
+    protocol: str = "turn"
+    # Optional preset-level reachability probe target (local health URL).
+    probe_url: str = ""
     # Operators may always override these through settings.
     configurable: tuple[str, ...] = field(default=())
 
@@ -87,6 +93,18 @@ PRESETS: dict[str, AgentLoopPreset] = {
             name="intellect-team",
             family="http",
             description="Intellect enterprise (team) agent service.",
+        ),
+        AgentLoopPreset(
+            name="intellect-runs",
+            family="http",
+            description=(
+                "Intellect community api_server over the run endpoints "
+                "(/v1/runs + SSE): deltas, tools, reasoning and approvals "
+                "for containerized deployments that cannot spawn the CLI."
+            ),
+            turn_path="/v1/runs",
+            protocol="runs",
+            probe_url="http://127.0.0.1:8642/health",
         ),
         AgentLoopPreset(
             name="hermes",

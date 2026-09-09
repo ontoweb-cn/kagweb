@@ -1316,6 +1316,9 @@ class RuntimeSettingsService:
                 raw.get("approval_timeout_seconds"), 60, 5, 600
             ),
             "approval_default": _approval_default(raw.get("approval_default")),
+            # One-shot CLI profiles only: stdout is the final answer as plain
+            # text (`intellect chat -Q`-style backends) — no progress events.
+            "text_output": _coerce_bool(raw.get("text_output"), False),
         }
 
     @staticmethod

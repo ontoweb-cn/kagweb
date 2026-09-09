@@ -42,6 +42,7 @@ from kagweb.services.i18n import t
 
 from .cli_backend import translate_generic
 from .protocol import (
+    APPROVAL_CHOICES,
     EVENT_KINDS,
     MAX_LINE_BYTES,
     AgentLoopBackend,
@@ -256,3 +257,279 @@ async def _capped_lines(response: httpx.Response, backend_name: str) -> AsyncIte
             yield line.decode("utf-8", "replace").rstrip("\r")
     if not discarding and buffer and len(buffer) <= MAX_LINE_BYTES:
         yield buffer.decode("utf-8", "replace").rstrip("\r")
+
+
+class RunsAgentLoopBackend(HttpAgentLoopBackend):
+    """Intellect run-endpoints variant: POST /v1/runs, then subscribe.
+
+    Wire flow (Intellect api_server): ``POST {url}/v1/runs`` starts a run and
+    returns ``run_id`` (202); ``GET {url}/v1/runs/{run_id}/events`` streams
+    structured lifecycle events as SSE. Approvals resolve through
+    ``POST .../approval`` and cancellation through ``POST .../stop`` — this
+    is the HTTP family's only control-capable transport.
+
+    The event stream is a **single subscription**: if the SSE connection
+    drops, the run's event queue is torn down server-side and intermediate
+    events are lost. On disconnect this backend degrades to polling
+    ``GET {url}/v1/runs/{run_id}`` until a terminal status (which still
+    carries the final output), surfacing a note that live events were lost.
+    """
+
+    supports_control = True
+
+    def __init__(
+        self,
+        *,
+        name: str,
+        url: str,
+        turn_path: str,
+        api_key: str,
+        headers: dict[str, str],
+        timeout_seconds: float,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
+        super().__init__(
+            name=name,
+            url=url,
+            turn_path=turn_path or "/v1/runs",
+            api_key=api_key,
+            headers=headers,
+            timeout_seconds=timeout_seconds,
+            transport=transport,
+        )
+        self._run_id = ""
+        self._auth_headers: dict[str, str] = {}
+
+    # -- URL helpers ---------------------------------------------------------
+
+    def _runs_url(self, *suffix: str) -> str:
+        return f"{self.url}{self.turn_path}{'/' + '/'.join(suffix) if suffix else ''}"
+
+    def _headers(self) -> dict[str, str]:
+        headers = {"Accept": "application/json, text/event-stream", **self.headers}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
+
+    # -- one turn ------------------------------------------------------------
+
+    async def run(self, request: AgentLoopRequest) -> AsyncIterator[AgentLoopEvent]:
+        payload: dict[str, Any] = {"input": request.prompt}
+        if request.history:
+            payload["conversation_history"] = request.history
+        if request.session_id:
+            payload["session_id"] = request.session_id
+        self._auth_headers = self._headers()
+        state: dict[str, Any] = {"buf": [], "terminal": False}
+        timeout = httpx.Timeout(
+            connect=15.0,
+            read=self.timeout_seconds or 300.0,
+            write=60.0,
+            pool=15.0,
+        )
+        try:
+            async with (
+                asyncio.timeout(self.timeout_seconds) if self.timeout_seconds else nullcontext()
+            ):
+                async with httpx.AsyncClient(timeout=timeout, transport=self._transport) as client:
+                    start = await client.post(
+                        self._runs_url(), json=payload, headers=self._headers()
+                    )
+                    if start.status_code not in {200, 202}:
+                        body = start.text[:_ERROR_BODY_LIMIT]
+                        raise AgentLoopError(
+                            t(
+                                "agent_loop.http_status",
+                                backend=self.name,
+                                status=start.status_code,
+                                detail=body[:400],
+                            ),
+                            backend=self.name,
+                        )
+                    self._run_id = str(start.json().get("run_id") or "")
+                    if not self._run_id:
+                        raise AgentLoopError(
+                            t("agent_loop.runs_no_run_id", backend=self.name),
+                            backend=self.name,
+                        )
+                    async for event in self._stream_events(
+                        client, run_id=self._run_id, state=state
+                    ):
+                        yield event
+                    if not state["terminal"]:
+                        async for event in self._poll_terminal(client, state=state):
+                            yield event
+        except TimeoutError as exc:
+            raise AgentLoopError(
+                t("agent_loop.timeout", backend=self.name, seconds=int(self.timeout_seconds)),
+                backend=self.name,
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise AgentLoopError(
+                t("agent_loop.http_failed", backend=self.name, error=str(exc)),
+                backend=self.name,
+            ) from exc
+
+    async def _stream_events(
+        self, client: httpx.AsyncClient, *, run_id: str, state: dict[str, Any]
+    ) -> AsyncIterator[AgentLoopEvent]:
+        """Subscribe once to the run's SSE stream; translate lifecycle events."""
+        try:
+            async with client.stream(
+                "GET", self._runs_url(run_id, "events"), headers=self._headers()
+            ) as response:
+                if response.status_code != 200:
+                    return  # degrade to polling (e.g. the subscribe race)
+                data_lines: list[str] = []
+                async for line in _capped_lines(response, self.name):
+                    if line.startswith(":"):
+                        continue  # comment / keepalive
+                    if not line.strip():
+                        # Blank line terminates the current SSE event.
+                        if data_lines:
+                            for event in self._run_event_from_lines(data_lines, state):
+                                yield event
+                            data_lines = []
+                        continue
+                    if line.startswith("data:"):
+                        data_lines.append(line[len("data:") :].lstrip())
+                if data_lines:
+                    for event in self._run_event_from_lines(data_lines, state):
+                        yield event
+        except httpx.HTTPError:
+            # The queue is torn down server-side once the SSE drops — degrade
+            # to status polling for the terminal state.
+            return
+
+    async def _poll_terminal(
+        self, client: httpx.AsyncClient, *, state: dict[str, Any]
+    ) -> AsyncIterator[AgentLoopEvent]:
+        """Degraded mode: poll run status until terminal."""
+        while not state["terminal"]:
+            await asyncio.sleep(2.0)
+            try:
+                status = await client.get(self._runs_url(self._run_id), headers=self._headers())
+            except httpx.HTTPError:
+                continue
+            if status.status_code != 200:
+                continue
+            body = status.json()
+            state_status = str(body.get("status") or "")
+            if state_status == "completed":
+                state["terminal"] = True
+                yield AgentLoopEvent("progress", text="[runs] completed (status poll)")
+                usage = body.get("usage") if isinstance(body.get("usage"), dict) else {}
+                data = {
+                    "input_tokens": usage.get("input_tokens"),
+                    "output_tokens": usage.get("output_tokens"),
+                    "total_tokens": usage.get("total_tokens"),
+                }
+                yield AgentLoopEvent("usage", data=data)
+            elif state_status in {"failed", "cancelled"}:
+                state["terminal"] = True
+                yield AgentLoopEvent(
+                    "error",
+                    text=str(body.get("error") or f"run {state_status}"),
+                )
+
+    def _run_event_from_lines(
+        self, data_lines: list[str], state: dict[str, Any]
+    ) -> list[AgentLoopEvent]:
+        try:
+            obj = json.loads("\n".join(data_lines))
+        except json.JSONDecodeError:
+            return []
+        if isinstance(obj, dict):
+            return self._translate_run_event(obj, state)
+        return []
+
+    def _translate_run_event(
+        self, obj: dict[str, Any], state: dict[str, Any]
+    ) -> list[AgentLoopEvent]:
+        kind = str(obj.get("event") or "")
+        if kind == "message.delta":
+            delta = str(obj.get("delta") or "")
+            if delta:
+                state["buf"].append(delta)
+            return []
+        if kind in {"tool.started", "tool.completed", "tool.failed"}:
+            events: list[AgentLoopEvent] = []
+            if state["buf"]:
+                events.append(AgentLoopEvent("content", text="".join(state["buf"])))
+                state["buf"] = []
+            tool = str(obj.get("tool") or "tool")
+            if kind == "tool.started":
+                events.append(
+                    AgentLoopEvent("tool_call", name=tool, text=str(obj.get("preview") or ""))
+                )
+            else:
+                events.append(
+                    AgentLoopEvent(
+                        "tool_result",
+                        name=tool,
+                        data={"is_error": kind == "tool.failed" or bool(obj.get("error"))},
+                    )
+                )
+            return events
+        if kind == "reasoning.available":
+            text = str(obj.get("text") or "")
+            return [AgentLoopEvent("thinking", text=text)] if text else []
+        if kind == "approval.request":
+            state["buf"] and state["buf"].insert(0, "")  # keep buffer for later
+            return [
+                AgentLoopEvent(
+                    "approval_request",
+                    name=str(obj.get("tool") or "tool"),
+                    text=str(obj.get("preview") or ""),
+                    data={
+                        # The runs API resolves approvals per run, not per request.
+                        "request_id": str(obj.get("run_id") or self._run_id),
+                        "choices": [
+                            str(choice) for choice in (obj.get("choices") or APPROVAL_CHOICES)
+                        ],
+                    },
+                )
+            ]
+        if kind == "run.completed":
+            events: list[AgentLoopEvent] = []
+            if state["buf"]:
+                events.append(AgentLoopEvent("content", text="".join(state["buf"])))
+                state["buf"] = []
+            state["terminal"] = True
+            output = str(obj.get("output") or "")
+            if output:
+                events.append(AgentLoopEvent("content", text=output))
+            usage = obj.get("usage") if isinstance(obj.get("usage"), dict) else {}
+            data = {
+                "input_tokens": usage.get("input_tokens"),
+                "output_tokens": usage.get("output_tokens"),
+                "total_tokens": usage.get("total_tokens"),
+            }
+            if any(value is not None for value in data.values()):
+                events.append(AgentLoopEvent("usage", data=data))
+            return events
+        if kind == "run.failed":
+            state["terminal"] = True
+            return [AgentLoopEvent("error", text=str(obj.get("error") or "run failed"))]
+        if kind == "run.cancelled":
+            state["terminal"] = True
+            return [AgentLoopEvent("error", text="run cancelled")]
+        return []
+
+    # -- control plane -------------------------------------------------------
+
+    async def respond_approval(self, request_id: str, choice: str) -> None:
+        if not self._run_id:
+            return
+        async with httpx.AsyncClient(transport=self._transport) as client:
+            await client.post(
+                self._runs_url(self._run_id, "approval"),
+                json={"choice": choice},
+                headers=self._headers(),
+            )
+
+    async def cancel(self) -> None:
+        if not self._run_id:
+            return
+        async with httpx.AsyncClient(transport=self._transport) as client:
+            await client.post(self._runs_url(self._run_id, "stop"), headers=self._headers())

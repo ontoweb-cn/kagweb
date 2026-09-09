@@ -479,3 +479,14 @@ UID 1000 + fsGroup, initContainer for first-start data bootstrap) lives in
 `deploy/k8s/README.md` for the shape rationale (RWO/SQLite keeps the stack
 at `replicas: 1` with `strategy: Recreate`; redis is only needed for
 `backend_workers > 1`).
+
+## Intellect community edition in containers
+
+A containerized KAGWeb cannot spawn a host-side `intellect acp` child
+(ACP is stdio). Use the `intellect-runs` preset instead: it speaks the
+api_server run endpoints that the gateway platform already exposes on
+`http://host.docker.internal:8642` (default port, `API_SERVER_KEY`
+auth). Configure the profile URL to `http://host.docker.internal:8642`
+and set the profile `api_key` to the gateway's `API_SERVER_KEY`. Event
+coverage is slightly narrower than the ACP transport (no thinking), and
+a dropped event stream degrades to run-status polling.

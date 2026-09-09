@@ -402,6 +402,7 @@ class CliAgentLoopBackend(AgentLoopBackend):
         env: dict[str, str],
         timeout_seconds: float,
         translator: Translator,
+        text_output: bool = False,
     ) -> None:
         self.name = name
         self.command = command
@@ -410,6 +411,10 @@ class CliAgentLoopBackend(AgentLoopBackend):
         self.env = {str(key): str(value) for key, value in (env or {}).items()}
         self.timeout_seconds = float(timeout_seconds) if timeout_seconds else 0.0
         self.translator = translator
+        # Text-output mode: stdout is the final answer as plain text (no
+        # NDJSON, no progress events). The whole stream becomes exactly one
+        # content block once the child exits cleanly.
+        self.text_output = text_output
 
     @staticmethod
     def _prompt_with_history(request: AgentLoopRequest) -> str:
@@ -480,9 +485,15 @@ class CliAgentLoopBackend(AgentLoopBackend):
                         backend=self.name,
                     ) from exc
                 stderr_task = asyncio.create_task(self._drain_stderr(proc, stderr_tail))
-                async for event in self._iter_stdout(proc, state):
-                    yield event
+                if self.text_output:
+                    answer = await self._collect_stdout(proc)
+                else:
+                    async for event in self._iter_stdout(proc, state):
+                        yield event
+                    answer = ""
                 returncode = await proc.wait()
+            if self.text_output and returncode == 0 and answer.strip():
+                yield AgentLoopEvent("content", text=answer)
             if returncode != 0:
                 detail = (
                     b"".join(stderr_tail)[-_STDERR_TAIL_LIMIT:].decode("utf-8", "replace").strip()
@@ -518,6 +529,34 @@ class CliAgentLoopBackend(AgentLoopBackend):
                 logger.info(
                     "agent-loop %s: dropped %d unparseable stdout line(s)", self.name, dropped
                 )
+
+    async def _collect_stdout(self, proc: asyncio.subprocess.Process) -> str:
+        """Read the child's whole stdout as the final answer text.
+
+        Bounded like a single NDJSON line: a runaway stream is truncated at
+        MAX_LINE_BYTES so a chatty child cannot exhaust memory.
+        """
+        if proc.stdout is None:  # pragma: no cover - PIPE always set above
+            return ""
+        chunks: list[bytes] = []
+        total = 0
+        truncated = False
+        while True:
+            chunk = await proc.stdout.read(65536)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_LINE_BYTES:
+                truncated = True
+                break
+            chunks.append(chunk)
+        if truncated:
+            logger.warning(
+                "agent-loop %s: text output exceeded %d bytes, truncating",
+                self.name,
+                MAX_LINE_BYTES,
+            )
+        return b"".join(chunks).decode("utf-8", "replace")
 
     async def _iter_stdout(
         self, proc: asyncio.subprocess.Process, state: dict[str, Any]

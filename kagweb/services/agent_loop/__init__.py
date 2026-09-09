@@ -73,6 +73,7 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
             env=env,
             timeout_seconds=timeout,
             translator=TRANSLATORS.get(preset.translator, translate_generic),
+            text_output=bool(resolved.get("text_output")),
         )
 
     url = str(resolved.get("url") or "").strip()
@@ -80,6 +81,17 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
         raise AgentLoopError(t("agent_loop.url_required", backend=name), backend=name)
     turn_path = str(resolved.get("turn_path") or "").strip() or preset.turn_path
     headers = resolved.get("headers") if isinstance(resolved.get("headers"), dict) else {}
+    if getattr(preset, "protocol", "turn") == "runs":
+        from .http_backend import RunsAgentLoopBackend
+
+        return RunsAgentLoopBackend(
+            name=name,
+            url=url,
+            turn_path=turn_path,
+            api_key=str(resolved.get("api_key") or ""),
+            headers=headers,
+            timeout_seconds=timeout,
+        )
     return HttpAgentLoopBackend(
         name=name,
         url=url,

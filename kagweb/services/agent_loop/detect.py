@@ -107,12 +107,17 @@ async def detect_agent_loops(block: dict[str, Any] | None = None) -> list[Detect
     profiles = [item for item in (settings.get("profiles") or []) if isinstance(item, dict)]
 
     cli_results: list[DetectResult] = []
+    preset_http_coros = []
     profile_coros = []
 
     for preset in PRESETS.values():
-        if preset.family != "cli" or not preset.command:
-            continue
-        cli_results.append(detect_cli(preset.name, preset.name, preset.command))
+        if preset.family == "cli" and preset.command:
+            cli_results.append(detect_cli(preset.name, preset.name, preset.command))
+        elif preset.family == "http" and getattr(preset, "probe_url", ""):
+            # Preset-level reachability probe for HTTP backends that ship a
+            # well-known local default (e.g. the Intellect api_server health
+            # endpoint) — remote services still require an explicit profile.
+            preset_http_coros.append(detect_http(preset.name, preset.name, preset.probe_url))
 
     for profile in profiles:
         preset = PRESETS.get(str(profile.get("preset") or ""))
@@ -128,7 +133,7 @@ async def detect_agent_loops(block: dict[str, Any] | None = None) -> list[Detect
                 detect_http(str(profile.get("id")), label, str(profile.get("url")))
             )
 
-    probed = await asyncio.gather(*profile_coros) if profile_coros else []
+    probed = await asyncio.gather(*preset_http_coros, *profile_coros)
     return [*cli_results, *probed]
 
 

@@ -103,6 +103,9 @@ _MESSAGES: dict[str, dict[str, str]] = {
             "The backend requested {kind} for {tool!r} but cannot receive an answer; "
             "continuing without it."
         ),
+        "agent_loop.runs_no_run_id": (
+            "Agent-loop backend {backend!r} started a run but returned no run_id."
+        ),
         "agent_loop.acp_sdk_missing": (
             "Backend {backend!r} uses the Agent Client Protocol transport; install "
             "the SDK with `pip install kagweb[acp]`."
@@ -217,6 +220,7 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.acp_sdk_missing": (
             "后端 {backend!r} 使用 Agent Client Protocol 传输，请先安装 SDK：`pip install kagweb[acp]`。"
         ),
+        "agent_loop.runs_no_run_id": "Agent-loop 后端 {backend!r} 启动了 run 但未返回 run_id。",
         "agent_loop.acp_init_failed": "Agent-loop 后端 {backend!r} 的 ACP 握手失败：{error}",
         "agent_loop.acp_turn_failed": "Agent-loop 后端 {backend!r} 在回合中途丢失 ACP 连接：{error}",
         "agent_loop.consult_manifest": (
