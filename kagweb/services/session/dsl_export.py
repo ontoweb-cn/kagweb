@@ -154,8 +154,11 @@ def _extract_duration_ms(events: list[dict[str, Any]]) -> int | None:
     ]
     if not timestamps:
         return None
-    duration = max(timestamps) - min(timestamps)
-    return int(duration) if duration > 0 else None
+    # Event timestamps are epoch *seconds* while the field (and its consumer)
+    # is milliseconds — convert, and round so the TypeScript mirror emits the
+    # same integer. A zero span still means "unknown", not "instant".
+    duration_ms = int(round((max(timestamps) - min(timestamps)) * 1000))
+    return duration_ms if duration_ms > 0 else None
 
 
 def _extract_tokens(events: list[dict[str, Any]]) -> dict[str, int] | None:

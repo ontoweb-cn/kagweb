@@ -434,14 +434,14 @@
                           "node": "call:t2:tool_call:2",
                           "kind": "tool_call",
                           "tool": "consult_subagent",
-                          "duration_ms": 2,
+                          "duration_ms": 2000,
                           "calls": [
                             {
                               "node": "call:t2:subagent:3",
                               "kind": "subagent",
                               "subagent_name": "math",
                               "consult_index": 1,
-                              "duration_ms": 2
+                              "duration_ms": 2000
                             }
                           ]
                         }
@@ -497,7 +497,7 @@
               "node": "call:r4:round:1",
               "kind": "round",
               "round_index": 1,
-              "duration_ms": 1
+              "duration_ms": 1000
             }
           ]
         },
@@ -509,7 +509,7 @@
       ],
       "session": {
         "id": "s1",
-        "exported_at": "2026-09-09T09:06:39.513Z",
+        "exported_at": "2026-09-09T10:17:25.328Z",
         "turn_count": 5
       }
     }

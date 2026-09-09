@@ -26,8 +26,11 @@ def test_elapsed_ms_beats_the_timestamp_span() -> None:
     assert _extract_duration_ms(events) == 1500
 
 
-def test_timestamp_span_is_the_fallback() -> None:
-    assert _extract_duration_ms([event({}, 1), event({}, 4)]) == 3
+def test_timestamp_span_is_the_fallback_in_milliseconds() -> None:
+    """Timestamps are epoch seconds; the field is milliseconds, so a 3-second
+    span is 3000 — the two languages must agree on that integer."""
+    assert _extract_duration_ms([event({}, 1), event({}, 4)]) == 3000
+    assert _extract_duration_ms([event({}, 1), event({}, 1.25)]) == 250
     assert _extract_duration_ms([event({}, 4), event({}, 4)]) is None
     assert _extract_duration_ms([]) is None
 

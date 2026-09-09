@@ -154,8 +154,11 @@ function extractDurationMs(events: StreamEvent[]): number | undefined {
     if (ts > max) max = ts;
   }
   if (!seen) return undefined;
-  const duration = max - min;
-  return duration > 0 ? duration : undefined;
+  // Event timestamps are epoch *seconds* while the field (and the panel that
+  // renders it) is milliseconds — convert, and round so both languages emit
+  // the same integer. A zero span still means "unknown", not "instant".
+  const durationMs = Math.round((max - min) * 1000);
+  return durationMs > 0 ? durationMs : undefined;
 }
 
 /**
