@@ -25,6 +25,7 @@ import type {
   TraceMetadata,
 } from './model'
 import {
+  classifyTraceGroup,
   getCallProvider,
   getLatestToolProgress,
   getToolProvider,
@@ -971,13 +972,10 @@ function TraceRowItem({
   if (!expandable && !active) return null
 
   const toolCallEvent = callEvents.find(event => event.type === 'tool_call')
-  // A group that carries a tool call is a tool row even when it arrived
-  // untagged. Without the third test, an integration that predates the trace
-  // contract — or a turn persisted before it — has neither `call_kind` nor
-  // `trace_group`, so the row would title itself with the stage name
-  // ("Responding") and never reach `describeToolCall` at all.
-  const isToolRow =
-    kind === 'tool_planning' || group === 'tool_call' || Boolean(toolCallEvent && !kind && !group)
+  // One shared rule for every surface — the inline trace, the session DAG and
+  // the DSL export all call `classifyTraceGroup`, so a row can never be a tool
+  // in one view and a reasoning round in another.
+  const isToolRow = classifyTraceGroup(callEvents)?.kind === 'tool_call'
   const isChatRound = kind === 'agent_loop_round'
   const isRetrieve = role === 'retrieve'
   const narration = isNarrationRound(callEvents)

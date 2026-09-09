@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { StreamEvent } from "../features/chat/model/protocol";
 import {
+  classifyTraceGroup,
   detectStreamingMode,
   groupTraceEvents,
   hasRenderableCallTrace,
@@ -39,6 +40,84 @@ test("trace groups preserve first-seen call order and event order", () => {
   assert.deepEqual(
     groups[0].events.map((item) => item.content),
     ["one", "two"],
+  );
+});
+
+test("classifyTraceGroup applies the skip rules and the tool→retrieve→round precedence", () => {
+  // The one rule the inline trace, the session DAG and the DSL export share.
+  assert.equal(
+    classifyTraceGroup([
+      event("content", "f", { call_kind: "llm_final_response" }, "Answer"),
+    ]),
+    null,
+  );
+  assert.equal(
+    classifyTraceGroup([
+      event("thinking", "a", { absorbed_into_final: true }, "Draft"),
+    ]),
+    null,
+  );
+  assert.equal(
+    classifyTraceGroup([event("thinking", "e", {}, "")]),
+    null,
+  );
+
+  // Order matters: a retrieval event reusing a tool's call_id stays in that
+  // tool's group rather than becoming its own retrieve node.
+  assert.equal(
+    classifyTraceGroup([
+      event("tool_call", "t1", { trace_group: "tool_call", tool_name: "rag" }, "rag"),
+      event("progress", "t1", { trace_role: "retrieve", query: "q" }, "searching"),
+    ])?.kind,
+    "tool_call",
+  );
+  assert.equal(
+    classifyTraceGroup([
+      event("progress", "r1", { trace_role: "retrieve", query: "q" }, "searching"),
+    ])?.kind,
+    "retrieve",
+  );
+  assert.equal(
+    classifyTraceGroup([
+      event("thinking", "r2", { call_kind: "agent_loop_round" }, "pondering"),
+    ])?.kind,
+    "round",
+  );
+  // An untagged tool group — a turn persisted before the trace contract, or a
+  // backend that does not tag its events — is still a tool call.
+  assert.equal(
+    classifyTraceGroup([
+      event("tool_call", "legacy", { call_state: "running" }, "Bash"),
+      event("tool_result", "legacy", { call_state: "complete" }, "files"),
+    ])?.kind,
+    "tool_call",
+  );
+});
+
+test("classifyTraceGroup collects distinct subagent markers for tool groups only", () => {
+  const classified = classifyTraceGroup([
+    event("tool_call", "t1", { trace_group: "tool_call", tool_name: "consult_subagent" }, "go"),
+    event("progress", "t1", { subagent_name: "math", consult_index: 1 }, "working"),
+    event("progress", "t1", { subagent_name: "math", consult_index: 1 }, "still working"),
+    event("progress", "t1", { subagent_name: "writer" }, "working"),
+    event("tool_result", "t1", { trace_group: "tool_call" }, "ok"),
+  ]);
+
+  assert.deepEqual(classified?.subagents, [
+    { name: "math", consultIndex: 1 },
+    { name: "writer", consultIndex: undefined },
+  ]);
+
+  assert.deepEqual(
+    classifyTraceGroup([
+      event(
+        "thinking",
+        "r1",
+        { call_kind: "agent_loop_round", subagent_name: "math" },
+        "pondering",
+      ),
+    ])?.subagents,
+    [],
   );
 });
 

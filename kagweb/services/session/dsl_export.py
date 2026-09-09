@@ -152,6 +152,46 @@ def _extract_duration_ms(events: list[dict[str, Any]]) -> int | None:
 # ---------------------------------------------------------------------------
 
 
+def _classify_trace_group(group_events: list[dict[str, Any]]) -> str | None:
+    """The one classification rule for a call group, or ``None`` to skip it.
+
+    Mirror of ``classifyTraceGroup`` in
+    ``web/features/chat/trace/selectors.ts`` — the inline activity trace, the
+    session DAG and this export must never classify the same group differently
+    (Python cannot import TypeScript, so the mirror *is* the contract; the
+    shared fixture ``tests/services/session/fixtures/session_dsl_expected.json``
+    locks the outputs together).
+
+    Skip: ``llm_final_response``, groups absorbed into the final answer, and
+    groups without trace substance. Otherwise the coarse kind, with
+    tool → retrieve → round precedence — order matters, because retrieval
+    events reusing a tool's ``call_id`` must stay in that tool's group.
+    """
+    kind = _first_meta(group_events, "call_kind")
+    if kind == "llm_final_response":
+        return None
+    if any(_meta(e).get("absorbed_into_final") is True for e in group_events):
+        return None
+    if not _group_has_trace_substance(group_events):
+        return None
+
+    group = _first_meta(group_events, "trace_group")
+    role = _first_meta(group_events, "trace_role")
+    # A group carrying a tool call is a tool call even when it arrived untagged
+    # (a turn persisted before the trace contract, or a backend that does not
+    # tag its events) — the same rule the inline trace applies.
+    untagged_tool_call = (
+        not kind
+        and not group
+        and any(event.get("type") == "tool_call" for event in group_events)
+    )
+    if kind == "tool_planning" or group == "tool_call" or untagged_tool_call:
+        return "tool_call"
+    if role == "retrieve":
+        return "retrieve"
+    return "round"
+
+
 def _walk_call_groups(events: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     if not events:
         return []
@@ -164,30 +204,9 @@ def _walk_call_groups(events: list[dict[str, Any]] | None) -> list[dict[str, Any
 
     result: list[dict[str, Any]] = []
     for call_id, group_events in groups.items():
-        kind = _first_meta(group_events, "call_kind")
-        if kind == "llm_final_response":
+        node_kind = _classify_trace_group(group_events)
+        if node_kind is None:
             continue
-        if any(_meta(e).get("absorbed_into_final") is True for e in group_events):
-            continue
-        if not _group_has_trace_substance(group_events):
-            continue
-
-        group = _first_meta(group_events, "trace_group")
-        role = _first_meta(group_events, "trace_role")
-        # A group carrying a tool call is a tool call even when it arrived
-        # untagged (a turn persisted before the trace contract) — the same rule
-        # the inline activity trace applies.
-        untagged_tool_call = (
-            not kind
-            and not group
-            and any(event.get("type") == "tool_call" for event in group_events)
-        )
-        if kind == "tool_planning" or group == "tool_call" or untagged_tool_call:
-            node_kind = "tool_call"
-        elif role == "retrieve":
-            node_kind = "retrieve"
-        else:
-            node_kind = "round"
 
         subagents: list[dict[str, Any]] = []
         if node_kind == "tool_call":

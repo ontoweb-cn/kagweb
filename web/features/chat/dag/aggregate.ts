@@ -20,12 +20,11 @@
  */
 import type { StreamEvent } from "@/features/chat/model/protocol";
 import {
+  classifyTraceGroup,
   getCallProvider,
   getTraceCallKind,
   getTraceGroup,
   getTraceMeta,
-  getTraceRole,
-  groupHasTraceSubstance,
   groupTraceEvents,
 } from "@/features/chat/trace/selectors";
 import { buildVisiblePath } from "@/lib/message-branches";
@@ -79,50 +78,15 @@ function walkCallGroups(events: StreamEvent[] | undefined): CallGroup[] {
   if (!events?.length) return [];
   const groups: CallGroup[] = [];
   for (const { callId, events: groupEvents } of groupTraceEvents(events)) {
-    const kind = getTraceCallKind(groupEvents);
-    if (kind === "llm_final_response") continue;
-    if (
-      groupEvents.some(
-        (event) => getTraceMeta(event).absorbed_into_final === true,
-      )
-    )
-      continue;
-    if (!groupHasTraceSubstance(groupEvents)) continue;
+    const classified = classifyTraceGroup(groupEvents);
+    if (!classified) continue;
 
-    const group = getTraceGroup(groupEvents);
-    const role = getTraceRole(groupEvents);
-    // A group carrying a tool call is a tool call even when it arrived
-    // untagged (a turn persisted before the trace contract). The inline trace
-    // applies the same rule — see `TracePresentation.isToolRow` — so the DAG
-    // cannot classify a row differently from the activity feed.
-    const untaggedToolCall =
-      !kind && !group && groupEvents.some((event) => event.type === "tool_call");
-    let nodeKind: CallGroup["kind"];
-    if (kind === "tool_planning" || group === "tool_call" || untaggedToolCall) {
-      nodeKind = "tool_call";
-    } else if (role === "retrieve") {
-      nodeKind = "retrieve";
-    } else {
-      nodeKind = "round";
-    }
-
-    const subagents: CallGroup["subagents"] = [];
-    if (nodeKind === "tool_call") {
-      const seen = new Set<string>();
-      for (const event of groupEvents) {
-        const meta = getTraceMeta(event);
-        if (meta.subagent_name === undefined) continue;
-        const name = String(meta.subagent_name);
-        const consultIndex =
-          typeof meta.consult_index === "number" ? meta.consult_index : undefined;
-        const key = `${name}:${consultIndex ?? ""}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        subagents.push({ name, consultIndex });
-      }
-    }
-
-    groups.push({ kind: nodeKind, callId, events: groupEvents, subagents });
+    groups.push({
+      kind: classified.kind,
+      callId,
+      events: groupEvents,
+      subagents: classified.subagents,
+    });
   }
   return groups;
 }

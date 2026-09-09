@@ -159,6 +159,74 @@ export function groupHasTraceSubstance(events: StreamEvent[]): boolean {
   });
 }
 
+/**
+ * The one classification rule for a call group, shared by the inline activity
+ * trace, the session DAG and the DSL export so the three can never disagree.
+ *
+ *  - ``null`` → skip the group entirely (``llm_final_response``, absorbed into
+ *    the final answer, or no trace substance);
+ *  - otherwise the coarse kind, with tool → retrieve → round precedence
+ *    (order matters: retrieval events reusing a tool's call_id must stay in
+ *    that tool's group, so the tool check comes first) plus the distinct
+ *    subagent markers inside a tool group.
+ *
+ * ``selectTraceDisplayItems`` consumes only the skip decision;
+ * ``walkCallGroups`` (session DAG) consumes the full classification, and
+ * ``dsl_export._classify_trace_group`` mirrors it for the Python side.
+ */
+export interface TraceGroupClass {
+  kind: "tool_call" | "retrieve" | "round";
+  /** Distinct (name, consultIndex) subagent markers inside a tool group. */
+  subagents: Array<{ name: string; consultIndex: number | undefined }>;
+}
+
+export function classifyTraceGroup(
+  events: StreamEvent[],
+): TraceGroupClass | null {
+  const kind = getTraceCallKind(events);
+  if (kind === "llm_final_response") return null;
+  if (events.some((event) => getTraceMeta(event).absorbed_into_final === true)) {
+    return null;
+  }
+  if (!groupHasTraceSubstance(events)) return null;
+
+  const group = getTraceGroup(events);
+  const role = getTraceRole(events);
+  // A group carrying a tool call is a tool call even when it arrived
+  // untagged — a turn persisted before the trace contract, or a backend that
+  // does not tag its events. The inline trace renders it as a tool row, so
+  // the DAG and the DSL must classify it the same way.
+  const untaggedToolCall =
+    !kind && !group && events.some((event) => event.type === "tool_call");
+
+  let coarse: TraceGroupClass["kind"];
+  if (kind === "tool_planning" || group === "tool_call" || untaggedToolCall) {
+    coarse = "tool_call";
+  } else if (role === "retrieve") {
+    coarse = "retrieve";
+  } else {
+    coarse = "round";
+  }
+
+  const subagents: TraceGroupClass["subagents"] = [];
+  if (coarse === "tool_call") {
+    const seen = new Set<string>();
+    for (const event of events) {
+      const meta = getTraceMeta(event);
+      if (meta.subagent_name === undefined) continue;
+      const name = String(meta.subagent_name);
+      const consultIndex =
+        typeof meta.consult_index === "number" ? meta.consult_index : undefined;
+      const key = `${name}:${consultIndex ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      subagents.push({ name, consultIndex });
+    }
+  }
+
+  return { kind: coarse, subagents };
+}
+
 export function selectTraceDisplayItems(
   traceGroups: TraceItem[],
 ): TraceDisplayItem[] {
@@ -174,18 +242,11 @@ export function selectTraceDisplayItems(
   };
 
   for (const group of traceGroups) {
+    if (!classifyTraceGroup(group.events)) continue;
     const meta = getTraceMeta(group.events[0]);
     const groupType = getTraceGroup(group.events);
     const stepId = meta.step_id ? String(meta.step_id) : "";
     const kind = getTraceCallKind(group.events);
-    if (kind === "llm_final_response") continue;
-    if (
-      group.events.some(
-        (event) => getTraceMeta(event).absorbed_into_final === true,
-      )
-    )
-      continue;
-    if (!groupHasTraceSubstance(group.events)) continue;
 
     if (groupType === "react_round" && stepId) {
       if (currentStep === stepId) stepTraces.push(group);
