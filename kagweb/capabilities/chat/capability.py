@@ -318,6 +318,14 @@ class ChatCapability(TurnCapability):
                 reply = await asyncio.wait_for(waiter(), timeout=timeout)
             except asyncio.TimeoutError:
                 reply = None
+            except asyncio.CancelledError:
+                # The waiter raises a synthetic CancelledError when the turn
+                # is not tracked by the executor (status transition failed).
+                # Only re-raise when THIS task is genuinely being cancelled —
+                # otherwise degrade to the policy answer like a timeout.
+                if asyncio.current_task().cancelling():
+                    raise
+                reply = None
         choice = _approval_choice_from_reply(reply, question["options"], default_choice)
 
         await stream.progress(

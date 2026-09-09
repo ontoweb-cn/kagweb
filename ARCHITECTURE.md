@@ -165,6 +165,11 @@ user decision. The capability surfaces the request as an `ask_user` card
 queue for `approval_timeout_seconds`, and answers via
 `backend.respond_approval` — falling back to the profile's
 `approval_default` (default deny) on timeout or headless entry points.
+Security note: setting `approval_default` to `once`/`session`/`always`
+makes unattended entry points auto-approve tool runs — prefer `deny`
+unless that is explicitly understood. ACP children are tracked per
+session, capped at `MAX_ACTIVE_CHILDREN`, closed on API shutdown, and
+swept by an atexit last resort.
 Request-shaped events from backends without control support degrade to
 progress notes.
 

@@ -271,6 +271,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Failed to close LLM provider pool: {e}")
 
+    # Stop ACP agent-loop children (one per recently-active session). Without
+    # this they survive the server as orphans — the lazy reaper only runs on
+    # the next acquire, which never comes after shutdown.
+    try:
+        from kagweb.services.agent_loop.acp_backend import shutdown_all_acp_sessions
+
+        await shutdown_all_acp_sessions()
+        logger.info("ACP agent-loop children closed")
+    except Exception as e:
+        logger.warning(f"Failed to close ACP agent-loop children: {e}")
+
     # Stop EventBus
     try:
         from kagweb.events.event_bus import get_event_bus

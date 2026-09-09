@@ -49,6 +49,15 @@ from .protocol import (
 #: shutdown hook.
 REAP_AFTER_SECONDS = 600.0
 
+#: Upper bound on live ACP children per manager. Each child is a full agent
+#: runtime (hundreds of MB); without a cap the count tracks the number of
+#: distinct KAGWeb sessions and is an exhaustion vector. Sessions beyond the
+#: cap fail with a clear error instead of silently over-subscribing the host.
+MAX_ACTIVE_CHILDREN = 8
+
+#: Bounded budget for the settings-page handshake probe.
+_PROBE_TIMEOUT_SECONDS = 10.0
+
 #: ACP protocol version the SDK negotiates; ``initialize`` must offer one.
 try:  # pragma: no cover - trivial constant passthrough
     from acp import PROTOCOL_VERSION as _ACP_PROTOCOL_VERSION
@@ -300,8 +309,9 @@ class AcpSessionHandle:
 class AcpSessionManager:
     """Owns the per-session ACP children for one backend configuration."""
 
-    def __init__(self, config_key: str) -> None:
+    def __init__(self, config_key: str, *, max_children: int = MAX_ACTIVE_CHILDREN) -> None:
         self._config_key = config_key
+        self.max_children = max_children
         self._handles: dict[str, AcpSessionHandle] = {}
         self._spawn: Any = None  # async (handle, cwd) -> None; set by backend
 
@@ -327,6 +337,14 @@ class AcpSessionManager:
             handle = AcpSessionHandle(key=session_key, cwd=cwd)
         if self._spawn is None:  # pragma: no cover - backend wires this first
             raise AgentLoopError("ACP session manager is not wired", backend="acp")
+        live = sum(1 for item in self._handles.values() if item.alive)
+        if live >= self.max_children:
+            # Fail fast with an actionable message instead of silently
+            # over-subscribing the host with agent runtimes.
+            raise AgentLoopError(
+                t("agent_loop.acp_too_many_sessions", max=self.max_children),
+                backend="acp",
+            )
         await self._spawn(handle)
         self._handles[session_key] = handle
         handle.touch()
@@ -390,6 +408,39 @@ def get_acp_session_manager(config_key: str) -> AcpSessionManager:
     return manager
 
 
+async def shutdown_all_acp_sessions() -> None:
+    """Gracefully close every tracked ACP child. Wired into the API app's
+    lifespan shutdown — without this, one child per recently-active session
+    survives the server as an orphan (the lazy reaper never runs again)."""
+    for manager in list(_MANAGERS.values()):
+        await manager.close_all()
+
+
+def _terminate_tracked_children_sync() -> None:  # pragma: no cover - exit path
+    """Last-resort sweep at interpreter exit.
+
+    The event loop may already be gone, so no awaits: signal live children
+    directly. Best effort — a child that ignores SIGTERM is left to the OS
+    reaper rather than blocking interpreter shutdown.
+    """
+    for manager in _MANAGERS.values():
+        for handle in list(manager._handles.values()):
+            process = getattr(handle, "process", None)
+            if process is not None and process.returncode is None:
+                try:
+                    process.terminate()
+                except Exception:
+                    pass
+
+
+try:
+    import atexit
+
+    atexit.register(_terminate_tracked_children_sync)
+except Exception:  # pragma: no cover - embedded interpreters without atexit
+    pass
+
+
 # ---------------------------------------------------------------------------
 # The backend
 # ---------------------------------------------------------------------------
@@ -415,7 +466,15 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         self.base_args = list(base_args)
         self.env = {str(key): str(value) for key, value in (env or {}).items()}
         self.timeout_seconds = float(timeout_seconds) if timeout_seconds else 0.0
-        self._manager = get_acp_session_manager(f"{command}:{sorted(self.env.items())!r}")
+        # Hash the config into the manager key: the operator env block may
+        # carry credentials, and they must not sit in plaintext dict keys.
+        import hashlib
+        import json as _json
+
+        config_key = hashlib.sha256(
+            _json.dumps([command, sorted(self.env.items())]).encode()
+        ).hexdigest()[:16]
+        self._manager = get_acp_session_manager(config_key)
         self._manager.set_spawner(self._spawn_session)
         self._current_key = ""
 
@@ -574,7 +633,21 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         """
         key = f"probe-{time.monotonic_ns()}"
         try:
-            handle = await self._manager.ensure(key, "")
+            # Bounded: a child stuck in startup (first-run onboarding, slow
+            # disk) must fail the probe, not pin the admin request forever.
+            handle = await asyncio.wait_for(
+                self._manager.ensure(key, ""), timeout=_PROBE_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError:
+            await self._manager.discard(key)
+            return (
+                False,
+                t(
+                    "agent_loop.acp_probe_timeout",
+                    backend=self.name,
+                    seconds=int(_PROBE_TIMEOUT_SECONDS),
+                ),
+            )
         except AgentLoopError as exc:
             return False, str(exc)
         except Exception as exc:  # noqa: BLE001 - probe reports everything

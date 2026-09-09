@@ -106,6 +106,17 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.runs_no_run_id": (
             "Agent-loop backend {backend!r} started a run but returned no run_id."
         ),
+        "agent_loop.acp_too_many_sessions": (
+            "Too many active agent sessions (max {max}); try again after one finishes."
+        ),
+        "agent_loop.acp_probe_timeout": (
+            "Agent-loop backend {backend!r} did not finish the ACP handshake within "
+            "{seconds}s."
+        ),
+        "agent_loop.runs_poll_gave_up": (
+            "Agent-loop backend {backend!r} lost the event stream and the run status "
+            "never reached a terminal state while polling."
+        ),
         "agent_loop.acp_sdk_missing": (
             "Backend {backend!r} uses the Agent Client Protocol transport; install "
             "the SDK with `pip install kagweb[acp]`."
@@ -217,6 +228,9 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.request_unsupported": (
             "后端请求了 {kind}（{tool!r}），但该后端无法接收答复，已继续执行。"
         ),
+        "agent_loop.acp_too_many_sessions": "活跃的智能体会话过多（上限 {max} 个），请稍后再试。",
+        "agent_loop.acp_probe_timeout": "Agent-loop 后端 {backend!r} 未在 {seconds} 秒内完成 ACP 握手。",
+        "agent_loop.runs_poll_gave_up": "Agent-loop 后端 {backend!r} 丢失事件流，且轮询期间 run 状态始终未到达终态。",
         "agent_loop.acp_sdk_missing": (
             "后端 {backend!r} 使用 Agent Client Protocol 传输，请先安装 SDK：`pip install kagweb[acp]`。"
         ),

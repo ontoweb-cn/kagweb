@@ -1315,6 +1315,9 @@ class RuntimeSettingsService:
             "approval_timeout_seconds": _coerce_clamped_int(
                 raw.get("approval_timeout_seconds"), 60, 5, 600
             ),
+            # SECURITY: `always`/`session` as the fallback policy makes
+            # headless entry points auto-approve tool runs for everyone —
+            # prefer `deny` unless unattended approval is understood.
             "approval_default": _approval_default(raw.get("approval_default")),
             # One-shot CLI profiles only: stdout is the final answer as plain
             # text (`intellect chat -Q`-style backends) — no progress events.

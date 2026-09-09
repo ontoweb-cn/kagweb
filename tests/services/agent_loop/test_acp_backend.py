@@ -112,3 +112,43 @@ async def test_crashed_child_respawns_and_reloads_session(tmp_path) -> None:
     new_handle = backend._manager._handles.get("acp-crash")
     assert new_handle.process is not first_process  # respawned
     assert json.loads(result_file.read_text())["reused_session"] is True
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle hardening (review fixes): probe, children cap, shutdown sweep
+# ---------------------------------------------------------------------------
+
+
+async def test_probe_reports_ok_and_discards_its_child(tmp_path) -> None:
+    backend = _backend("full", tmp_path / "result.json")
+    ok, detail = await asyncio.wait_for(backend.probe(), timeout=20)
+    assert ok is True
+    assert "handshake ok" in detail
+    # the throwaway probe child was closed, not left running
+    assert not [h for h in backend._manager._handles.values() if h.key.startswith("probe-")]
+
+
+async def test_manager_refuses_children_over_the_cap(tmp_path) -> None:
+    from kagweb.services.agent_loop.acp_backend import AcpSessionManager
+    from kagweb.services.agent_loop.protocol import AgentLoopError
+
+    backend = _backend("full", tmp_path / "result.json")
+    manager = AcpSessionManager("test-cap", max_children=1)
+    manager.set_spawner(backend._spawn_session)
+
+    await manager.ensure("cap-a", str(tmp_path))
+    with pytest.raises(AgentLoopError):
+        await manager.ensure("cap-b", str(tmp_path))
+    await manager.close_all()
+
+
+async def test_shutdown_all_terminates_children(tmp_path) -> None:
+    from kagweb.services.agent_loop.acp_backend import shutdown_all_acp_sessions
+
+    backend = _backend("full", tmp_path / "result.json")
+    handle = await backend._manager.ensure("acp-shutdown", str(tmp_path))
+    assert handle.alive
+
+    await shutdown_all_acp_sessions()
+    await asyncio.wait_for(handle.process.wait(), timeout=5)
+    assert handle.process.returncode is not None

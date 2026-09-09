@@ -55,6 +55,10 @@ logger = logging.getLogger(__name__)
 
 _ERROR_BODY_LIMIT = 2000
 
+#: Degraded-poll ceiling: 150 rounds x 2s = 5 minutes of status polling
+#: after the event stream is lost, then the turn surfaces an error.
+_POLL_MAX_ITERATIONS = 150
+
 
 def _neutral_event(obj: dict[str, Any], state: dict[str, Any]) -> AgentLoopEvent | None:
     """Map one response object to a neutral event, tolerating vendor shapes."""
@@ -298,7 +302,6 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             transport=transport,
         )
         self._run_id = ""
-        self._auth_headers: dict[str, str] = {}
 
     # -- URL helpers ---------------------------------------------------------
 
@@ -319,7 +322,6 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             payload["conversation_history"] = request.history
         if request.session_id:
             payload["session_id"] = request.session_id
-        self._auth_headers = self._headers()
         state: dict[str, Any] = {"buf": [], "terminal": False}
         timeout = httpx.Timeout(
             connect=15.0,
@@ -404,8 +406,15 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
     async def _poll_terminal(
         self, client: httpx.AsyncClient, *, state: dict[str, Any]
     ) -> AsyncIterator[AgentLoopEvent]:
-        """Degraded mode: poll run status until terminal."""
-        while not state["terminal"]:
+        """Degraded mode: poll run status until terminal.
+
+        Capped at ``_POLL_MAX_ITERATIONS`` rounds: normally the outer
+        per-turn wall clock bounds this, but a backend built without a
+        timeout must not poll forever.
+        """
+        for _ in range(_POLL_MAX_ITERATIONS):
+            if state["terminal"]:
+                return
             await asyncio.sleep(2.0)
             try:
                 status = await client.get(self._runs_url(self._run_id), headers=self._headers())
@@ -431,6 +440,11 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
                     "error",
                     text=str(body.get("error") or f"run {state_status}"),
                 )
+        if not state["terminal"]:
+            yield AgentLoopEvent(
+                "error",
+                text=t("agent_loop.runs_poll_gave_up", backend=self.name),
+            )
 
     def _run_event_from_lines(
         self, data_lines: list[str], state: dict[str, Any]
@@ -475,7 +489,8 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             text = str(obj.get("text") or "")
             return [AgentLoopEvent("thinking", text=text)] if text else []
         if kind == "approval.request":
-            state["buf"] and state["buf"].insert(0, "")  # keep buffer for later
+            # Any buffered narration stays buffered: it flushes into a content
+            # block when the run completes.
             return [
                 AgentLoopEvent(
                     "approval_request",
