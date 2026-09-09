@@ -23,6 +23,9 @@ DEFAULT_UI_SETTINGS: dict[str, Any] = {
     "theme": "snow",
     "language": "en",
     "response_language": "en",
+    # Post-turn metadata: one extra cheap judge call per multi-round turn,
+    # producing the takeaway badge. Off means no extra model call at all.
+    "turn_insight_enabled": True,
 }
 
 
@@ -225,6 +228,20 @@ def replace_ui_settings(settings: Mapping[str, Any]) -> dict[str, Any]:
 def set_ui_setting(key: str, value: Any) -> dict[str, Any]:
     """Persist one field, leaving every other field intact."""
     return update_ui_settings({key: value})
+
+
+def get_turn_insight_enabled(default: bool = True) -> bool:
+    """Whether the post-turn insight judge may run.
+
+    One extra (cheap) model call per multi-round turn. Operators can turn it
+    off in ``interface.json``; the default matches the shipped behaviour.
+    """
+    value = get_ui_settings().get("turn_insight_enabled", default)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() not in {"0", "false", "no", "off"}
+    return default
 
 
 def get_ui_language(default: str = "en") -> str:

@@ -6,6 +6,7 @@
  * Pure types only: no React, no cytoscape, no i18n imports so the aggregate
  * layer stays testable under node:test without a DOM.
  */
+import type { TurnInsight } from "@/lib/turn-insight";
 
 export type DagNodeKind =
   | "root"
@@ -22,6 +23,17 @@ export interface DagBranchInfo {
   total: number;
   /** 1-based index of the selected branch in creation order. */
   index: number;
+}
+
+/**
+ * Token counters as the backend reported them. `total` is optional because a
+ * cumulative counter pair has no honest sum; `usage_scope` says which reading
+ * applies (`"pass"` unless the backend marked it otherwise).
+ */
+export interface TokenCounts {
+  prompt: number;
+  completion: number;
+  total?: number;
 }
 
 export interface DagNodeMeta {
@@ -46,8 +58,15 @@ export interface DagNodeMeta {
   consultIndex?: number;
   roundIndex?: number;
   durationMs?: number;
+  /** Pass-level token counters; present only on the round that carries the
+   *  backend's completion marker, and only when the backend reported them. */
+  tokens?: TokenCounts;
+  usageScope?: string;
   textPreview?: string;
   error?: string;
+  /** Judge-written turn badge — colours the plaque/glyph zoom tiers and the
+   *  thought-map export. */
+  turnInsight?: TurnInsight;
   // —— UI ——
   /** Hidden child count while the assistant node is collapsed. */
   childCount: number;

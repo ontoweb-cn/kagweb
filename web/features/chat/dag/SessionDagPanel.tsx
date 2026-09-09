@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Maximize2, Download, Code2, Upload, ArrowLeft, Network, ListTree, LocateFixed, Search } from "lucide-react";
+import { Maximize2, Download, Code2, Upload, ArrowLeft, Network, ListTree, LocateFixed, Search, Map as MapIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { ActivityDetailGrid, type DetailRow } from "@/components/activity";
 import Tooltip from "@/components/common/Tooltip";
@@ -25,6 +25,8 @@ import {
   type DslDocument,
 } from "./dsl";
 import { dslToMermaid } from "./dsl-mermaid";
+import { buildThoughtMapSvg, downloadThoughtMapSvg } from "@/lib/thought-map-export";
+import { buildThoughtMapInput } from "./thought-map";
 import { dslToDag } from "./dsl-import";
 import type { DagNode, SessionDag } from "./model";
 import type { DagLayoutName } from "./CytoscapeDag";
@@ -269,6 +271,17 @@ export default function SessionDagPanel({
     URL.revokeObjectURL(url);
   }, [messages, selectedBranches, sessionId]);
 
+  const handleExportThoughtMap = useCallback(() => {
+    // `fullDag`, not the rendered `dag`: the export must be independent of
+    // the panel's expansion state (#33) — the collapsed view drops every
+    // tool/retrieval/subagent node.
+    if (!fullDag) return;
+    downloadThoughtMapSvg(
+      buildThoughtMapSvg(buildThoughtMapInput(fullDag, sessionId)),
+      `thought-map-${sessionId || "export"}.svg`,
+    );
+  }, [fullDag, sessionId]);
+
   // Import a DSL export and preview it as a DAG (module 11). Rendering-only:
   // the parsed document never touches session state or persistence.
   const handleImportDsl = useCallback(async (file: File) => {
@@ -312,6 +325,15 @@ export default function SessionDagPanel({
     if (meta.callState) rows.push({ key: "state", value: meta.callState });
     if (meta.durationMs != null)
       rows.push({ key: "duration", value: `${Math.round(meta.durationMs / 100) / 10}s` });
+    if (meta.tokens) {
+      // Pass-level counters, never a per-round figure: the scope suffix says
+      // so whenever the backend reported something other than a clean pass.
+      const { prompt, completion, total } = meta.tokens;
+      const suffix =
+        total != null ? ` = ${total}` : "";
+      const scope = meta.usageScope && meta.usageScope !== "pass" ? ` (${meta.usageScope})` : "";
+      rows.push({ key: "tokens", value: `${prompt}+${completion}${suffix}${scope}` });
+    }
     if (meta.query) rows.push({ key: "query", value: meta.query, mono: true });
     if (meta.error) rows.push({ key: "error", value: meta.error });
     if (meta.textPreview) rows.push({ key: "preview", value: meta.textPreview });
@@ -367,6 +389,15 @@ export default function SessionDagPanel({
                   aria-label={t("Export Mermaid")}
                 >
                   <Code2 size={16} />
+                </button>
+              </Tooltip>
+              <Tooltip label={t("Export thought map (shape only, no text)")} side="bottom">
+                <button
+                  onClick={handleExportThoughtMap}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+                  aria-label={t("Export thought map (shape only, no text)")}
+                >
+                  <MapIcon size={16} />
                 </button>
               </Tooltip>
             </>

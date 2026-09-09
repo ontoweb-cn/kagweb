@@ -67,6 +67,29 @@ test("clean prose surrounding a DSML call remains answer-visible", () => {
   );
 });
 
+test("an agent-loop round marker keeps its prose in the answer", () => {
+  // An external loop's prose is part of what it said — a CLI prints it inline —
+  // so its round marker must not be read as narration, which would strip it
+  // from the message bubble.
+  const events = [
+    event("content", "Let me look that up.", {
+      call_id: "chat-round-1",
+      call_kind: "agent_loop_round",
+      trace_kind: "llm_chunk",
+    }),
+    event("progress", "", {
+      call_id: "chat-round-1",
+      trace_kind: "call_status",
+      call_state: "complete",
+      call_role: "round",
+    }),
+  ];
+
+  assert.deepEqual([...collectNarrationCallIds(events)], []);
+  assert.equal(isNarrationMarker(events[1]), false);
+  assert.equal(recomputeAnswerContent(events), "Let me look that up.");
+});
+
 test("token-limit continuation replays the exact visible answer", () => {
   const events = [
     event("content", "Part one. ", {

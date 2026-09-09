@@ -1,10 +1,23 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer'
 import { formatTurnDuration, getTurnDurationSeconds } from '@/lib/trace-timing'
+import { buildTurnSummary, collectRoundFacts } from '@/lib/trace-summary'
+import { insightMetaOf, type InsightType } from '@/lib/turn-insight'
 import { describeProviderTool, type ToolProvider } from '@/lib/trace-tools'
+import { useTraceMode } from '@/hooks/useTraceMode'
+import type { TraceMode } from '@/lib/trace-mode'
 import type { StreamEvent } from '@/features/chat/model/protocol'
 import {
   ActivityDetailGrid,
@@ -25,6 +38,7 @@ import type {
   TraceMetadata,
 } from './model'
 import {
+  classifyTraceGroup,
   getCallProvider,
   getLatestToolProgress,
   getToolProvider,
@@ -34,11 +48,23 @@ import {
   getTraceRole,
   groupTraceEvents,
   hasRenderableCallTrace as selectHasRenderableCallTrace,
+  hasRenderableGroups as selectHasRenderableGroups,
   isChatLoopAnswerContent,
   isNarrationRound,
   isTracePending,
   selectTraceDisplayItems,
 } from './selectors'
+
+/**
+ * The disclosure mode for the trace subtree. Resolved once by the panel that
+ * renders the rows, so a thirty-row trace holds one store subscription instead
+ * of one per row; rows rendered outside a provider fall back to the default.
+ */
+const TraceModeContext = createContext<TraceMode>('learner')
+
+function useTraceModeValue(): TraceMode {
+  return useContext(TraceModeContext)
+}
 
 // `title` and `hint` are i18n keys resolved via `t(...)` at render time so the
 // stage banner follows the active UI language instead of being locked to one.
@@ -249,6 +275,19 @@ function describeToolCall(
       return {
         verb: t('Listing files'),
         chip: basename(str(a.path)) || null,
+        mono: true,
+      }
+    case 'glob':
+      // A file-pattern search: the pattern is the artifact, not a path.
+      return {
+        verb: t('Finding files'),
+        chip: clip(str(a.pattern)) || null,
+        mono: true,
+      }
+    case 'grep':
+      return {
+        verb: t('Searching files'),
+        chip: clip(str(a.pattern)) || null,
         mono: true,
       }
     case 'write_note':
@@ -618,16 +657,20 @@ function ToolExchangeDetail({
   showToolName: boolean
 }) {
   const { call, result } = exchange
+  const traceMode = useTraceModeValue()
   const toolName = (call.metadata?.tool as string | undefined) ?? undefined
   const isCall = call.type === 'tool_call'
+  // The raw argument grid is expert-density material; learner mode keeps the
+  // row to its result.
+  const showArgs = traceMode !== 'learner'
 
   const niceArgs = isCall ? renderNiceToolArgs(toolName, call.metadata?.args) : null
   const rawArgs = isCall ? call.metadata?.args : undefined
-  const entries = niceArgs ? [] : argumentRows(rawArgs)
+  const entries = showArgs && !niceArgs ? argumentRows(rawArgs) : []
   // Non-object args (a bare string, an array) have no keys to lay out; they
   // land under a generic label rather than inventing a shape for them.
   const fallback =
-    !niceArgs && entries.length === 0 && rawArgs && typeof rawArgs !== 'object'
+    showArgs && !niceArgs && entries.length === 0 && rawArgs && typeof rawArgs !== 'object'
       ? formatTraceArgs(rawArgs)
       : ''
 
@@ -942,6 +985,7 @@ function TraceRowItem({
   nested: boolean
 }) {
   const { t } = useTranslation()
+  const traceMode = useTraceModeValue()
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
 
   const { callId, events: callEvents } = trace
@@ -957,7 +1001,11 @@ function TraceRowItem({
   const expandable = hasExpandableContent(callEvents, group, role)
   if (!expandable && !active) return null
 
-  const isToolRow = kind === 'tool_planning' || group === 'tool_call'
+  const toolCallEvent = callEvents.find(event => event.type === 'tool_call')
+  // One shared rule for every surface — the inline trace, the session DAG and
+  // the DSL export all call `classifyTraceGroup`, so a row can never be a tool
+  // in one view and a reasoning round in another.
+  const isToolRow = classifyTraceGroup(callEvents)?.kind === 'tool_call'
   const isChatRound = kind === 'agent_loop_round'
   const isRetrieve = role === 'retrieve'
   const narration = isNarrationRound(callEvents)
@@ -975,13 +1023,15 @@ function TraceRowItem({
   // briefing runs long enough to walk the trace up the viewport while the
   // page is pinned to the bottom.
   const isContextExploration = kind === 'context_exploration'
-  const autoOpen = isThinking && !isContextExploration ? active : false
+  // Learner mode (the default) keeps the model's deliberation folded away
+  // while it streams; expert mode restores the live feed.
+  const autoOpen =
+    isThinking && !isContextExploration && traceMode !== 'learner' ? active : false
   const open = expandable && (userOpen ?? autoOpen)
   // Every row with detail is clickable now, deliberation included — it has to
   // be, since a settled round folds itself and the text has to be reachable.
   const canToggle = expandable
 
-  const toolCallEvent = callEvents.find(event => event.type === 'tool_call')
   const toolName = String(
     (toolCallEvent && (getTraceMeta(toolCallEvent).tool_name || toolCallEvent.metadata?.tool)) ||
       toolCallEvent?.content ||
@@ -991,6 +1041,11 @@ function TraceRowItem({
 
   const thoughtText = getTraceText(callEvents, ['thinking']).trim()
   const contentText = getTraceText(callEvents, ['content'], narration).trim()
+  // What the tool saw, mechanically clipped — the level-one fallback for a row
+  // that has no argument/query chip of its own. A chip always wins, so tool
+  // rows keep their command preview.
+  const observationExcerpt =
+    isToolRow || isRetrieve ? plainPreview(getTraceText(callEvents, ['observation'])) : ''
 
   // Resolve every row into a uniform { icon, headline, chip } triple so the
   // activity feed reads consistently across pipelines. Tool calls get a human
@@ -1072,6 +1127,7 @@ function TraceRowItem({
       title={headline}
       detail={
         chip?.text ??
+        (observationExcerpt || undefined) ??
         (isThinking && deliberation.length ? plainPreview(deliberation[0]) : undefined)
       }
       detailMono={chip?.mono ?? false}
@@ -1115,6 +1171,8 @@ export function CallTracePanel({
   nested?: boolean
 }) {
   const { t } = useTranslation()
+  // One subscription for the whole panel: every row reads this context.
+  const [traceMode] = useTraceMode()
 
   const traceGroups = useMemo(() => groupTraceEvents(events), [events])
 
@@ -1134,7 +1192,8 @@ export function CallTracePanel({
   // region. Each row manages its own fold state (live-follow + manual pin)
   // and its expanded body has its own bounded scroll area.
   return (
-    <ActivityStack className="mb-3">
+    <TraceModeContext.Provider value={traceMode}>
+      <ActivityStack className="mb-3">
       {displayItems.map((item, displayIdx) => {
         const isLastDisplayItem = displayIdx === displayItems.length - 1
 
@@ -1185,7 +1244,8 @@ export function CallTracePanel({
           />
         )
       })}
-    </ActivityStack>
+      </ActivityStack>
+    </TraceModeContext.Provider>
   )
 }
 
@@ -1605,6 +1665,82 @@ function isFinalAnswerPhase(
 }
 
 /**
+ * The settle summary — one dim line naming what the turn did, shown once the
+ * trace has folded away. Observation-grade only: rounds and tool calls, never
+ * model prose. (KAGWeb's agent loop emits no SOURCES event, so the source
+ * count is usually absent rather than invented.)
+ */
+function SettleSummary({ events }: { events: StreamEvent[] }) {
+  const { t } = useTranslation()
+  const summary = useMemo(() => buildTurnSummary(events, t), [events, t])
+  if (!summary) return null
+  return <div className="pl-0.5 text-[11px] text-[var(--muted-foreground)]">{summary}</div>
+}
+
+/**
+ * Tier-1 disclosure: one line per round while the full trace is collapsed —
+ * action phrases from the round's tool calls (observation grade), optionally
+ * trailed by the round's own narration as an explicitly-marked model
+ * self-report. Capped at six lines with an overflow count.
+ */
+function TraceTierOne({ events }: { events: StreamEvent[] }) {
+  const { t } = useTranslation()
+  const facts = useMemo(() => collectRoundFacts(events), [events])
+  const shown = facts.slice(0, 6)
+  const hidden = facts.length - shown.length
+  if (!facts.length) return null
+  return (
+    <div className="mt-1 flex flex-col gap-0.5">
+      {shown.map(fact => {
+        const label =
+          fact.roundIndex >= 0 ? t('Round {{n}}', { n: fact.roundIndex + 1 }) : t('Retrieval')
+        const actionBits = fact.tools
+          .map(tool => {
+            // A KB-prefetch seed: the line label already names the action
+            // (t('Retrieval')), so an English fallback verb would double-name
+            // it — the query is the only informative bit.
+            if (tool.name === 'retrieval') {
+              const query = typeof tool.args?.query === 'string' ? tool.args.query : ''
+              return query || null
+            }
+            const descriptor = describeToolCall(tool.name, tool.args, t, null)
+            const verb = descriptor?.verb ?? tool.name
+            return descriptor?.chip ? `${verb} ${descriptor.chip}` : verb
+          })
+          .filter((bit): bit is string => bit !== null)
+        return (
+          <div
+            key={fact.roundIndex}
+            className={`flex items-baseline gap-2 text-[11px] ${
+              fact.hasError
+                ? 'text-[var(--destructive)]'
+                : 'text-[var(--muted-foreground)]'
+            }`}
+          >
+            <span className="shrink-0 opacity-70">{label}</span>
+            <span className="min-w-0 truncate">
+              {actionBits.join(' · ')}
+              {fact.intentText ? (
+                <>
+                  {actionBits.length ? ' — ' : ''}
+                  <span className="italic opacity-80">{fact.intentText}</span>
+                  <span className="not-italic opacity-60"> — {t('Model self-report')}</span>
+                </>
+              ) : null}
+            </span>
+          </div>
+        )
+      })}
+      {hidden > 0 ? (
+        <div className="text-[11px] text-[var(--muted-foreground)] opacity-70">
+          {t('+{{n}} more rounds', { n: hidden })}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/**
  * The assistant activity block: the status header
  * ("KAGWeb Exploring… · 8s", settling to "KAGWeb responded. · 10s")
  * with the exploring trace nested directly beneath it.
@@ -1619,6 +1755,7 @@ export function AssistantActivity({
   traceEvents,
   isStreaming,
   content,
+  insight,
   className = '',
   agentName,
   showMark = true,
@@ -1636,6 +1773,8 @@ export function AssistantActivity({
   traceEvents?: StreamEvent[]
   isStreaming?: boolean
   content?: string
+  /** Turn-level epistemic badge (judge-written, multi-round turns). */
+  insight?: { takeaway: string; type: InsightType }
   className?: string
   /** Forwarded to StreamingStatus — names the thinker in the status row. */
   agentName?: string
@@ -1646,7 +1785,10 @@ export function AssistantActivity({
   headerClassName?: string
 }) {
   const shownTraceEvents = traceEvents ?? events
-  const hasTrace = useMemo(() => hasRenderableCallTrace(shownTraceEvents), [shownTraceEvents])
+  // One grouping pass, shared by the disclosure gate and — through the
+  // trace-summary classification cache — the settle line and the tier-1 facts.
+  const traceGroups = useMemo(() => groupTraceEvents(shownTraceEvents), [shownTraceEvents])
+  const hasTrace = useMemo(() => selectHasRenderableGroups(traceGroups), [traceGroups])
   const hasFinalContent = Boolean(content && content.trim().length > 0)
   const finalPhase = useMemo(
     () => isFinalAnswerPhase(events, Boolean(isStreaming), hasFinalContent),
@@ -1656,6 +1798,8 @@ export function AssistantActivity({
   // once answered). A click pins the user's choice for this message.
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
   const open = hasTrace && (userOpen ?? !finalPhase)
+  const { t } = useTranslation()
+  const insightMeta = insight ? insightMetaOf(insight.type) : null
 
   // Match StreamingStatus's own null-guard: nothing to show for an empty,
   // non-streaming shell with no trace either.
@@ -1674,6 +1818,33 @@ export function AssistantActivity({
         showMark={showMark}
         className={headerClassName}
       />
+      {insight && insightMeta ? (
+        // The judge's one-line takeaway, tinted by its epistemic type. It
+        // sits under the status header and above the trace: it summarises
+        // the turn, so it must not be buried in the fold.
+        <div
+          className="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px]"
+          style={{
+            borderColor: `${insightMeta.color}55`,
+            backgroundColor: `${insightMeta.color}14`,
+          }}
+          title={insight.takeaway}
+        >
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: insightMeta.color }}
+          />
+          <span className="shrink-0 font-medium" style={{ color: insightMeta.color }}>
+            {t(insightMeta.labelKey)}
+          </span>
+          <span className="min-w-0 truncate text-[var(--muted-foreground)]">
+            {insight.takeaway}
+          </span>
+        </div>
+      ) : null}
+      {finalPhase && !isStreaming ? <SettleSummary events={shownTraceEvents} /> : null}
+      {!open && hasTrace ? <TraceTierOne events={shownTraceEvents} /> : null}
       {hasTrace ? (
         <div
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${

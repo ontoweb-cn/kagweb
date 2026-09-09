@@ -41,6 +41,42 @@ _STDERR_TAIL_LIMIT = 2000
 
 Translator = Callable[[dict[str, Any], dict[str, Any]], list[AgentLoopEvent]]
 
+#: Claude Code's own tool names, mapped to KAGWeb's vocabulary so a CLI-backed
+#: turn reads with the same verbs as a native one ("Running command ls …",
+#: "Reading skill dataviz") instead of falling back to the vendor's capitalised
+#: name. The second element renames the vendor's argument keys, because the
+#: UI's chip reads KAGWeb's key (``path``, ``name``) and not the CLI's
+#: (``file_path``, ``skill``).
+_CLAUDE_CODE_TOOLS: dict[str, tuple[str, dict[str, str]]] = {
+    "Bash": ("exec", {}),  # already {command, description, …}
+    "Read": ("read_file", {"file_path": "path"}),
+    "Write": ("write_file", {"file_path": "path"}),
+    "Edit": ("edit_file", {"file_path": "path"}),
+    "MultiEdit": ("edit_file", {"file_path": "path"}),
+    "NotebookEdit": ("edit_file", {"notebook_path": "path"}),
+    "Skill": ("read_skill", {"skill": "name"}),
+    "WebFetch": ("web_fetch", {}),
+    "WebSearch": ("web_search", {}),
+    "Glob": ("glob", {}),
+    "Grep": ("grep", {}),
+}
+
+
+def _canonical_tool(name: str, args: Any) -> tuple[str, Any]:
+    """``(canonical name, canonical args)`` for one vendor tool call.
+
+    A name this table has not met yet passes through untouched: an unknown
+    vendor tool must still appear in the trace, named as the vendor named it.
+    """
+    entry = _CLAUDE_CODE_TOOLS.get(name)
+    if entry is None:
+        return name, args
+    canonical, key_map = entry
+    if not key_map or not isinstance(args, dict):
+        return canonical, args
+    return canonical, {key_map.get(key, key): value for key, value in args.items()}
+
+
 #: Environment the agent-loop subprocess may inherit from the server. The
 #: server environment carries deployment secrets (settings export writes
 #: AUTH_PASSWORD_HASH / POCKETBASE_ADMIN_PASSWORD / provider keys into
@@ -165,7 +201,9 @@ def translate_claude_code(obj: dict[str, Any], state: dict[str, Any]) -> list[Ag
             elif block_type == "thinking":
                 events.append(AgentLoopEvent("thinking", text=str(block.get("thinking") or "")))
             elif block_type == "tool_use":
-                name = str(block.get("name") or "tool")
+                name, args = _canonical_tool(
+                    str(block.get("name") or "tool"), block.get("input") or {}
+                )
                 tool_id = str(block.get("id") or "")
                 if tool_id:
                     # Remembered so the matching tool_result can name its tool:
@@ -175,7 +213,7 @@ def translate_claude_code(obj: dict[str, Any], state: dict[str, Any]) -> list[Ag
                     AgentLoopEvent(
                         "tool_call",
                         name=name,
-                        data={"args": block.get("input") or {}, "id": tool_id},
+                        data={"args": args, "id": tool_id},
                     )
                 )
     elif kind == "user" and isinstance(blocks, list):
@@ -220,10 +258,48 @@ def translate_claude_code(obj: dict[str, Any], state: dict[str, Any]) -> list[Ag
         if obj.get("total_cost_usd") is not None:
             data["cost_usd"] = obj.get("total_cost_usd")
         if any(value is not None for value in data.values()):
+            # The result line's usage describes this whole CLI invocation, so
+            # the counters are coherent as a pass total. Stamped only here:
+            # an always-present scope key would defeat the guard above and
+            # emit a usage event with nothing in it.
+            data["usage_scope"] = "pass"
             events.append(AgentLoopEvent("usage", data=data))
         if str(obj.get("subtype") or "") not in {"", "success"}:
             events.append(_error_event(f"claude code turn ended with {obj.get('subtype')!r}"))
     return events
+
+
+def _codex_failed(item: dict[str, Any]) -> bool:
+    """Whether a completed Codex item reports failure.
+
+    Codex says so two ways — an item status, or a non-zero exit code on a
+    command. The trace row reads ``is_error``, and a failed command rendered as
+    a clean finish is worse than a false alarm.
+    """
+    if str(item.get("status") or "").lower() == "failed":
+        return True
+    exit_code = item.get("exit_code")
+    return isinstance(exit_code, int) and not isinstance(exit_code, bool) and exit_code != 0
+
+
+def _codex_mcp_output(item: dict[str, Any]) -> str:
+    """The text an MCP item returned.
+
+    The result payload is not the item's ``arguments`` (those are the request);
+    Codex reports output either directly or as a content-block list.
+    """
+    output = item.get("output")
+    if isinstance(output, str) and output:
+        return output
+    result = item.get("result")
+    if isinstance(result, dict) and isinstance(result.get("content"), list):
+        parts = [
+            str(block.get("text") or "")
+            for block in result["content"]
+            if isinstance(block, dict) and block.get("type") == "text"
+        ]
+        return "\n".join(part for part in parts if part)
+    return str(output or "")
 
 
 def translate_codex(obj: dict[str, Any], state: dict[str, Any]) -> list[AgentLoopEvent]:
@@ -245,38 +321,81 @@ def translate_codex(obj: dict[str, Any], state: dict[str, Any]) -> list[AgentLoo
         item = msg.get("item") if isinstance(msg.get("item"), dict) else {}
         item_type = str(item.get("type") or "")
         done = msg_type == "item.completed"
+        # ``item.updated`` is progress on an item that already opened, not a new
+        # call: emitting one for it would render duplicate rows that never
+        # receive a result.
+        opening = msg_type == "item.started"
+        item_id = str(item.get("id") or "")
         if item_type == "command_execution":
+            command = str(item.get("command") or "")
             if done:
                 events.append(
                     AgentLoopEvent(
                         "tool_result",
-                        name="shell",
+                        name="exec",
                         text=str(item.get("aggregated_output") or item.get("exec_output") or ""),
-                        data={"exit_code": item.get("exit_code")},
+                        data={
+                            "id": item_id,
+                            "exit_code": item.get("exit_code"),
+                            "is_error": _codex_failed(item),
+                        },
                     )
                 )
-            else:
+            elif opening:
+                # The command rides in ``args`` as well as ``text``: the trace
+                # row's chip reads KAGWeb's ``exec`` argument, and the text is
+                # kept for consumers that only look at the event body.
                 events.append(
-                    AgentLoopEvent("tool_call", name="shell", text=str(item.get("command") or ""))
+                    AgentLoopEvent(
+                        "tool_call",
+                        name="exec",
+                        text=command,
+                        data={"id": item_id, "args": {"command": command}},
+                    )
                 )
         elif item_type == "file_change":
             changes = item.get("changes") or []
             names = ",".join(
                 str(change.get("path") or "") for change in changes if isinstance(change, dict)
             )
-            events.append(
-                AgentLoopEvent(
-                    "tool_result" if done else "tool_call", name="apply_patch", text=names
+            if done:
+                events.append(
+                    AgentLoopEvent(
+                        "tool_result",
+                        name="edit_file",
+                        text=names,
+                        data={"id": item_id, "is_error": _codex_failed(item)},
+                    )
                 )
-            )
+            elif opening:
+                events.append(
+                    AgentLoopEvent(
+                        "tool_call",
+                        name="edit_file",
+                        text=names,
+                        data={"id": item_id, "args": {"path": names}},
+                    )
+                )
         elif item_type == "mcp_tool_call":
-            events.append(
-                AgentLoopEvent(
-                    "tool_result" if done else "tool_call",
-                    name=str(item.get("tool") or "mcp"),
-                    text=str(item.get("arguments") or item.get("output") or ""),
+            name = str(item.get("tool") or "mcp")
+            if done:
+                events.append(
+                    AgentLoopEvent(
+                        "tool_result",
+                        name=name,
+                        text=_codex_mcp_output(item),
+                        data={"id": item_id, "is_error": _codex_failed(item)},
+                    )
                 )
-            )
+            elif opening:
+                events.append(
+                    AgentLoopEvent(
+                        "tool_call",
+                        name=name,
+                        text=str(item.get("arguments") or ""),
+                        data={"id": item_id, "args": item.get("arguments") or {}},
+                    )
+                )
         elif item_type == "reasoning":
             summary = item.get("summary")
             if (
@@ -299,6 +418,11 @@ def translate_codex(obj: dict[str, Any], state: dict[str, Any]) -> list[AgentLoo
             "output_tokens": last.get("output_tokens"),
         }
         if any(value is not None for value in data.values()):
+            # input is a running total while output is the last message's, so
+            # the pair is not a coherent per-pass figure — say so instead of
+            # letting a reader treat it as one. Stamped only when a counter
+            # exists: an always-present scope key would defeat the guard.
+            data["usage_scope"] = "cumulative"
             events.append(AgentLoopEvent("usage", data=data))
     elif msg_type in {"turn_aborted", "error"}:
         events.append(_error_event(str(msg.get("message") or msg_type)))

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { StreamEvent } from "../features/chat/model/protocol";
 import {
+  classifyTraceGroup,
   detectStreamingMode,
   groupTraceEvents,
   hasRenderableCallTrace,
@@ -40,6 +41,107 @@ test("trace groups preserve first-seen call order and event order", () => {
     groups[0].events.map((item) => item.content),
     ["one", "two"],
   );
+});
+
+test("classifyTraceGroup applies the skip rules and the tool→retrieve→round precedence", () => {
+  // The one rule the inline trace, the session DAG and the DSL export share.
+  assert.equal(
+    classifyTraceGroup([
+      event("content", "f", { call_kind: "llm_final_response" }, "Answer"),
+    ]),
+    null,
+  );
+  assert.equal(
+    classifyTraceGroup([
+      event("thinking", "a", { absorbed_into_final: true }, "Draft"),
+    ]),
+    null,
+  );
+  assert.equal(
+    classifyTraceGroup([event("thinking", "e", {}, "")]),
+    null,
+  );
+
+  // Order matters: a retrieval event reusing a tool's call_id stays in that
+  // tool's group rather than becoming its own retrieve node.
+  assert.equal(
+    classifyTraceGroup([
+      event("tool_call", "t1", { trace_group: "tool_call", tool_name: "rag" }, "rag"),
+      event("progress", "t1", { trace_role: "retrieve", query: "q" }, "searching"),
+    ])?.kind,
+    "tool_call",
+  );
+  assert.equal(
+    classifyTraceGroup([
+      event("progress", "r1", { trace_role: "retrieve", query: "q" }, "searching"),
+    ])?.kind,
+    "retrieve",
+  );
+  assert.equal(
+    classifyTraceGroup([
+      event("thinking", "r2", { call_kind: "agent_loop_round" }, "pondering"),
+    ])?.kind,
+    "round",
+  );
+  // An untagged tool group — a turn persisted before the trace contract, or a
+  // backend that does not tag its events — is still a tool call.
+  assert.equal(
+    classifyTraceGroup([
+      event("tool_call", "legacy", { call_state: "running" }, "Bash"),
+      event("tool_result", "legacy", { call_state: "complete" }, "files"),
+    ])?.kind,
+    "tool_call",
+  );
+});
+
+test("classifyTraceGroup collects distinct subagent markers for tool groups only", () => {
+  const classified = classifyTraceGroup([
+    event("tool_call", "t1", { trace_group: "tool_call", tool_name: "consult_subagent" }, "go"),
+    event("progress", "t1", { subagent_name: "math", consult_index: 1 }, "working"),
+    event("progress", "t1", { subagent_name: "math", consult_index: 1 }, "still working"),
+    event("progress", "t1", { subagent_name: "writer" }, "working"),
+    event("tool_result", "t1", { trace_group: "tool_call" }, "ok"),
+  ]);
+
+  assert.deepEqual(classified?.subagents, [
+    { name: "math", consultIndex: 1 },
+    { name: "writer", consultIndex: undefined },
+  ]);
+
+  assert.deepEqual(
+    classifyTraceGroup([
+      event(
+        "thinking",
+        "r1",
+        { call_kind: "agent_loop_round", subagent_name: "math" },
+        "pondering",
+      ),
+    ])?.subagents,
+    [],
+  );
+});
+
+test("classifyTraceGroup accepts a marker only with a real name and finite index", () => {
+  // The metadata field is unvalidated JSON, so `null` / `true` / `"2"` arrive
+  // in practice. The Python mirror (`dsl_export._subagent_markers`) applies
+  // exactly this rule — a mismatch grows a phantom subagent node in the DAG
+  // that the CLI/DSL export does not have.
+  const classified = classifyTraceGroup([
+    event("tool_call", "t1", { trace_group: "tool_call" }, "go"),
+    event("progress", "t1", { subagent_name: null }, "x"),
+    event("progress", "t1", { subagent_name: true }, "x"),
+    event("progress", "t1", { subagent_name: "" }, "x"),
+    event("progress", "t1", { subagent_name: "a", consult_index: true }, "x"),
+    event("progress", "t1", { subagent_name: "b", consult_index: 1.5 }, "x"),
+    event("progress", "t1", { subagent_name: "c", consult_index: "2" }, "x"),
+    event("tool_result", "t1", { trace_group: "tool_call" }, "ok"),
+  ]);
+
+  assert.deepEqual(classified?.subagents, [
+    { name: "a", consultIndex: undefined },
+    { name: "b", consultIndex: 1.5 },
+    { name: "c", consultIndex: undefined },
+  ]);
 });
 
 test("pending state ends only when its own call reports a terminal marker", () => {
@@ -139,4 +241,63 @@ test("streaming mode follows the latest meaningful event", () => {
     "reflecting",
   );
   assert.equal(detectStreamingMode([], true, false), "responded");
+});
+
+test("an agent-loop round and its tool call drive the live status label", () => {
+  // The external loop's events are what the header used to fall through on,
+  // leaving it on the "reasoning" default while tools were running.
+  const chunk = event(
+    "thinking",
+    "chat-round-1",
+    { call_kind: "agent_loop_round", trace_kind: "llm_chunk" },
+    "pondering",
+  );
+  assert.equal(detectStreamingMode([chunk], false, true), "exploring");
+
+  const call = {
+    ...event(
+      "tool_call",
+      "chat-tool-1",
+      { call_kind: "tool_planning", trace_group: "tool_call" },
+      "exec",
+    ),
+    // The agent-loop family streams under the chat stage, not "exploring".
+    stage: "responding",
+  };
+  assert.equal(detectStreamingMode([chunk, call], true, true), "tool_using");
+});
+
+test("an agent-loop round settles on its own marker and stays renderable", () => {
+  // `call_role: "round"` is the intermediate close: it must settle the row
+  // without being read as narration (which would strip the prose from the
+  // answer) and without collapsing the trace as a final answer would.
+  const events = [
+    event("progress", "chat-round-1", { call_state: "running" }),
+    event(
+      "thinking",
+      "chat-round-1",
+      { call_kind: "agent_loop_round", trace_kind: "llm_chunk" },
+      "pondering",
+    ),
+    event(
+      "content",
+      "chat-round-1",
+      { call_kind: "agent_loop_round", trace_kind: "llm_chunk" },
+      "Let me look.",
+    ),
+    event("progress", "chat-round-1", {
+      trace_kind: "call_status",
+      call_state: "complete",
+      call_role: "round",
+    }),
+  ];
+
+  assert.equal(isTracePending(events), false);
+  assert.equal(isNarrationRound(events), false);
+  assert.equal(hasRenderableCallTrace(events), true);
+  const items = selectTraceDisplayItems(groupTraceEvents(events));
+  assert.deepEqual(
+    items.map((item) => item.kind),
+    ["trace"],
+  );
 });

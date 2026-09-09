@@ -81,6 +81,8 @@ function callEntryToNode(
       consultIndex: entry.consult_index,
       roundIndex: entry.round_index,
       durationMs: entry.duration_ms,
+      tokens: entry.tokens,
+      usageScope: entry.usage_scope,
       error: entry.error,
     },
   };

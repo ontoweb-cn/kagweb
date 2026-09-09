@@ -81,6 +81,12 @@ export class UnifiedTurnClient {
      * leave the caller waiting on a stream that never starts.
      */
     onProtocolError?: (event: ProtocolErrorEvent) => void,
+    /**
+     * A command the server acknowledged but refused (``accepted:false``).
+     * These never reach ``onEvent`` — without this hook a rejected submit
+     * leaves its ask_user card spinning with no explanation.
+     */
+    onCommandRejected?: (event: ServerEvent) => void,
   ) {
     this.runtime = new TurnRuntimeClient({
       onEvent(event) {
@@ -99,6 +105,7 @@ export class UnifiedTurnClient {
         }
         if (state === "connected") this.closeNotified = false;
       },
+      onCommandRejected,
     });
   }
 

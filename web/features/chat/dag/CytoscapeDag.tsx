@@ -10,6 +10,8 @@
  */
 import { useEffect, useRef } from "react";
 import type { Core, ElementDefinition, LayoutOptions, StylesheetStyle } from "cytoscape";
+import { nextZoomTier, type DagZoomTier } from "@/lib/dag-zoom";
+import { nodeInkColor } from "@/lib/turn-insight";
 import type { SessionDag } from "./model";
 
 /** Available canvas layouts. dagre (layered, edge-aware) is the default;
@@ -36,8 +38,10 @@ export interface CytoscapeDagProps {
 
 const APPLY_DEBOUNCE_MS = 500;
 /** Never shrink a dense trace into unreadable thumbnail text. Larger graphs
- * stay pannable within the canvas instead of being forced into view. */
-const MIN_READABLE_ZOOM = 0.58;
+ * stay pannable within the canvas instead of being forced into view. Below
+ * the plaque tier the labels give way to the glyph dots, so the floor sits
+ * under the glyph threshold rather than above it. */
+const MIN_READABLE_ZOOM = 0.3;
 /** Upper bound between rebuilds while updates keep arriving (debounce alone
  * would starve: streaming turns change `dag` more often than the debounce
  * window, resetting the timer indefinitely). */
@@ -71,6 +75,11 @@ function buildStylesheet(): StylesheetStyle[] {
         "text-max-width": "156",
         "font-family": "Inter, ui-sans-serif, system-ui, sans-serif",
         "font-size": "11.5",
+        // Labels scale with zoom, so a fit-to-canvas dense trace would render
+        // 10px type at ~3.5px. Hide a label below a legible rendered size
+        // instead of painting an unreadable smudge; the glyph tier already
+        // drops labels entirely below 0.32.
+        "min-zoomed-font-size": 6,
         "line-height": 1.35,
         color: cssVar("--foreground", "#171717"),
         "background-color": card,
@@ -135,9 +144,45 @@ function buildStylesheet(): StylesheetStyle[] {
         height: "36",
       },
     },
+    // Semantic zoom tiers (dag-zoom.ts). Deliberately BEFORE the state
+    // selectors: cytoscape resolves conflicts by stylesheet order (last
+    // wins), and an error ring or selection accent must survive a tier
+    // change. These rules own only label/geometry/ink.
+    {
+      selector: "node.plaque",
+      style: {
+        label: "data(plaque)",
+        width: "132",
+        height: "30",
+        "font-size": "10",
+        "text-max-width": "120",
+        "border-width": "2.5",
+        "border-color": "data(badgeColor)",
+      },
+    },
+    {
+      selector: "node.glyph",
+      style: {
+        label: "",
+        width: "16",
+        height: "16",
+        shape: "ellipse",
+        "background-color": "data(badgeColor)",
+        "border-width": "0",
+      },
+    },
     { selector: 'node[expandable = "true"]', style: { "border-style": "dashed" } },
-    { selector: 'node[state = "running"]', style: { "border-color": primary, color: primary } },
-    { selector: 'node[state = "error"]', style: { "border-color": destructive, color: destructive } },
+    // The width is repeated here on purpose: the glyph tier sets
+    // `border-width: 0`, and a color alone paints nothing — the state ring
+    // must survive the tier change (see the tier comment above).
+    {
+      selector: 'node[state = "running"]',
+      style: { "border-color": primary, color: primary, "border-width": "2" },
+    },
+    {
+      selector: 'node[state = "error"]',
+      style: { "border-color": destructive, color: destructive, "border-width": "2" },
+    },
     {
       selector: "node:selected",
       style: {
@@ -194,6 +239,7 @@ function toElements(
     const hidden = childCounts.get(node.id);
     const badge =
       hidden != null && hidden > 0 && !materialized.has(node.id) ? `  ·  ${hidden}` : "";
+    const insight = node.meta.turnInsight;
     return {
       group: "nodes" as const,
       data: {
@@ -201,6 +247,14 @@ function toElements(
         label: `${base}${badge}`,
         kind: node.kind,
         state: node.meta.callState ?? "",
+        // Plaque/glyph tiers: the takeaway one-liner and the node's ink —
+        // the badge colour when it has one, else the neutral kind colour,
+        // so a plain turn is never painted like an "insight" badge.
+        plaque: insight?.takeaway ?? base,
+        badgeColor: nodeInkColor(
+          insight?.type,
+          node.kind === "user" ? "user" : node.kind === "assistant" ? "assistant" : "other",
+        ),
         // Cytoscape's `[field = "value"]` compares with strict equality (see
         // its selector `valCmp`), so data must be stringified to match.
         expandable: dag.expandable.has(node.id) ? "true" : "false",
@@ -369,7 +423,7 @@ function applyToCanvas(
   selectedNode: string | null,
   layout: DagLayoutName,
   highlightIds: ReadonlySet<string>,
-): boolean {
+): DagZoomTier {
   cy.elements().remove();
   cy.add(toElements(dag, labels, childCounts));
   cy.nodes().unselect();
@@ -386,7 +440,22 @@ function applyToCanvas(
     cy.fit(undefined, 40);
     if (positions) panToTimelineStart(cy);
   }
-  return positions !== null;
+  // Rebuilds create fresh elements with no classes, so the tier has to be
+  // re-applied here rather than only from the zoom handler (whose guard
+  // would see an unchanged tier and skip). The applied tier is returned so
+  // the caller can resync its hysteresis anchor — otherwise the handler keeps
+  // measuring from a tier the canvas no longer shows.
+  const tier = nextZoomTier("turn", cy.zoom());
+  applyZoomTier(cy, tier);
+  return tier;
+}
+
+/** Restyle the canvas for a semantic-zoom tier. */
+function applyZoomTier(cy: Core, tier: DagZoomTier): void {
+  cy.batch(() => {
+    cy.nodes(".plaque, .glyph").removeClass("plaque glyph");
+    if (tier !== "turn") cy.nodes().addClass(tier);
+  });
 }
 
 export default function CytoscapeDag({
@@ -403,6 +472,7 @@ export default function CytoscapeDag({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const latestRef = useRef({ dag, labels, childCounts, selectedNode, layout, highlightIds });
+  const tierRef = useRef<DagZoomTier>("turn");
   const lastApplyRef = useRef(0);
   const pendingFitRef = useRef(false);
 
@@ -453,6 +523,16 @@ export default function CytoscapeDag({
           onSelectNode(id);
         }
       });
+      // Semantic zoom (dag-zoom.ts): on tier change, restyle nodes en masse —
+      // nodes carrying an insight become plaques / colored dots. The tier
+      // guard keeps this off the high-frequency zoom handler's hot path.
+      cy.on("zoom", () => {
+        const next = nextZoomTier(tierRef.current, cy.zoom());
+        if (next === tierRef.current) return;
+        tierRef.current = next;
+        applyZoomTier(cy, next);
+      });
+
       cy.on("tap", (event) => {
         if (event.target === cy) onSelectNode(null);
       });
@@ -474,7 +554,15 @@ export default function CytoscapeDag({
       observer.observe(containerRef.current);
 
       const { dag, labels, childCounts, selectedNode, layout, highlightIds } = latestRef.current;
-      applyToCanvas(cy, dag, labels, childCounts, selectedNode, layout, highlightIds);
+      tierRef.current = applyToCanvas(
+        cy,
+        dag,
+        labels,
+        childCounts,
+        selectedNode,
+        layout,
+        highlightIds,
+      );
       lastApplyRef.current = Date.now();
       if (pendingFitRef.current) {
         pendingFitRef.current = false;
@@ -508,7 +596,15 @@ export default function CytoscapeDag({
         : Math.min(APPLY_DEBOUNCE_MS, APPLY_MAX_WAIT_MS - sinceLast);
     const timer = setTimeout(() => {
       const { dag, labels, childCounts, selectedNode, layout, highlightIds } = latestRef.current;
-      applyToCanvas(cy, dag, labels, childCounts, selectedNode, layout, highlightIds);
+      tierRef.current = applyToCanvas(
+        cy,
+        dag,
+        labels,
+        childCounts,
+        selectedNode,
+        layout,
+        highlightIds,
+      );
       lastApplyRef.current = Date.now();
     }, delay);
     return () => clearTimeout(timer);
@@ -522,7 +618,15 @@ export default function CytoscapeDag({
     const cy = cyRef.current;
     if (!cy) return;
     const { dag, labels, childCounts, selectedNode, highlightIds } = latestRef.current;
-    applyToCanvas(cy, dag, labels, childCounts, selectedNode, layout, highlightIds);
+    tierRef.current = applyToCanvas(
+      cy,
+      dag,
+      labels,
+      childCounts,
+      selectedNode,
+      layout,
+      highlightIds,
+    );
     lastApplyRef.current = Date.now();
   }, [layout]);
 

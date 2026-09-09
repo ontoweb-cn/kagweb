@@ -9,23 +9,13 @@ const NEXT_OUTPUT_DIR = path.join(WEB_ROOT, ".next");
 const BUILD_MANIFEST_PATH = path.join(NEXT_OUTPUT_DIR, "build-manifest.json");
 const NEXT_BIN = path.join(WEB_ROOT, "node_modules", "next", "dist", "bin", "next");
 
+// Only routes the shell actually serves: the KB, co-writer, reading and
+// mastery surfaces were removed with their layers, and a stale entry aborts
+// the measurement with a 404 before any budget is checked.
 const ROUTE_TARGETS = [
   { route: "/", requestPath: "/", budgetKb: 300 },
   { route: "/chat/[sessionId]", requestPath: "/chat/perf-budget", budgetKb: 1_020 },
   { route: "/settings", requestPath: "/settings", budgetKb: 840 },
-  { route: "/knowledge-bases", requestPath: "/knowledge-bases", budgetKb: 540 },
-  { route: "/co-writer", requestPath: "/co-writer", budgetKb: 320 },
-  { route: "/co-writer/[docId]", requestPath: "/co-writer/perf-budget", budgetKb: 515 },
-  {
-    route: "/reading/[workspaceId]/sessions/[sessionId]",
-    requestPath: "/reading/perf-budget/sessions/perf-session",
-    budgetKb: 1_120,
-  },
-  {
-    route: "/mastery/[pathId]/sessions/[sessionId]",
-    requestPath: "/mastery/perf-budget/sessions/perf-session",
-    budgetKb: 980,
-  },
 ];
 
 const ROOT_SHELL_BUDGET_KB = 390;

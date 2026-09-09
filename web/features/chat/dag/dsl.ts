@@ -12,6 +12,7 @@
  * text is clipped to a preview (includeText turns even that off).
  */
 import { parentKey, type VisiblePathResult } from "@/lib/message-branches";
+import { PREVIEW_LIMIT } from "@/lib/trace-text";
 import {
   computeSessionDag,
   visibleMessagesForDag,
@@ -22,7 +23,6 @@ import { DSL_MAX_DEPTH, type DagNode, type SessionDag } from "./model";
 
 export const DSL_VERSION = 1;
 const GENERATOR = "kagweb/session-dsl";
-const PREVIEW_LIMIT = 140;
 
 export interface SerializeDslOptions {
   /** Drop volatile fields (duration_ms, error, session block, exported_at)
@@ -49,6 +49,14 @@ export interface DslCallEntry {
   consult_index?: number;
   round_index?: number;
   duration_ms?: number;
+  /**
+   * Pass-level token counters, emitted only in non-stable mode. `total` is
+   * absent when the backend reported a cumulative counter pair — the export
+   * never fabricates a sum.
+   */
+  tokens?: { prompt: number; completion: number; total?: number };
+  /** How to read `tokens` ("pass" | "cumulative"); absent when unreported. */
+  usage_scope?: string;
   error?: string;
   calls?: DslCallEntry[];
 }
@@ -151,6 +159,8 @@ function convertCall(
   if (!writer.opts.stable && meta.durationMs != null) {
     entry.duration_ms = meta.durationMs;
   }
+  if (!writer.opts.stable && meta.tokens) entry.tokens = meta.tokens;
+  if (!writer.opts.stable && meta.usageScope) entry.usage_scope = meta.usageScope;
   if (!writer.opts.stable && meta.error) entry.error = meta.error;
   const calls = messageCalls(ctx, node.id, writer, counters);
   if (calls.length) entry.calls = calls;

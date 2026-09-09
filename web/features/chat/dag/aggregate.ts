@@ -7,27 +7,24 @@
  * assistant message's call tree is materialized on demand via the
  * `expandedMessages` set.
  *
- * Group classification mirrors `TracePresentation`'s canonical rules so the
- * DAG never disagrees with the inline activity trace:
- *   tool     → trace_group === "tool_call" || call_kind === "tool_planning"
- *   retrieve → trace_role === "retrieve" (only KB-prefetch seeds form their
- *              own group; retrieval events reusing a tool's call_id are
- *              merged into that tool's group — see walkCallGroups)
- *   round    → everything else (stage / plan / quiz / agent_loop_round / …)
- * Skipped, exactly like the trace view: `llm_final_response`, groups
- * absorbed into the final answer, and groups without trace substance.
+ * Group classification is not decided here: `walkCallGroups` asks
+ * `classifyTraceGroup` (`trace/selectors.ts`), the same kernel the inline
+ * activity trace and the DSL export use, so the DAG cannot disagree with
+ * either. That kernel owns the rule (and its docstring is the specification).
  */
 import type { StreamEvent } from "@/features/chat/model/protocol";
+import type { TurnInsight } from "@/lib/turn-insight";
 import {
+  classifyTraceGroup,
   getCallProvider,
   getTraceCallKind,
   getTraceGroup,
   getTraceMeta,
-  getTraceRole,
-  groupHasTraceSubstance,
   groupTraceEvents,
+  type TraceGroupClass,
 } from "@/features/chat/trace/selectors";
 import { buildVisiblePath } from "@/lib/message-branches";
+import { clipPreview } from "@/lib/trace-text";
 import { isConfirmedResearchFollowup } from "@/lib/deep-research-report";
 import {
   DAG_NODE_LIMIT,
@@ -37,6 +34,7 @@ import {
   type DagNode,
   type DagNodeKind,
   type SessionDag,
+  type TokenCounts,
 } from "./model";
 
 /**
@@ -50,6 +48,8 @@ export interface DagMessage {
   content: string;
   capability?: string;
   events?: StreamEvent[];
+  /** Judge-written turn badge (assistant rows, multi-round turns). */
+  turnInsight?: TurnInsight;
   parentMessageId?: number | null;
 }
 
@@ -58,15 +58,10 @@ export interface SessionDagInput {
   selectedBranches?: Record<string, number>;
 }
 
-const TEXT_PREVIEW_LIMIT = 140;
-
 /** One materializable group from a message's call tree. */
-interface CallGroup {
-  kind: "round" | "tool_call" | "retrieve";
+interface CallGroup extends TraceGroupClass {
   callId: string;
   events: StreamEvent[];
-  /** Distinct (name, consultIndex) subagent markers inside a tool group. */
-  subagents: Array<{ name: string; consultIndex: number | undefined }>;
 }
 
 /**
@@ -78,44 +73,15 @@ function walkCallGroups(events: StreamEvent[] | undefined): CallGroup[] {
   if (!events?.length) return [];
   const groups: CallGroup[] = [];
   for (const { callId, events: groupEvents } of groupTraceEvents(events)) {
-    const kind = getTraceCallKind(groupEvents);
-    if (kind === "llm_final_response") continue;
-    if (
-      groupEvents.some(
-        (event) => getTraceMeta(event).absorbed_into_final === true,
-      )
-    )
-      continue;
-    if (!groupHasTraceSubstance(groupEvents)) continue;
+    const classified = classifyTraceGroup(groupEvents);
+    if (!classified) continue;
 
-    const group = getTraceGroup(groupEvents);
-    const role = getTraceRole(groupEvents);
-    let nodeKind: CallGroup["kind"];
-    if (kind === "tool_planning" || group === "tool_call") {
-      nodeKind = "tool_call";
-    } else if (role === "retrieve") {
-      nodeKind = "retrieve";
-    } else {
-      nodeKind = "round";
-    }
-
-    const subagents: CallGroup["subagents"] = [];
-    if (nodeKind === "tool_call") {
-      const seen = new Set<string>();
-      for (const event of groupEvents) {
-        const meta = getTraceMeta(event);
-        if (meta.subagent_name === undefined) continue;
-        const name = String(meta.subagent_name);
-        const consultIndex =
-          typeof meta.consult_index === "number" ? meta.consult_index : undefined;
-        const key = `${name}:${consultIndex ?? ""}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        subagents.push({ name, consultIndex });
-      }
-    }
-
-    groups.push({ kind: nodeKind, callId, events: groupEvents, subagents });
+    groups.push({
+      kind: classified.kind,
+      callId,
+      events: groupEvents,
+      subagents: classified.subagents,
+    });
   }
   return groups;
 }
@@ -138,17 +104,10 @@ function lastCallState(events: StreamEvent[]): string | undefined {
   return state;
 }
 
-function clip(text: string): string {
-  const trimmed = text.trim();
-  return trimmed.length > TEXT_PREVIEW_LIMIT
-    ? `${trimmed.slice(0, TEXT_PREVIEW_LIMIT)}…`
-    : trimmed;
-}
-
 function extractTextPreview(events: StreamEvent[]): string | undefined {
   for (const event of events) {
     if (event.type === "content" || event.type === "thinking") {
-      const text = clip(event.content ?? "");
+      const text = clipPreview(event.content ?? "");
       if (text) return text;
     }
   }
@@ -158,7 +117,7 @@ function extractTextPreview(events: StreamEvent[]): string | undefined {
 function extractQuery(events: StreamEvent[]): string | undefined {
   for (const event of events) {
     const query = getTraceMeta(event).query;
-    if (typeof query === "string" && query.trim()) return clip(query);
+    if (typeof query === "string" && query.trim()) return clipPreview(query);
   }
   return undefined;
 }
@@ -166,7 +125,7 @@ function extractQuery(events: StreamEvent[]): string | undefined {
 function extractError(events: StreamEvent[]): string | undefined {
   for (const event of events) {
     if (event.type === "error") {
-      const text = clip(event.content ?? "");
+      const text = clipPreview(event.content ?? "");
       if (text) return text;
     }
   }
@@ -174,6 +133,14 @@ function extractError(events: StreamEvent[]): string | undefined {
 }
 
 function extractDurationMs(events: StreamEvent[]): number | undefined {
+  // Backend-authoritative elapsed_ms wins when present — it survives
+  // reconnects and replay, unlike timestamp arithmetic. A reported 0 is kept:
+  // it is a measurement, whereas the span fallback below requires `> 0`
+  // because a zero span cannot distinguish 'instant' from 'unknown'.
+  for (const event of events) {
+    const elapsed = getTraceMeta(event).elapsed_ms;
+    if (typeof elapsed === "number" && elapsed >= 0) return elapsed;
+  }
   // Timestamps are not guaranteed monotonic within a group (events arrive in
   // first-seen order), so span the min/max rather than first/last.
   let min = Infinity;
@@ -187,8 +154,37 @@ function extractDurationMs(events: StreamEvent[]): number | undefined {
     if (ts > max) max = ts;
   }
   if (!seen) return undefined;
-  const duration = max - min;
-  return duration > 0 ? duration : undefined;
+  // Event timestamps are epoch *seconds* while the field (and the panel that
+  // renders it) is milliseconds — convert, and round so both languages emit
+  // the same integer. A zero span still means "unknown", not "instant".
+  const durationMs = Math.round((max - min) * 1000);
+  return durationMs > 0 ? durationMs : undefined;
+}
+
+/**
+ * The pass's token counters, from the round-completion marker. `total` is
+ * whatever the marker's writer stamped — the synthesis rule (only for an
+ * explicitly pass-scoped pair) lives once, on the producing side.
+ */
+function extractTokens(events: StreamEvent[]): TokenCounts | undefined {
+  for (const event of events) {
+    const meta = getTraceMeta(event);
+    const prompt = meta.prompt_tokens;
+    const completion = meta.completion_tokens;
+    if (typeof prompt !== "number" || typeof completion !== "number") continue;
+    const total = typeof meta.total_tokens === "number" ? meta.total_tokens : undefined;
+    return total !== undefined ? { prompt, completion, total } : { prompt, completion };
+  }
+  return undefined;
+}
+
+/** How to read the group's token counters, when the backend said. */
+function extractUsageScope(events: StreamEvent[]): string | undefined {
+  for (const event of events) {
+    const scope = getTraceMeta(event).usage_scope;
+    if (typeof scope === "string" && scope) return scope;
+  }
+  return undefined;
 }
 
 function extractToolName(events: StreamEvent[]): string | undefined {
@@ -225,6 +221,10 @@ function makeCallNode(
       query: extractQuery(group.events),
       roundIndex: group.kind === "round" ? roundIndex : undefined,
       durationMs: extractDurationMs(group.events),
+      // Tokens describe a whole backend pass, so they ride the round group's
+      // closing marker only — never spread over every round.
+      tokens: group.kind === "round" ? extractTokens(group.events) : undefined,
+      usageScope: group.kind === "round" ? extractUsageScope(group.events) : undefined,
       textPreview: extractTextPreview(group.events),
       error: extractError(group.events),
     },
@@ -447,8 +447,9 @@ export function computeSessionDag(
         messageRole: message.role,
         branchInfo,
         capability: message.capability,
+        turnInsight: message.turnInsight,
         textPreview:
-          message.role === "user" ? clip(message.content ?? "") || undefined : undefined,
+          message.role === "user" ? clipPreview(message.content ?? "") || undefined : undefined,
       },
     });
     edges.push({ id: `e:${prev}->${key}`, source: prev, target: key, kind: "conversation" });

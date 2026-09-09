@@ -1,0 +1,91 @@
+"""Duration and token extraction for the session DSL export.
+
+Mirrors `web/tests/session-dag.test.ts` and `aggregate.ts`: both sides read the
+same metadata keys, and the parity fixture locks the end-to-end shape. These
+cases pin the branches the fixture does not reach.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from kagweb.services.session.dsl_export import (
+    _extract_duration_ms,
+    _extract_tokens,
+    _extract_usage_scope,
+)
+
+
+def event(metadata: dict[str, Any], timestamp: float = 1) -> dict[str, Any]:
+    return {"type": "progress", "content": "", "metadata": metadata, "timestamp": timestamp}
+
+
+def test_elapsed_ms_beats_the_timestamp_span() -> None:
+    events = [event({}, 1), event({"elapsed_ms": 1500}, 9)]
+
+    assert _extract_duration_ms(events) == 1500
+
+
+def test_timestamp_span_is_the_fallback_in_milliseconds() -> None:
+    """Timestamps are epoch seconds; the field is milliseconds, so a 3-second
+    span is 3000 — the two languages must agree on that integer."""
+    assert _extract_duration_ms([event({}, 1), event({}, 4)]) == 3000
+    assert _extract_duration_ms([event({}, 1), event({}, 1.25)]) == 250
+    assert _extract_duration_ms([event({}, 4), event({}, 4)]) is None
+    assert _extract_duration_ms([]) is None
+
+
+def test_the_exporter_carries_the_producers_total() -> None:
+    """The synthesis rule lives on the producing side (`_normalize_usage`); the
+    exporter only carries what the marker stamped."""
+    events = [
+        event(
+            {
+                "prompt_tokens": 1200,
+                "completion_tokens": 340,
+                "total_tokens": 1540,
+                "usage_scope": "pass",
+            }
+        )
+    ]
+
+    assert _extract_tokens(events) == {"prompt": 1200, "completion": 340, "total": 1540}
+    assert _extract_usage_scope(events) == "pass"
+
+
+def test_a_reported_total_is_carried_verbatim() -> None:
+    events = [event({"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 99})]
+
+    assert _extract_tokens(events) == {"prompt": 10, "completion": 5, "total": 99}
+
+
+def test_the_exporter_never_synthesizes_a_total() -> None:
+    """A marker with no stamped total stays without one, whatever its scope."""
+    events = [event({"prompt_tokens": 5000, "completion_tokens": 220, "usage_scope": "cumulative"})]
+
+    assert _extract_tokens(events) == {"prompt": 5000, "completion": 220}
+    assert _extract_usage_scope(events) == "cumulative"
+
+
+def test_incomplete_counters_yield_no_tokens() -> None:
+    assert _extract_tokens([event({"prompt_tokens": 10})]) is None
+    assert _extract_tokens([event({"prompt_tokens": True, "completion_tokens": 1})]) is None
+    assert _extract_tokens([]) is None
+    assert _extract_usage_scope([]) is None
+
+
+def test_unscoped_counters_get_no_synthesized_total() -> None:
+    """A backend that reports counters without a scope makes no claim about
+    whether they are a whole-pass figure, so no sum is invented."""
+    events = [event({"prompt_tokens": 5000, "completion_tokens": 220})]
+
+    assert _extract_tokens(events) == {"prompt": 5000, "completion": 220}
+    assert _extract_usage_scope(events) is None
+
+
+def test_a_measured_zero_elapsed_is_kept() -> None:
+    """A reported 0ms is a measurement; the timestamp fallback's ``> 0``
+    guard exists because a zero *span* cannot distinguish 'instant' from
+    'unknown'. The asymmetry is deliberate."""
+    assert _extract_duration_ms([event({"elapsed_ms": 0}, 1)]) == 0
+    assert _extract_duration_ms([event({}, 1), event({}, 1)]) is None

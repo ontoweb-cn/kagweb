@@ -118,8 +118,15 @@ export function isChatLoopAnswerContent(event: StreamEvent): boolean {
   );
 }
 
+const narrationCache = new WeakMap<StreamEvent[], boolean>();
+
 export function isNarrationRound(events: StreamEvent[]): boolean {
-  return events.some((event) => {
+  // Asked of the same group by the row body, `hasExpandableContent` and the
+  // classification kernel on every render; the array identity is stable within
+  // a render pass and events are immutable, so cache on it.
+  const cached = narrationCache.get(events);
+  if (cached !== undefined) return cached;
+  const narration = events.some((event) => {
     const meta = getTraceMeta(event);
     return (
       meta.trace_kind === "call_status" &&
@@ -128,9 +135,14 @@ export function isNarrationRound(events: StreamEvent[]): boolean {
       meta.answer_visible !== true
     );
   });
+  narrationCache.set(events, narration);
+  return narration;
 }
 
-export function groupHasTraceSubstance(events: StreamEvent[]): boolean {
+/** Whether a group renders anything at all — the kernel's skip predicate.
+ *  Module-private: the rule belongs to `classifyTraceGroup`, and a second
+ *  exported entry point is how the classification drifted before. */
+function groupHasTraceSubstance(events: StreamEvent[]): boolean {
   const narration = isNarrationRound(events);
   return events.some((event) => {
     if (
@@ -159,6 +171,103 @@ export function groupHasTraceSubstance(events: StreamEvent[]): boolean {
   });
 }
 
+/**
+ * The one classification rule for a call group, shared by the inline activity
+ * trace, the session DAG and the DSL export so the three can never disagree.
+ *
+ *  - ``null`` → skip the group entirely (``llm_final_response``, absorbed into
+ *    the final answer, or no trace substance);
+ *  - otherwise the coarse kind, with tool → retrieve → round precedence
+ *    (order matters: retrieval events reusing a tool's call_id must stay in
+ *    that tool's group, so the tool check comes first) plus the distinct
+ *    subagent markers inside a tool group.
+ *
+ * ``selectTraceDisplayItems`` consumes only the skip decision;
+ * ``walkCallGroups`` (session DAG) consumes the full classification, and
+ * ``dsl_export._classify_trace_group`` mirrors it for the Python side.
+ */
+export interface TraceGroupClass {
+  kind: "tool_call" | "retrieve" | "round";
+  /** Distinct (name, consultIndex) subagent markers inside a tool group. */
+  subagents: Array<{ name: string; consultIndex: number | undefined }>;
+}
+
+export function classifyTraceGroup(
+  events: StreamEvent[],
+): TraceGroupClass | null {
+  // The same group is classified by the display-item pass, the DAG and then
+  // each rendered row; on the streaming hot path that is up to four full
+  // scans per group per frame. The group's event array is stable for a render
+  // pass and events are treated as immutable everywhere (the reducer appends
+  // new arrays), so identity is a safe cache key.
+  const cached = classificationCache.get(events);
+  if (cached !== undefined) return cached;
+  const classified = classifyTraceGroupUncached(events);
+  classificationCache.set(events, classified);
+  return classified;
+}
+
+const classificationCache = new WeakMap<
+  StreamEvent[],
+  TraceGroupClass | null
+>();
+
+function classifyTraceGroupUncached(
+  events: StreamEvent[],
+): TraceGroupClass | null {
+  const kind = getTraceCallKind(events);
+  if (kind === "llm_final_response") return null;
+  if (events.some((event) => getTraceMeta(event).absorbed_into_final === true)) {
+    return null;
+  }
+  if (!groupHasTraceSubstance(events)) return null;
+
+  const group = getTraceGroup(events);
+  const role = getTraceRole(events);
+  // A group carrying a tool call is a tool call even when it arrived
+  // untagged — a turn persisted before the trace contract, or a backend that
+  // does not tag its events. The inline trace renders it as a tool row, so
+  // the DAG and the DSL must classify it the same way.
+  const untaggedToolCall =
+    !kind && !group && events.some((event) => event.type === "tool_call");
+
+  let coarse: TraceGroupClass["kind"];
+  if (kind === "tool_planning" || group === "tool_call" || untaggedToolCall) {
+    coarse = "tool_call";
+  } else if (role === "retrieve") {
+    coarse = "retrieve";
+  } else {
+    coarse = "round";
+  }
+
+  const subagents: TraceGroupClass["subagents"] = [];
+  if (coarse === "tool_call") {
+    const seen = new Set<string>();
+    for (const event of events) {
+      const meta = getTraceMeta(event);
+      // A marker needs a real name, and its index counts only when it is a
+      // finite number. `null` / `true` / `"1.5"` arrive from unvalidated JSON
+      // (`StreamEvent.metadata` is `Record<string, unknown>`), and the Python
+      // mirror (`dsl_export._subagent_markers`) applies exactly this rule —
+      // otherwise the DAG would grow a phantom `"null"` subagent node that the
+      // CLI/DSL export does not have.
+      const name = meta.subagent_name;
+      if (typeof name !== "string" || !name) continue;
+      const rawIndex = meta.consult_index;
+      const consultIndex =
+        typeof rawIndex === "number" && Number.isFinite(rawIndex)
+          ? rawIndex
+          : undefined;
+      const key = `${name}:${consultIndex ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      subagents.push({ name, consultIndex });
+    }
+  }
+
+  return { kind: coarse, subagents };
+}
+
 export function selectTraceDisplayItems(
   traceGroups: TraceItem[],
 ): TraceDisplayItem[] {
@@ -174,18 +283,11 @@ export function selectTraceDisplayItems(
   };
 
   for (const group of traceGroups) {
+    if (!classifyTraceGroup(group.events)) continue;
     const meta = getTraceMeta(group.events[0]);
     const groupType = getTraceGroup(group.events);
     const stepId = meta.step_id ? String(meta.step_id) : "";
     const kind = getTraceCallKind(group.events);
-    if (kind === "llm_final_response") continue;
-    if (
-      group.events.some(
-        (event) => getTraceMeta(event).absorbed_into_final === true,
-      )
-    )
-      continue;
-    if (!groupHasTraceSubstance(group.events)) continue;
 
     if (groupType === "react_round" && stepId) {
       if (currentStep === stepId) stepTraces.push(group);
@@ -205,8 +307,15 @@ export function selectTraceDisplayItems(
   return items;
 }
 
+/** Whether an already-grouped trace renders anything — lets a caller that
+ *  needs the groups for other reasons share one pass instead of grouping
+ *  again per consumer. */
+export function hasRenderableGroups(groups: TraceItem[]): boolean {
+  return selectTraceDisplayItems(groups).length > 0;
+}
+
 export function hasRenderableCallTrace(events: StreamEvent[]): boolean {
-  return selectTraceDisplayItems(groupTraceEvents(events)).length > 0;
+  return hasRenderableGroups(groupTraceEvents(events));
 }
 
 export function detectStreamingMode(

@@ -100,6 +100,16 @@ class MessageRepository(Protocol):
 
     async def get_messages(self, session_id: str) -> list[dict[str, Any]]: ...
 
+    async def update_message_metadata(
+        self, message_id: int | str, metadata: dict[str, Any]
+    ) -> bool:
+        """Merge-patch one message row's metadata (existing keys survive).
+
+        Post-turn metadata such as the insight badge is written after the row
+        exists, so it cannot ride on ``add_message``.
+        """
+        ...
+
 
 @runtime_checkable
 class SessionStoreProtocol(SessionRepository, TurnRepository, MessageRepository, Protocol):

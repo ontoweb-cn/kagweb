@@ -180,6 +180,19 @@ export function extractAskUserPayload(
 export type MessageSegment =
   | { kind: "text"; text: string; key: string }
   | {
+      /**
+       * Still-streaming card preview (``trace_kind=ask_user_draft``): strictly
+       * a rendering hint — replaced by the dispatched call's card. KAGWeb's
+       * external agent loop produces none today, so this path is inert until
+       * a backend emits the contract; it exists so such a backend needs no
+       * frontend change.
+       */
+      kind: "ask_user_draft";
+      payload: AskUserPayload;
+      draftCallId: string;
+      key: string;
+    }
+  | {
       kind: "ask_user";
       data: AskUserCardData;
       toolCallId: string | null;
@@ -235,7 +248,55 @@ export function extractMessageSegments(
     if (seg.kind === "trace") seg.events.push(event);
   };
 
+  // Draft previews are located by scanning (not by a stored index): the
+  // supersede splice below shifts later indices, and a stored map would go
+  // stale after the first removal. Segments are few; the scan is cheap.
+  const findDraftSeg = (callKey: string): number => {
+    for (let i = segments.length - 1; i >= 0; i--) {
+      const seg = segments[i];
+      if (seg.kind === "ask_user_draft" && seg.draftCallId === callKey) return i;
+    }
+    return -1;
+  };
+
+  // A draft previews the card that is about to be dispatched, so ANY arriving
+  // card supersedes it. Matching ids would silently strand the preview when a
+  // backend keys its draft by a different field (draft_call_id vs
+  // tool_call_id) or omits the id entirely.
+  const supersedeDrafts = () => {
+    for (let i = segments.length - 1; i >= 0; i--) {
+      if (segments[i].kind === "ask_user_draft") segments.splice(i, 1);
+    }
+  };
+
   for (const event of events) {
+    const eventMeta = (event.metadata ?? {}) as Record<string, unknown>;
+    // Still-streaming card preview: keep ONE draft segment per call, updated
+    // in place so the card "grows" instead of flickering new segments.
+    if (
+      event.type === "progress" &&
+      eventMeta.trace_kind === "ask_user_draft" &&
+      eventMeta.ask_user_draft
+    ) {
+      const callKey = String(eventMeta.draft_call_id ?? eventMeta.call_id ?? "draft");
+      const payload = eventMeta.ask_user_draft as AskUserPayload;
+      const existingIdx = findDraftSeg(callKey);
+      if (existingIdx !== -1) {
+        const seg = segments[existingIdx];
+        if (seg.kind === "ask_user_draft") {
+          segments[existingIdx] = { ...seg, payload };
+        }
+      } else {
+        segments.push({
+          kind: "ask_user_draft",
+          payload,
+          draftCallId: callKey,
+          key: `draft-${callKey}`,
+        });
+        sawAskUser = true;
+      }
+      continue;
+    }
     if (shouldAppendEventContent(event)) {
       const callId = ((event.metadata ?? {}) as { call_id?: string }).call_id;
       if (callId && narrationCallIds.has(callId)) {
@@ -270,6 +331,10 @@ export function extractMessageSegments(
         : `payload:${JSON.stringify(normalised)}`;
       if (seenAskUserCards.has(cardKey)) continue;
       seenAskUserCards.add(cardKey);
+      // Supersede: the dispatched card replaces the still-streaming preview.
+      // Done before the new card's index is recorded so the splice cannot
+      // stale the map.
+      supersedeDrafts();
       // Close the current text and trace runs so what the resumed round
       // emits starts fresh segments below this card.
       pendingTextIdx = null;

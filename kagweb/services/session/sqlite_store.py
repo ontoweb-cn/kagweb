@@ -1171,6 +1171,35 @@ class SQLiteSessionStore:
     async def get_events(self, turn_id: str, after_seq: int = 0) -> list[dict[str, Any]]:
         return await self.get_turn_events(turn_id, after_seq)
 
+    def _update_message_metadata_sync(self, message_id: int, metadata: dict[str, Any]) -> bool:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT metadata_json FROM messages WHERE id = ?", (int(message_id),)
+            ).fetchone()
+            if row is None:
+                return False
+            # Older rows carry '' rather than '{}' (two table variants), so
+            # parse defensively and never let a malformed blob lose the patch.
+            existing = _json_loads(row["metadata_json"], {})
+            if not isinstance(existing, dict):
+                existing = {}
+            merged = {**existing, **metadata}
+            conn.execute(
+                "UPDATE messages SET metadata_json = ? WHERE id = ?",
+                (_json_dumps(merged), int(message_id)),
+            )
+            conn.commit()
+        return True
+
+    async def update_message_metadata(
+        self, message_id: int | str, metadata: dict[str, Any]
+    ) -> bool:
+        try:
+            mid = int(message_id)
+        except (TypeError, ValueError):
+            return False
+        return await self._run(self._update_message_metadata_sync, mid, metadata)
+
     def _update_session_title_sync(self, session_id: str, title: str) -> bool:
         with self._connect() as conn:
             cur = conn.execute(

@@ -34,6 +34,22 @@ export interface TraceMetadata {
   tool_metadata?: Record<string, unknown>;
   progress_fraction?: number;
   elapsed_s?: number;
+  /**
+   * Backend-authoritative duration of a tool call, on its result event. The
+   * client's timestamp span is only a fallback — it does not survive
+   * reconnects and replay.
+   */
+  elapsed_ms?: number;
+  /**
+   * Token counters. They describe the whole backend pass, not the round that
+   * carries them (KAGWeb's agent loop runs inside an external process), and
+   * `usage_scope` says how to read them: `"pass"` counters are coherent,
+   * `"cumulative"` ones are a running total mixed with a last-message value.
+   */
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  usage_scope?: string;
   block_id?: string;
   trace_layer?: string;
   output_mode?: string;

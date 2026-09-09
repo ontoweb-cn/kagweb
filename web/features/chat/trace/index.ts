@@ -6,7 +6,9 @@ export type {
   TraceItem,
   TraceMetadata,
 } from "./model";
+export type { TraceGroupClass } from "./selectors";
 export {
+  classifyTraceGroup,
   detectStreamingMode,
   getLatestToolProgress,
   getToolProvider,

@@ -71,6 +71,39 @@ test("expanding materializes round → tool hierarchy with drilldown edges", () 
   assert.equal(tool.meta.toolName, "rag");
 });
 
+test("a message's turn insight reaches its DAG node", () => {
+  // The badge colours the plaque/glyph zoom tiers and the thought-map export,
+  // so the node meta must carry it, not just the message.
+  const msg = assistantMsg(1, [ev("thinking", { call_id: "r1" }, "plan")]);
+  msg.turnInsight = { takeaway: "排除了缓存路径", type: "ruleout" };
+  const dag = computeSessionDag({ messages: [msg] });
+
+  const assistant = dag.nodes.find((n) => n.kind === "assistant");
+  assert.deepEqual(assistant?.meta.turnInsight, {
+    takeaway: "排除了缓存路径",
+    type: "ruleout",
+  });
+});
+
+test("an untagged tool group is a tool node, not a round", () => {
+  // A turn persisted before the trace contract: the call carries a call_id and
+  // a state, but no call_kind/trace_group. The inline activity trace renders it
+  // as a tool row, so the DAG has to classify it the same way.
+  const events = [
+    ev("tool_call", { call_id: "legacy-1", call_state: "running" }, "Bash"),
+    ev("tool_result", { call_id: "legacy-1", call_state: "complete" }, "files"),
+  ];
+  const dag = computeSessionDag(
+    { messages: [assistantMsg(1, events)] },
+    new Set(["msg:1"]),
+  );
+  const kinds = dag.nodes.map((n) => n.kind);
+  assert.deepEqual(kinds, ["root", "assistant", "tool_call"]);
+  const tool = dag.nodes.find((n) => n.kind === "tool_call");
+  assert.ok(tool);
+  assert.equal(tool.meta.toolName, "Bash");
+});
+
 test("subagent events sharing the tool call_id become subagent child nodes", () => {
   const events = [
     ev("tool_call", { call_id: "t1", trace_group: "tool_call", tool_name: "consult_subagent" }, "go"),
@@ -356,4 +389,39 @@ test("searchDagNodes matches display fields case-insensitively (#79)", () => {
   assert.equal(searchDagNodes(dag, "   ").size, 0);
   // No match → empty set (panel shows "0 matches").
   assert.equal(searchDagNodes(dag, "nonexistent-term").size, 0);
+});
+
+test("call nodes prefer the backend's elapsed_ms and carry pass tokens", () => {
+  const events = [
+    ev("thinking", { call_id: "r1", call_kind: "agent_loop_round", trace_group: "stage" }, "plan", 1),
+    ev(
+      "progress",
+      {
+        call_id: "r1",
+        call_kind: "agent_loop_round",
+        trace_group: "stage",
+        trace_kind: "call_status",
+        call_state: "complete",
+        call_role: "round",
+        prompt_tokens: 5000,
+        completion_tokens: 220,
+        usage_scope: "cumulative",
+      },
+      "",
+      1,
+    ),
+    ev("tool_call", { call_id: "t1", trace_group: "tool_call", tool_name: "exec" }, "exec", 2),
+    // The result's timestamps span 2..9, but elapsed_ms is authoritative.
+    ev("tool_result", { call_id: "t1", trace_group: "tool_call", elapsed_ms: 1500 }, "ok", 9),
+  ];
+  const dag = computeSessionDag({ messages: [assistantMsg(1, events)] }, new Set(["msg:1"]));
+
+  const round = dag.nodes.find((n) => n.kind === "round");
+  assert.ok(round);
+  assert.deepEqual(round.meta.tokens, { prompt: 5000, completion: 220 });
+  assert.equal(round.meta.usageScope, "cumulative");
+
+  const tool = dag.nodes.find((n) => n.kind === "tool_call");
+  assert.ok(tool);
+  assert.equal(tool.meta.durationMs, 1500);
 });

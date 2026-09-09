@@ -24,7 +24,11 @@ import { useTranslation } from 'react-i18next'
 import AssistantResponse from '@/components/common/AssistantResponse'
 import { InlineFileCardProvider, mergeGeneratedFiles } from '@/components/common/InlineFileCard'
 import Tooltip from '@/components/common/Tooltip'
-import type { MessageAttachment, MessageRequestSnapshot } from '@/features/chat/ChatStateAdapter'
+import type {
+  MessageAttachment,
+  MessageRequestSnapshot,
+  TurnInsight,
+} from '@/features/chat/ChatStateAdapter'
 import { apiFetch, apiUrl } from '@/lib/api'
 import { docIconFor } from '@/lib/doc-attachments'
 import { useVoiceAutoplay } from '@/hooks/useVoiceAutoplay'
@@ -247,7 +251,13 @@ export const AssistantMessage = memo(function AssistantMessage({
   isStreaming,
   onSubmitUserReply,
 }: {
-  msg: { content: string; capability?: string; events?: StreamEvent[] }
+  msg: {
+    content: string
+    capability?: string
+    events?: StreamEvent[]
+    /** Turn-level epistemic badge (multi-round turns only). */
+    turnInsight?: TurnInsight
+  }
   isStreaming?: boolean
   /**
    * Submit a reply for a turn that is paused on ``ask_user``. Wired
@@ -266,6 +276,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         }
   ) => void
 }) {
+  const { t } = useTranslation()
   const events = useMemo(() => msg.events ?? [], [msg.events])
 
   // Detect the ``ask_user`` terminator payload: when the assistant turn
@@ -283,7 +294,12 @@ export const AssistantMessage = memo(function AssistantMessage({
   // before the ask_user call renders above the card; text emitted by
   // the resumed iteration renders below it.
   const messageSegments = useMemo(() => extractMessageSegments(msg.events), [msg.events])
-  const hasInlineAskUser = messageSegments.some(seg => seg.kind === 'ask_user')
+  // A draft preview is a card in waiting: it must use the segmented branch
+  // too, or it would render above the message body instead of in stream order.
+  const hasInlineAskUser = useMemo(
+    () => messageSegments.some(seg => seg.kind === 'ask_user' || seg.kind === 'ask_user_draft'),
+    [messageSegments]
+  )
   // The activity block is pinned to the top of the message, so it can only
   // show the rounds that ran BEFORE the first card. What the resumed rounds
   // reason about renders below the card they answer, in stream order.
@@ -303,6 +319,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         traceEvents={headerTraceEvents}
         isStreaming={isStreaming}
         content={msg.content}
+        insight={msg.turnInsight}
         className="mb-3"
       />
       {hasInlineAskUser ? (
@@ -322,6 +339,22 @@ export const AssistantMessage = memo(function AssistantMessage({
             // What KAGWeb worked out after the user answered — shown
             // where they are looking, not back up in the header block.
             <NestedTraceFlow key={seg.key} events={seg.events} isStreaming={isStreaming} />
+          ) : seg.kind === 'ask_user_draft' ? (
+            // Still-streaming preview: read-only, dimmed until the real card
+            // replaces it (the dispatched call renders beneath it).
+            <div
+              key={seg.key}
+              className="pointer-events-none rounded-xl border border-dashed border-[var(--border)] p-3 opacity-70"
+            >
+              <div className="text-[12px] font-medium text-[var(--muted-foreground)]">
+                {seg.payload.intro || t('Preparing the question…')}
+              </div>
+              {(seg.payload.questions || []).map(q => (
+                <div key={q.id} className="mt-1.5 text-[13px]">
+                  {q.prompt}
+                </div>
+              ))}
+            </div>
           ) : (
             <AskUserOptions
               key={seg.key}

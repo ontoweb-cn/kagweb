@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -16,6 +17,14 @@ from .._turn_runtime_shared import (
 )
 
 logger = logging.getLogger(__name__)
+
+#: The judge's vocabulary. One tuple feeds both the prompt and the validation —
+#: the frontend mirrors it in `web/lib/turn-insight.ts` (`INSIGHT_TYPES`).
+_INSIGHT_TYPES = ("insight", "ruleout", "decision", "pivot", "open")
+
+#: The judge must answer inside the client's post-DONE socket hold
+#: (``POST_DONE_DISCONNECT_DELAY_MS`` = 15s) or the live badge is lost.
+_INSIGHT_TIMEOUT_S = 12.0
 
 if TYPE_CHECKING:
     from kagweb.services.session.protocol import SessionStoreProtocol
@@ -164,5 +173,150 @@ class SessionTitleService:
                 stage="title",
                 content=title,
                 metadata={"title": title, "session_id": session_id},
+            ),
+        )
+
+    async def _maybe_generate_turn_insight(
+        self,
+        *,
+        execution: _TurnExecution,
+        session_id: str,
+        turn_id: str,
+        assistant_message_id: int | str | None,
+        ui_language: str,
+        question: str,
+        answer: str,
+        tool_names: list[str],
+        round_count: int,
+    ) -> None:
+        """One cheap judge call per multi-round turn: a one-line takeaway and
+        an epistemic type (insight / ruleout / decision / pivot / open).
+
+        Display-only metadata — never enters context. Any failure is silent
+        (debug log): the insight must never delay or break the turn's own
+        completion. Single-round turns are skipped — the badge marks how a
+        multi-round exploration *moved*, and a plain Q&A did not move.
+        """
+        if not assistant_message_id or round_count < 2:
+            return
+        if not question.strip() or not answer.strip():
+            return
+
+        from kagweb.services.llm.config import has_configured_llm
+        from kagweb.services.settings.interface_settings import get_turn_insight_enabled
+
+        if not get_turn_insight_enabled() or not has_configured_llm():
+            return
+
+        types = ", ".join(_INSIGHT_TYPES)
+        zh = str(ui_language or "").lower().startswith("zh")
+        if zh:
+            sys_prompt = (
+                "你是探索过程标注器。阅读一轮多步探索（用户问题、助手最终回答与使用的"
+                '工具），输出严格 JSON：{"takeaway": "…", "type": "…"}。takeaway 是'
+                f"这轮探索的一句收获（不超过 20 个汉字）；type 从 [{types}] 中选一个："
+                "insight=新洞见，ruleout=排除了某条路，decision=做出决策，pivot=转向，"
+                "open=留下开放问题。只输出 JSON。"
+            )
+        else:
+            sys_prompt = (
+                "You annotate one multi-round exploration (the user's question, the "
+                "assistant's final answer, and the tools used). Output strict JSON: "
+                '{"takeaway": "…", "type": "…"}. takeaway is what the exploration '
+                "concluded, in one line (max 12 words); type is one of "
+                f"[{types}]: insight=new understanding, ruleout=ruled a path out, "
+                "decision=made a decision, pivot=changed direction, open=left a "
+                "question open. Output only the JSON."
+            )
+        tools_block = "\n".join(f"- {name}" for name in tool_names[:12]) or "-"
+        user_prompt = (
+            f"[Question]\n{_clip_text(question, 800)}\n\n"
+            f"[Tools used]\n{tools_block}\n\n"
+            f"[Rounds]\n{round_count}\n\n"
+            f"[Final answer]\n{_clip_text(answer, 1500)}"
+        )
+
+        try:
+
+            async def _collect_insight() -> str:
+                buf: list[str] = []
+                from kagweb.services.llm import stream as llm_stream
+
+                async for chunk in llm_stream(
+                    prompt=user_prompt,
+                    system_prompt=sys_prompt,
+                    temperature=0.2,
+                    max_tokens=120,
+                ):
+                    buf.append(chunk)
+                return "".join(buf)
+
+            from kagweb.services.model_selection.tasks import task_llm_scope
+
+            # The scope is entered before the task is created so `wait_for`'s
+            # inner task copies it; with no task model configured it is a no-op.
+            with task_llm_scope():
+                raw = await asyncio.wait_for(_collect_insight(), timeout=_INSIGHT_TIMEOUT_S)
+            # No `_looks_like_error_payload` here: it rejects anything starting
+            # with `{` (right for a title, fatal for a judge whose prompt asks
+            # for bare JSON). A provider error payload either fails the parse
+            # or carries no `takeaway`, which the checks below already catch.
+            cleaned = raw.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.strip("`")
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+            parsed = json.loads(cleaned.strip())
+            if not isinstance(parsed, dict):
+                return
+            takeaway = str(parsed.get("takeaway") or "").strip()
+            insight_type = str(parsed.get("type") or "").strip().lower()
+            if not takeaway:
+                return
+            if insight_type not in _INSIGHT_TYPES:
+                insight_type = "insight"
+        except asyncio.TimeoutError:
+            logger.debug("Turn insight LLM call timed out — skipping")
+            return
+        except Exception:
+            logger.debug("Turn insight generation failed — skipping", exc_info=True)
+            return
+
+        insight = {"takeaway": takeaway[:60], "type": insight_type}
+        try:
+            stored = await self.store.update_message_metadata(
+                assistant_message_id, {"turn_insight": insight}
+            )
+        except Exception:
+            logger.warning(
+                "Could not store turn insight for message %s",
+                assistant_message_id,
+                exc_info=True,
+            )
+            return
+        if not stored:
+            # The badge would vanish on the next reload; do not show one that
+            # the persisted session cannot reproduce.
+            logger.warning("Turn insight was not stored for message %s", assistant_message_id)
+            return
+
+        await self._publish_live_event(
+            execution,
+            StreamEvent(
+                type=StreamEventType.PROGRESS,
+                source="turn_runtime",
+                stage="insight",
+                content="",
+                metadata={
+                    "trace_kind": "turn_insight",
+                    "turn_id": turn_id,
+                    "session_id": session_id,
+                    # The client matches the badge to this row; "last assistant
+                    # message" would land on the next turn's bubble when the
+                    # user sends again before this event arrives.
+                    "assistant_message_id": assistant_message_id,
+                    "takeaway": insight["takeaway"],
+                    "insight_type": insight_type,
+                },
             ),
         )

@@ -19,12 +19,16 @@ transport-agnostic.
 from __future__ import annotations
 
 import asyncio
+from collections import deque
+import math
 from pathlib import Path
+import time
 from typing import Any
 
 from kagweb.capabilities._shared import emit_capability_result
 from kagweb.core.capability_protocol import CapabilityManifest, TurnCapability
 from kagweb.core.context import UnifiedContext
+from kagweb.core.trace import build_trace_metadata, merge_trace_metadata, new_call_id
 from kagweb.services.agent_loop import build_agent_loop_backend
 from kagweb.services.agent_loop.consult import (
     consult_manifest,
@@ -50,6 +54,50 @@ from kagweb.services.agent_loop.settings import (
 from kagweb.services.i18n import t
 from kagweb.services.llm.usage_tracker import UsageTracker
 from kagweb.services.settings.interface_settings import get_response_language
+
+# Mechanical cap on the observation excerpt that rides beside each tool result:
+# the reader sees what the tool saw without expanding the row, and one verbose
+# tool cannot bloat the turn's event history.
+_OBSERVATION_EXCERPT_LIMIT = 200
+
+
+def _as_count(value: Any) -> int | None:
+    """A usable token count, or ``None`` — never a coerced or fabricated one."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if not math.isfinite(value) or value < 0:
+        return None
+    return int(value)
+
+
+def _normalize_usage(usage: dict[str, Any]) -> dict[str, Any]:
+    """Map a backend's usage counters onto the DSL's token contract.
+
+    Only reported numbers survive: a counter the backend omitted is left out
+    rather than zero-filled, so a partial pair cannot masquerade as a measured
+    zero. ``total`` is written when the backend sent one, or when a reported
+    pair is explicitly a whole-pass figure; a ``cumulative`` pair (or one with
+    no scope at all) ships without ``total``, because a synthesized sum would
+    be a lie.
+    """
+    prompt = _as_count(usage.get("input_tokens", usage.get("prompt_tokens")))
+    completion = _as_count(usage.get("output_tokens", usage.get("completion_tokens")))
+    normalized: dict[str, Any] = {}
+    if prompt is not None:
+        normalized["prompt_tokens"] = prompt
+    if completion is not None:
+        normalized["completion_tokens"] = completion
+    if not normalized:
+        return {}
+    scope = str(usage.get("usage_scope") or "")
+    if scope:
+        normalized["usage_scope"] = scope
+    total = _as_count(usage.get("total_tokens"))
+    if total is None and scope == "pass" and prompt is not None and completion is not None:
+        total = prompt + completion
+    if total is not None:
+        normalized["total_tokens"] = total
+    return normalized
 
 
 class ChatCapability(TurnCapability):
@@ -142,44 +190,55 @@ class ChatCapability(TurnCapability):
         # Pass cap = budget + 1: every consult costs one extra pass, and one
         # runaway loop that keeps emitting directives is cut off here.
         while True:
-            answer, pass_usage = await self._run_single_pass(
-                stream, backend, request, context=context, profile=primary, language=language
+            answer, pass_usage, bridge = await self._run_single_pass(
+                stream,
+                backend,
+                request,
+                context=context,
+                profile=primary,
+                language=language,
             )
             usage.update({k: v for k, v in pass_usage.items() if v is not None})
             directive = (
                 parse_consult_directive(answer) if consults and consults_done < budget else None
             )
-            if directive is None:
+            key = (directive["agent"], directive["question"]) if directive else None
+            if key is not None and key in asked:
+                key = None
+            profile = find_consult_profile(settings, key[0]) if key else None
+            if profile is None:
+                # This pass holds the turn's answer — settle it as final.
+                if key is not None:
+                    # Unknown agent reference: surface it and stop consulting —
+                    # the spoken answer (minus the directive block) still lands.
+                    asked.add(key)
+                    consults_done += 1
+                    await stream.progress(
+                        t(
+                            "agent_loop.consult_unknown_agent",
+                            agent=key[0],
+                            language=language,
+                        ),
+                        source=self.name,
+                        stage="responding",
+                    )
+                    answer = strip_consult_directive(answer)
+                await bridge.finish(terminal=True, usage=pass_usage)
                 break
-            key = (directive["agent"], directive["question"])
-            if key in asked:
-                break
+            # Another pass follows, so this one is only its run-up: settling it
+            # as final would fold the activity trace while the loop still works.
+            await bridge.finish(terminal=False, usage=pass_usage)
             asked.add(key)
             consults_done += 1
-            profile = find_consult_profile(settings, directive["agent"])
-            if profile is None:
-                # Unknown agent reference: surface it and stop consulting —
-                # the spoken answer (minus the directive block) still lands.
-                await stream.progress(
-                    t(
-                        "agent_loop.consult_unknown_agent",
-                        agent=directive["agent"],
-                        language=language,
-                    ),
-                    source=self.name,
-                    stage="responding",
-                )
-                answer = strip_consult_directive(answer)
-                break
             await stream.tool_call(
                 "consult_agent",
-                {"agent": str(profile.get("name")), "question": directive["question"]},
+                {"agent": str(profile.get("name")), "question": key[1]},
                 source=self.name,
                 stage="responding",
                 metadata={"agent_loop_consult": str(profile.get("id"))},
             )
             consult_answer = await self._run_consult(
-                stream, settings, profile, directive["question"], request, language
+                stream, settings, profile, key[1], request, language
             )
             await stream.tool_result(
                 "consult_agent",
@@ -233,15 +292,31 @@ class ChatCapability(TurnCapability):
         context: UnifiedContext,
         profile: dict[str, Any],
         language: str,
-    ) -> tuple[str, dict[str, Any]]:
-        """Stream one backend pass; return (answer text, usage counters)."""
+    ) -> tuple[str, dict[str, Any], _AgentLoopRoundBridge]:
+        """Stream one backend pass.
+
+        Returns the answer text, the usage counters, and the bridge that
+        carries this pass's trace. The caller settles the bridge because only
+        it knows whether another pass follows (a consult runs the loop again) —
+        a run-up pass must not close as the turn's final round.
+        """
         answer_parts: list[str] = []
         usage: dict[str, Any] = {}
+        bridge = _AgentLoopRoundBridge(stream, source="chat", stage="responding")
         async for event in backend.run(request):
             if event.kind == "approval_request" and getattr(backend, "supports_control", False):
+                # The approval card is its own trace unit, and the frontend
+                # splits the trace at it: settle the open round first so the
+                # rounds before the card stay above it and the resumed round
+                # opens a fresh group below, instead of one group straddling
+                # the card.
+                await bridge.finish(terminal=False)
                 await self._handle_approval_request(
                     context, stream, backend, event, profile, language
                 )
+                continue
+            if event.kind == "usage":
+                usage.update({k: v for k, v in event.data.items() if v is not None})
                 continue
             if event.kind == "content" and event.text:
                 # A content event is one complete block, not a delta: an agent
@@ -251,12 +326,10 @@ class ChatCapability(TurnCapability):
                 # persisted answer read identically.
                 text = f"\n\n{event.text}" if answer_parts else event.text
                 answer_parts.append(event.text)
-                await stream.content(text, source="chat", stage="responding")
+                await bridge.content(text)
                 continue
-            await _emit_agent_loop_event(stream, event, source="chat", stage="responding")
-            if event.kind == "usage":
-                usage.update({k: v for k, v in event.data.items() if v is not None})
-        return "\n\n".join(answer_parts).strip(), usage
+            await bridge.forward(event)
+        return "\n\n".join(answer_parts).strip(), usage, bridge
 
     async def _handle_approval_request(
         self,
@@ -525,64 +598,274 @@ def _build_request(
     )
 
 
-async def _emit_agent_loop_event(
-    stream, event: AgentLoopEvent, *, source: str, stage: str
-) -> None:  # noqa: ANN001
-    if event.kind == "content":
-        await stream.content(event.text, source=source, stage=stage)
-    elif event.kind == "thinking":
-        await stream.thinking(event.text, source=source, stage=stage)
-    elif event.kind in {"approval_request", "clarify_request"}:
-        # A request-shaped event from a backend without control support can
-        # never be answered — surface it as a note instead of dropping it so
-        # the trace shows why the agent kept (or failed to keep) going.
-        tool = event.name or str((event.data or {}).get("tool") or "")
-        await stream.progress(
-            event.text or t("agent_loop.request_unsupported", kind=event.kind, tool=tool),
-            source=source,
-            stage=stage,
-            metadata={"kind": event.kind},
+class _AgentLoopRoundBridge:
+    """Forward agent-loop events with the trace metadata the UI reads.
+
+    The external loop speaks a vendor-neutral vocabulary (``thinking``,
+    ``content``, ``tool_call``, …) and knows nothing about KAGWeb's trace
+    contract, so every event used to reach the frontend untagged. Tool rows
+    fell back to the stage name (``"Responding"``) because neither ``call_kind``
+    nor ``trace_group`` marked them as calls, and thinking carried no
+    ``call_id`` at all — ``groupTraceEvents`` groups by that key, so the model's
+    whole reasoning stream was dropped before it could render.
+
+    This bridge restores the contract the native chat loop emits: a run of
+    thinking/prose is one ``agent_loop_round`` sub-trace, closed by the tool
+    call that ends it, and each tool call/result becomes its own ``tool_call``
+    sub-trace.
+
+    Rounds close with ``call_role="round"``, not ``"narration"``. A CLI prints
+    the loop's prose inline, so it is part of the answer here — the frontend
+    must keep it in the message bubble rather than demote it to trace-only
+    text (a ``"narration"`` marker would strip it from the bubble). The turn's
+    final pass closes its last round with ``"finish"`` — the signal that lets
+    the activity trace settle once the loop is done — while a pass that is only
+    the run-up to a consult closes with ``"round"``.
+
+    State lives for one pass. A round stays open until a tool call ends it;
+    tool ids the backend omits (custom backends never send one) are minted and
+    paired FIFO so a result still attaches to its call.
+    """
+
+    def __init__(self, stream, *, source: str, stage: str) -> None:  # noqa: ANN001
+        self.stream = stream
+        self.source = source
+        self.stage = stage
+        self._round_id = ""
+        self._round_trace: dict[str, Any] = {}
+        self._last_round_trace: dict[str, Any] = {}
+        # (minted id, tool name) for calls the backend sent without an id.
+        self._pending_ids: deque[tuple[str, str]] = deque()
+        self._tool_names: dict[str, str] = {}
+        # Monotonic start per open tool call, for the backend-authoritative
+        # ``elapsed_ms`` the trace and DSL prefer over timestamp spans.
+        self._tool_started: dict[str, float] = {}
+
+    # ---- rounds -------------------------------------------------------
+
+    async def _emit_status(
+        self,
+        trace: dict[str, Any],
+        state: str,
+        *,
+        role: str | None = None,
+        text: str = "",
+        usage: dict[str, Any] | None = None,
+    ) -> None:
+        """Emit one ``call_status`` marker for *trace*'s call."""
+        extra: dict[str, Any] = {"trace_kind": "call_status", "call_state": state}
+        if role is not None:
+            extra["call_role"] = role
+        if usage:
+            extra.update(usage)
+        await self.stream.progress(
+            text,
+            source=self.source,
+            stage=self.stage,
+            metadata=merge_trace_metadata(trace, extra),
         )
-    elif event.kind == "tool_call":
+
+    async def _open_round(self) -> dict[str, Any]:
+        """Start this pass's current round, or return the open one."""
+        if self._round_id:
+            return self._round_trace
+        round_id = new_call_id("chat-round")
+        trace = build_trace_metadata(
+            call_id=round_id,
+            phase=self.stage,
+            label="Exploring",
+            call_kind="agent_loop_round",
+            trace_id=round_id,
+            trace_role="explore",
+            trace_group="stage",
+        )
+        self._round_id = round_id
+        self._round_trace = trace
+        await self._emit_status(trace, "running", text="Exploring")
+        return trace
+
+    async def _close_round(self, role: str, usage: dict[str, Any] | None = None) -> None:
+        round_id, trace = self._round_id, self._round_trace
+        self._round_id, self._round_trace = "", {}
+        if not round_id:
+            return
+        self._last_round_trace = trace
+        await self._emit_status(trace, "complete", role=role, usage=usage)
+
+    # ---- pass lifecycle -----------------------------------------------
+
+    async def content(self, text: str) -> None:
+        """Stream one answer block as part of the current round."""
+        if not text:
+            return
+        trace = await self._open_round()
+        await self.stream.content(
+            text,
+            source=self.source,
+            stage=self.stage,
+            metadata=merge_trace_metadata(trace, {"trace_kind": "llm_chunk"}),
+        )
+
+    async def finish(self, *, terminal: bool, usage: dict[str, Any] | None = None) -> None:
+        """Settle this pass's trace.
+
+        ``terminal`` marks the turn's last pass: only it may read as the final
+        answer. A non-terminal pass closes its open round as an intermediate
+        one and stops there — the next pass carries the turn's answer, and
+        settling as final would fold the activity trace mid-turn.
+
+        ``usage`` is the pass's own counters. They ride the closing marker
+        because KAGWeb cannot attribute a token to a round inside the external
+        loop — the scope label on the marker says exactly that.
+        """
+        normalized = _normalize_usage(usage or {})
+        if self._round_id:
+            await self._close_round("finish" if terminal else "round", usage=normalized)
+            return
+        if not self._last_round_trace:
+            return
+        if not terminal and not normalized:
+            # Nothing to add: an intermediate pass whose round already closed
+            # (the last event was a tool result) would only duplicate a marker.
+            return
+        # The pass ended on a tool result, so its call already closed the round;
+        # the marker lands on that last round group instead. A non-terminal
+        # pass keeps its intermediate role — only the turn's last pass may
+        # read as the finish.
+        await self._emit_status(
+            self._last_round_trace,
+            "complete",
+            role="finish" if terminal else "round",
+            usage=normalized,
+        )
+
+    # ---- event forwarding ---------------------------------------------
+
+    async def forward(self, event: AgentLoopEvent) -> None:
+        if event.kind == "content":
+            await self.content(event.text)
+        elif event.kind == "thinking":
+            await self._thinking(event)
+        elif event.kind == "tool_call":
+            await self._tool_call(event)
+        elif event.kind == "tool_result":
+            await self._tool_result(event)
+        elif event.kind == "progress":
+            if event.text:
+                await self.stream.progress(event.text, source=self.source, stage=self.stage)
+        elif event.kind in {"approval_request", "clarify_request"}:
+            # A request-shaped event from a backend without control support can
+            # never be answered — surface it as a note instead of dropping it so
+            # the trace shows why the agent kept (or failed to keep) going.
+            tool = event.name or str((event.data or {}).get("tool") or "")
+            await self.stream.progress(
+                event.text or t("agent_loop.request_unsupported", kind=event.kind, tool=tool),
+                source=self.source,
+                stage=self.stage,
+                metadata={"kind": event.kind},
+            )
+        elif event.kind == "error":
+            # Mid-stream problems are surfaced in the trace; the turn still
+            # completes with whatever answer the loop produced (matches how
+            # native LLM error payloads stream as content).
+            await self.stream.error(event.text, source=self.source, stage=self.stage)
+
+    async def _thinking(self, event: AgentLoopEvent) -> None:
+        # Empty thinking blocks are common in real streams and would open a
+        # round holding nothing (the CLI prints a phantom "thinking…" for it).
+        if not event.text.strip():
+            return
+        trace = await self._open_round()
+        await self.stream.thinking(
+            event.text,
+            source=self.source,
+            stage=self.stage,
+            metadata=merge_trace_metadata(trace, {"trace_kind": "llm_chunk"}),
+        )
+
+    def _tool_trace(self, call_id: str, name: str, trace_kind: str, state: str) -> dict[str, Any]:
+        """The tool-row contract: one ``tool_call`` sub-trace per call."""
+        return build_trace_metadata(
+            call_id=call_id,
+            phase=self.stage,
+            label=name,
+            call_kind="tool_planning",
+            trace_id=call_id,
+            trace_role="tool",
+            trace_group="tool_call",
+            trace_kind=trace_kind,
+            tool_name=name,
+            call_state=state,
+        )
+
+    async def _tool_call(self, event: AgentLoopEvent) -> None:
+        await self._close_round("round")
+        name = event.name or "tool"
         args = event.data.get("args") if isinstance(event.data.get("args"), dict) else None
-        metadata: dict[str, Any] = {}
+        call_id = str(event.data.get("id") or "")
+        if not call_id:
+            call_id = new_call_id("chat-tool")
+            self._pending_ids.append((call_id, name))
+        self._tool_names[call_id] = name
+        self._tool_started[call_id] = time.monotonic()
+        metadata = self._tool_trace(call_id, name, "tool_call", "running")
         if event.text:
             metadata["text"] = event.text
-        call_id = str(event.data.get("id") or "")
-        if call_id:
-            # The same id the matching tool_result carries, so the trace can
-            # pair a call with its result instead of listing both loose.
-            metadata.update({"call_id": call_id, "call_state": "running"})
-        await stream.tool_call(
-            event.name or "tool",
+        await self.stream.tool_call(
+            name,
             args if args is not None else {"input": event.text},
-            source=source,
-            stage=stage,
-            metadata=metadata or None,
+            source=self.source,
+            stage=self.stage,
+            metadata=metadata,
         )
-    elif event.kind == "tool_result":
-        metadata = {}
+
+    async def _tool_result(self, event: AgentLoopEvent) -> None:
         call_id = str(event.data.get("id") or "")
-        if call_id:
-            metadata["call_id"] = call_id
+        name = event.name or ""
+        # A result pairs with a minted call whenever its own id cannot: either
+        # it carries none, or it carries one for a call we never saw (a backend
+        # that ids the result but not the call). Without this the call row would
+        # stay "running" forever while its result opened a second row.
+        if self._pending_ids and (not call_id or call_id not in self._tool_names):
+            call_id, minted_name = self._pending_ids.popleft()
+            name = name or minted_name
+        elif not call_id:
+            # A result with no call ahead of it (a resumed turn, or a backend
+            # that names nothing): still one row, never a crash.
+            call_id = new_call_id("chat-tool")
+        name = name or self._tool_names.get(call_id) or "tool"
         is_error = event.data.get("is_error")
+        metadata = self._tool_trace(
+            call_id, name, "tool_result", "error" if is_error else "complete"
+        )
         if is_error is not None:
             metadata["is_error"] = bool(is_error)
-            metadata["call_state"] = "error" if is_error else "complete"
-        await stream.tool_result(
-            event.name or "tool",
+        started = self._tool_started.pop(call_id, None)
+        if isinstance(started, float):
+            # Backend-authoritative duration: the client's timestamp span is
+            # fragile across reconnects and replay, and the two clocks differ.
+            metadata["elapsed_ms"] = int(round((time.monotonic() - started) * 1000))
+        await self.stream.tool_result(
+            name,
             event.text,
-            source=source,
-            stage=stage,
-            metadata=metadata or None,
+            source=self.source,
+            stage=self.stage,
+            metadata=metadata,
         )
-    elif event.kind == "progress":
-        await stream.progress(event.text, source=source, stage=stage)
-    elif event.kind == "error":
-        # Mid-stream problems are surfaced in the trace; the turn still
-        # completes with whatever answer the loop produced (matches how
-        # native LLM error payloads stream as content).
-        await stream.error(event.text, source=source, stage=stage)
+        # Observation excerpt: the key bit of what the tool saw, as its own
+        # event so the collapsed row can show it without expanding the result.
+        # Mechanically derived and truncated — never an LLM-style summary, and
+        # skipped entirely when the result is empty.
+        excerpt = event.text.strip()
+        if excerpt:
+            if len(excerpt) > _OBSERVATION_EXCERPT_LIMIT:
+                excerpt = excerpt[:_OBSERVATION_EXCERPT_LIMIT].rstrip() + "…"
+            await self.stream.observation(
+                excerpt,
+                source=self.source,
+                stage=self.stage,
+                metadata=self._tool_trace(call_id, name, "observation", metadata["call_state"]),
+            )
 
 
 # ---------------------------------------------------------------------------

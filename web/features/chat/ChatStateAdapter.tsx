@@ -34,6 +34,7 @@ import {
   type SessionMessage,
 } from "@/lib/session-api";
 import { normalizeMarkdownForDisplay } from "@/lib/markdown-display";
+import { isInsightType, type TurnInsight } from "@/lib/turn-insight";
 import { normalizeMessageContent } from "@/lib/message-content";
 import {
   buildVisiblePath,
@@ -198,6 +199,8 @@ export interface MessageRequestSnapshot {
   readingMaterialRevision?: number;
 }
 
+export type { TurnInsight } from "@/lib/turn-insight";
+
 export interface MessageItem {
   id?: number;
   role: "user" | "assistant" | "system";
@@ -206,6 +209,8 @@ export interface MessageItem {
   events?: StreamEvent[];
   attachments?: MessageAttachment[];
   requestSnapshot?: MessageRequestSnapshot;
+  /** Turn-level epistemic badge (multi-round turns only; judge-written). */
+  turnInsight?: TurnInsight;
   /** Edit-branching: id of the message this row continues. */
   parentMessageId?: number | null;
 }
@@ -273,6 +278,13 @@ type Action =
   | { type: "STREAM_START"; key: string }
   | { type: "STREAM_TOUCH"; key: string }
   | { type: "STREAM_EVENT"; key: string; event: StreamEvent }
+  | {
+      type: "TURN_INSIGHT";
+      key: string;
+      insight: TurnInsight;
+      /** Persisted id of the assistant row the badge belongs to, when known. */
+      messageId?: number | null;
+    }
   | {
       type: "STREAM_END";
       key: string;
@@ -673,6 +685,39 @@ function reducer(state: ProviderState, action: Action): ProviderState {
             lastSeq: Math.max(session.lastSeq, action.event.seq || 0),
             updatedAt: Date.now(),
           },
+        },
+      };
+    }
+    case "TURN_INSIGHT": {
+      // The judge's badge arrives after DONE over the still-open socket;
+      // attach it to the assistant row it belongs to. Matching by id matters:
+      // the user can send the next message in that window, and "last
+      // assistant" would then be the *next* turn's empty placeholder. Reloads
+      // read the same value from message metadata.
+      const session = state.sessions[action.key];
+      if (!session) return state;
+      const messages = [...session.messages];
+      let target = -1;
+      if (action.messageId != null) {
+        target = messages.findIndex(
+          (message) => message.id === action.messageId
+        );
+      }
+      if (target < 0) {
+        for (let i = messages.length - 1; i >= 0; i -= 1) {
+          if (messages[i].role === "assistant") {
+            target = i;
+            break;
+          }
+        }
+      }
+      if (target < 0) return state;
+      messages[target] = { ...messages[target], turnInsight: action.insight };
+      return {
+        ...state,
+        sessions: {
+          ...state.sessions,
+          [action.key]: { ...session, messages, updatedAt: Date.now() },
         },
       };
     }
@@ -1129,6 +1174,17 @@ function asQuestionReferences(
     : [];
 }
 
+/** Defensive hydration of the turn-level insight badge the post-turn judge
+ *  writes into the assistant message metadata. */
+function hydrateTurnInsight(metadata: unknown): TurnInsight | undefined {
+  const meta = asRecord(metadata) ?? {};
+  const raw = asRecord(meta.turn_insight ?? meta.turnInsight) ?? {};
+  const takeaway = typeof raw.takeaway === "string" ? raw.takeaway.trim() : "";
+  if (!takeaway) return undefined;
+  const type = typeof raw.type === "string" ? raw.type.trim() : "";
+  return { takeaway, type: isInsightType(type) ? type : "insight" };
+}
+
 function hydrateRequestSnapshot(
   message: SessionMessage,
   content: string,
@@ -1285,6 +1341,7 @@ export function ChatStateAdapterProvider({
             raw,
             attachments,
           );
+          const turnInsight = hydrateTurnInsight(message.metadata);
           return {
             id: message.id,
             role: message.role,
@@ -1300,6 +1357,7 @@ export function ChatStateAdapterProvider({
                 ? null
                 : message.parent_message_id,
             ...(requestSnapshot ? { requestSnapshot } : {}),
+            ...(turnInsight ? { turnInsight } : {}),
           };
         });
     },
@@ -1441,6 +1499,39 @@ export function ChatStateAdapterProvider({
         }
         return;
       }
+      // The turn-insight badge is post-turn metadata, not a trace event: it
+      // carries no call_id, so the trace reducer would drop it. Intercept it
+      // here and attach it to the turn's assistant message instead.
+      if (
+        event.type === "progress" &&
+        (event.metadata as { trace_kind?: string } | undefined)?.trace_kind ===
+          "turn_insight"
+      ) {
+        const meta = event.metadata as {
+          takeaway?: unknown;
+          insight_type?: unknown;
+          assistant_message_id?: unknown;
+        };
+        const takeaway = typeof meta.takeaway === "string" ? meta.takeaway : "";
+        if (takeaway) {
+          const messageId =
+            typeof meta.assistant_message_id === "number"
+              ? meta.assistant_message_id
+              : null;
+          dispatch({
+            type: "TURN_INSIGHT",
+            key: effectiveKey,
+            messageId,
+            insight: {
+              takeaway,
+              // Same allowlist as the reload path, so a malformed type can
+              // never reach the renderer's prototype-sensitive lookup.
+              type: isInsightType(meta.insight_type) ? meta.insight_type : "insight",
+            },
+          });
+        }
+        return;
+      }
       dispatch({ type: "STREAM_EVENT", key: effectiveKey, event });
       if (
         event.type === "error" &&
@@ -1553,6 +1644,31 @@ export function ChatStateAdapterProvider({
                 durationMs: 6000,
               },
             );
+          },
+          (rejection) => {
+            // An acknowledged-but-refused command never becomes a stream
+            // event. A rejected ``submit_user_reply`` (the turn stopped
+            // waiting for input between the card rendering and the click)
+            // would otherwise leave the card on "Sending your answers…"
+            // forever, so tell the user and refetch the server's truth.
+            if (rejection.type !== "command_ack") return;
+            console.error(
+              `turn command rejected; type=${rejection.command_type}; code=${rejection.error_code}`,
+            );
+            if (rejection.command_type !== "submit_user_reply") return;
+            notify(
+              i18n.t("Your answer could not be submitted. Reloading the conversation."),
+              {
+                tone: "error",
+                durationMs: 6000,
+              },
+            );
+            const sessionId = stateRef.current.sessions[record.key]?.sessionId;
+            if (sessionId) {
+              loadSessionRef.current?.(sessionId).catch(() => {
+                /* non-fatal — local state remains usable */
+              });
+            }
           },
         ),
       };

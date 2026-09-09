@@ -19,6 +19,7 @@ from kagweb.services.session.provider_response_state import (
 )
 
 from .._turn_runtime_shared import (
+    _LLM_ROUND_CALL_KINDS,
     _assemble_persisted_answer,
     _count_branch_user_turns,
     _extract_selection_tutor_context,
@@ -37,6 +38,42 @@ if TYPE_CHECKING:
     from kagweb.services.session.protocol import SessionStoreProtocol
 
 logger = logging.getLogger(__name__)
+
+
+def _count_llm_rounds(events: list[dict[str, Any]]) -> int:
+    """Distinct exploration steps in this turn's assistant events.
+
+    A turn needs ≥2 for the insight judge — the badge marks how a multi-step
+    exploration *moved*. Rounds are counted by ``call_id`` under the shared
+    ``_LLM_ROUND_CALL_KINDS``; a tool call counts as a step too, because the
+    bridge mints a round id only when a round carries thinking or prose, so a
+    tool-only pass (an assistant message that is just a ``tool_use`` block)
+    would otherwise be invisible and a genuinely multi-step turn would score 1.
+    """
+    step_ids: set[str] = set()
+    for event in events:
+        meta = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+        call_id = meta.get("call_id")
+        if not call_id:
+            continue
+        if meta.get("call_kind") in _LLM_ROUND_CALL_KINDS or event.get("type") == "tool_call":
+            step_ids.add(str(call_id))
+    return len(step_ids)
+
+
+def _ordered_tool_names(events: list[dict[str, Any]]) -> list[str]:
+    """Ordered, de-duplicated tool names from the turn's tool_call events."""
+    names: list[str] = []
+    seen: set[str] = set()
+    for event in events:
+        if event.get("type") != "tool_call":
+            continue
+        meta = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+        name = str(meta.get("tool_name") or meta.get("tool") or event.get("content") or "").strip()
+        if name and name not in seen:
+            seen.add(name)
+            names.append(name)
+    return names
 
 
 class TurnExecutor:
@@ -81,6 +118,10 @@ class TurnExecutor:
         session_id = execution.session_id
         capability_name = execution.capability
         turn_id = execution.turn_id
+        # Resolved once, up front: the persisted answer's CJK emphasis repair
+        # and the post-turn metadata jobs both key off the response language,
+        # and the former runs before the latter's block is reached.
+        ui_language = str(payload.get("language", "en") or "en")
         attachments = []
         attachment_records = []
         assistant_events: list[dict[str, Any]] = []
@@ -94,7 +135,7 @@ class TurnExecutor:
             # clean_thinking_tags is a second line of defence: providers that
             # inline <think> in the content channel must never be persisted
             # as the user-facing answer.
-            return _assemble_persisted_answer(content_segments)
+            return _assemble_persisted_answer(content_segments, language=ui_language)
 
         # Files the model generated this turn (exec/code_execution artifacts),
         # persisted as assistant-message attachments so the UI shows openable
@@ -557,24 +598,48 @@ class TurnExecutor:
             stream_done_sent = True
             await self._flush_buffered_events(execution)
             if not is_regenerate and turn_status == "completed":
-                # Title generation is post-turn metadata. Keep it after DONE
-                # so the composer and duration clock stop as soon as the
-                # assistant answer is saved; the frontend keeps this socket
-                # open briefly so the later ``session_meta`` title update can
-                # still arrive.
-                try:
-                    await self._maybe_generate_session_title(
+                # Post-turn metadata (the session title and the insight badge)
+                # runs after DONE so the composer and duration clock stop as
+                # soon as the answer is saved; the frontend keeps this socket
+                # open briefly so the later frames can still arrive. The two
+                # jobs are independent and run concurrently: awaiting them in
+                # series would let a slow title eat the insight's socket window
+                # — and hold the session's turn lease for up to 40s, rejecting
+                # the user's next message in the meantime.
+                title_result, insight_result = await asyncio.gather(
+                    self._maybe_generate_session_title(
                         execution=execution,
                         session_id=session_id,
-                        ui_language=str(payload.get("language", "en") or "en"),
-                    )
-                except Exception:
+                        ui_language=ui_language,
+                    ),
+                    self._maybe_generate_turn_insight(
+                        execution=execution,
+                        session_id=session_id,
+                        turn_id=turn_id,
+                        assistant_message_id=assistant_message_id,
+                        ui_language=ui_language,
+                        question=effective_user_message,
+                        answer=assistant_content,
+                        tool_names=_ordered_tool_names(assistant_events),
+                        round_count=_count_llm_rounds(assistant_events),
+                    ),
+                    return_exceptions=True,
+                )
+                if isinstance(title_result, BaseException):
                     # Not debug: this step is the only thing that names a
                     # conversation, and it has no other error surface. Hiding
                     # its failures below the default log level is what let a
                     # broken title path go unnoticed.
                     logger.warning(
-                        "Session title generation failed for turn %s", turn_id, exc_info=True
+                        "Session title generation failed for turn %s",
+                        turn_id,
+                        exc_info=title_result,
+                    )
+                if isinstance(insight_result, BaseException):
+                    logger.debug(
+                        "Turn insight generation failed for turn %s",
+                        turn_id,
+                        exc_info=insight_result,
                     )
             # Flush once every terminal/post-turn event (DONE, and the title
             # ``session_meta`` above) has been published, not before: a
