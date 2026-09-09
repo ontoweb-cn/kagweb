@@ -234,6 +234,8 @@ async def test_agent_loop_events_carry_the_trace_contract(monkeypatch) -> None:
     assert results[0].metadata["trace_kind"] == "tool_result"
     assert results[0].metadata["call_state"] == "error"
     assert results[0].metadata["is_error"] is True
+    # Backend-authoritative duration, recorded between the call and its result.
+    assert isinstance(results[0].metadata["elapsed_ms"], int)
 
     # The pass's last round is the terminal one — the signal the trace settles on.
     assert progress[-2].metadata["call_state"] == "running"
@@ -502,3 +504,58 @@ async def test_session_workspace_is_created_before_use(tmp_path, monkeypatch) ->
     )
     assert request.workdir == str(tmp_path / "ws" / "chat" / "sess-9")
     assert (tmp_path / "ws" / "chat" / "sess-9").is_dir()
+
+
+async def test_pass_usage_rides_the_closing_marker_with_its_scope(monkeypatch) -> None:
+    """KAGWeb can only attribute tokens to the whole backend pass, so they ride
+    the terminal marker — never spread over the rounds inside the loop."""
+    backend = _RecordingBackend(
+        [
+            AgentLoopEvent("thinking", text="pondering"),
+            AgentLoopEvent(
+                "usage",
+                data={"input_tokens": 1200, "output_tokens": 340, "usage_scope": "pass"},
+            ),
+            AgentLoopEvent("content", text="answer"),
+        ]
+    )
+    _configure(monkeypatch, backend)
+    context = UnifiedContext(session_id="s", user_message="hi", language="en")
+    events = await _run_capability_events(context, StreamBus())
+
+    markers = [
+        event
+        for event in events
+        if event.type.value == "progress" and event.metadata.get("call_state") == "complete"
+    ]
+    assert len(markers) == 1
+    marker = markers[0]
+    assert marker.metadata["prompt_tokens"] == 1200
+    assert marker.metadata["completion_tokens"] == 340
+    assert marker.metadata["total_tokens"] == 1540
+    assert marker.metadata["usage_scope"] == "pass"
+
+
+async def test_cumulative_usage_is_marked_and_carries_no_total(monkeypatch) -> None:
+    backend = _RecordingBackend(
+        [
+            AgentLoopEvent("content", text="answer"),
+            AgentLoopEvent(
+                "usage",
+                data={"input_tokens": 5000, "output_tokens": 220, "usage_scope": "cumulative"},
+            ),
+        ]
+    )
+    _configure(monkeypatch, backend)
+    context = UnifiedContext(session_id="s", user_message="hi", language="en")
+    events = await _run_capability_events(context, StreamBus())
+
+    marker = [
+        event
+        for event in events
+        if event.type.value == "progress" and event.metadata.get("call_state") == "complete"
+    ][0]
+    assert marker.metadata["prompt_tokens"] == 5000
+    assert marker.metadata["completion_tokens"] == 220
+    assert "total_tokens" not in marker.metadata
+    assert marker.metadata["usage_scope"] == "cumulative"

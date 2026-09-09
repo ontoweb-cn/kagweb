@@ -19,7 +19,9 @@ transport-agnostic.
 from __future__ import annotations
 
 from collections import deque
+import math
 from pathlib import Path
+import time
 from typing import Any
 
 from kagweb.capabilities._shared import emit_capability_result
@@ -52,6 +54,41 @@ from kagweb.services.settings.interface_settings import get_response_language
 # the reader sees what the tool saw without expanding the row, and one verbose
 # tool cannot bloat the turn's event history.
 _OBSERVATION_EXCERPT_LIMIT = 200
+
+
+def _as_count(value: Any) -> int | None:
+    """A usable token count, or ``None`` — never a coerced or fabricated one."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if not math.isfinite(value) or value < 0:
+        return None
+    return int(value)
+
+
+def _normalize_usage(usage: dict[str, Any]) -> dict[str, Any]:
+    """Map a backend's usage counters onto the DSL's token contract.
+
+    Only reported numbers survive. ``total`` is written when the backend sent
+    one, or when the counters describe a whole pass; a ``cumulative`` scope
+    means at least one counter is a running total, so a synthesized sum would
+    be a lie — that pair ships without ``total`` and the scope label says why.
+    """
+    prompt = _as_count(usage.get("input_tokens", usage.get("prompt_tokens")))
+    completion = _as_count(usage.get("output_tokens", usage.get("completion_tokens")))
+    if prompt is None and completion is None:
+        return {}
+    scope = str(usage.get("usage_scope") or "pass")
+    normalized: dict[str, Any] = {
+        "prompt_tokens": prompt or 0,
+        "completion_tokens": completion or 0,
+        "usage_scope": scope,
+    }
+    total = _as_count(usage.get("total_tokens"))
+    if total is None and scope != "cumulative":
+        total = normalized["prompt_tokens"] + normalized["completion_tokens"]
+    if total is not None:
+        normalized["total_tokens"] = total
+    return normalized
 
 
 class ChatCapability(TurnCapability):
@@ -170,11 +207,11 @@ class ChatCapability(TurnCapability):
                         stage="responding",
                     )
                     answer = strip_consult_directive(answer)
-                await bridge.finish(terminal=True)
+                await bridge.finish(terminal=True, usage=pass_usage)
                 break
             # Another pass follows, so this one is only its run-up: settling it
             # as final would fold the activity trace while the loop still works.
-            await bridge.finish(terminal=False)
+            await bridge.finish(terminal=False, usage=pass_usage)
             asked.add(key)
             consults_done += 1
             await stream.tool_call(
@@ -483,6 +520,9 @@ class _AgentLoopRoundBridge:
         # (minted id, tool name) for calls the backend sent without an id.
         self._pending_ids: deque[tuple[str, str]] = deque()
         self._tool_names: dict[str, str] = {}
+        # Monotonic start per open tool call, for the backend-authoritative
+        # ``elapsed_ms`` the trace and DSL prefer over timestamp spans.
+        self._tool_started: dict[str, float] = {}
 
     # ---- rounds -------------------------------------------------------
 
@@ -493,11 +533,14 @@ class _AgentLoopRoundBridge:
         *,
         role: str | None = None,
         text: str = "",
+        usage: dict[str, Any] | None = None,
     ) -> None:
         """Emit one ``call_status`` marker for *trace*'s call."""
         extra: dict[str, Any] = {"trace_kind": "call_status", "call_state": state}
         if role is not None:
             extra["call_role"] = role
+        if usage:
+            extra.update(usage)
         await self.stream.progress(
             text,
             source=self.source,
@@ -524,13 +567,13 @@ class _AgentLoopRoundBridge:
         await self._emit_status(trace, "running", text="Exploring")
         return trace
 
-    async def _close_round(self, role: str) -> None:
+    async def _close_round(self, role: str, usage: dict[str, Any] | None = None) -> None:
         round_id, trace = self._round_id, self._round_trace
         self._round_id, self._round_trace = "", {}
         if not round_id:
             return
         self._last_round_trace = trace
-        await self._emit_status(trace, "complete", role=role)
+        await self._emit_status(trace, "complete", role=role, usage=usage)
 
     # ---- pass lifecycle -----------------------------------------------
 
@@ -546,22 +589,29 @@ class _AgentLoopRoundBridge:
             metadata=merge_trace_metadata(trace, {"trace_kind": "llm_chunk"}),
         )
 
-    async def finish(self, *, terminal: bool) -> None:
+    async def finish(self, *, terminal: bool, usage: dict[str, Any] | None = None) -> None:
         """Settle this pass's trace.
 
         ``terminal`` marks the turn's last pass: only it may read as the final
         answer. A non-terminal pass closes its open round as an intermediate
         one and stops there — the next pass carries the turn's answer, and
         settling as final would fold the activity trace mid-turn.
+
+        ``usage`` is the pass's own counters. They ride the closing marker
+        because KAGWeb cannot attribute a token to a round inside the external
+        loop — the scope label on the marker says exactly that.
         """
+        normalized = _normalize_usage(usage or {})
         if self._round_id:
-            await self._close_round("finish" if terminal else "round")
+            await self._close_round("finish" if terminal else "round", usage=normalized)
             return
         if not terminal or not self._last_round_trace:
             return
         # The pass ended on a tool result, so its call already closed the round;
         # the terminal marker lands on that last round group instead.
-        await self._emit_status(self._last_round_trace, "complete", role="finish")
+        await self._emit_status(
+            self._last_round_trace, "complete", role="finish", usage=normalized
+        )
 
     # ---- event forwarding ---------------------------------------------
 
@@ -620,6 +670,7 @@ class _AgentLoopRoundBridge:
             call_id = new_call_id("chat-tool")
             self._pending_ids.append((call_id, name))
         self._tool_names[call_id] = name
+        self._tool_started[call_id] = time.monotonic()
         metadata = self._tool_trace(call_id, name, "tool_call", "running")
         if event.text:
             metadata["text"] = event.text
@@ -652,6 +703,11 @@ class _AgentLoopRoundBridge:
         )
         if is_error is not None:
             metadata["is_error"] = bool(is_error)
+        started = self._tool_started.pop(call_id, None)
+        if isinstance(started, float):
+            # Backend-authoritative duration: the client's timestamp span is
+            # fragile across reconnects and replay, and the two clocks differ.
+            metadata["elapsed_ms"] = int(round((time.monotonic() - started) * 1000))
         await self.stream.tool_result(
             name,
             event.text,

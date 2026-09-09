@@ -25,6 +25,17 @@ export interface DagBranchInfo {
   index: number;
 }
 
+/**
+ * Token counters as the backend reported them. `total` is optional because a
+ * cumulative counter pair has no honest sum; `usage_scope` says which reading
+ * applies (`"pass"` unless the backend marked it otherwise).
+ */
+export interface TokenCounts {
+  prompt: number;
+  completion: number;
+  total?: number;
+}
+
 export interface DagNodeMeta {
   // —— message layer ——
   /** 0-based position in the visible path. Absent on call-layer nodes. */
@@ -47,6 +58,10 @@ export interface DagNodeMeta {
   consultIndex?: number;
   roundIndex?: number;
   durationMs?: number;
+  /** Pass-level token counters; present only on the round that carries the
+   *  backend's completion marker, and only when the backend reported them. */
+  tokens?: TokenCounts;
+  usageScope?: string;
   textPreview?: string;
   error?: string;
   /** Judge-written turn badge — colours the plaque/glyph zoom tiers and the

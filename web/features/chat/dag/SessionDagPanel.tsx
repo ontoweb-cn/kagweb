@@ -325,6 +325,15 @@ export default function SessionDagPanel({
     if (meta.callState) rows.push({ key: "state", value: meta.callState });
     if (meta.durationMs != null)
       rows.push({ key: "duration", value: `${Math.round(meta.durationMs / 100) / 10}s` });
+    if (meta.tokens) {
+      // Pass-level counters, never a per-round figure: the scope suffix says
+      // so whenever the backend reported something other than a clean pass.
+      const { prompt, completion, total } = meta.tokens;
+      const suffix =
+        total != null ? ` = ${total}` : "";
+      const scope = meta.usageScope && meta.usageScope !== "pass" ? ` (${meta.usageScope})` : "";
+      rows.push({ key: "tokens", value: `${prompt}+${completion}${suffix}${scope}` });
+    }
     if (meta.query) rows.push({ key: "query", value: meta.query, mono: true });
     if (meta.error) rows.push({ key: "error", value: meta.error });
     if (meta.textPreview) rows.push({ key: "preview", value: meta.textPreview });

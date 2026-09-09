@@ -390,3 +390,38 @@ test("searchDagNodes matches display fields case-insensitively (#79)", () => {
   // No match → empty set (panel shows "0 matches").
   assert.equal(searchDagNodes(dag, "nonexistent-term").size, 0);
 });
+
+test("call nodes prefer the backend's elapsed_ms and carry pass tokens", () => {
+  const events = [
+    ev("thinking", { call_id: "r1", call_kind: "agent_loop_round", trace_group: "stage" }, "plan", 1),
+    ev(
+      "progress",
+      {
+        call_id: "r1",
+        call_kind: "agent_loop_round",
+        trace_group: "stage",
+        trace_kind: "call_status",
+        call_state: "complete",
+        call_role: "round",
+        prompt_tokens: 5000,
+        completion_tokens: 220,
+        usage_scope: "cumulative",
+      },
+      "",
+      1,
+    ),
+    ev("tool_call", { call_id: "t1", trace_group: "tool_call", tool_name: "exec" }, "exec", 2),
+    // The result's timestamps span 2..9, but elapsed_ms is authoritative.
+    ev("tool_result", { call_id: "t1", trace_group: "tool_call", elapsed_ms: 1500 }, "ok", 9),
+  ];
+  const dag = computeSessionDag({ messages: [assistantMsg(1, events)] }, new Set(["msg:1"]));
+
+  const round = dag.nodes.find((n) => n.kind === "round");
+  assert.ok(round);
+  assert.deepEqual(round.meta.tokens, { prompt: 5000, completion: 220 });
+  assert.equal(round.meta.usageScope, "cumulative");
+
+  const tool = dag.nodes.find((n) => n.kind === "tool_call");
+  assert.ok(tool);
+  assert.equal(tool.meta.durationMs, 1500);
+});

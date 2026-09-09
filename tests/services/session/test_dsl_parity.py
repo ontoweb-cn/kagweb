@@ -62,3 +62,43 @@ def test_raw_dsl_matches_the_typescript_fixture() -> None:
     expected["session"].pop("exported_at", None)
 
     assert doc == expected
+
+
+def test_the_fixture_actually_covers_tokens_and_elapsed_ms() -> None:
+    """Guard against a silent regression of the generator's inputs.
+
+    The parity assertions above can only cover what the hand-written fixture
+    contains; regenerating it without token-bearing markers would leave both
+    implementations free to disagree about them.
+    """
+    raw = _fixture()["expected"]["raw"]
+    tokens: list[dict[str, Any]] = []
+    scopes: list[str] = []
+    durations: list[int] = []
+
+    def visit(entry: dict[str, Any]) -> None:
+        if entry.get("tokens"):
+            tokens.append(entry["tokens"])
+        if entry.get("usage_scope"):
+            scopes.append(entry["usage_scope"])
+        if entry.get("duration_ms") is not None:
+            durations.append(entry["duration_ms"])
+        for child in entry.get("calls") or []:
+            visit(child)
+
+    def visit_trace(entries: list[dict[str, Any]]) -> None:
+        # Unselected edit branches carry their own call trees; the elapsed_ms
+        # case lives on one of them (the superseded first answer).
+        for entry in entries:
+            visit(entry)
+            for branch in entry.get("branches") or []:
+                visit_trace(branch.get("trace") or [])
+
+    visit_trace(raw["trace"])
+
+    # One pass-scope triple with a reported total, one cumulative pair without
+    # one, and the backend-authoritative duration that beats the timestamps.
+    assert {"prompt": 1200, "completion": 340, "total": 1540} in tokens
+    assert {"prompt": 5000, "completion": 220} in tokens
+    assert scopes == ["pass", "cumulative"]
+    assert 1500 in durations

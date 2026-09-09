@@ -289,3 +289,50 @@ test("normalized exports of the same session are byte-identical (snapshot stabil
   const b = serializeSessionDsl({ messages }, opts);
   assert.equal(a, b);
 });
+
+test("tokens and usage_scope are volatile: raw export only", () => {
+  const tokenEvents = [
+    ev("thinking", { call_id: "r1", call_kind: "agent_loop_round", trace_group: "stage" }, "plan", 1),
+    ev(
+      "progress",
+      {
+        call_id: "r1",
+        call_kind: "agent_loop_round",
+        trace_group: "stage",
+        trace_kind: "call_status",
+        call_state: "complete",
+        call_role: "round",
+        prompt_tokens: 1200,
+        completion_tokens: 340,
+        total_tokens: 1540,
+        usage_scope: "pass",
+      },
+      "",
+      1,
+    ),
+  ];
+  const messages = [
+    { ...userMsg(1, "hi"), parentMessageId: null },
+    { ...assistantMsg(2, tokenEvents), parentMessageId: 1 },
+  ];
+  const plain = parseSessionDsl(serializeSessionDsl({ messages }));
+  const stable = parseSessionDsl(serializeSessionDsl({ messages }, { stable: true }));
+
+  const tokenEntries = (doc: DslDocument) => {
+    const found: Array<{ tokens?: unknown; scope?: string }> = [];
+    const visit = (entry: { tokens?: unknown; usage_scope?: string; calls?: unknown[] }) => {
+      if (entry.tokens) found.push({ tokens: entry.tokens, scope: entry.usage_scope });
+      for (const child of (entry.calls ?? []) as Array<Parameters<typeof visit>[0]>) {
+        visit(child);
+      }
+    };
+    for (const turn of doc.trace) visit(turn as Parameters<typeof visit>[0]);
+    return found;
+  };
+
+  // Volatile like duration_ms: a stable export carries none of it.
+  assert.deepEqual(tokenEntries(stable), []);
+  assert.deepEqual(tokenEntries(plain), [
+    { tokens: { prompt: 1200, completion: 340, total: 1540 }, scope: "pass" },
+  ]);
+});

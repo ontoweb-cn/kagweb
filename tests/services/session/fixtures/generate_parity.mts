@@ -63,7 +63,9 @@ const inputMessages = [
       ev("thinking", { call_id: "r1", call_kind: "agent_loop_round", trace_group: "stage" }, "plan", 1),
       ev("tool_call", { call_id: "t1", trace_group: "tool_call", tool_name: "rag" }, "rag", 2),
       ev("progress", { call_id: "t1", trace_role: "retrieve", query: "fourier" }, "searching", 3),
-      ev("tool_result", { call_id: "t1", trace_group: "tool_call", tool_metadata: { provider: "lightrag" } }, "ok", 4),
+      // Backend-authoritative duration on t1; t2 stays without one so both
+      // branches (elapsed wins / timestamp fallback) are covered.
+      ev("tool_result", { call_id: "t1", trace_group: "tool_call", elapsed_ms: 1500, tool_metadata: { provider: "lightrag" } }, "ok", 4),
       ev("tool_call", { call_id: "t2", trace_group: "tool_call", tool_name: "consult_subagent" }, "go", 5),
       ev("progress", { call_id: "t2", subagent_name: "math", consult_index: 1 }, "working", 6),
       ev("tool_result", { call_id: "t2", trace_group: "tool_call" }, "ok", 7),
@@ -78,6 +80,26 @@ const inputMessages = [
     "chat",
     [
       ev("thinking", { call_id: "r2", call_kind: "agent_loop_round", trace_group: "stage" }, "replan", 8),
+      // Pass-scope tokens: the counters are coherent, so `total` is emitted.
+      // Same timestamp as the round's thinking event keeps duration at 0 on
+      // both sides (TS returns a float span, Python truncates).
+      ev(
+        "progress",
+        {
+          call_id: "r2",
+          call_kind: "agent_loop_round",
+          trace_group: "stage",
+          trace_kind: "call_status",
+          call_state: "complete",
+          call_role: "round",
+          prompt_tokens: 1200,
+          completion_tokens: 340,
+          total_tokens: 1540,
+          usage_scope: "pass",
+        },
+        "",
+        8,
+      ),
     ],
   ),
   // deep_research two-turn pair (module 12): outline turn + confirmed followup
@@ -90,6 +112,24 @@ const inputMessages = [
     "deep_research",
     [
       ev("thinking", { call_id: "r3", call_kind: "agent_loop_round", trace_group: "stage" }, "rephrase", 9),
+      // Cumulative counters and no reported total: both implementations must
+      // omit `total` rather than synthesize a sum from mismatched readings.
+      ev(
+        "progress",
+        {
+          call_id: "r3",
+          call_kind: "agent_loop_round",
+          trace_group: "stage",
+          trace_kind: "call_status",
+          call_state: "complete",
+          call_role: "round",
+          prompt_tokens: 5000,
+          completion_tokens: 220,
+          usage_scope: "cumulative",
+        },
+        "",
+        9,
+      ),
       ev("result", { outline_preview: true }, "outline", 10),
     ],
   ),

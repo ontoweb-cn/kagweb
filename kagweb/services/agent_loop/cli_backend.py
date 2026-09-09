@@ -255,6 +255,9 @@ def translate_claude_code(obj: dict[str, Any], state: dict[str, Any]) -> list[Ag
         if isinstance(usage, dict):
             data["input_tokens"] = usage.get("input_tokens")
             data["output_tokens"] = usage.get("output_tokens")
+            # The result line's usage describes this whole CLI invocation, so
+            # the counters are coherent as a pass total.
+            data["usage_scope"] = "pass"
         if obj.get("total_cost_usd") is not None:
             data["cost_usd"] = obj.get("total_cost_usd")
         if any(value is not None for value in data.values()):
@@ -411,6 +414,10 @@ def translate_codex(obj: dict[str, Any], state: dict[str, Any]) -> list[AgentLoo
         data = {
             "input_tokens": total.get("input_tokens"),
             "output_tokens": last.get("output_tokens"),
+            # input is a running total while output is the last message's, so
+            # the pair is not a coherent per-pass figure — say so instead of
+            # letting a reader treat it as one.
+            "usage_scope": "cumulative",
         }
         if any(value is not None for value in data.values()):
             events.append(AgentLoopEvent("usage", data=data))

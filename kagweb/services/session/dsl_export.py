@@ -139,6 +139,14 @@ def _last_call_state(events: list[dict[str, Any]]) -> str | None:
 
 
 def _extract_duration_ms(events: list[dict[str, Any]]) -> int | None:
+    # Backend-authoritative elapsed_ms wins when present — it survives
+    # reconnects and replay, unlike timestamp arithmetic.
+    for event in events:
+        metadata = event.get("metadata")
+        if isinstance(metadata, dict):
+            elapsed = metadata.get("elapsed_ms")
+            if isinstance(elapsed, (int, float)) and not isinstance(elapsed, bool) and elapsed >= 0:
+                return int(elapsed)
     timestamps = [
         event["timestamp"] for event in events if isinstance(event.get("timestamp"), (int, float))
     ]
@@ -146,6 +154,45 @@ def _extract_duration_ms(events: list[dict[str, Any]]) -> int | None:
         return None
     duration = max(timestamps) - min(timestamps)
     return int(duration) if duration > 0 else None
+
+
+def _extract_tokens(events: list[dict[str, Any]]) -> dict[str, int] | None:
+    """The pass's token counters, as the DSL's optional ``tokens`` object.
+
+    Mirror of ``extractTokens`` in ``web/features/chat/dag/aggregate.ts``.
+    ``total`` is written only when the backend reported one or when the scope
+    says the pair is a coherent pass total; under ``cumulative`` a synthesized
+    sum would be a lie.
+    """
+    for event in events:
+        metadata = event.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        prompt = metadata.get("prompt_tokens")
+        completion = metadata.get("completion_tokens")
+        if isinstance(prompt, bool) or isinstance(completion, bool):
+            continue
+        if not (isinstance(prompt, int) and isinstance(completion, int)):
+            continue
+        entry: dict[str, int] = {"prompt": prompt, "completion": completion}
+        total = metadata.get("total_tokens")
+        if isinstance(total, int) and not isinstance(total, bool):
+            entry["total"] = total
+        elif metadata.get("usage_scope") != "cumulative":
+            entry["total"] = prompt + completion
+        return entry
+    return None
+
+
+def _extract_usage_scope(events: list[dict[str, Any]]) -> str | None:
+    """How to read the group's token counters, or ``None`` when unreported."""
+    for event in events:
+        metadata = event.get("metadata")
+        if isinstance(metadata, dict):
+            scope = metadata.get("usage_scope")
+            if isinstance(scope, str) and scope:
+                return scope
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +323,12 @@ def _build_call_tree(events: list[dict[str, Any]] | None) -> list[dict[str, Any]
             "query": _extract_query(group["events"]),
             "round_index": n_round if group["kind"] == "round" else None,
             "duration_ms": _extract_duration_ms(group["events"]),
+            # Tokens describe a whole backend pass, so they ride the round
+            # group's closing marker only — never spread over every round.
+            "tokens": _extract_tokens(group["events"]) if group["kind"] == "round" else None,
+            "usage_scope": (
+                _extract_usage_scope(group["events"]) if group["kind"] == "round" else None
+            ),
             "error": _extract_error(group["events"]),
         }
         flat.append({"kind": group["kind"], "meta": meta, "children": []})
@@ -513,6 +566,10 @@ def _convert_calls(
             entry["state"] = meta["call_state"]
         if not writer.stable and meta.get("duration_ms") is not None:
             entry["duration_ms"] = meta["duration_ms"]
+        if not writer.stable and meta.get("tokens"):
+            entry["tokens"] = meta["tokens"]
+        if not writer.stable and meta.get("usage_scope"):
+            entry["usage_scope"] = meta["usage_scope"]
         if not writer.stable and meta.get("error"):
             entry["error"] = meta["error"]
         children = _convert_calls(root["children"], writer, counters, prefix)

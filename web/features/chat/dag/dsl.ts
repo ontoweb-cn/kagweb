@@ -49,6 +49,14 @@ export interface DslCallEntry {
   consult_index?: number;
   round_index?: number;
   duration_ms?: number;
+  /**
+   * Pass-level token counters, emitted only in non-stable mode. `total` is
+   * absent when the backend reported a cumulative counter pair — the export
+   * never fabricates a sum.
+   */
+  tokens?: { prompt: number; completion: number; total?: number };
+  /** How to read `tokens` ("pass" | "cumulative"); absent when unreported. */
+  usage_scope?: string;
   error?: string;
   calls?: DslCallEntry[];
 }
@@ -151,6 +159,8 @@ function convertCall(
   if (!writer.opts.stable && meta.durationMs != null) {
     entry.duration_ms = meta.durationMs;
   }
+  if (!writer.opts.stable && meta.tokens) entry.tokens = meta.tokens;
+  if (!writer.opts.stable && meta.usageScope) entry.usage_scope = meta.usageScope;
   if (!writer.opts.stable && meta.error) entry.error = meta.error;
   const calls = messageCalls(ctx, node.id, writer, counters);
   if (calls.length) entry.calls = calls;

@@ -33,6 +33,7 @@ import {
   type DagNode,
   type DagNodeKind,
   type SessionDag,
+  type TokenCounts,
 } from "./model";
 
 /**
@@ -140,6 +141,12 @@ function extractError(events: StreamEvent[]): string | undefined {
 }
 
 function extractDurationMs(events: StreamEvent[]): number | undefined {
+  // Backend-authoritative elapsed_ms wins when present — it survives
+  // reconnects and replay, unlike timestamp arithmetic.
+  for (const event of events) {
+    const elapsed = getTraceMeta(event).elapsed_ms;
+    if (typeof elapsed === "number" && elapsed >= 0) return elapsed;
+  }
   // Timestamps are not guaranteed monotonic within a group (events arrive in
   // first-seen order), so span the min/max rather than first/last.
   let min = Infinity;
@@ -155,6 +162,36 @@ function extractDurationMs(events: StreamEvent[]): number | undefined {
   if (!seen) return undefined;
   const duration = max - min;
   return duration > 0 ? duration : undefined;
+}
+
+/**
+ * The pass's token counters, from the round-completion marker. `total` is
+ * present only when the backend reported one or when the scope says the pair
+ * is a coherent pass total — a cumulative counter would make a synthesized
+ * sum a lie.
+ */
+function extractTokens(events: StreamEvent[]): TokenCounts | undefined {
+  for (const event of events) {
+    const meta = getTraceMeta(event);
+    const prompt = meta.prompt_tokens;
+    const completion = meta.completion_tokens;
+    if (typeof prompt !== "number" || typeof completion !== "number") continue;
+    const total = typeof meta.total_tokens === "number" ? meta.total_tokens : undefined;
+    if (total !== undefined) return { prompt, completion, total };
+    return meta.usage_scope === "cumulative"
+      ? { prompt, completion }
+      : { prompt, completion, total: prompt + completion };
+  }
+  return undefined;
+}
+
+/** How to read the group's token counters, when the backend said. */
+function extractUsageScope(events: StreamEvent[]): string | undefined {
+  for (const event of events) {
+    const scope = getTraceMeta(event).usage_scope;
+    if (typeof scope === "string" && scope) return scope;
+  }
+  return undefined;
 }
 
 function extractToolName(events: StreamEvent[]): string | undefined {
@@ -191,6 +228,10 @@ function makeCallNode(
       query: extractQuery(group.events),
       roundIndex: group.kind === "round" ? roundIndex : undefined,
       durationMs: extractDurationMs(group.events),
+      // Tokens describe a whole backend pass, so they ride the round group's
+      // closing marker only — never spread over every round.
+      tokens: group.kind === "round" ? extractTokens(group.events) : undefined,
+      usageScope: group.kind === "round" ? extractUsageScope(group.events) : undefined,
       textPreview: extractTextPreview(group.events),
       error: extractError(group.events),
     },

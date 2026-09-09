@@ -92,6 +92,9 @@ async def test_cli_backend_streams_translated_events(tmp_path: Path) -> None:
     # not be emitted twice.
     assert sum(1 for e in events if e.kind == "content") == 1
     assert events[-1].data.get("input_tokens") == 3
+    # Claude's result line reports the whole invocation, so the counters are a
+    # coherent pass total.
+    assert events[-1].data.get("usage_scope") == "pass"
 
 
 async def test_cli_backend_nonzero_exit_fails_turn(tmp_path: Path) -> None:
@@ -720,3 +723,26 @@ def test_generic_translator_maps_common_shapes() -> None:
     assert translate_generic({"type": "tool_result", "result": "r"}, state)[0].kind == "tool_result"
     assert translate_generic({"type": "error", "error": "bad"}, state)[0].kind == "error"
     assert translate_generic({"type": "log", "ignored": True}, state) == []
+
+
+def test_codex_token_count_marks_the_counters_cumulative() -> None:
+    """Codex's input counter is a running total while output is the last
+    message's, so the pair is not a coherent pass figure — the scope says so
+    and the DSL export then omits a synthesized total."""
+    events = translate_codex(
+        {
+            "msg": {
+                "type": "token_count",
+                "info": {
+                    "total_token_usage": {"input_tokens": 5000, "output_tokens": 100},
+                    "last_token_usage": {"input_tokens": 120, "output_tokens": 220},
+                },
+            }
+        },
+        {},
+    )
+
+    assert events[0].kind == "usage"
+    assert events[0].data["input_tokens"] == 5000
+    assert events[0].data["output_tokens"] == 220
+    assert events[0].data["usage_scope"] == "cumulative"
