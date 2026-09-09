@@ -14,7 +14,34 @@ import {
   getTraceMeta,
   groupTraceEvents,
   isNarrationRound,
+  type TraceGroupClass,
 } from "@/features/chat/trace/selectors";
+import { clipPreview } from "@/lib/trace-text";
+
+/**
+ * Groups plus their classification, computed once per ``events`` array
+ * identity. Both the settle counts and the tier-1 facts read this, and the
+ * events array is stable within a render pass (the caller memoizes it), so
+ * one classification serves every consumer instead of three.
+ */
+interface ClassifiedGroup {
+  kind: TraceGroupClass["kind"];
+  events: StreamEvent[];
+}
+
+const classifiedCache = new WeakMap<StreamEvent[], ClassifiedGroup[]>();
+
+function classifiedGroups(events: StreamEvent[]): ClassifiedGroup[] {
+  const cached = classifiedCache.get(events);
+  if (cached) return cached;
+  const result: ClassifiedGroup[] = [];
+  for (const { events: groupEvents } of groupTraceEvents(events)) {
+    const group = classifyTraceGroup(groupEvents);
+    if (group) result.push({ kind: group.kind, events: groupEvents });
+  }
+  classifiedCache.set(events, result);
+  return result;
+}
 
 /** Minimal `t` shape so the builder stays testable without i18next. */
 export type TraceSummaryT = (key: string, params?: Record<string, unknown>) => string;
@@ -34,16 +61,13 @@ export function collectTurnSummaryCounts(events: StreamEvent[]): TurnSummaryCoun
   let rounds = 0;
   let toolCalls = 0;
   let retrieveGroups = 0;
-  let sawTrace = false;
-  for (const { events: groupEvents } of groupTraceEvents(events)) {
-    const classified = classifyTraceGroup(groupEvents);
-    if (!classified) continue;
-    sawTrace = true;
-    if (classified.kind === "round") rounds += 1;
-    else if (classified.kind === "tool_call") toolCalls += 1;
+  const classified = classifiedGroups(events);
+  for (const group of classified) {
+    if (group.kind === "round") rounds += 1;
+    else if (group.kind === "tool_call") toolCalls += 1;
     else retrieveGroups += 1;
   }
-  if (!sawTrace) return null;
+  if (!classified.length) return null;
 
   // The turn-end SOURCES event is the authoritative citation count; the
   // retrieve-group count is only the fallback for capabilities that never
@@ -91,12 +115,8 @@ export interface RoundFacts {
   hasError: boolean;
 }
 
-const ROUND_INTENT_LIMIT = 140;
-
 function clipRoundIntent(text: string): string | undefined {
-  const flat = text.replace(/\s+/g, " ").trim();
-  if (!flat) return undefined;
-  return flat.length > ROUND_INTENT_LIMIT ? `${flat.slice(0, ROUND_INTENT_LIMIT)}…` : flat;
+  return clipPreview(text) || undefined;
 }
 
 function roundIntentText(events: StreamEvent[]): string | undefined {
@@ -152,11 +172,7 @@ function retrieveQueryOf(events: StreamEvent[]): string | undefined {
 }
 
 export function collectRoundFacts(events: StreamEvent[]): RoundFacts[] {
-  const classified: Array<{ kind: "tool_call" | "retrieve" | "round"; events: StreamEvent[] }> = [];
-  for (const { events: groupEvents } of groupTraceEvents(events)) {
-    const group = classifyTraceGroup(groupEvents);
-    if (group) classified.push({ kind: group.kind, events: groupEvents });
-  }
+  const classified = classifiedGroups(events);
 
   const preRound: RoundFacts = { roundIndex: -1, tools: [], hasError: false };
   const rounds: RoundFacts[] = [];

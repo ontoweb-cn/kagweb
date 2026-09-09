@@ -24,6 +24,7 @@ import {
   type TraceGroupClass,
 } from "@/features/chat/trace/selectors";
 import { buildVisiblePath } from "@/lib/message-branches";
+import { clipPreview } from "@/lib/trace-text";
 import { isConfirmedResearchFollowup } from "@/lib/deep-research-report";
 import {
   DAG_NODE_LIMIT,
@@ -56,8 +57,6 @@ export interface SessionDagInput {
   messages: DagMessage[];
   selectedBranches?: Record<string, number>;
 }
-
-const TEXT_PREVIEW_LIMIT = 140;
 
 /** One materializable group from a message's call tree. */
 interface CallGroup extends TraceGroupClass {
@@ -105,17 +104,10 @@ function lastCallState(events: StreamEvent[]): string | undefined {
   return state;
 }
 
-function clip(text: string): string {
-  const trimmed = text.trim();
-  return trimmed.length > TEXT_PREVIEW_LIMIT
-    ? `${trimmed.slice(0, TEXT_PREVIEW_LIMIT)}…`
-    : trimmed;
-}
-
 function extractTextPreview(events: StreamEvent[]): string | undefined {
   for (const event of events) {
     if (event.type === "content" || event.type === "thinking") {
-      const text = clip(event.content ?? "");
+      const text = clipPreview(event.content ?? "");
       if (text) return text;
     }
   }
@@ -125,7 +117,7 @@ function extractTextPreview(events: StreamEvent[]): string | undefined {
 function extractQuery(events: StreamEvent[]): string | undefined {
   for (const event of events) {
     const query = getTraceMeta(event).query;
-    if (typeof query === "string" && query.trim()) return clip(query);
+    if (typeof query === "string" && query.trim()) return clipPreview(query);
   }
   return undefined;
 }
@@ -133,7 +125,7 @@ function extractQuery(events: StreamEvent[]): string | undefined {
 function extractError(events: StreamEvent[]): string | undefined {
   for (const event of events) {
     if (event.type === "error") {
-      const text = clip(event.content ?? "");
+      const text = clipPreview(event.content ?? "");
       if (text) return text;
     }
   }
@@ -168,9 +160,8 @@ function extractDurationMs(events: StreamEvent[]): number | undefined {
 
 /**
  * The pass's token counters, from the round-completion marker. `total` is
- * present only when the backend reported one, or when the marker is
- * explicitly pass-scoped — a cumulative or unscoped pair would make a
- * synthesized sum a lie.
+ * whatever the marker's writer stamped — the synthesis rule (only for an
+ * explicitly pass-scoped pair) lives once, on the producing side.
  */
 function extractTokens(events: StreamEvent[]): TokenCounts | undefined {
   for (const event of events) {
@@ -179,10 +170,7 @@ function extractTokens(events: StreamEvent[]): TokenCounts | undefined {
     const completion = meta.completion_tokens;
     if (typeof prompt !== "number" || typeof completion !== "number") continue;
     const total = typeof meta.total_tokens === "number" ? meta.total_tokens : undefined;
-    if (total !== undefined) return { prompt, completion, total };
-    return meta.usage_scope === "pass"
-      ? { prompt, completion, total: prompt + completion }
-      : { prompt, completion };
+    return total !== undefined ? { prompt, completion, total } : { prompt, completion };
   }
   return undefined;
 }
@@ -458,7 +446,7 @@ export function computeSessionDag(
         capability: message.capability,
         turnInsight: message.turnInsight,
         textPreview:
-          message.role === "user" ? clip(message.content ?? "") || undefined : undefined,
+          message.role === "user" ? clipPreview(message.content ?? "") || undefined : undefined,
       },
     });
     edges.push({ id: `e:${prev}->${key}`, source: prev, target: key, kind: "conversation" });

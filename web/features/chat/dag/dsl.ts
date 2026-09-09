@@ -12,6 +12,7 @@
  * text is clipped to a preview (includeText turns even that off).
  */
 import { parentKey, type VisiblePathResult } from "@/lib/message-branches";
+import { PREVIEW_LIMIT } from "@/lib/trace-text";
 import {
   computeSessionDag,
   visibleMessagesForDag,
@@ -22,7 +23,6 @@ import { DSL_MAX_DEPTH, type DagNode, type SessionDag } from "./model";
 
 export const DSL_VERSION = 1;
 const GENERATOR = "kagweb/session-dsl";
-const PREVIEW_LIMIT = 140;
 
 export interface SerializeDslOptions {
   /** Drop volatile fields (duration_ms, error, session block, exported_at)

@@ -296,8 +296,9 @@ export const AssistantMessage = memo(function AssistantMessage({
   const messageSegments = useMemo(() => extractMessageSegments(msg.events), [msg.events])
   // A draft preview is a card in waiting: it must use the segmented branch
   // too, or it would render above the message body instead of in stream order.
-  const hasInlineAskUser = messageSegments.some(
-    seg => seg.kind === 'ask_user' || seg.kind === 'ask_user_draft'
+  const hasInlineAskUser = useMemo(
+    () => messageSegments.some(seg => seg.kind === 'ask_user' || seg.kind === 'ask_user_draft'),
+    [messageSegments]
   )
   // The activity block is pinned to the top of the message, so it can only
   // show the rounds that ran BEFORE the first card. What the resumed rounds

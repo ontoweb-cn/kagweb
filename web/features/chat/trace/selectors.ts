@@ -307,8 +307,15 @@ export function selectTraceDisplayItems(
   return items;
 }
 
+/** Whether an already-grouped trace renders anything — lets a caller that
+ *  needs the groups for other reasons share one pass instead of grouping
+ *  again per consumer. */
+export function hasRenderableGroups(groups: TraceItem[]): boolean {
+  return selectTraceDisplayItems(groups).length > 0;
+}
+
 export function hasRenderableCallTrace(events: StreamEvent[]): boolean {
-  return selectTraceDisplayItems(groupTraceEvents(events)).length > 0;
+  return hasRenderableGroups(groupTraceEvents(events));
 }
 
 export function detectStreamingMode(

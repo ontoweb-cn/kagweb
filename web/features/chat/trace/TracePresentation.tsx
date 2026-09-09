@@ -1,6 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer'
 import { formatTurnDuration, getTurnDurationSeconds } from '@/lib/trace-timing'
@@ -8,6 +17,7 @@ import { buildTurnSummary, collectRoundFacts } from '@/lib/trace-summary'
 import { insightMetaOf, type InsightType } from '@/lib/turn-insight'
 import { describeProviderTool, type ToolProvider } from '@/lib/trace-tools'
 import { useTraceMode } from '@/hooks/useTraceMode'
+import type { TraceMode } from '@/lib/trace-mode'
 import type { StreamEvent } from '@/features/chat/model/protocol'
 import {
   ActivityDetailGrid,
@@ -38,11 +48,23 @@ import {
   getTraceRole,
   groupTraceEvents,
   hasRenderableCallTrace as selectHasRenderableCallTrace,
+  hasRenderableGroups as selectHasRenderableGroups,
   isChatLoopAnswerContent,
   isNarrationRound,
   isTracePending,
   selectTraceDisplayItems,
 } from './selectors'
+
+/**
+ * The disclosure mode for the trace subtree. Resolved once by the panel that
+ * renders the rows, so a thirty-row trace holds one store subscription instead
+ * of one per row; rows rendered outside a provider fall back to the default.
+ */
+const TraceModeContext = createContext<TraceMode>('learner')
+
+function useTraceModeValue(): TraceMode {
+  return useContext(TraceModeContext)
+}
 
 // `title` and `hint` are i18n keys resolved via `t(...)` at render time so the
 // stage banner follows the active UI language instead of being locked to one.
@@ -635,7 +657,7 @@ function ToolExchangeDetail({
   showToolName: boolean
 }) {
   const { call, result } = exchange
-  const [traceMode] = useTraceMode()
+  const traceMode = useTraceModeValue()
   const toolName = (call.metadata?.tool as string | undefined) ?? undefined
   const isCall = call.type === 'tool_call'
   // The raw argument grid is expert-density material; learner mode keeps the
@@ -963,7 +985,7 @@ function TraceRowItem({
   nested: boolean
 }) {
   const { t } = useTranslation()
-  const [traceMode] = useTraceMode()
+  const traceMode = useTraceModeValue()
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
 
   const { callId, events: callEvents } = trace
@@ -1149,6 +1171,8 @@ export function CallTracePanel({
   nested?: boolean
 }) {
   const { t } = useTranslation()
+  // One subscription for the whole panel: every row reads this context.
+  const [traceMode] = useTraceMode()
 
   const traceGroups = useMemo(() => groupTraceEvents(events), [events])
 
@@ -1168,7 +1192,8 @@ export function CallTracePanel({
   // region. Each row manages its own fold state (live-follow + manual pin)
   // and its expanded body has its own bounded scroll area.
   return (
-    <ActivityStack className="mb-3">
+    <TraceModeContext.Provider value={traceMode}>
+      <ActivityStack className="mb-3">
       {displayItems.map((item, displayIdx) => {
         const isLastDisplayItem = displayIdx === displayItems.length - 1
 
@@ -1219,7 +1244,8 @@ export function CallTracePanel({
           />
         )
       })}
-    </ActivityStack>
+      </ActivityStack>
+    </TraceModeContext.Provider>
   )
 }
 
@@ -1759,7 +1785,10 @@ export function AssistantActivity({
   headerClassName?: string
 }) {
   const shownTraceEvents = traceEvents ?? events
-  const hasTrace = useMemo(() => hasRenderableCallTrace(shownTraceEvents), [shownTraceEvents])
+  // One grouping pass, shared by the disclosure gate and — through the
+  // trace-summary classification cache — the settle line and the tier-1 facts.
+  const traceGroups = useMemo(() => groupTraceEvents(shownTraceEvents), [shownTraceEvents])
+  const hasTrace = useMemo(() => selectHasRenderableGroups(traceGroups), [traceGroups])
   const hasFinalContent = Boolean(content && content.trim().length > 0)
   const finalPhase = useMemo(
     () => isFinalAnswerPhase(events, Boolean(isStreaming), hasFinalContent),
