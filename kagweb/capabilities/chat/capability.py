@@ -334,6 +334,11 @@ class ChatCapability(TurnCapability):
             stage="responding",
             metadata={
                 "approval": {"request_id": request_id, "tool": tool, "decision": choice},
+                # The same resolution marker the web's ask_user card renderer
+                # consumes: it flips the pending card to its answered state.
+                "ask_user_resolved": True,
+                "ask_user_tool_call_id": call_id,
+                "answers": [{"questionId": "approval", "text": choice}],
             },
         )
         if request_id:
