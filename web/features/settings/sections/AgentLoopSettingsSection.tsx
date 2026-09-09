@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   FlaskConical,
@@ -20,6 +20,7 @@ import {
 import { Toggle } from "@/components/settings/Toggle";
 import { useSettings } from "@/features/settings/store/SettingsStore";
 import { apiFetch, apiUrl } from "@/lib/api";
+import { PRIMARY_AUTO, PRIMARY_NONE, modeFromPrimary } from "@/lib/agent-loop-mode";
 
 type AgentLoopFamily = "cli" | "http";
 
@@ -250,7 +251,7 @@ export default function AgentLoopSettingsPage() {
     useSettings();
   const [payload, setPayload] = useState<AgentLoopPayload | null>(null);
   const [drafts, setDrafts] = useState<DraftProfile[] | null>(null);
-  const [primaryMode, setPrimaryMode] = useState<string>("__auto__");
+  const [primaryMode, setPrimaryMode] = useState<string>(PRIMARY_AUTO);
   const [consultBudget, setConsultBudget] = useState<number>(3);
   const [workdirRoots, setWorkdirRoots] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -259,7 +260,9 @@ export default function AgentLoopSettingsPage() {
   const [detects, setDetects] = useState<Record<string, DetectInfo>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [testingId, setTestingId] = useState<string | null>(null);
+  // One entry per in-flight check: a single id would be cleared by whichever
+  // request finishes first, stopping the other profile's spinner early.
+  const [testingIds, setTestingIds] = useState<ReadonlySet<string>>(new Set());
   const [testResults, setTestResults] = useState<
     Record<string, { ok: boolean; message: string }>
   >({});
@@ -298,10 +301,7 @@ export default function AgentLoopSettingsPage() {
         setDrafts(pending?.drafts ?? next.settings.profiles.map(toDraft));
         const savedPrimary = next.settings.primary;
         setPrimaryMode(
-          pending?.primaryMode ??
-            (savedPrimary && savedPrimary === next.auto_primary
-              ? "__auto__"
-              : savedPrimary || "__auto__"),
+          pending?.primaryMode ?? modeFromPrimary(savedPrimary, next.auto_primary),
         );
         setConsultBudget(pending?.consultBudget ?? next.settings.consult_budget);
         setWorkdirRoots(
@@ -360,10 +360,7 @@ export default function AgentLoopSettingsPage() {
     )
       return true;
     const savedPrimary = payload.settings.primary;
-    const savedMode =
-      savedPrimary && savedPrimary === payload.auto_primary
-        ? "__auto__"
-        : savedPrimary || "__auto__";
+    const savedMode = modeFromPrimary(savedPrimary, payload.auto_primary);
     if (primaryMode !== savedMode) return true;
     if (payload.settings.profiles.length !== drafts.length) return true;
     return payload.settings.profiles.some((stored, index) => {
@@ -392,7 +389,7 @@ export default function AgentLoopSettingsPage() {
         body: JSON.stringify({
           profiles: current.map(draftToRequest),
           primary:
-            mode === "__auto__" ? null : mode === "__none__" ? "" : mode,
+            mode === PRIMARY_AUTO ? null : mode === PRIMARY_NONE ? "" : mode,
           consult_budget: budget,
           allowed_workdir_roots: roots,
         }),
@@ -407,11 +404,7 @@ export default function AgentLoopSettingsPage() {
       setPayload(next);
       setTestResults({});
       setDrafts(next.settings.profiles.map(toDraft));
-      setPrimaryMode(
-        next.settings.primary && next.settings.primary === next.auto_primary
-          ? "__auto__"
-          : next.settings.primary || "__auto__",
-      );
+      setPrimaryMode(modeFromPrimary(next.settings.primary, next.auto_primary));
       setConsultBudget(next.settings.consult_budget);
       setWorkdirRoots(next.settings.allowed_workdir_roots ?? []);
       runDetect();
@@ -436,7 +429,8 @@ export default function AgentLoopSettingsPage() {
 
   const runTest = useCallback(
     async (draft: DraftProfile) => {
-      setTestingId(draft.id || draft.name);
+      const testKey = draft.id || draft.name;
+      setTestingIds((current) => new Set(current).add(testKey));
       try {
         const response = await apiFetch(apiUrl("/api/settings/agent-loop/test"), {
           method: "POST",
@@ -464,7 +458,11 @@ export default function AgentLoopSettingsPage() {
           },
         }));
       } finally {
-        setTestingId(null);
+        setTestingIds((current) => {
+          const next = new Set(current);
+          next.delete(testKey);
+          return next;
+        });
       }
     },
     [t],
@@ -503,12 +501,21 @@ export default function AgentLoopSettingsPage() {
   };
 
   const removeProfile = (id: string) => {
+    // `primaryMode` is reconciled by the clamping effect below.
     setDrafts((current) => (current ?? []).filter((draft) => draft.id !== id));
-    if (primaryMode === id) setPrimaryMode("__auto__");
   };
 
   const envPinned = payload?.env_overrides ?? {};
   const enabledDrafts = (drafts ?? []).filter((draft) => draft.enabled);
+
+  // A disabled (or removed) profile cannot be the primary, and its radio is
+  // gone: fall back to Automatic so the picker never holds an invisible
+  // selection that `save()` would persist.
+  useEffect(() => {
+    if (primaryMode === PRIMARY_AUTO || primaryMode === PRIMARY_NONE) return;
+    if ((drafts ?? []).some((draft) => draft.id === primaryMode && draft.enabled)) return;
+    setPrimaryMode(PRIMARY_AUTO);
+  }, [drafts, primaryMode]);
   const autoPrimaryLabel = useMemo(() => {
     const id = payload?.auto_primary || "";
     if (!id) return null;
@@ -518,9 +525,6 @@ export default function AgentLoopSettingsPage() {
 
   const primaryRadio = (value: string, label: string, hint?: string) => (
     <label
-      // Rendered from a `.map()` below: React needs the key on the element the
-      // callback returns, not on a wrapper.
-      key={value}
       className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-4 py-3 transition-colors ${
         primaryMode === value
           ? "border-emerald-500/60 bg-emerald-500/5"
@@ -622,26 +626,31 @@ export default function AgentLoopSettingsPage() {
           >
             <div className="grid grid-cols-1 gap-3 py-4 md:grid-cols-2">
               {primaryRadio(
-                "__auto__",
+                PRIMARY_AUTO,
                 t("Automatic"),
                 autoPrimaryLabel
                   ? t("Currently selects: {{name}}", { name: autoPrimaryLabel })
                   : t("Currently selects: none (shell stub)"),
               )}
               {primaryRadio(
-                "__none__",
+                PRIMARY_NONE,
                 t("None (framework-shell stub)"),
                 t("Every turn completes with the framework-shell notice."),
               )}
-              {enabledDrafts.map((draft) =>
-                primaryRadio(
-                  draft.id,
-                  `${draft.name} · ${presetLabel(draft.preset, lang)}`,
-                  draft.id === payload.effective.primary
-                    ? t("Effective now")
-                    : undefined,
-                ),
-              )}
+              {enabledDrafts.map((draft) => (
+                // The key lives here, not in `primaryRadio`: React reads it off
+                // the element the callback returns, and `react/jsx-key` can only
+                // see a JSX return (a `primaryRadio(...)` call is invisible to it).
+                <Fragment key={draft.id}>
+                  {primaryRadio(
+                    draft.id,
+                    `${draft.name} · ${presetLabel(draft.preset, lang)}`,
+                    draft.id === payload.effective.primary
+                      ? t("Effective now")
+                      : undefined,
+                  )}
+                </Fragment>
+              ))}
             </div>
             <SettingRow
               title={t("Consult budget (per turn)")}
@@ -706,7 +715,7 @@ export default function AgentLoopSettingsPage() {
                 const testResult = testResults[draft.id || draft.name];
                 const isPrimary =
                   primaryMode === draft.id ||
-                  (primaryMode === "__auto__" && payload.auto_primary === draft.id);
+                  (primaryMode === PRIMARY_AUTO && payload.auto_primary === draft.id);
                 return (
                   <div
                     key={draft.id}
@@ -985,10 +994,10 @@ export default function AgentLoopSettingsPage() {
                           <button
                             type="button"
                             onClick={() => runTest(draft)}
-                            disabled={testingId === (draft.id || draft.name)}
+                            disabled={testingIds.has(draft.id || draft.name)}
                             className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3.5 py-1.5 text-[12.5px] font-medium text-[var(--foreground)] transition-colors hover:border-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            {testingId === (draft.id || draft.name) ? (
+                            {testingIds.has(draft.id || draft.name) ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
                               <FlaskConical className="h-3.5 w-3.5" />
