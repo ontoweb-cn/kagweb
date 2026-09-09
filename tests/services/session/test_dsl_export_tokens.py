@@ -32,12 +32,15 @@ def test_timestamp_span_is_the_fallback() -> None:
     assert _extract_duration_ms([]) is None
 
 
-def test_pass_scope_tokens_carry_a_total() -> None:
+def test_the_exporter_carries_the_producers_total() -> None:
+    """The synthesis rule lives on the producing side (`_normalize_usage`); the
+    exporter only carries what the marker stamped."""
     events = [
         event(
             {
                 "prompt_tokens": 1200,
                 "completion_tokens": 340,
+                "total_tokens": 1540,
                 "usage_scope": "pass",
             }
         )
@@ -47,13 +50,14 @@ def test_pass_scope_tokens_carry_a_total() -> None:
     assert _extract_usage_scope(events) == "pass"
 
 
-def test_reported_total_wins_over_the_sum() -> None:
+def test_a_reported_total_is_carried_verbatim() -> None:
     events = [event({"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 99})]
 
     assert _extract_tokens(events) == {"prompt": 10, "completion": 5, "total": 99}
 
 
-def test_cumulative_scope_never_synthesizes_a_total() -> None:
+def test_the_exporter_never_synthesizes_a_total() -> None:
+    """A marker with no stamped total stays without one, whatever its scope."""
     events = [event({"prompt_tokens": 5000, "completion_tokens": 220, "usage_scope": "cumulative"})]
 
     assert _extract_tokens(events) == {"prompt": 5000, "completion": 220}

@@ -162,9 +162,10 @@ def _extract_tokens(events: list[dict[str, Any]]) -> dict[str, int] | None:
     """The pass's token counters, as the DSL's optional ``tokens`` object.
 
     Mirror of ``extractTokens`` in ``web/features/chat/dag/aggregate.ts``.
-    ``total`` is written only when the backend reported one or when the scope
-    says the pair is a coherent pass total; under ``cumulative`` a synthesized
-    sum would be a lie.
+    ``total`` is whatever the marker's writer stamped: the synthesis rule
+    (only for an explicitly pass-scoped pair) lives once, in
+    ``capability._normalize_usage``, and re-deriving it here would be a second
+    copy to keep in sync.
     """
     for event in events:
         metadata = event.get("metadata")
@@ -180,10 +181,6 @@ def _extract_tokens(events: list[dict[str, Any]]) -> dict[str, int] | None:
         total = metadata.get("total_tokens")
         if isinstance(total, int) and not isinstance(total, bool):
             entry["total"] = total
-        elif metadata.get("usage_scope") == "pass":
-            # Only an explicitly pass-scoped pair is a coherent whole; a
-            # cumulative (or unscoped) one must not get a synthesized sum.
-            entry["total"] = prompt + completion
         return entry
     return None
 

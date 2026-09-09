@@ -233,7 +233,8 @@ def _repair_chinese_emphasis_for_persistence(content: str, language: str) -> str
 
 def _assemble_persisted_answer(
     content_segments: Sequence[tuple[str | None, str]],
-    language: str = "",
+    *,
+    language: str,
 ) -> str:
     """Replay captured content bytes as the persisted answer.
 

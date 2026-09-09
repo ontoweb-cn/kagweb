@@ -44,6 +44,5 @@ def test_code_spans_and_math_keep_their_bytes() -> None:
 def test_persisted_answer_repairs_only_for_chinese() -> None:
     segments = [(None, "这是**“重点”**内容")]
     assert _assemble_persisted_answer(segments, language="zh-CN") == "这是 **“重点”** 内容"
+    # A non-Chinese language is a pure replay.
     assert _assemble_persisted_answer(segments, language="en") == "这是**“重点”**内容"
-    # The default stays a pure replay for callers that predate the language.
-    assert _assemble_persisted_answer(segments) == "这是**“重点”**内容"
