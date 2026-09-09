@@ -518,6 +518,9 @@ export default function AgentLoopSettingsPage() {
 
   const primaryRadio = (value: string, label: string, hint?: string) => (
     <label
+      // Rendered from a `.map()` below: React needs the key on the element the
+      // callback returns, not on a wrapper.
+      key={value}
       className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-4 py-3 transition-colors ${
         primaryMode === value
           ? "border-emerald-500/60 bg-emerald-500/5"
