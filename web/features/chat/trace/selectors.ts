@@ -118,8 +118,15 @@ export function isChatLoopAnswerContent(event: StreamEvent): boolean {
   );
 }
 
+const narrationCache = new WeakMap<StreamEvent[], boolean>();
+
 export function isNarrationRound(events: StreamEvent[]): boolean {
-  return events.some((event) => {
+  // Asked of the same group by the row body, `hasExpandableContent` and the
+  // classification kernel on every render; the array identity is stable within
+  // a render pass and events are immutable, so cache on it.
+  const cached = narrationCache.get(events);
+  if (cached !== undefined) return cached;
+  const narration = events.some((event) => {
     const meta = getTraceMeta(event);
     return (
       meta.trace_kind === "call_status" &&
@@ -128,9 +135,14 @@ export function isNarrationRound(events: StreamEvent[]): boolean {
       meta.answer_visible !== true
     );
   });
+  narrationCache.set(events, narration);
+  return narration;
 }
 
-export function groupHasTraceSubstance(events: StreamEvent[]): boolean {
+/** Whether a group renders anything at all — the kernel's skip predicate.
+ *  Module-private: the rule belongs to `classifyTraceGroup`, and a second
+ *  exported entry point is how the classification drifted before. */
+function groupHasTraceSubstance(events: StreamEvent[]): boolean {
   const narration = isNarrationRound(events);
   return events.some((event) => {
     if (
