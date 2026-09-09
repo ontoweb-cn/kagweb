@@ -140,7 +140,9 @@ def _last_call_state(events: list[dict[str, Any]]) -> str | None:
 
 def _extract_duration_ms(events: list[dict[str, Any]]) -> int | None:
     # Backend-authoritative elapsed_ms wins when present — it survives
-    # reconnects and replay, unlike timestamp arithmetic.
+    # reconnects and replay, unlike timestamp arithmetic. A reported 0 is
+    # kept: it is a measurement, whereas the span fallback below requires
+    # ``> 0`` because a zero span cannot distinguish 'instant' from 'unknown'.
     for event in events:
         metadata = event.get("metadata")
         if isinstance(metadata, dict):
@@ -178,7 +180,9 @@ def _extract_tokens(events: list[dict[str, Any]]) -> dict[str, int] | None:
         total = metadata.get("total_tokens")
         if isinstance(total, int) and not isinstance(total, bool):
             entry["total"] = total
-        elif metadata.get("usage_scope") != "cumulative":
+        elif metadata.get("usage_scope") == "pass":
+            # Only an explicitly pass-scoped pair is a coherent whole; a
+            # cumulative (or unscoped) one must not get a synthesized sum.
             entry["total"] = prompt + completion
         return entry
     return None

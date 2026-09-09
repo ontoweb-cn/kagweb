@@ -68,24 +68,28 @@ def _as_count(value: Any) -> int | None:
 def _normalize_usage(usage: dict[str, Any]) -> dict[str, Any]:
     """Map a backend's usage counters onto the DSL's token contract.
 
-    Only reported numbers survive. ``total`` is written when the backend sent
-    one, or when the counters describe a whole pass; a ``cumulative`` scope
-    means at least one counter is a running total, so a synthesized sum would
-    be a lie — that pair ships without ``total`` and the scope label says why.
+    Only reported numbers survive: a counter the backend omitted is left out
+    rather than zero-filled, so a partial pair cannot masquerade as a measured
+    zero. ``total`` is written when the backend sent one, or when a reported
+    pair is explicitly a whole-pass figure; a ``cumulative`` pair (or one with
+    no scope at all) ships without ``total``, because a synthesized sum would
+    be a lie.
     """
     prompt = _as_count(usage.get("input_tokens", usage.get("prompt_tokens")))
     completion = _as_count(usage.get("output_tokens", usage.get("completion_tokens")))
-    if prompt is None and completion is None:
+    normalized: dict[str, Any] = {}
+    if prompt is not None:
+        normalized["prompt_tokens"] = prompt
+    if completion is not None:
+        normalized["completion_tokens"] = completion
+    if not normalized:
         return {}
-    scope = str(usage.get("usage_scope") or "pass")
-    normalized: dict[str, Any] = {
-        "prompt_tokens": prompt or 0,
-        "completion_tokens": completion or 0,
-        "usage_scope": scope,
-    }
+    scope = str(usage.get("usage_scope") or "")
+    if scope:
+        normalized["usage_scope"] = scope
     total = _as_count(usage.get("total_tokens"))
-    if total is None and scope != "cumulative":
-        total = normalized["prompt_tokens"] + normalized["completion_tokens"]
+    if total is None and scope == "pass" and prompt is not None and completion is not None:
+        total = prompt + completion
     if total is not None:
         normalized["total_tokens"] = total
     return normalized
@@ -605,12 +609,21 @@ class _AgentLoopRoundBridge:
         if self._round_id:
             await self._close_round("finish" if terminal else "round", usage=normalized)
             return
-        if not terminal or not self._last_round_trace:
+        if not self._last_round_trace:
+            return
+        if not terminal and not normalized:
+            # Nothing to add: an intermediate pass whose round already closed
+            # (the last event was a tool result) would only duplicate a marker.
             return
         # The pass ended on a tool result, so its call already closed the round;
-        # the terminal marker lands on that last round group instead.
+        # the marker lands on that last round group instead. A non-terminal
+        # pass keeps its intermediate role — only the turn's last pass may
+        # read as the finish.
         await self._emit_status(
-            self._last_round_trace, "complete", role="finish", usage=normalized
+            self._last_round_trace,
+            "complete",
+            role="finish" if terminal else "round",
+            usage=normalized,
         )
 
     # ---- event forwarding ---------------------------------------------

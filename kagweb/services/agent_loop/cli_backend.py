@@ -255,12 +255,14 @@ def translate_claude_code(obj: dict[str, Any], state: dict[str, Any]) -> list[Ag
         if isinstance(usage, dict):
             data["input_tokens"] = usage.get("input_tokens")
             data["output_tokens"] = usage.get("output_tokens")
-            # The result line's usage describes this whole CLI invocation, so
-            # the counters are coherent as a pass total.
-            data["usage_scope"] = "pass"
         if obj.get("total_cost_usd") is not None:
             data["cost_usd"] = obj.get("total_cost_usd")
         if any(value is not None for value in data.values()):
+            # The result line's usage describes this whole CLI invocation, so
+            # the counters are coherent as a pass total. Stamped only here:
+            # an always-present scope key would defeat the guard above and
+            # emit a usage event with nothing in it.
+            data["usage_scope"] = "pass"
             events.append(AgentLoopEvent("usage", data=data))
         if str(obj.get("subtype") or "") not in {"", "success"}:
             events.append(_error_event(f"claude code turn ended with {obj.get('subtype')!r}"))
@@ -414,12 +416,13 @@ def translate_codex(obj: dict[str, Any], state: dict[str, Any]) -> list[AgentLoo
         data = {
             "input_tokens": total.get("input_tokens"),
             "output_tokens": last.get("output_tokens"),
-            # input is a running total while output is the last message's, so
-            # the pair is not a coherent per-pass figure — say so instead of
-            # letting a reader treat it as one.
-            "usage_scope": "cumulative",
         }
         if any(value is not None for value in data.values()):
+            # input is a running total while output is the last message's, so
+            # the pair is not a coherent per-pass figure — say so instead of
+            # letting a reader treat it as one. Stamped only when a counter
+            # exists: an always-present scope key would defeat the guard.
+            data["usage_scope"] = "cumulative"
             events.append(AgentLoopEvent("usage", data=data))
     elif msg_type in {"turn_aborted", "error"}:
         events.append(_error_event(str(msg.get("message") or msg_type)))

@@ -65,3 +65,20 @@ def test_incomplete_counters_yield_no_tokens() -> None:
     assert _extract_tokens([event({"prompt_tokens": True, "completion_tokens": 1})]) is None
     assert _extract_tokens([]) is None
     assert _extract_usage_scope([]) is None
+
+
+def test_unscoped_counters_get_no_synthesized_total() -> None:
+    """A backend that reports counters without a scope makes no claim about
+    whether they are a whole-pass figure, so no sum is invented."""
+    events = [event({"prompt_tokens": 5000, "completion_tokens": 220})]
+
+    assert _extract_tokens(events) == {"prompt": 5000, "completion": 220}
+    assert _extract_usage_scope(events) is None
+
+
+def test_a_measured_zero_elapsed_is_kept() -> None:
+    """A reported 0ms is a measurement; the timestamp fallback's ``> 0``
+    guard exists because a zero *span* cannot distinguish 'instant' from
+    'unknown'. The asymmetry is deliberate."""
+    assert _extract_duration_ms([event({"elapsed_ms": 0}, 1)]) == 0
+    assert _extract_duration_ms([event({}, 1), event({}, 1)]) is None

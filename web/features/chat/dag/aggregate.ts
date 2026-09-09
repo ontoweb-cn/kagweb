@@ -142,7 +142,9 @@ function extractError(events: StreamEvent[]): string | undefined {
 
 function extractDurationMs(events: StreamEvent[]): number | undefined {
   // Backend-authoritative elapsed_ms wins when present — it survives
-  // reconnects and replay, unlike timestamp arithmetic.
+  // reconnects and replay, unlike timestamp arithmetic. A reported 0 is kept:
+  // it is a measurement, whereas the span fallback below requires `> 0`
+  // because a zero span cannot distinguish 'instant' from 'unknown'.
   for (const event of events) {
     const elapsed = getTraceMeta(event).elapsed_ms;
     if (typeof elapsed === "number" && elapsed >= 0) return elapsed;
@@ -166,9 +168,9 @@ function extractDurationMs(events: StreamEvent[]): number | undefined {
 
 /**
  * The pass's token counters, from the round-completion marker. `total` is
- * present only when the backend reported one or when the scope says the pair
- * is a coherent pass total — a cumulative counter would make a synthesized
- * sum a lie.
+ * present only when the backend reported one, or when the marker is
+ * explicitly pass-scoped — a cumulative or unscoped pair would make a
+ * synthesized sum a lie.
  */
 function extractTokens(events: StreamEvent[]): TokenCounts | undefined {
   for (const event of events) {
@@ -178,9 +180,9 @@ function extractTokens(events: StreamEvent[]): TokenCounts | undefined {
     if (typeof prompt !== "number" || typeof completion !== "number") continue;
     const total = typeof meta.total_tokens === "number" ? meta.total_tokens : undefined;
     if (total !== undefined) return { prompt, completion, total };
-    return meta.usage_scope === "cumulative"
-      ? { prompt, completion }
-      : { prompt, completion, total: prompt + completion };
+    return meta.usage_scope === "pass"
+      ? { prompt, completion, total: prompt + completion }
+      : { prompt, completion };
   }
   return undefined;
 }

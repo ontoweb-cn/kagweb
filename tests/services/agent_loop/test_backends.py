@@ -746,3 +746,22 @@ def test_codex_token_count_marks_the_counters_cumulative() -> None:
     assert events[0].data["input_tokens"] == 5000
     assert events[0].data["output_tokens"] == 220
     assert events[0].data["usage_scope"] == "cumulative"
+
+
+def test_usage_event_is_not_emitted_without_counters() -> None:
+    """The scope stamp must not keep the all-None guard alive: a result line
+    with no counters produces no usage event (and no scope-only payload)."""
+    events = translate_claude_code(
+        {
+            "type": "result",
+            "result": "done",
+            "usage": {"input_tokens": None, "output_tokens": None},
+        },
+        {},
+    )
+
+    assert [event.kind for event in events] == ["content"]
+
+
+def test_codex_token_count_without_counters_emits_nothing() -> None:
+    assert translate_codex({"msg": {"type": "token_count", "info": {}}}, {}) == []

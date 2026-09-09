@@ -559,3 +559,29 @@ async def test_cumulative_usage_is_marked_and_carries_no_total(monkeypatch) -> N
     assert marker.metadata["completion_tokens"] == 220
     assert "total_tokens" not in marker.metadata
     assert marker.metadata["usage_scope"] == "cumulative"
+
+
+async def test_a_missing_counter_is_not_zero_filled(monkeypatch) -> None:
+    """A backend that reports only one counter must not be read as a measured
+    zero for the other — the pair is simply incomplete."""
+    backend = _RecordingBackend(
+        [
+            AgentLoopEvent("content", text="answer"),
+            AgentLoopEvent(
+                "usage",
+                data={"input_tokens": 3, "output_tokens": None, "usage_scope": "pass"},
+            ),
+        ]
+    )
+    _configure(monkeypatch, backend)
+    context = UnifiedContext(session_id="s", user_message="hi", language="en")
+    events = await _run_capability_events(context, StreamBus())
+
+    marker = [
+        event
+        for event in events
+        if event.type.value == "progress" and event.metadata.get("call_state") == "complete"
+    ][0]
+    assert marker.metadata["prompt_tokens"] == 3
+    assert "completion_tokens" not in marker.metadata
+    assert "total_tokens" not in marker.metadata
