@@ -589,3 +589,59 @@ def test_generic_translator_maps_common_shapes() -> None:
     assert translate_generic({"type": "tool_result", "result": "r"}, state)[0].kind == "tool_result"
     assert translate_generic({"type": "error", "error": "bad"}, state)[0].kind == "error"
     assert translate_generic({"type": "log", "ignored": True}, state) == []
+
+
+# ---------------------------------------------------------------------------
+# Text-output mode (plain-text final answer CLIs, e.g. `intellect chat -Q`)
+# ---------------------------------------------------------------------------
+
+
+async def test_cli_backend_text_output_yields_one_content_block(tmp_path: Path) -> None:
+    script = _write_agent(
+        tmp_path,
+        """
+            import sys
+            sys.stdout.write("para one\\n\\npara two\\n")
+            sys.stderr.write("noisy progress ignored\\n")
+        """,
+    )
+    backend = CliAgentLoopBackend(
+        name="text-cli",
+        command=sys.executable,
+        base_args=["-u", str(script)],
+        extra_args=[],
+        env={},
+        timeout_seconds=30,
+        translator=TRANSLATORS["generic"],
+        text_output=True,
+    )
+    events = [event async for event in backend.run(_request("hi"))]
+    # One whole content block (content events are blocks, not deltas), and
+    # the non-JSON stdout did NOT get dropped like it would in NDJSON mode.
+    assert [(event.kind, event.text) for event in events] == [("content", "para one\n\npara two\n")]
+
+
+async def test_cli_backend_text_output_failure_raises(tmp_path: Path) -> None:
+    script = _write_agent(
+        tmp_path,
+        """
+            import sys
+            sys.stdout.write("partial")
+            sys.stderr.write("boom reason\\n")
+            sys.exit(1)
+        """,
+    )
+    backend = CliAgentLoopBackend(
+        name="text-cli",
+        command=sys.executable,
+        base_args=["-u", str(script)],
+        extra_args=[],
+        env={},
+        timeout_seconds=30,
+        translator=TRANSLATORS["generic"],
+        text_output=True,
+    )
+    with pytest.raises(AgentLoopError) as excinfo:
+        async for _ in backend.run(_request("hi")):
+            pass
+    assert "boom reason" in str(excinfo.value)
