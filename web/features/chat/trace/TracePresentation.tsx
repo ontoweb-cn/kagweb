@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslation } from 'react-i18next'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer'
 import { formatTurnDuration, getTurnDurationSeconds } from '@/lib/trace-timing'
+import { buildTurnSummary, collectRoundFacts } from '@/lib/trace-summary'
 import { insightMetaOf, type InsightType } from '@/lib/turn-insight'
 import { describeProviderTool, type ToolProvider } from '@/lib/trace-tools'
+import { useTraceMode } from '@/hooks/useTraceMode'
 import type { StreamEvent } from '@/features/chat/model/protocol'
 import {
   ActivityDetailGrid,
@@ -633,16 +635,20 @@ function ToolExchangeDetail({
   showToolName: boolean
 }) {
   const { call, result } = exchange
+  const [traceMode] = useTraceMode()
   const toolName = (call.metadata?.tool as string | undefined) ?? undefined
   const isCall = call.type === 'tool_call'
+  // The raw argument grid is expert-density material; learner mode keeps the
+  // row to its result.
+  const showArgs = traceMode !== 'learner'
 
   const niceArgs = isCall ? renderNiceToolArgs(toolName, call.metadata?.args) : null
   const rawArgs = isCall ? call.metadata?.args : undefined
-  const entries = niceArgs ? [] : argumentRows(rawArgs)
+  const entries = showArgs && !niceArgs ? argumentRows(rawArgs) : []
   // Non-object args (a bare string, an array) have no keys to lay out; they
   // land under a generic label rather than inventing a shape for them.
   const fallback =
-    !niceArgs && entries.length === 0 && rawArgs && typeof rawArgs !== 'object'
+    showArgs && !niceArgs && entries.length === 0 && rawArgs && typeof rawArgs !== 'object'
       ? formatTraceArgs(rawArgs)
       : ''
 
@@ -957,6 +963,7 @@ function TraceRowItem({
   nested: boolean
 }) {
   const { t } = useTranslation()
+  const [traceMode] = useTraceMode()
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
 
   const { callId, events: callEvents } = trace
@@ -994,7 +1001,10 @@ function TraceRowItem({
   // briefing runs long enough to walk the trace up the viewport while the
   // page is pinned to the bottom.
   const isContextExploration = kind === 'context_exploration'
-  const autoOpen = isThinking && !isContextExploration ? active : false
+  // Learner mode (the default) keeps the model's deliberation folded away
+  // while it streams; expert mode restores the live feed.
+  const autoOpen =
+    isThinking && !isContextExploration && traceMode !== 'learner' ? active : false
   const open = expandable && (userOpen ?? autoOpen)
   // Every row with detail is clickable now, deliberation included — it has to
   // be, since a settled round folds itself and the text has to be reachable.
@@ -1009,6 +1019,11 @@ function TraceRowItem({
 
   const thoughtText = getTraceText(callEvents, ['thinking']).trim()
   const contentText = getTraceText(callEvents, ['content'], narration).trim()
+  // What the tool saw, mechanically clipped — the level-one fallback for a row
+  // that has no argument/query chip of its own. A chip always wins, so tool
+  // rows keep their command preview.
+  const observationExcerpt =
+    isToolRow || isRetrieve ? plainPreview(getTraceText(callEvents, ['observation'])) : ''
 
   // Resolve every row into a uniform { icon, headline, chip } triple so the
   // activity feed reads consistently across pipelines. Tool calls get a human
@@ -1090,6 +1105,7 @@ function TraceRowItem({
       title={headline}
       detail={
         chip?.text ??
+        (observationExcerpt || undefined) ??
         (isThinking && deliberation.length ? plainPreview(deliberation[0]) : undefined)
       }
       detailMono={chip?.mono ?? false}
@@ -1623,6 +1639,82 @@ function isFinalAnswerPhase(
 }
 
 /**
+ * The settle summary — one dim line naming what the turn did, shown once the
+ * trace has folded away. Observation-grade only: rounds and tool calls, never
+ * model prose. (KAGWeb's agent loop emits no SOURCES event, so the source
+ * count is usually absent rather than invented.)
+ */
+function SettleSummary({ events }: { events: StreamEvent[] }) {
+  const { t } = useTranslation()
+  const summary = useMemo(() => buildTurnSummary(events, t), [events, t])
+  if (!summary) return null
+  return <div className="pl-0.5 text-[11px] text-[var(--muted-foreground)]">{summary}</div>
+}
+
+/**
+ * Tier-1 disclosure: one line per round while the full trace is collapsed —
+ * action phrases from the round's tool calls (observation grade), optionally
+ * trailed by the round's own narration as an explicitly-marked model
+ * self-report. Capped at six lines with an overflow count.
+ */
+function TraceTierOne({ events }: { events: StreamEvent[] }) {
+  const { t } = useTranslation()
+  const facts = useMemo(() => collectRoundFacts(events), [events])
+  const shown = facts.slice(0, 6)
+  const hidden = facts.length - shown.length
+  if (!facts.length) return null
+  return (
+    <div className="mt-1 flex flex-col gap-0.5">
+      {shown.map(fact => {
+        const label =
+          fact.roundIndex >= 0 ? t('Round {{n}}', { n: fact.roundIndex + 1 }) : t('Retrieval')
+        const actionBits = fact.tools
+          .map(tool => {
+            // A KB-prefetch seed: the line label already names the action
+            // (t('Retrieval')), so an English fallback verb would double-name
+            // it — the query is the only informative bit.
+            if (tool.name === 'retrieval') {
+              const query = typeof tool.args?.query === 'string' ? tool.args.query : ''
+              return query || null
+            }
+            const descriptor = describeToolCall(tool.name, tool.args, t, null)
+            const verb = descriptor?.verb ?? tool.name
+            return descriptor?.chip ? `${verb} ${descriptor.chip}` : verb
+          })
+          .filter((bit): bit is string => bit !== null)
+        return (
+          <div
+            key={fact.roundIndex}
+            className={`flex items-baseline gap-2 text-[11px] ${
+              fact.hasError
+                ? 'text-[var(--destructive)]'
+                : 'text-[var(--muted-foreground)]'
+            }`}
+          >
+            <span className="shrink-0 opacity-70">{label}</span>
+            <span className="min-w-0 truncate">
+              {actionBits.join(' · ')}
+              {fact.intentText ? (
+                <>
+                  {actionBits.length ? ' — ' : ''}
+                  <span className="italic opacity-80">{fact.intentText}</span>
+                  <span className="not-italic opacity-60"> — {t('Model self-report')}</span>
+                </>
+              ) : null}
+            </span>
+          </div>
+        )
+      })}
+      {hidden > 0 ? (
+        <div className="text-[11px] text-[var(--muted-foreground)] opacity-70">
+          {t('+{{n}} more rounds', { n: hidden })}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/**
  * The assistant activity block: the status header
  * ("KAGWeb Exploring… · 8s", settling to "KAGWeb responded. · 10s")
  * with the exploring trace nested directly beneath it.
@@ -1722,6 +1814,8 @@ export function AssistantActivity({
           </span>
         </div>
       ) : null}
+      {finalPhase && !isStreaming ? <SettleSummary events={shownTraceEvents} /> : null}
+      {!open && hasTrace ? <TraceTierOne events={shownTraceEvents} /> : null}
       {hasTrace ? (
         <div
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${

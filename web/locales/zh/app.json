@@ -4944,5 +4944,14 @@
   "A preset only fills in defaults: pick Intellect / HERMES / AgentScope for their service contract, or a CLI preset for a terminal agent. The same preset can be added several times (e.g. one local and one remote Hermes).": "预设只提供默认值：Intellect / HERMES / AgentScope 对应各自的服务契约，CLI 预设对应终端智能体。同一预设可添加多次（例如一个本地、一个远端的 Hermes）。",
   "How consultation works": "咨询机制说明",
   "Multi-agent collaboration without changing the turn contract:": "在不改动回合契约的前提下实现多智能体协作：",
-  "With consultable loops configured, the primary receives a manifest of them. When it wants a second opinion it ends its reply with a fenced consult block; KAGWeb runs that loop (visible as a consult_agent tool call in the trace), feeds the result back, and the primary produces the final answer — up to the budget per turn. Consult sessions keep their own continuity via <chat>::consult::<profile> session ids.": "配置了可咨询的 Loop 后，主 Loop 会收到它们的清单。当它需要第二意见时，会以一个 consult 围栏块结束回复；KAGWeb 随即运行对应的 Loop（在痕迹中显示为 consult_agent 工具调用），把结果回填给主 Loop，由其给出最终回答——每回合不超过预算次数。咨询会话通过 <chat>::consult::<profile> 的会话 id 保持各自的上下文连续性。"
+  "With consultable loops configured, the primary receives a manifest of them. When it wants a second opinion it ends its reply with a fenced consult block; KAGWeb runs that loop (visible as a consult_agent tool call in the trace), feeds the result back, and the primary produces the final answer — up to the budget per turn. Consult sessions keep their own continuity via <chat>::consult::<profile> session ids.": "配置了可咨询的 Loop 后，主 Loop 会收到它们的清单。当它需要第二意见时，会以一个 consult 围栏块结束回复；KAGWeb 随即运行对应的 Loop（在痕迹中显示为 consult_agent 工具调用），把结果回填给主 Loop，由其给出最终回答——每回合不超过预算次数。咨询会话通过 <chat>::consult::<profile> 的会话 id 保持各自的上下文连续性。",
+  "Model self-report": "模型自述",
+  "+{{n}} more rounds": "还有 {{n}} 轮",
+  "{{n}} rounds": "{{n}} 轮",
+  "{{n}} tool calls": "{{n}} 次工具调用",
+  "{{n}} sources": "{{n}} 个来源",
+  "Expert view": "专家视图",
+  "Learner view": "学习者视图",
+  "Trace detail: Expert mode": "信息显示轨迹：专家模式",
+  "Trace detail: Learner mode": "信息显示轨迹：学习者模式"
 }

@@ -24,7 +24,14 @@ import SessionViewerPanel, {
   type SessionViewerPanelHandle,
 } from '@/components/chat/home/SessionViewerPanel'
 import type { ToolOutputTraceTarget } from '@/lib/session-activity'
-import { BookmarkPlus, Download, Network, PanelRight } from 'lucide-react'
+import {
+  BookmarkPlus,
+  Download,
+  GraduationCap,
+  Network,
+  PanelRight,
+  Terminal,
+} from 'lucide-react'
 import {
   useChatStateAdapter,
   type MessageAttachment,
@@ -41,6 +48,7 @@ import {
 import { readChatLaunchIntent } from '@/lib/chat-launch-intent'
 import { useAttachmentLimits } from '@/lib/attachment-limits'
 import { hasPendingAskUser } from '@/lib/ask-user-state'
+import { useTraceMode } from '@/hooks/useTraceMode'
 import { useChatAutoScroll } from '@/hooks/useChatAutoScroll'
 import { useMeasuredHeight } from '@/hooks/useMeasuredHeight'
 import { useSetupSync } from '@/hooks/useSetupSync'
@@ -248,6 +256,7 @@ function findAnswerTraceTarget(
 export default function ChatWorkspace() {
   const { router, sessionId: sessionIdParam } = useChatRouteSession()
   const { t } = useTranslation()
+  const [traceMode, setTraceMode] = useTraceMode()
   const {
     capabilities,
     visibleCapabilities,
@@ -1286,6 +1295,17 @@ export default function ChatWorkspace() {
               icon={Network}
               label={t('Session DAG')}
               title={t('View the whole conversation as a trace graph')}
+            />
+            <HeaderActionButton
+              onClick={() => setTraceMode(traceMode === 'learner' ? 'expert' : 'learner')}
+              active={traceMode === 'expert'}
+              icon={traceMode === 'expert' ? Terminal : GraduationCap}
+              label={traceMode === 'expert' ? t('Expert view') : t('Learner view')}
+              title={
+                traceMode === 'expert'
+                  ? t('Trace detail: Expert mode')
+                  : t('Trace detail: Learner mode')
+              }
             />
             <HeaderActionButton
               onClick={() => {

@@ -48,6 +48,11 @@ from kagweb.services.i18n import t
 from kagweb.services.llm.usage_tracker import UsageTracker
 from kagweb.services.settings.interface_settings import get_response_language
 
+# Mechanical cap on the observation excerpt that rides beside each tool result:
+# the reader sees what the tool saw without expanding the row, and one verbose
+# tool cannot bloat the turn's event history.
+_OBSERVATION_EXCERPT_LIMIT = 200
+
 
 class ChatCapability(TurnCapability):
     """Conversation capability: agent-loop backend, or the shell stub."""
@@ -654,6 +659,20 @@ class _AgentLoopRoundBridge:
             stage=self.stage,
             metadata=metadata,
         )
+        # Observation excerpt: the key bit of what the tool saw, as its own
+        # event so the collapsed row can show it without expanding the result.
+        # Mechanically derived and truncated — never an LLM-style summary, and
+        # skipped entirely when the result is empty.
+        excerpt = event.text.strip()
+        if excerpt:
+            if len(excerpt) > _OBSERVATION_EXCERPT_LIMIT:
+                excerpt = excerpt[:_OBSERVATION_EXCERPT_LIMIT].rstrip() + "…"
+            await self.stream.observation(
+                excerpt,
+                source=self.source,
+                stage=self.stage,
+                metadata=self._tool_trace(call_id, name, "observation", metadata["call_state"]),
+            )
 
 
 __all__ = ["ChatCapability"]

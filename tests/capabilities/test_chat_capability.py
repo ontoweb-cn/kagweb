@@ -135,6 +135,7 @@ async def test_configured_backend_streams_and_publishes_result(monkeypatch) -> N
         "progress",  # the tool call ends the round
         "tool_call",
         "tool_result",
+        "observation",  # the collapsed row's excerpt
         "error",
         "progress",  # the pass settles
         "result",
@@ -242,6 +243,41 @@ async def test_agent_loop_events_carry_the_trace_contract(monkeypatch) -> None:
 
     # Narration is part of the answer, exactly as before the change.
     assert context.capability_output.agent_output == "let me look\n\nanswer"
+
+
+async def test_tool_results_emit_a_truncated_observation_excerpt(monkeypatch) -> None:
+    """The collapsed row shows what the tool saw without expanding the result.
+
+    Mechanically derived and capped: a 500-char result becomes a 201-char
+    observation (200 + ellipsis) that joins its tool's group; an empty result
+    emits nothing, so a chatty backend cannot pad the turn's history.
+    """
+    backend = _RecordingBackend(
+        [
+            AgentLoopEvent(
+                "tool_call", name="exec", data={"args": {"command": "ls"}, "id": "t1"}
+            ),
+            AgentLoopEvent("tool_result", name="exec", text="x" * 500, data={"id": "t1"}),
+            AgentLoopEvent(
+                "tool_call", name="exec", data={"args": {"command": "pwd"}, "id": "t2"}
+            ),
+            AgentLoopEvent("tool_result", name="exec", text="", data={"id": "t2"}),
+        ]
+    )
+    _configure(monkeypatch, backend)
+    context = UnifiedContext(session_id="s", user_message="hi", language="en")
+    events = await _run_capability_events(context, StreamBus())
+
+    observations = [event for event in events if event.type.value == "observation"]
+    assert len(observations) == 1
+    observation = observations[0]
+    assert len(observation.content) == 201
+    assert observation.content.endswith("…")
+    assert observation.metadata["call_id"] == "t1"
+    assert observation.metadata["trace_kind"] == "observation"
+    assert observation.metadata["trace_group"] == "tool_call"
+    assert observation.metadata["tool_name"] == "exec"
+    assert observation.metadata["call_state"] == "complete"
 
 
 async def test_a_result_id_that_names_no_call_pairs_with_the_minted_one(monkeypatch) -> None:

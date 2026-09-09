@@ -4944,5 +4944,14 @@
   "A preset only fills in defaults: pick Intellect / HERMES / AgentScope for their service contract, or a CLI preset for a terminal agent. The same preset can be added several times (e.g. one local and one remote Hermes).": "A preset only fills in defaults: pick Intellect / HERMES / AgentScope for their service contract, or a CLI preset for a terminal agent. The same preset can be added several times (e.g. one local and one remote Hermes).",
   "How consultation works": "How consultation works",
   "Multi-agent collaboration without changing the turn contract:": "Multi-agent collaboration without changing the turn contract:",
-  "With consultable loops configured, the primary receives a manifest of them. When it wants a second opinion it ends its reply with a fenced consult block; KAGWeb runs that loop (visible as a consult_agent tool call in the trace), feeds the result back, and the primary produces the final answer — up to the budget per turn. Consult sessions keep their own continuity via <chat>::consult::<profile> session ids.": "With consultable loops configured, the primary receives a manifest of them. When it wants a second opinion it ends its reply with a fenced consult block; KAGWeb runs that loop (visible as a consult_agent tool call in the trace), feeds the result back, and the primary produces the final answer — up to the budget per turn. Consult sessions keep their own continuity via <chat>::consult::<profile> session ids."
+  "With consultable loops configured, the primary receives a manifest of them. When it wants a second opinion it ends its reply with a fenced consult block; KAGWeb runs that loop (visible as a consult_agent tool call in the trace), feeds the result back, and the primary produces the final answer — up to the budget per turn. Consult sessions keep their own continuity via <chat>::consult::<profile> session ids.": "With consultable loops configured, the primary receives a manifest of them. When it wants a second opinion it ends its reply with a fenced consult block; KAGWeb runs that loop (visible as a consult_agent tool call in the trace), feeds the result back, and the primary produces the final answer — up to the budget per turn. Consult sessions keep their own continuity via <chat>::consult::<profile> session ids.",
+  "Model self-report": "Model self-report",
+  "+{{n}} more rounds": "+{{n}} more rounds",
+  "{{n}} rounds": "{{n}} rounds",
+  "{{n}} tool calls": "{{n}} tool calls",
+  "{{n}} sources": "{{n}} sources",
+  "Expert view": "Expert view",
+  "Learner view": "Learner view",
+  "Trace detail: Expert mode": "Trace detail: Expert mode",
+  "Trace detail: Learner mode": "Trace detail: Learner mode"
 }

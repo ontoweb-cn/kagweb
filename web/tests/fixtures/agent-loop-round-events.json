@@ -6,7 +6,9 @@
     "vendor tool names and argument keys have been translated to KAGWeb's",
     "vocabulary, and the round markers the bridge adds are present. The frontend",
     "cannot be tested against a pre-fix recording: untagged events render as",
-    "'Responding', which is the bug this fixture pins the fix for."
+    "'Responding', which is the bug this fixture pins the fix for.",
+    "The observation events (and the chip-less custom_probe call) were added by",
+    "hand to cover the tier-1 disclosure line and the collapsed-row excerpt."
   ],
   "turn": [
     {
@@ -169,6 +171,25 @@
       "timestamp": 9
     },
     {
+      "type": "observation",
+      "source": "chat",
+      "stage": "responding",
+      "content": "/d/workspace/kagweb . ..",
+      "metadata": {
+        "call_id": "tool_00",
+        "phase": "responding",
+        "label": "exec",
+        "call_kind": "tool_planning",
+        "trace_id": "tool_00",
+        "trace_role": "tool",
+        "trace_group": "tool_call",
+        "trace_kind": "observation",
+        "tool_name": "exec",
+        "call_state": "complete"
+      },
+      "timestamp": 9
+    },
+    {
       "type": "tool_result",
       "source": "chat",
       "stage": "responding",
@@ -206,6 +227,65 @@
         "tool_name": "read_skill",
         "call_state": "error",
         "is_error": true
+      },
+      "timestamp": 11
+    },
+    {
+      "type": "tool_call",
+      "source": "chat",
+      "stage": "responding",
+      "content": "custom_probe",
+      "metadata": {
+        "args": { "target": "src" },
+        "call_id": "tool_03",
+        "phase": "responding",
+        "label": "custom_probe",
+        "call_kind": "tool_planning",
+        "trace_id": "tool_03",
+        "trace_role": "tool",
+        "trace_group": "tool_call",
+        "trace_kind": "tool_call",
+        "tool_name": "custom_probe",
+        "call_state": "running"
+      },
+      "timestamp": 11
+    },
+    {
+      "type": "tool_result",
+      "source": "chat",
+      "stage": "responding",
+      "content": "3 candidate files under src",
+      "metadata": {
+        "tool": "custom_probe",
+        "call_id": "tool_03",
+        "phase": "responding",
+        "label": "custom_probe",
+        "call_kind": "tool_planning",
+        "trace_id": "tool_03",
+        "trace_role": "tool",
+        "trace_group": "tool_call",
+        "trace_kind": "tool_result",
+        "tool_name": "custom_probe",
+        "call_state": "complete"
+      },
+      "timestamp": 11
+    },
+    {
+      "type": "observation",
+      "source": "chat",
+      "stage": "responding",
+      "content": "3 candidate files under src",
+      "metadata": {
+        "call_id": "tool_03",
+        "phase": "responding",
+        "label": "custom_probe",
+        "call_kind": "tool_planning",
+        "trace_id": "tool_03",
+        "trace_role": "tool",
+        "trace_group": "tool_call",
+        "trace_kind": "observation",
+        "tool_name": "custom_probe",
+        "call_state": "complete"
       },
       "timestamp": 11
     },

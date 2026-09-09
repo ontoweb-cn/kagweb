@@ -73,4 +73,52 @@ describe("agent-loop turn in the activity trace", () => {
     // The narration is answer text; only the thinking is trace material.
     expect(screen.queryByText(/fire off a few tool calls/)).toBeNull();
   });
+
+  it("summarises the settled turn once the trace folds away", () => {
+    const settled = render(
+      <AssistantActivity
+        events={[...turn, finish]}
+        isStreaming={false}
+        content={answer}
+      />,
+    );
+    expect(settled.container.textContent).toContain("2 rounds · 4 tool calls");
+    settled.unmount();
+
+    // While the loop is still working there is nothing to summarise yet.
+    const live = render(
+      <AssistantActivity events={turn} isStreaming content={answer} />,
+    );
+    expect(live.container.textContent).not.toContain("rounds ·");
+  });
+
+  it("lists one tier-1 line per round while the trace is folded", () => {
+    const { container } = render(
+      <AssistantActivity
+        events={[...turn, finish]}
+        isStreaming={false}
+        content={answer}
+      />,
+    );
+    const text = container.textContent ?? "";
+
+    expect(text).toContain("Round 1");
+    expect(text).toContain("Round 2");
+    expect(text).toContain("Running command ls -la");
+    // The round's own narration is marked as self-report, never as fact.
+    expect(text).toContain("Model self-report");
+  });
+
+  it("shows the observation excerpt only when the row has no chip", () => {
+    const { container } = render(<CallTracePanel events={turn} />);
+    const chipped = container.querySelector('[data-trace-call-id="tool_00"]');
+    const chipLess = container.querySelector('[data-trace-call-id="tool_03"]');
+
+    // A chip always wins: the exec row keeps its command preview and never
+    // repeats the tool's output.
+    expect(chipped?.textContent).toContain("ls -la");
+    expect(chipped?.textContent).not.toContain("/d/workspace/kagweb");
+    // Without a chip the row falls back to what the tool saw.
+    expect(chipLess?.textContent).toContain("3 candidate files under src");
+  });
 });
