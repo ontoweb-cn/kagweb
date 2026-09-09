@@ -43,6 +43,8 @@ const PSEUDO_TAGS = [
   { content: "| a | <surface> |\n|---|---|\n| 1 | 2 |", visible: "<surface>" },
   { content: "[<surface>](https://example.com)", visible: "<surface>" },
   { content: "**<surface>**", visible: "<surface>" },
+  // An unbalanced quote must not let the allow-listed `<a` swallow the line.
+  { content: '<a href="x> <surface>bad</surface>', visible: "<surface>" },
 ];
 
 describe("unknown pseudo-tags never reach the raw-HTML pipeline", () => {

@@ -293,6 +293,17 @@ test("escapeUnknownHtmlTagsForDisplay keeps a stray comparison sign out of the t
   );
 });
 
+test("escapeUnknownHtmlTagsForDisplay does not let an unbalanced quote swallow later tags", () => {
+  // The quoted attribute branch requires its closing quote. Without that, the
+  // allow-listed `<a` would match the whole line as one tag and the nested
+  // `<surface>` would reach rehype-raw — dropping the bubble.
+  const input = '<a href="x> <surface>bad</surface>';
+  assert.equal(
+    escapeUnknownHtmlTagsForDisplay(input),
+    '<a href="x> `<surface>`bad`</surface>`',
+  );
+});
+
 test("escapeUnknownHtmlTagsForDisplay strips unsafe html attributes", () => {
   const input =
     '<a href="javascript:alert(1)" onclick="alert(2)" style="color:red">link</a>';

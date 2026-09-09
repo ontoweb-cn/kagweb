@@ -136,12 +136,14 @@ const ALLOWED_HTML_TAGS = new Set<string>([
   "mtd",
 ]);
 
-// A tag's attribute segment may contain an angle bracket inside a quoted value
-// (``<surface mode="a<b">``). ``[^<>]`` cannot span that, so the tag would
-// survive escaping and rehype-raw would hand React 19 an unknown element —
-// which drops the whole bubble. The unquoted branch still refuses angle
-// brackets, so a stray ``<`` cannot swallow the rest of the line.
-const HTML_TAG_ATTR_SEGMENT = String.raw`(?:[^<>"']|"[^"]*"?|'[^']*'?)*?`;
+// A tag's attribute segment may contain an angle bracket inside a CLOSED
+// quoted value (``<surface mode="a<b">``). ``[^<>]`` cannot span that, so the
+// tag would survive escaping and rehype-raw would hand React 19 an unknown
+// element — which drops the whole bubble. The quoted branches require their
+// closing quote: an unbalanced one must NOT be allowed to run past a ``>``,
+// or an allow-listed tag like ``<a href="x>`` would swallow every following
+// tag into one match and leave a nested unknown element live.
+const HTML_TAG_ATTR_SEGMENT = String.raw`(?:[^<>"']|"[^"]*"|'[^']*')*?`;
 const HTML_LIKE_TAG_REGEX = new RegExp(
   String.raw`<\/?([A-Za-z][A-Za-z0-9_-]*)\b${HTML_TAG_ATTR_SEGMENT}\/?>`,
   "g",
