@@ -27,8 +27,15 @@ from typing import Any
 MAX_LINE_BYTES = 4 * 1024 * 1024
 
 #: Event kinds produced by every backend, whatever the vendor wire format.
+#: ``approval_request`` / ``clarify_request`` are *request* kinds: they pause
+#: the turn until a decision arrives through the backend's control methods
+#: (``respond_approval`` / ``respond_clarify``). Only backends with
+#: ``supports_control`` may emit them; other backends' request-shaped events
+#: degrade to progress notes.
 EVENT_KINDS = frozenset(
     {
+        "approval_request",
+        "clarify_request",
         "content",
         "thinking",
         "tool_call",
@@ -38,6 +45,11 @@ EVENT_KINDS = frozenset(
         "error",
     }
 )
+
+#: Choices a standard approval request carries. Backends may send their own
+#: ``choices`` list; these are the vocabulary the UI and the settings default
+#: understand.
+APPROVAL_CHOICES = ("once", "session", "always", "deny")
 
 
 @dataclass
@@ -101,13 +113,46 @@ class AgentLoopBackend(ABC):
     #: create a directory or enforce the workdir allowlist on its behalf.
     uses_workdir: bool = False
 
+    #: Whether the backend can pause mid-turn on an ``approval_request``
+    #: event and resume on :meth:`respond_approval`. The capability only
+    #: parks the turn for backends that declare this; everyone else's
+    #: request-shaped events degrade to progress notes. Backends that own a
+    #: live connection (ACP, run-style HTTP) set this; one-shot CLI
+    #: subprocesses cannot.
+    supports_control: bool = False
+
     @abstractmethod
     def run(self, request: AgentLoopRequest) -> Any:  # pragma: no cover - ABC
         """Yield :class:`AgentLoopEvent` objects for one turn."""
         raise NotImplementedError
 
+    async def respond_approval(self, request_id: str, choice: str) -> None:
+        """Deliver the user's decision for one pending ``approval_request``.
+
+        ``choice`` is one of the choices the request carried (by default
+        :data:`APPROVAL_CHOICES`). Only called on backends with
+        ``supports_control``; the default raises so a wiring bug surfaces
+        instead of silently dropping the decision.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support approvals")
+
+    async def respond_clarify(self, request_id: str, answer: str) -> None:
+        """Deliver the user's answer for one pending ``clarify_request``."""
+        raise NotImplementedError(f"{type(self).__name__} does not support clarifications")
+
+    async def cancel(self) -> None:
+        """Interrupt the in-flight turn without tearing the backend down.
+
+        Distinct from cancelling the ``run`` generator (which the executor
+        already does): a session-scoped backend keeps its connection alive
+        across turns, so a mid-turn stop must reach the agent as a control
+        message instead of killing the transport.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support cancellation")
+
 
 __all__ = [
+    "APPROVAL_CHOICES",
     "AgentLoopBackend",
     "AgentLoopError",
     "AgentLoopEvent",

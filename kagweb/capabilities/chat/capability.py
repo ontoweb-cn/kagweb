@@ -18,6 +18,7 @@ transport-agnostic.
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +33,11 @@ from kagweb.services.agent_loop.consult import (
     parse_consult_directive,
     strip_consult_directive,
 )
-from kagweb.services.agent_loop.protocol import AgentLoopBackend, AgentLoopEvent
+from kagweb.services.agent_loop.protocol import (
+    APPROVAL_CHOICES,
+    AgentLoopBackend,
+    AgentLoopEvent,
+)
 from kagweb.services.agent_loop.settings import (
     consult_budget as read_consult_budget,
 )
@@ -137,7 +142,9 @@ class ChatCapability(TurnCapability):
         # Pass cap = budget + 1: every consult costs one extra pass, and one
         # runaway loop that keeps emitting directives is cut off here.
         while True:
-            answer, pass_usage = await self._run_single_pass(stream, backend, request)
+            answer, pass_usage = await self._run_single_pass(
+                stream, backend, request, context=context, profile=primary, language=language
+            )
             usage.update({k: v for k, v in pass_usage.items() if v is not None})
             directive = (
                 parse_consult_directive(answer) if consults and consults_done < budget else None
@@ -222,11 +229,20 @@ class ChatCapability(TurnCapability):
         stream,  # noqa: ANN001
         backend: AgentLoopBackend,
         request: Any,
+        *,
+        context: UnifiedContext,
+        profile: dict[str, Any],
+        language: str,
     ) -> tuple[str, dict[str, Any]]:
         """Stream one backend pass; return (answer text, usage counters)."""
         answer_parts: list[str] = []
         usage: dict[str, Any] = {}
         async for event in backend.run(request):
+            if event.kind == "approval_request" and getattr(backend, "supports_control", False):
+                await self._handle_approval_request(
+                    context, stream, backend, event, profile, language
+                )
+                continue
             if event.kind == "content" and event.text:
                 # A content event is one complete block, not a delta: an agent
                 # loop emits a separate block for the text before and after a
@@ -241,6 +257,64 @@ class ChatCapability(TurnCapability):
             if event.kind == "usage":
                 usage.update({k: v for k, v in event.data.items() if v is not None})
         return "\n\n".join(answer_parts).strip(), usage
+
+    async def _handle_approval_request(
+        self,
+        context: UnifiedContext,
+        stream,  # noqa: ANN001
+        backend: AgentLoopBackend,
+        event: AgentLoopEvent,
+        profile: dict[str, Any],
+        language: str,
+    ) -> None:
+        """Park the turn on one ``approval_request`` until a decision lands.
+
+        The request surfaces as an ``ask_user``-shaped card (options chips on
+        the web, the inline question prompt in the CLI), the turn moves to
+        ``waiting_input`` through the runtime reply queue, and the answer —
+        or the profile's fallback policy on timeout / a headless entry point
+        — goes back to the backend via ``respond_approval``. The backend owns
+        the actual pause: its ``run`` generator simply does not advance until
+        the decision arrives.
+        """
+        data = event.data if isinstance(event.data, dict) else {}
+        request_id = str(data.get("request_id") or "")
+        choices = [str(choice) for choice in (data.get("choices") or APPROVAL_CHOICES)]
+        tool = event.name or str(data.get("tool") or "tool")
+        preview = event.text or str(data.get("preview") or "")
+        timeout = _approval_timeout(profile)
+        default_choice = _approval_default_choice(profile, choices)
+
+        question = _approval_question(
+            tool=tool, preview=preview, choices=choices, language=language
+        )
+        await stream.tool_result(
+            "ask_user",
+            "",
+            source=self.name,
+            stage="responding",
+            metadata={"tool_metadata": {"ask_user": {"questions": [question]}}},
+        )
+
+        waiter = getattr(getattr(context, "runtime", None), "wait_for_user_reply", None)
+        reply: dict[str, Any] | None = None
+        if waiter is not None and timeout > 0:
+            try:
+                reply = await asyncio.wait_for(waiter(), timeout=timeout)
+            except asyncio.TimeoutError:
+                reply = None
+        choice = _approval_choice_from_reply(reply, question["options"], default_choice)
+
+        await stream.progress(
+            t("agent_loop.approval_decision", tool=tool, choice=choice, language=language),
+            source=self.name,
+            stage="responding",
+            metadata={
+                "approval": {"request_id": request_id, "tool": tool, "decision": choice},
+            },
+        )
+        if request_id:
+            await backend.respond_approval(request_id, choice)
 
     async def _run_consult(
         self,
@@ -423,11 +497,24 @@ def _build_request(
     )
 
 
-async def _emit_agent_loop_event(stream, event: AgentLoopEvent, *, source: str, stage: str) -> None:  # noqa: ANN001
+async def _emit_agent_loop_event(
+    stream, event: AgentLoopEvent, *, source: str, stage: str
+) -> None:  # noqa: ANN001
     if event.kind == "content":
         await stream.content(event.text, source=source, stage=stage)
     elif event.kind == "thinking":
         await stream.thinking(event.text, source=source, stage=stage)
+    elif event.kind in {"approval_request", "clarify_request"}:
+        # A request-shaped event from a backend without control support can
+        # never be answered — surface it as a note instead of dropping it so
+        # the trace shows why the agent kept (or failed to keep) going.
+        tool = event.name or str((event.data or {}).get("tool") or "")
+        await stream.progress(
+            event.text or t("agent_loop.request_unsupported", kind=event.kind, tool=tool),
+            source=source,
+            stage=stage,
+            metadata={"kind": event.kind},
+        )
     elif event.kind == "tool_call":
         args = event.data.get("args") if isinstance(event.data.get("args"), dict) else None
         metadata: dict[str, Any] = {}
@@ -468,6 +555,95 @@ async def _emit_agent_loop_event(stream, event: AgentLoopEvent, *, source: str, 
         # completes with whatever answer the loop produced (matches how
         # native LLM error payloads stream as content).
         await stream.error(event.text, source=source, stage=stage)
+
+
+# ---------------------------------------------------------------------------
+# Approval requests — the agent-loop flavour of ask_user
+# ---------------------------------------------------------------------------
+
+#: ``approval_timeout_seconds`` bounds how long a parked turn waits for a
+#: decision before the fallback policy answers for the user.
+_APPROVAL_TIMEOUT_RANGE = (5, 600)
+
+#: Legal ``approval_default`` values — the policy answer used when no
+#: interactive client replies in time. Anything else is refused at
+#: normalization, so the runtime can trust this set.
+_APPROVAL_DEFAULTS = frozenset({"deny", "once", "session", "always"})
+
+
+def _approval_timeout(profile: dict[str, Any]) -> int:
+    try:
+        value = int(profile.get("approval_timeout_seconds", 60))
+    except (TypeError, ValueError):
+        return 60
+    return max(_APPROVAL_TIMEOUT_RANGE[0], min(_APPROVAL_TIMEOUT_RANGE[1], value))
+
+
+def _approval_default_choice(profile: dict[str, Any], choices: list[str]) -> str:
+    value = str(profile.get("approval_default") or "deny").strip().lower()
+    if value not in _APPROVAL_DEFAULTS:
+        value = "deny"
+    # A backend that did not offer the configured fallback falls back to deny
+    # rather than answering something the agent would not understand.
+    return value if value in choices else "deny"
+
+
+def _approval_question(
+    *, tool: str, preview: str, choices: list[str], language: str
+) -> dict[str, Any]:
+    """One ``ask_user`` question shaped for the existing card renderers."""
+    prompt = t("agent_loop.approval_prompt", tool=tool, language=language)
+    if preview:
+        prompt = f"{prompt}\n{preview}"
+    return {
+        "id": "approval",
+        "header": t("agent_loop.approval_header", language=language),
+        "prompt": prompt,
+        "options": [
+            {
+                "value": choice,
+                "label": t(f"agent_loop.approval_choice_{choice}", language=language),
+                "description": t(f"agent_loop.approval_choice_{choice}_hint", language=language),
+            }
+            for choice in choices
+        ],
+        "multi_select": False,
+    }
+
+
+def _approval_choice_from_reply(
+    reply: dict[str, Any] | None,
+    options: list[dict[str, Any]],
+    default_choice: str,
+) -> str:
+    """Map an ``ask_user`` reply payload to one of the offered choices.
+
+    The reply is whatever ``submit_user_reply`` put on the queue — v2
+    ``answers`` pairs or a legacy free-form ``text``. Interactive clients
+    echo back the option *label* (the CLI resolves ``1``-style picks to the
+    printed label) or the raw value, so both are matched
+    case-insensitively. Anything unrecognized — timeout, empty answer, a
+    choice the backend never offered — resolves to the profile's fallback
+    policy.
+    """
+    text = ""
+    if isinstance(reply, dict):
+        answers = reply.get("answers")
+        if isinstance(answers, list) and answers and isinstance(answers[0], dict):
+            text = str(answers[0].get("text") or "")
+        if not text and isinstance(reply.get("text"), str):
+            text = reply["text"]
+    text = text.strip().lower()
+    if not text:
+        return default_choice
+    for option in options:
+        if not isinstance(option, dict):
+            continue
+        value = str(option.get("value") or "").strip().lower()
+        label = str(option.get("label") or "").strip().lower()
+        if text in {value, label}:
+            return str(option.get("value") or default_choice)
+    return default_choice
 
 
 __all__ = ["ChatCapability"]

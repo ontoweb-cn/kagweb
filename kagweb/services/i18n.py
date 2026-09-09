@@ -88,6 +88,21 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.empty_answer": (
             "The agent-loop backend {backend!r} finished without producing an answer."
         ),
+        "agent_loop.approval_header": "Approval needed",
+        "agent_loop.approval_prompt": ("The agent wants to run {tool!r}. Allow it to continue?"),
+        "agent_loop.approval_decision": ("Approval for {tool!r}: {choice}."),
+        "agent_loop.approval_choice_once": "Allow once",
+        "agent_loop.approval_choice_once_hint": "Approve this single request",
+        "agent_loop.approval_choice_session": "Allow for this session",
+        "agent_loop.approval_choice_session_hint": "Approve similar requests in this session",
+        "agent_loop.approval_choice_always": "Always allow",
+        "agent_loop.approval_choice_always_hint": "Remember this approval",
+        "agent_loop.approval_choice_deny": "Deny",
+        "agent_loop.approval_choice_deny_hint": "Do not run it; tell the agent no",
+        "agent_loop.request_unsupported": (
+            "The backend requested {kind} for {tool!r} but cannot receive an answer; "
+            "continuing without it."
+        ),
         "agent_loop.consult_manifest": (
             "<agent-consultation>\n"
             "Other agent backends are available for consultation:\n"
@@ -175,6 +190,20 @@ _MESSAGES: dict[str, dict[str, str]] = {
             'Agent-loop 后端 {backend!r} 需要服务地址，请在 "agent_loop" 配置中设置 "url"。'
         ),
         "agent_loop.empty_answer": "Agent-loop 后端 {backend!r} 结束但未产生回答。",
+        "agent_loop.approval_header": "需要授权",
+        "agent_loop.approval_prompt": "智能体请求运行 {tool!r}，是否允许其继续？",
+        "agent_loop.approval_decision": "对 {tool!r} 的授权决定：{choice}。",
+        "agent_loop.approval_choice_once": "仅允许一次",
+        "agent_loop.approval_choice_once_hint": "只批准本次请求",
+        "agent_loop.approval_choice_session": "本会话内允许",
+        "agent_loop.approval_choice_session_hint": "本会话内的类似请求不再询问",
+        "agent_loop.approval_choice_always": "总是允许",
+        "agent_loop.approval_choice_always_hint": "记住此授权",
+        "agent_loop.approval_choice_deny": "拒绝",
+        "agent_loop.approval_choice_deny_hint": "不执行，并告知智能体",
+        "agent_loop.request_unsupported": (
+            "后端请求了 {kind}（{tool!r}），但该后端无法接收答复，已继续执行。"
+        ),
         "agent_loop.consult_manifest": (
             "<agent-consultation>\n"
             "以下智能体后端可供咨询：\n"

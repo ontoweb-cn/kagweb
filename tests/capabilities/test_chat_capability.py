@@ -306,3 +306,176 @@ async def test_session_workspace_is_created_before_use(tmp_path, monkeypatch) ->
     )
     assert request.workdir == str(tmp_path / "ws" / "chat" / "sess-9")
     assert (tmp_path / "ws" / "chat" / "sess-9").is_dir()
+
+
+# ---------------------------------------------------------------------------
+# Approval requests (control-capable backends)
+# ---------------------------------------------------------------------------
+
+
+class _ControlledBackend(_RecordingBackend):
+    """A backend that can park on approvals and record decisions."""
+
+    name = "controlled"
+    uses_workdir = False
+    supports_control = True
+
+    def __init__(self, events: list[AgentLoopEvent]) -> None:
+        super().__init__(events)
+        self.decisions: list[tuple[str, str]] = []
+
+    async def respond_approval(self, request_id: str, choice: str) -> None:
+        self.decisions.append((request_id, choice))
+
+
+def _approval_event() -> AgentLoopEvent:
+    return AgentLoopEvent(
+        "approval_request",
+        name="shell",
+        text="rm -rf build/",
+        data={"request_id": "req-1", "choices": ["once", "always", "deny"]},
+    )
+
+
+def _context_with_waiter(waiter) -> UnifiedContext:
+    from kagweb.core.context import TurnRuntimeContext
+
+    return UnifiedContext(
+        session_id="sess-1",
+        user_message="go",
+        language="en",
+        runtime=TurnRuntimeContext(turn_id="t1", wait_for_user_reply=waiter),
+    )
+
+
+async def _collect_full(context: UnifiedContext, bus: StreamBus) -> list[Any]:
+    collected: list[Any] = []
+
+    async def collect() -> None:
+        async for event in bus.subscribe():
+            collected.append(event)
+
+    task = asyncio.create_task(collect())
+    await ChatCapability().run(context, bus)
+    await bus.close()
+    await task
+    return collected
+
+
+async def test_approval_parks_and_forwards_label_decision(monkeypatch) -> None:
+    backend = _ControlledBackend([_approval_event(), AgentLoopEvent("content", text="ok")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "controlled", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+
+    async def waiter():
+        # The CLI resolves a "1"-style pick to the printed option *label*.
+        return {"answers": [{"questionId": "approval", "text": "Allow once"}]}
+
+    events = await _collect_full(_context_with_waiter(waiter), StreamBus())
+
+    assert backend.decisions == [("req-1", "once")]
+    kinds = [event.type.value for event in events]
+    assert kinds == ["tool_result", "progress", "content", "result"]
+    card = events[0]
+    ask = (card.metadata or {}).get("tool_metadata", {}).get("ask_user")
+    assert ask and ask["questions"][0]["options"][0]["value"] == "once"
+    decision = events[1]
+    assert (decision.metadata or {}).get("approval") == {
+        "request_id": "req-1",
+        "tool": "shell",
+        "decision": "once",
+    }
+    assert context_answer(events) == "ok"
+
+
+async def test_approval_matches_raw_value_and_denies_unknown(monkeypatch) -> None:
+    decisions_seen: list[list[tuple[str, str]]] = []
+
+    async def scenario(reply_text: str) -> None:
+        backend = _ControlledBackend([_approval_event(), AgentLoopEvent("content", text="ok")])
+        monkeypatch.setattr(
+            "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+            lambda settings: backend,
+        )
+        monkeypatch.setattr(
+            "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+            lambda: {"backend": "controlled", "session_workspace": False},
+        )
+
+        async def waiter():
+            return {"answers": [{"questionId": "approval", "text": reply_text}]}
+
+        await _collect_full(_context_with_waiter(waiter), StreamBus())
+        decisions_seen.append(backend.decisions)
+
+    await scenario("always")  # raw value matches
+    await scenario("banana")  # unknown answer falls back to deny
+    assert decisions_seen == [[("req-1", "always")], [("req-1", "deny")]]
+
+
+async def test_approval_timeout_uses_policy_default(monkeypatch) -> None:
+    import kagweb.capabilities.chat.capability as cap
+
+    backend = _ControlledBackend([_approval_event(), AgentLoopEvent("content", text="ok")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "controlled", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(cap, "_approval_timeout", lambda profile: 0.05)
+
+    async def waiter():
+        await asyncio.sleep(5)  # outlives the (shortened) park budget
+        return {"answers": [{"questionId": "approval", "text": "always"}]}
+
+    events = await _collect_full(_context_with_waiter(waiter), StreamBus())
+    assert backend.decisions == [("req-1", "deny")]
+    assert context_answer(events) == "ok"
+
+
+async def test_approval_without_runtime_context_denies(monkeypatch) -> None:
+    """Headless entry points never park: the policy answers immediately."""
+    backend = _ControlledBackend([_approval_event(), AgentLoopEvent("content", text="ok")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "controlled", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    context = UnifiedContext(session_id="s", user_message="go", language="en")
+    events = await _collect_full(context, StreamBus())
+    assert backend.decisions == [("req-1", "deny")]
+    assert context_answer(events) == "ok"
+
+
+async def test_approval_from_uncontrolled_backend_degrades_to_progress(monkeypatch) -> None:
+    backend = _RecordingBackend([_approval_event(), AgentLoopEvent("content", text="ok")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "recording", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    events = await _collect_full(
+        UnifiedContext(session_id="s", user_message="go", language="en"), StreamBus()
+    )
+    kinds = [event.type.value for event in events]
+    assert kinds == ["progress", "content", "result"]  # visible note, never a park
+
+
+def context_answer(events: list[Any]) -> str:
+    contents = [event.content for event in events if event.type.value == "content"]
+    return "\n\n".join(contents)

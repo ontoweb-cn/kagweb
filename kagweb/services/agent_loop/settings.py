@@ -36,6 +36,8 @@ from typing import Any
 #:         # shared:
 #:         "timeout_seconds": 900,    # per-turn wall clock cap
 #:         "consult_enabled": True,   # may the primary consult this profile
+#:         "approval_timeout_seconds": 60,  # approval park budget (5..600)
+#:         "approval_default": "deny",      # decision when no user answers
 #:       }, …
 #:     ],
 #:     "primary": "default",          # "" = framework-shell stub

@@ -416,6 +416,18 @@ def _coerce_clamped_int(value: Any, default: int, low: int, high: int) -> int:
     return max(low, min(high, coerced))
 
 
+#: Legal ``approval_default`` values for agent-loop profiles — the policy
+#: choice that answers an approval request when no user does (timeout or a
+#: headless entry point). Kept in sync with protocol.APPROVAL_CHOICES by
+#: construction: "deny" must always be legal, the rest are pass-through.
+_APPROVAL_DEFAULT_CHOICES = ("deny", "once", "session", "always")
+
+
+def _approval_default(value: Any) -> str:
+    choice = _string(value).lower()
+    return choice if choice in _APPROVAL_DEFAULT_CHOICES else "deny"
+
+
 def _coerce_port(value: Any, default: int) -> int:
     port = _coerce_int(value, default)
     return port if 1 <= port <= 65535 else default
@@ -1273,9 +1285,11 @@ class RuntimeSettingsService:
             "preset": preset,
             "enabled": _coerce_bool(raw.get("enabled"), True),
             "command": _string(raw.get("command")).strip(),
-            "args": [str(arg) for arg in (raw.get("args") or []) if str(arg).strip() != ""]
-            if isinstance(raw.get("args"), list)
-            else [],
+            "args": (
+                [str(arg) for arg in (raw.get("args") or []) if str(arg).strip() != ""]
+                if isinstance(raw.get("args"), list)
+                else []
+            ),
             "env": _env_map(raw.get("env")),
             "url": _string(raw.get("url")).strip(),
             "turn_path": _string(raw.get("turn_path")).strip() or "/agent/turn",
@@ -1289,6 +1303,13 @@ class RuntimeSettingsService:
             # Empty = the per-session workspace. A non-empty value is honoured
             # only inside the block's allowed_workdir_roots (see workdir.py).
             "workdir": _string(raw.get("workdir")).strip(),
+            # Approval policy for control-capable backends: how long a parked
+            # turn waits for a decision, and what answers for the user when
+            # nothing arrives (timeout, headless entry point).
+            "approval_timeout_seconds": _coerce_clamped_int(
+                raw.get("approval_timeout_seconds"), 60, 5, 600
+            ),
+            "approval_default": _approval_default(raw.get("approval_default")),
         }
 
     @staticmethod

@@ -214,3 +214,33 @@ def test_kagweb_prefixed_api_key_no_longer_applies(tmp_path: Path) -> None:
     )
     block = service.load_system()["agent_loop"]
     assert block["profiles"] == []
+
+
+def test_approval_policy_fields_normalize() -> None:
+    """New approval-policy profile fields: defaults, clamping, unknown values."""
+    block = _normalize_agent_loop(
+        {
+            "profiles": [
+                {"id": "a", "preset": "claude-code"},
+                {
+                    "id": "b",
+                    "preset": "codex",
+                    "approval_timeout_seconds": 999,
+                    "approval_default": "ALWAYS",
+                },
+                {
+                    "id": "c",
+                    "preset": "opencode",
+                    "approval_timeout_seconds": 1,
+                    "approval_default": "banana",
+                },
+            ],
+        }
+    )
+    first, second, third = block["profiles"]
+    assert first["approval_timeout_seconds"] == 60
+    assert first["approval_default"] == "deny"
+    assert second["approval_timeout_seconds"] == 600  # clamped to the ceiling
+    assert second["approval_default"] == "always"  # value passes through lowered
+    assert third["approval_timeout_seconds"] == 5  # clamped to the floor
+    assert third["approval_default"] == "deny"  # unknown choice refused

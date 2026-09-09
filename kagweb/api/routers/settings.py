@@ -299,6 +299,11 @@ class AgentLoopProfileUpdate(BaseModel):
     #: CLI family only. Empty = the per-session workspace; a non-empty value
     #: must sit inside ``allowed_workdir_roots``.
     workdir: str = ""
+    #: Approval policy for control-capable backends: how long a parked turn
+    #: waits for a decision (seconds) and what answers for the user when
+    #: nothing arrives (timeout, headless entry point).
+    approval_timeout_seconds: int = Field(default=60, ge=5, le=600)
+    approval_default: str = "deny"
 
 
 class AgentLoopSettingsUpdate(BaseModel):
@@ -516,9 +521,7 @@ def _provider_choices() -> dict[str, list[dict[str, Any]]]:
                 "label": (
                     "Custom (OpenAI API)"
                     if s.name == "custom"
-                    else "Custom (Anthropic API)"
-                    if s.name == "custom_anthropic"
-                    else s.label
+                    else "Custom (Anthropic API)" if s.name == "custom_anthropic" else s.label
                 ),
                 "base_url": s.default_api_base,
                 "auth_mode": s.auth_mode,
@@ -694,9 +697,7 @@ def _connection_targets() -> list[dict[str, Any]]:
                 "label": (
                     "Custom (OpenAI API)"
                     if spec.name == "custom"
-                    else "Custom (Anthropic API)"
-                    if spec.name == "custom_anthropic"
-                    else spec.label
+                    else "Custom (Anthropic API)" if spec.name == "custom_anthropic" else spec.label
                 ),
                 "default_base_url": spec.default_api_base,
                 "services": services,
@@ -1004,6 +1005,8 @@ def _agent_loop_profile_block(
         "session_workspace": profile.session_workspace,
         "consult_enabled": profile.consult_enabled,
         "workdir": profile.workdir.strip(),
+        "approval_timeout_seconds": profile.approval_timeout_seconds,
+        "approval_default": profile.approval_default,
     }
 
 
