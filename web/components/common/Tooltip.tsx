@@ -9,6 +9,13 @@ import type { ReactNode } from "react";
  * shows on keyboard focus. Pure CSS (group-hover, no portal), so
  * callers should avoid mounting it flush against an overflow-hidden
  * edge where the label would clip.
+ *
+ * Visibility keys off `group-focus-visible`, not `group-focus-within`: a
+ * mouse click focuses the trigger too, and focus-within would hold the hint
+ * open after the pointer left ("clicked the button, moved the mouse away,
+ * hint still there"). Keyboard focus is what the hint is for, so only the
+ * focus-visible variant counts — and no JS has to blur anything to keep it
+ * honest.
  */
 export default function Tooltip({
   label,
@@ -36,7 +43,7 @@ export default function Tooltip({
         <span
           role="tooltip"
           aria-hidden
-          className={`pointer-events-none absolute left-1/2 z-[80] -translate-x-1/2 ${place} whitespace-nowrap rounded-md bg-[var(--foreground)] px-2 py-1 text-[11px] font-medium leading-none text-[var(--background)] opacity-0 shadow-md transition-opacity duration-100 group-focus-within/tip:opacity-100 group-hover/tip:opacity-100 group-hover/tip:delay-150`}
+          className={`pointer-events-none absolute left-1/2 z-[80] -translate-x-1/2 ${place} whitespace-nowrap rounded-md bg-[var(--foreground)] px-2 py-1 text-[11px] font-medium leading-none text-[var(--background)] opacity-0 shadow-md transition-opacity duration-100 group-focus-visible/tip:opacity-100 group-hover/tip:opacity-100 group-hover/tip:delay-150`}
         >
           {label}
         </span>
