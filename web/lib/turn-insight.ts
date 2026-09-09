@@ -3,9 +3,12 @@
  * how the exploration *moved* — new understanding, a ruled-out path, a
  * decision, a pivot, or an open question. Display-only: colors and labels
  * never enter context.
+ *
+ * The vocabulary is mirrored by the backend judge
+ * (`kagweb/services/session/turns/title_service.py::_INSIGHT_TYPES`); this
+ * module is the single frontend source for it — the union derives from the
+ * table so a new type needs one edit here.
  */
-export type InsightType = "insight" | "ruleout" | "decision" | "pivot" | "open";
-
 export interface InsightTypeMeta {
   /** CSS color for the dot / badge border. */
   color: string;
@@ -13,14 +16,28 @@ export interface InsightTypeMeta {
   labelKey: string;
 }
 
-export const INSIGHT_TYPES: Record<InsightType, InsightTypeMeta> = {
+export const INSIGHT_TYPES = {
   insight: { color: "#0284c7", labelKey: "Insight" },
   ruleout: { color: "#ef4444", labelKey: "Ruled out" },
   decision: { color: "#6B5CE7", labelKey: "Decision" },
   pivot: { color: "#e8890c", labelKey: "Pivot" },
   open: { color: "#d97706", labelKey: "Open question" },
-};
+} satisfies Record<string, InsightTypeMeta>;
 
+export type InsightType = keyof typeof INSIGHT_TYPES;
+
+/** Whether an arbitrary string is one of the judge's types. */
+export function isInsightType(value: unknown): value is InsightType {
+  return typeof value === "string" && Object.hasOwn(INSIGHT_TYPES, value);
+}
+
+/**
+ * The badge meta for a type, falling back to `insight` for anything unknown.
+ *
+ * `Object.hasOwn` rather than a bare index: `INSIGHT_TYPES["constructor"]`
+ * would otherwise resolve an `Object.prototype` member (truthy, so `??` never
+ * fires) and render a badge with no colour and no label.
+ */
 export function insightMetaOf(type: string | undefined): InsightTypeMeta {
-  return INSIGHT_TYPES[(type ?? "insight") as InsightType] ?? INSIGHT_TYPES.insight;
+  return isInsightType(type) ? INSIGHT_TYPES[type] : INSIGHT_TYPES.insight;
 }

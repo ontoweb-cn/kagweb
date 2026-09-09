@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslation } from 'react-i18next'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer'
 import { formatTurnDuration, getTurnDurationSeconds } from '@/lib/trace-timing'
-import { insightMetaOf } from '@/lib/turn-insight'
+import { insightMetaOf, type InsightType } from '@/lib/turn-insight'
 import { describeProviderTool, type ToolProvider } from '@/lib/trace-tools'
 import type { StreamEvent } from '@/features/chat/model/protocol'
 import {
@@ -1656,7 +1656,7 @@ export function AssistantActivity({
   isStreaming?: boolean
   content?: string
   /** Turn-level epistemic badge (judge-written, multi-round turns). */
-  insight?: { takeaway: string; type: string }
+  insight?: { takeaway: string; type: InsightType }
   className?: string
   /** Forwarded to StreamingStatus — names the thinker in the status row. */
   agentName?: string

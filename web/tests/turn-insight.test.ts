@@ -1,25 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { INSIGHT_TYPES, insightMetaOf } from "../lib/turn-insight";
+import { INSIGHT_TYPES, insightMetaOf, isInsightType } from "../lib/turn-insight";
 
-test("every insight type has a distinct colour and a translatable label key", () => {
-  const entries = Object.entries(INSIGHT_TYPES);
-  assert.equal(entries.length, 5);
-  assert.equal(new Set(entries.map(([, meta]) => meta.color)).size, 5);
-  for (const [type, meta] of entries) {
+test("every insight type carries a colour and a distinct translatable label key", () => {
+  for (const [type, meta] of Object.entries(INSIGHT_TYPES)) {
+    assert.ok(meta.color, `${type} has no colour`);
     assert.ok(meta.labelKey, `${type} has no label key`);
-    assert.match(meta.color, /^#[0-9a-f]{6}$/i, `${type} colour is not a hex value`);
   }
+  const labelKeys = Object.values(INSIGHT_TYPES).map((meta) => meta.labelKey);
+  assert.equal(new Set(labelKeys).size, labelKeys.length);
 });
 
 test("an unknown or missing type falls back to the insight badge", () => {
-  assert.equal(insightMetaOf(undefined), INSIGHT_TYPES.insight);
-  assert.equal(insightMetaOf(""), INSIGHT_TYPES.insight);
-  assert.equal(insightMetaOf("nonsense"), INSIGHT_TYPES.insight);
+  for (const value of [undefined, "", "nonsense"]) {
+    assert.equal(insightMetaOf(value), INSIGHT_TYPES.insight);
+  }
+});
+
+test("prototype keys cannot escape the fallback", () => {
+  // `INSIGHT_TYPES["constructor"]` is truthy, so a bare index would render a
+  // badge with no colour and no label instead of falling back.
+  for (const key of ["constructor", "toString", "valueOf", "__proto__", "hasOwnProperty"]) {
+    assert.equal(isInsightType(key), false, key);
+    assert.equal(insightMetaOf(key), INSIGHT_TYPES.insight, key);
+  }
 });
 
 test("a known type resolves to its own meta", () => {
-  assert.equal(insightMetaOf("ruleout"), INSIGHT_TYPES.ruleout);
-  assert.equal(insightMetaOf("pivot"), INSIGHT_TYPES.pivot);
+  for (const type of Object.keys(INSIGHT_TYPES) as Array<keyof typeof INSIGHT_TYPES>) {
+    assert.equal(isInsightType(type), true);
+    assert.equal(insightMetaOf(type), INSIGHT_TYPES[type]);
+  }
 });

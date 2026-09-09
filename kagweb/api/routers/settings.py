@@ -173,6 +173,10 @@ class UISettingsUpdate(BaseModel):
     code_block_theme: str | None = None
     code_block_show_line_numbers: bool | None = None
     code_block_wrap_long_lines: bool | None = None
+    # Cost switch for the post-turn insight judge (one extra model call per
+    # multi-round turn). Absent here it would be silently dropped by pydantic,
+    # making the flag unsettable through the API.
+    turn_insight_enabled: bool | None = None
 
 
 class VoiceAutoplayUpdate(BaseModel):

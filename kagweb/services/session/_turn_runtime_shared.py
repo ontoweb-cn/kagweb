@@ -19,13 +19,20 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+#: ``call_kind`` values that mark one LLM round of the chat loop. Two consumers
+#: read this notion and must agree: the persisted-answer capture below, and the
+#: turn-insight judge's "is this a multi-round exploration?" gate
+#: (``turns/executor.py::_count_llm_rounds``). A future loop integration tagged
+#: here is picked up by both.
+_LLM_ROUND_CALL_KINDS = frozenset({"llm_final_response", "agent_loop_round"})
+
 # Content call_kinds that make up the persisted answer. Most producers emit
 # plain CONTENT events without a ``call_id`` (captured unconditionally); an
 # event that DOES carry a call_id is captured only when its call_kind marks
 # it as answer text. The two members cover the historic chat agent loop's
 # final/round tags and stay so future loop integrations tagging their rounds
 # the same way are captured without another change here.
-_ANSWER_CONTENT_CALL_KINDS = frozenset({"llm_final_response", "agent_loop_round"})
+_ANSWER_CONTENT_CALL_KINDS = _LLM_ROUND_CALL_KINDS
 _FINAL_TURN_STATUSES = frozenset({"completed", "failed", "cancelled"})
 
 

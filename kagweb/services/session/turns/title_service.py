@@ -18,6 +18,14 @@ from .._turn_runtime_shared import (
 
 logger = logging.getLogger(__name__)
 
+#: The judge's vocabulary. One tuple feeds both the prompt and the validation —
+#: the frontend mirrors it in `web/lib/turn-insight.ts` (`INSIGHT_TYPES`).
+_INSIGHT_TYPES = ("insight", "ruleout", "decision", "pivot", "open")
+
+#: The judge must answer inside the client's post-DONE socket hold
+#: (``POST_DONE_DISCONNECT_DELAY_MS`` = 15s) or the live badge is lost.
+_INSIGHT_TIMEOUT_S = 12.0
+
 if TYPE_CHECKING:
     from kagweb.services.session.protocol import SessionStoreProtocol
 
@@ -200,7 +208,7 @@ class SessionTitleService:
         if not get_turn_insight_enabled() or not has_configured_llm():
             return
 
-        types = "insight, ruleout, decision, pivot, open"
+        types = ", ".join(_INSIGHT_TYPES)
         zh = str(ui_language or "").lower().startswith("zh")
         if zh:
             sys_prompt = (
@@ -248,20 +256,24 @@ class SessionTitleService:
             # The scope is entered before the task is created so `wait_for`'s
             # inner task copies it; with no task model configured it is a no-op.
             with task_llm_scope():
-                raw = await asyncio.wait_for(_collect_insight(), timeout=20.0)
-            if _looks_like_error_payload(raw):
-                return
+                raw = await asyncio.wait_for(_collect_insight(), timeout=_INSIGHT_TIMEOUT_S)
+            # No `_looks_like_error_payload` here: it rejects anything starting
+            # with `{` (right for a title, fatal for a judge whose prompt asks
+            # for bare JSON). A provider error payload either fails the parse
+            # or carries no `takeaway`, which the checks below already catch.
             cleaned = raw.strip()
             if cleaned.startswith("```"):
                 cleaned = cleaned.strip("`")
                 if cleaned.startswith("json"):
                     cleaned = cleaned[4:]
             parsed = json.loads(cleaned.strip())
+            if not isinstance(parsed, dict):
+                return
             takeaway = str(parsed.get("takeaway") or "").strip()
             insight_type = str(parsed.get("type") or "").strip().lower()
             if not takeaway:
                 return
-            if insight_type not in {"insight", "ruleout", "decision", "pivot", "open"}:
+            if insight_type not in _INSIGHT_TYPES:
                 insight_type = "insight"
         except asyncio.TimeoutError:
             logger.debug("Turn insight LLM call timed out — skipping")
@@ -272,7 +284,7 @@ class SessionTitleService:
 
         insight = {"takeaway": takeaway[:60], "type": insight_type}
         try:
-            await self.store.update_message_metadata(
+            stored = await self.store.update_message_metadata(
                 assistant_message_id, {"turn_insight": insight}
             )
         except Exception:
@@ -281,6 +293,11 @@ class SessionTitleService:
                 assistant_message_id,
                 exc_info=True,
             )
+            return
+        if not stored:
+            # The badge would vanish on the next reload; do not show one that
+            # the persisted session cannot reproduce.
+            logger.warning("Turn insight was not stored for message %s", assistant_message_id)
             return
 
         await self._publish_live_event(
@@ -294,6 +311,10 @@ class SessionTitleService:
                     "trace_kind": "turn_insight",
                     "turn_id": turn_id,
                     "session_id": session_id,
+                    # The client matches the badge to this row; "last assistant
+                    # message" would land on the next turn's bubble when the
+                    # user sends again before this event arrives.
+                    "assistant_message_id": assistant_message_id,
                     "takeaway": insight["takeaway"],
                     "insight_type": insight_type,
                 },

@@ -34,6 +34,7 @@ import {
   type SessionMessage,
 } from "@/lib/session-api";
 import { normalizeMarkdownForDisplay } from "@/lib/markdown-display";
+import { isInsightType, type InsightType } from "@/lib/turn-insight";
 import { normalizeMessageContent } from "@/lib/message-content";
 import {
   buildVisiblePath,
@@ -200,7 +201,7 @@ export interface MessageRequestSnapshot {
 
 export interface TurnInsight {
   takeaway: string;
-  type: "insight" | "ruleout" | "decision" | "pivot" | "open";
+  type: InsightType;
 }
 
 export interface MessageItem {
@@ -280,7 +281,13 @@ type Action =
   | { type: "STREAM_START"; key: string }
   | { type: "STREAM_TOUCH"; key: string }
   | { type: "STREAM_EVENT"; key: string; event: StreamEvent }
-  | { type: "TURN_INSIGHT"; key: string; insight: TurnInsight }
+  | {
+      type: "TURN_INSIGHT";
+      key: string;
+      insight: TurnInsight;
+      /** Persisted id of the assistant row the badge belongs to, when known. */
+      messageId?: number | null;
+    }
   | {
       type: "STREAM_END";
       key: string;
@@ -686,17 +693,29 @@ function reducer(state: ProviderState, action: Action): ProviderState {
     }
     case "TURN_INSIGHT": {
       // The judge's badge arrives after DONE over the still-open socket;
-      // attach it to that turn's last assistant message. Reloads read the
-      // same value from message metadata.
+      // attach it to the assistant row it belongs to. Matching by id matters:
+      // the user can send the next message in that window, and "last
+      // assistant" would then be the *next* turn's empty placeholder. Reloads
+      // read the same value from message metadata.
       const session = state.sessions[action.key];
       if (!session) return state;
       const messages = [...session.messages];
-      for (let i = messages.length - 1; i >= 0; i -= 1) {
-        if (messages[i].role === "assistant") {
-          messages[i] = { ...messages[i], turnInsight: action.insight };
-          break;
+      let target = -1;
+      if (action.messageId != null) {
+        target = messages.findIndex(
+          (message) => message.id === action.messageId
+        );
+      }
+      if (target < 0) {
+        for (let i = messages.length - 1; i >= 0; i -= 1) {
+          if (messages[i].role === "assistant") {
+            target = i;
+            break;
+          }
         }
       }
+      if (target < 0) return state;
+      messages[target] = { ...messages[target], turnInsight: action.insight };
       return {
         ...state,
         sessions: {
@@ -1164,12 +1183,9 @@ function hydrateTurnInsight(metadata: unknown): TurnInsight | undefined {
   const meta = asRecord(metadata) ?? {};
   const raw = asRecord(meta.turn_insight ?? meta.turnInsight) ?? {};
   const takeaway = typeof raw.takeaway === "string" ? raw.takeaway.trim() : "";
-  const type = typeof raw.type === "string" ? raw.type.trim() : "";
   if (!takeaway) return undefined;
-  if (!["insight", "ruleout", "decision", "pivot", "open"].includes(type)) {
-    return { takeaway, type: "insight" };
-  }
-  return { takeaway, type: type as TurnInsight["type"] };
+  const type = typeof raw.type === "string" ? raw.type.trim() : "";
+  return { takeaway, type: isInsightType(type) ? type : "insight" };
 }
 
 function hydrateRequestSnapshot(
@@ -1497,15 +1513,23 @@ export function ChatStateAdapterProvider({
         const meta = event.metadata as {
           takeaway?: unknown;
           insight_type?: unknown;
+          assistant_message_id?: unknown;
         };
         const takeaway = typeof meta.takeaway === "string" ? meta.takeaway : "";
         if (takeaway) {
+          const messageId =
+            typeof meta.assistant_message_id === "number"
+              ? meta.assistant_message_id
+              : null;
           dispatch({
             type: "TURN_INSIGHT",
             key: effectiveKey,
+            messageId,
             insight: {
               takeaway,
-              type: String(meta.insight_type || "insight") as TurnInsight["type"],
+              // Same allowlist as the reload path, so a malformed type can
+              // never reach the renderer's prototype-sensitive lookup.
+              type: isInsightType(meta.insight_type) ? meta.insight_type : "insight",
             },
           });
         }

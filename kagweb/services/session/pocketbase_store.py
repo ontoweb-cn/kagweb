@@ -298,13 +298,14 @@ class PocketBaseSessionStore:
 
         def _update():
             record = _pb().collection("messages").get_one(str(mid))
+            # PocketBase records expose fields as attributes (no dict access).
             # Ownership: the parent session must belong to the current user.
-            session_id = str(record.get("session_id") or "")
+            session_id = str(getattr(record, "session_id", "") or "")
             if not session_id or _find_session_record(_pb(), session_id, uid) is None:
                 return False
             # metadata_json is stored as a dict on create (see add_message), so
             # read either shape and write the same shape back.
-            raw = record.get("metadata_json")
+            raw = getattr(record, "metadata_json", None)
             existing = _json_loads(raw, {}) if isinstance(raw, str) else raw
             if not isinstance(existing, dict):
                 existing = {}
