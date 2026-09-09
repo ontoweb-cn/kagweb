@@ -275,6 +275,24 @@ test("escapeUnknownHtmlTagsForDisplay escapes active html containers", () => {
   );
 });
 
+test("escapeUnknownHtmlTagsForDisplay spans an angle bracket inside a quoted attribute", () => {
+  // React 19 drops the whole bubble when rehype-raw hands it an unknown
+  // element, so a tag the regex cannot span must still be escaped.
+  const input = '<surface mode="a<b">x</surface>';
+  assert.equal(
+    escapeUnknownHtmlTagsForDisplay(input),
+    '`<surface mode="a<b">`x`</surface>`',
+  );
+});
+
+test("escapeUnknownHtmlTagsForDisplay keeps a stray comparison sign out of the tag", () => {
+  const input = "if a < b and <surface> then";
+  assert.equal(
+    escapeUnknownHtmlTagsForDisplay(input),
+    "if a < b and `<surface>` then",
+  );
+});
+
 test("escapeUnknownHtmlTagsForDisplay strips unsafe html attributes", () => {
   const input =
     '<a href="javascript:alert(1)" onclick="alert(2)" style="color:red">link</a>';
