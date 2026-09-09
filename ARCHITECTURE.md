@@ -24,8 +24,13 @@ CLI (kagweb_cli)   WebSocket /ws (/api/unified/ws)   Python SDK (KAGWebApp)
                     AgentLoopBackend (kagweb/services/agent_loop/)
                        │                                   │
                  CLI subprocess                       HTTP service
-             claude-code · codex ·          intellect · intellect-team ·
-             opencode · custom-cli          hermes · agentscope · custom-http
+        claude-code · codex · opencode ·    intellect-team · hermes ·
+        intellect (ACP) · custom-cli        agentscope · custom-http
+
+        intellect runs `intellect acp` — one long-lived Agent Client
+        Protocol child per session: message deltas, thinking, tool
+        calls, plans, approvals (ask_user cards) and usage all map to
+        neutral events; kagweb[acp] required.
                               │
                               ▼
                     neutral AgentLoopEvents → StreamBus → consumers
@@ -116,7 +121,8 @@ profile when the file configures none):
     {
       "id": "default",              // stable id; the primary pointer uses it
       "name": "本地 Intellect",      // display label
-      "preset": "intellect",        // backend kind (builtin.PRESETS)
+      "preset": "intellect",        // backend kind (builtin.PRESETS);
+                                    // community = ACP transport, team = HTTP
       "enabled": true,
       "command": "",                // CLI: override the preset executable
       "args": [],                   // CLI: extra argv ("{prompt}" placeholder)
@@ -146,8 +152,21 @@ v1 flat blocks migrate into a single `"default"` profile on load.
 `GET /api/settings/agent-loop/detect`): CLI presets are PATH-probed with
 `shutil.which` (Windows PATHEXT-safe) — the DeepMentor `detect_all()`
 pattern — and configured HTTP profiles get a short direct reachability
-GET (any HTTP response counts; no live agent turn is sent). The settings
-page probes on load and shows install/reachability badges.
+GET (any HTTP response counts; no live agent turn is sent). ACP presets
+additionally get a definitive handshake probe behind the settings Test
+button (spawn → initialize → attach → shut down; no live turn). The
+settings page probes on load and shows install/reachability badges.
+
+**Approvals** (`AgentLoopEvent` kinds `approval_request` /
+`clarify_request`, `protocol.APPROVAL_CHOICES`): control-capable backends
+(`supports_control`, i.e. the ACP transport) may pause a turn awaiting a
+user decision. The capability surfaces the request as an `ask_user` card
+(web chips / CLI inline prompt), parks the turn through the runtime reply
+queue for `approval_timeout_seconds`, and answers via
+`backend.respond_approval` — falling back to the profile's
+`approval_default` (default deny) on timeout or headless entry points.
+Request-shaped events from backends without control support degrade to
+progress notes.
 
 Misconfiguration (unknown preset, missing `command` / `url`) **fails turns**
 with a localized error — never a silent fallback to the stub notice.

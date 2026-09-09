@@ -210,6 +210,11 @@ matrix-e2e = [
 # System prerequisites (installed outside pip): LaTeX, pkg-config, cairo, cmake, ffmpeg.
 math-animator = ["manim>=0.19.0"]
 
+# Agent Client Protocol transport for the `intellect` agent-loop preset
+# (`intellect acp`). Pin tracks the version the installed intellect-agent
+# ships with; the ACP handshake negotiates the actual protocol revision.
+acp = ["agent-client-protocol==0.12.1"]
+
 # Dev/test tooling. Mirrors requirements/dev.txt.
 dev = [
     "kagweb[server]",

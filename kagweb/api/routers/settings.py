@@ -1228,6 +1228,14 @@ async def test_agent_loop_settings(payload: AgentLoopProfileUpdate):
                 "ok": False,
                 "message": f"'{command}' was not found on the server PATH.",
             }
+        # Control-capable backends (ACP) get the definitive check here: a
+        # handshake probe — spawn, initialize, attach, shut down. Still no
+        # live turn.
+        probe = getattr(backend, "probe", None)
+        if callable(probe):
+            ok, detail = await probe()
+            prefix = f"CLI resolved: {detail}. "
+            return {"ok": ok, "message": prefix + detail}
         return {"ok": True, "message": f"CLI resolved: {detail}. No live turn was sent."}
 
     scheme = urllib.parse.urlsplit(str(getattr(backend, "url", "") or "")).scheme.lower()

@@ -244,3 +244,19 @@ def test_approval_policy_fields_normalize() -> None:
     assert second["approval_default"] == "always"  # value passes through lowered
     assert third["approval_timeout_seconds"] == 5  # clamped to the floor
     assert third["approval_default"] == "deny"  # unknown choice refused
+
+
+def test_intellect_url_profile_migrates_to_custom_http() -> None:
+    """The community `intellect` preset is the ACP transport now; a legacy
+    profile that configured it as a URL service keeps working as custom-http
+    instead of silently becoming a CLI spawn."""
+    block = _normalize_agent_loop(
+        {"profiles": [{"id": "li", "preset": "intellect", "url": "http://localhost:8083"}]}
+    )
+    profile = block["profiles"][0]
+    assert profile["preset"] == "custom-http"
+    assert profile["url"] == "http://localhost:8083"
+    # An intellect profile WITHOUT a url (a fresh operator profile for the
+    # ACP transport) is left alone.
+    block2 = _normalize_agent_loop({"profiles": [{"id": "a", "preset": "intellect"}]})
+    assert block2["profiles"][0]["preset"] == "intellect"

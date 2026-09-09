@@ -1279,6 +1279,12 @@ class RuntimeSettingsService:
         # exported deployment secrets), just an allowlisted process basics
         # set plus these entries.
         preset = _string(raw.get("preset") or raw.get("backend")).strip()
+        # The community `intellect` preset moved from the HTTP family to the
+        # ACP transport; a legacy profile that configured it as a URL service
+        # keeps working as a custom HTTP backend instead of silently turning
+        # into a CLI spawn.
+        if preset == "intellect" and _string(raw.get("url")).strip():
+            preset = "custom-http"
         return {
             "id": _string(raw.get("id")).strip() or f"profile-{index + 1}",
             "name": _string(raw.get("name")).strip() or preset or f"profile-{index + 1}",

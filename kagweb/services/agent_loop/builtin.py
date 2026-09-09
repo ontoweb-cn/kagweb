@@ -11,9 +11,12 @@ Two families:
   :mod:`kagweb.services.agent_loop.http_backend` for the wire contract).
   The loop runs in the operator's own service; the multi-user shape.
 
-Named HTTP presets (intellect / intellect-team / hermes / agentscope)
-only provide defaults — the service side still speaks the documented
-contract, or the operator adapts ``custom-http``.
+CLI presets come in two transports: ``one-shot`` (a subprocess per turn,
+NDJSON stdout) and ``acp`` (one long-lived Agent Client Protocol child per
+session — the community ``intellect`` preset). Named HTTP presets
+(intellect-team / hermes / agentscope) only provide defaults — the service
+side still speaks the documented contract, or the operator adapts
+``custom-http``.
 """
 
 from __future__ import annotations
@@ -30,6 +33,10 @@ class AgentLoopPreset:
     command: str = ""
     base_args: tuple[str, ...] = ()
     translator: str = "generic"
+    # How the CLI family drives the child: ``one-shot`` spawns a subprocess
+    # per turn (NDJSON stdout); ``acp`` keeps one long-lived Agent Client
+    # Protocol child per session (see acp_backend.py).
+    transport: str = "one-shot"
     # HTTP family defaults.
     turn_path: str = "/agent/turn"
     # Operators may always override these through settings.
@@ -65,8 +72,16 @@ PRESETS: dict[str, AgentLoopPreset] = {
         ),
         AgentLoopPreset(
             name="intellect",
-            family="http",
-            description="Intellect community edition agent service.",
+            family="cli",
+            description=(
+                "Intellect community edition over the Agent Client Protocol "
+                "(`intellect acp`): full event stream with approvals, plans "
+                "and thinking. Requires the `intellect` CLI and kagweb[acp]."
+            ),
+            command="intellect",
+            base_args=("acp",),
+            translator="",  # the ACP transport translates, not a line parser
+            transport="acp",
         ),
         AgentLoopPreset(
             name="intellect-team",

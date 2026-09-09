@@ -53,6 +53,18 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
             raise AgentLoopError(t("agent_loop.command_required", backend=name), backend=name)
         extra_args = [str(arg) for arg in (resolved.get("args") or [])]
         env = resolved.get("env") if isinstance(resolved.get("env"), dict) else {}
+        if getattr(preset, "transport", "one-shot") == "acp":
+            # Lazy import: the ACP SDK is an extra (kagweb[acp]); the backend
+            # itself is importable and only the spawn path needs the SDK.
+            from .acp_backend import AcpAgentLoopBackend
+
+            return AcpAgentLoopBackend(
+                name=name,
+                command=command,
+                base_args=list(preset.base_args),
+                env=env,
+                timeout_seconds=timeout,
+            )
         return CliAgentLoopBackend(
             name=name,
             command=command,

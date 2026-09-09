@@ -92,7 +92,7 @@ def test_put_saves_profiles_and_auto_primary_prefers_local_intellect(
         client,
         [
             _profile(preset="hermes", name="远端 HERMES", url="https://hermes.example"),
-            _profile(preset="intellect", name="本地 Intellect", url="http://localhost:8083"),
+            _profile(preset="intellect-team", name="本地 Intellect", url="http://localhost:8083"),
         ],
         # primary omitted (None) — the default rule must pick local Intellect.
     )
@@ -116,7 +116,7 @@ def test_put_explicit_primary_and_stub_choice(client: TestClient) -> None:
         client,
         [
             _profile(id="a", preset="hermes", url="https://h"),
-            _profile(id="b", preset="intellect", url="http://localhost:1"),
+            _profile(id="b", preset="intellect-team", url="http://localhost:1"),
         ],
         primary="a",
     )

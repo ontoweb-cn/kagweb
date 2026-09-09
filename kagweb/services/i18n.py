@@ -103,6 +103,16 @@ _MESSAGES: dict[str, dict[str, str]] = {
             "The backend requested {kind} for {tool!r} but cannot receive an answer; "
             "continuing without it."
         ),
+        "agent_loop.acp_sdk_missing": (
+            "Backend {backend!r} uses the Agent Client Protocol transport; install "
+            "the SDK with `pip install kagweb[acp]`."
+        ),
+        "agent_loop.acp_init_failed": (
+            "Agent-loop backend {backend!r} failed the ACP handshake: {error}"
+        ),
+        "agent_loop.acp_turn_failed": (
+            "Agent-loop backend {backend!r} lost the ACP connection mid-turn: {error}"
+        ),
         "agent_loop.consult_manifest": (
             "<agent-consultation>\n"
             "Other agent backends are available for consultation:\n"
@@ -204,6 +214,11 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.request_unsupported": (
             "后端请求了 {kind}（{tool!r}），但该后端无法接收答复，已继续执行。"
         ),
+        "agent_loop.acp_sdk_missing": (
+            "后端 {backend!r} 使用 Agent Client Protocol 传输，请先安装 SDK：`pip install kagweb[acp]`。"
+        ),
+        "agent_loop.acp_init_failed": "Agent-loop 后端 {backend!r} 的 ACP 握手失败：{error}",
+        "agent_loop.acp_turn_failed": "Agent-loop 后端 {backend!r} 在回合中途丢失 ACP 连接：{error}",
         "agent_loop.consult_manifest": (
             "<agent-consultation>\n"
             "以下智能体后端可供咨询：\n"
