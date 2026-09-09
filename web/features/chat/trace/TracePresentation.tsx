@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslation } from 'react-i18next'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer'
 import { formatTurnDuration, getTurnDurationSeconds } from '@/lib/trace-timing'
+import { insightMetaOf } from '@/lib/turn-insight'
 import { describeProviderTool, type ToolProvider } from '@/lib/trace-tools'
 import type { StreamEvent } from '@/features/chat/model/protocol'
 import {
@@ -1636,6 +1637,7 @@ export function AssistantActivity({
   traceEvents,
   isStreaming,
   content,
+  insight,
   className = '',
   agentName,
   showMark = true,
@@ -1653,6 +1655,8 @@ export function AssistantActivity({
   traceEvents?: StreamEvent[]
   isStreaming?: boolean
   content?: string
+  /** Turn-level epistemic badge (judge-written, multi-round turns). */
+  insight?: { takeaway: string; type: string }
   className?: string
   /** Forwarded to StreamingStatus — names the thinker in the status row. */
   agentName?: string
@@ -1673,6 +1677,8 @@ export function AssistantActivity({
   // once answered). A click pins the user's choice for this message.
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
   const open = hasTrace && (userOpen ?? !finalPhase)
+  const { t } = useTranslation()
+  const insightMeta = insight ? insightMetaOf(insight.type) : null
 
   // Match StreamingStatus's own null-guard: nothing to show for an empty,
   // non-streaming shell with no trace either.
@@ -1691,6 +1697,31 @@ export function AssistantActivity({
         showMark={showMark}
         className={headerClassName}
       />
+      {insight && insightMeta ? (
+        // The judge's one-line takeaway, tinted by its epistemic type. It
+        // sits under the status header and above the trace: it summarises
+        // the turn, so it must not be buried in the fold.
+        <div
+          className="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px]"
+          style={{
+            borderColor: `${insightMeta.color}55`,
+            backgroundColor: `${insightMeta.color}14`,
+          }}
+          title={insight.takeaway}
+        >
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: insightMeta.color }}
+          />
+          <span className="shrink-0 font-medium" style={{ color: insightMeta.color }}>
+            {t(insightMeta.labelKey)}
+          </span>
+          <span className="min-w-0 truncate text-[var(--muted-foreground)]">
+            {insight.takeaway}
+          </span>
+        </div>
+      ) : null}
       {hasTrace ? (
         <div
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${

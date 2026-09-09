@@ -198,6 +198,11 @@ export interface MessageRequestSnapshot {
   readingMaterialRevision?: number;
 }
 
+export interface TurnInsight {
+  takeaway: string;
+  type: "insight" | "ruleout" | "decision" | "pivot" | "open";
+}
+
 export interface MessageItem {
   id?: number;
   role: "user" | "assistant" | "system";
@@ -206,6 +211,8 @@ export interface MessageItem {
   events?: StreamEvent[];
   attachments?: MessageAttachment[];
   requestSnapshot?: MessageRequestSnapshot;
+  /** Turn-level epistemic badge (multi-round turns only; judge-written). */
+  turnInsight?: TurnInsight;
   /** Edit-branching: id of the message this row continues. */
   parentMessageId?: number | null;
 }
@@ -273,6 +280,7 @@ type Action =
   | { type: "STREAM_START"; key: string }
   | { type: "STREAM_TOUCH"; key: string }
   | { type: "STREAM_EVENT"; key: string; event: StreamEvent }
+  | { type: "TURN_INSIGHT"; key: string; insight: TurnInsight }
   | {
       type: "STREAM_END";
       key: string;
@@ -673,6 +681,27 @@ function reducer(state: ProviderState, action: Action): ProviderState {
             lastSeq: Math.max(session.lastSeq, action.event.seq || 0),
             updatedAt: Date.now(),
           },
+        },
+      };
+    }
+    case "TURN_INSIGHT": {
+      // The judge's badge arrives after DONE over the still-open socket;
+      // attach it to that turn's last assistant message. Reloads read the
+      // same value from message metadata.
+      const session = state.sessions[action.key];
+      if (!session) return state;
+      const messages = [...session.messages];
+      for (let i = messages.length - 1; i >= 0; i -= 1) {
+        if (messages[i].role === "assistant") {
+          messages[i] = { ...messages[i], turnInsight: action.insight };
+          break;
+        }
+      }
+      return {
+        ...state,
+        sessions: {
+          ...state.sessions,
+          [action.key]: { ...session, messages, updatedAt: Date.now() },
         },
       };
     }
@@ -1129,6 +1158,20 @@ function asQuestionReferences(
     : [];
 }
 
+/** Defensive hydration of the turn-level insight badge the post-turn judge
+ *  writes into the assistant message metadata. */
+function hydrateTurnInsight(metadata: unknown): TurnInsight | undefined {
+  const meta = asRecord(metadata) ?? {};
+  const raw = asRecord(meta.turn_insight ?? meta.turnInsight) ?? {};
+  const takeaway = typeof raw.takeaway === "string" ? raw.takeaway.trim() : "";
+  const type = typeof raw.type === "string" ? raw.type.trim() : "";
+  if (!takeaway) return undefined;
+  if (!["insight", "ruleout", "decision", "pivot", "open"].includes(type)) {
+    return { takeaway, type: "insight" };
+  }
+  return { takeaway, type: type as TurnInsight["type"] };
+}
+
 function hydrateRequestSnapshot(
   message: SessionMessage,
   content: string,
@@ -1285,6 +1328,7 @@ export function ChatStateAdapterProvider({
             raw,
             attachments,
           );
+          const turnInsight = hydrateTurnInsight(message.metadata);
           return {
             id: message.id,
             role: message.role,
@@ -1300,6 +1344,7 @@ export function ChatStateAdapterProvider({
                 ? null
                 : message.parent_message_id,
             ...(requestSnapshot ? { requestSnapshot } : {}),
+            ...(turnInsight ? { turnInsight } : {}),
           };
         });
     },
@@ -1438,6 +1483,31 @@ export function ChatStateAdapterProvider({
               });
             }
           }
+        }
+        return;
+      }
+      // The turn-insight badge is post-turn metadata, not a trace event: it
+      // carries no call_id, so the trace reducer would drop it. Intercept it
+      // here and attach it to the turn's assistant message instead.
+      if (
+        event.type === "progress" &&
+        (event.metadata as { trace_kind?: string } | undefined)?.trace_kind ===
+          "turn_insight"
+      ) {
+        const meta = event.metadata as {
+          takeaway?: unknown;
+          insight_type?: unknown;
+        };
+        const takeaway = typeof meta.takeaway === "string" ? meta.takeaway : "";
+        if (takeaway) {
+          dispatch({
+            type: "TURN_INSIGHT",
+            key: effectiveKey,
+            insight: {
+              takeaway,
+              type: String(meta.insight_type || "insight") as TurnInsight["type"],
+            },
+          });
         }
         return;
       }

@@ -38,6 +38,40 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+#: Content call_kinds that count as one LLM round of the chat loop.
+_ROUND_CALL_KINDS = frozenset({"agent_loop_round", "llm_final_response"})
+
+
+def _count_llm_rounds(events: list[dict[str, Any]]) -> int:
+    """Distinct LLM rounds in this turn's assistant events.
+
+    A turn needs ≥2 for the insight judge — the badge marks how a multi-round
+    exploration *moved*. KAGWeb's agent-loop bridge tags every round
+    ``agent_loop_round``, so a tool-using turn has ≥2 and a plain Q&A exactly
+    one (no badge).
+    """
+    call_ids: set[str] = set()
+    for event in events:
+        meta = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+        if meta.get("call_kind") in _ROUND_CALL_KINDS and meta.get("call_id"):
+            call_ids.add(str(meta["call_id"]))
+    return len(call_ids)
+
+
+def _ordered_tool_names(events: list[dict[str, Any]]) -> list[str]:
+    """Ordered, de-duplicated tool names from the turn's tool_call events."""
+    names: list[str] = []
+    seen: set[str] = set()
+    for event in events:
+        if event.get("type") != "tool_call":
+            continue
+        meta = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+        name = str(meta.get("tool_name") or meta.get("tool") or event.get("content") or "").strip()
+        if name and name not in seen:
+            seen.add(name)
+            names.append(name)
+    return names
+
 
 class TurnExecutor:
     if TYPE_CHECKING:
@@ -575,6 +609,24 @@ class TurnExecutor:
                     # broken title path go unnoticed.
                     logger.warning(
                         "Session title generation failed for turn %s", turn_id, exc_info=True
+                    )
+                # The insight badge is post-turn metadata too, and rides the
+                # same slot: after DONE, so it can never delay the answer.
+                try:
+                    await self._maybe_generate_turn_insight(
+                        execution=execution,
+                        session_id=session_id,
+                        turn_id=turn_id,
+                        assistant_message_id=assistant_message_id,
+                        ui_language=str(payload.get("language", "en") or "en"),
+                        question=effective_user_message,
+                        answer=assistant_content,
+                        tool_names=_ordered_tool_names(assistant_events),
+                        round_count=_count_llm_rounds(assistant_events),
+                    )
+                except Exception:
+                    logger.debug(
+                        "Turn insight generation failed for turn %s", turn_id, exc_info=True
                     )
             # Flush once every terminal/post-turn event (DONE, and the title
             # ``session_meta`` above) has been published, not before: a

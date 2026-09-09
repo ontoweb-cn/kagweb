@@ -24,7 +24,11 @@ import { useTranslation } from 'react-i18next'
 import AssistantResponse from '@/components/common/AssistantResponse'
 import { InlineFileCardProvider, mergeGeneratedFiles } from '@/components/common/InlineFileCard'
 import Tooltip from '@/components/common/Tooltip'
-import type { MessageAttachment, MessageRequestSnapshot } from '@/features/chat/ChatStateAdapter'
+import type {
+  MessageAttachment,
+  MessageRequestSnapshot,
+  TurnInsight,
+} from '@/features/chat/ChatStateAdapter'
 import { apiFetch, apiUrl } from '@/lib/api'
 import { docIconFor } from '@/lib/doc-attachments'
 import { useVoiceAutoplay } from '@/hooks/useVoiceAutoplay'
@@ -247,7 +251,13 @@ export const AssistantMessage = memo(function AssistantMessage({
   isStreaming,
   onSubmitUserReply,
 }: {
-  msg: { content: string; capability?: string; events?: StreamEvent[] }
+  msg: {
+    content: string
+    capability?: string
+    events?: StreamEvent[]
+    /** Turn-level epistemic badge (multi-round turns only). */
+    turnInsight?: TurnInsight
+  }
   isStreaming?: boolean
   /**
    * Submit a reply for a turn that is paused on ``ask_user``. Wired
@@ -303,6 +313,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         traceEvents={headerTraceEvents}
         isStreaming={isStreaming}
         content={msg.content}
+        insight={msg.turnInsight}
         className="mb-3"
       />
       {hasInlineAskUser ? (

@@ -290,6 +290,35 @@ class PocketBaseSessionStore:
             logger.warning(f"update_session_title failed: {exc}")
             return False
 
+    async def update_message_metadata(
+        self, message_id: int | str, metadata: dict[str, Any]
+    ) -> bool:
+        mid = _validate_id(str(message_id), "message_id")
+        uid = _current_user_id()
+
+        def _update():
+            record = _pb().collection("messages").get_one(str(mid))
+            # Ownership: the parent session must belong to the current user.
+            session_id = str(record.get("session_id") or "")
+            if not session_id or _find_session_record(_pb(), session_id, uid) is None:
+                return False
+            # metadata_json is stored as a dict on create (see add_message), so
+            # read either shape and write the same shape back.
+            raw = record.get("metadata_json")
+            existing = _json_loads(raw, {}) if isinstance(raw, str) else raw
+            if not isinstance(existing, dict):
+                existing = {}
+            _pb().collection("messages").update(
+                record.id, {"metadata_json": {**existing, **metadata}}
+            )
+            return True
+
+        try:
+            return await asyncio.to_thread(_update)
+        except Exception as exc:
+            logger.warning(f"update_message_metadata failed: {exc}")
+            return False
+
     async def import_legacy_session(
         self,
         session_id: str,
