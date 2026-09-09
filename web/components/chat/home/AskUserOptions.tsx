@@ -259,6 +259,16 @@ export function extractMessageSegments(
     return -1;
   };
 
+  // A draft previews the card that is about to be dispatched, so ANY arriving
+  // card supersedes it. Matching ids would silently strand the preview when a
+  // backend keys its draft by a different field (draft_call_id vs
+  // tool_call_id) or omits the id entirely.
+  const supersedeDrafts = () => {
+    for (let i = segments.length - 1; i >= 0; i--) {
+      if (segments[i].kind === "ask_user_draft") segments.splice(i, 1);
+    }
+  };
+
   for (const event of events) {
     const eventMeta = (event.metadata ?? {}) as Record<string, unknown>;
     // Still-streaming card preview: keep ONE draft segment per call, updated
@@ -321,15 +331,10 @@ export function extractMessageSegments(
         : `payload:${JSON.stringify(normalised)}`;
       if (seenAskUserCards.has(cardKey)) continue;
       seenAskUserCards.add(cardKey);
-      // Supersede: drop the still-streaming draft preview for this call —
-      // the dispatched card replaces it. Done before the new card's index is
-      // recorded so the splice cannot stale the map.
-      for (let d = segments.length - 1; d >= 0; d--) {
-        const cand = segments[d];
-        if (cand.kind === "ask_user_draft" && cand.draftCallId === (toolCallId ?? "")) {
-          segments.splice(d, 1);
-        }
-      }
+      // Supersede: the dispatched card replaces the still-streaming preview.
+      // Done before the new card's index is recorded so the splice cannot
+      // stale the map.
+      supersedeDrafts();
       // Close the current text and trace runs so what the resumed round
       // emits starts fresh segments below this card.
       pendingTextIdx = null;

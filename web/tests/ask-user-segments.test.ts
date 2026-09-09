@@ -208,3 +208,15 @@ test("the dispatched card supersedes its draft preview", () => {
     false,
   );
 });
+
+test("a card supersedes a draft keyed by a different id", () => {
+  // The draft's growth key and the card's tool_call_id come from different
+  // fields; the preview must still give way to the dispatched card.
+  const segments = extractMessageSegments([
+    draftEvent("draft-1", "Which is the general form?"),
+    askUserCard("tool-9"),
+  ]);
+
+  assert.equal(segments.length, 1);
+  assert.equal(segments[0].kind, "ask_user");
+});

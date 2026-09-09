@@ -75,6 +75,11 @@ function buildStylesheet(): StylesheetStyle[] {
         "text-max-width": "156",
         "font-family": "Inter, ui-sans-serif, system-ui, sans-serif",
         "font-size": "11.5",
+        // Labels scale with zoom, so a fit-to-canvas dense trace would render
+        // 10px type at ~3.5px. Hide a label below a legible rendered size
+        // instead of painting an unreadable smudge; the glyph tier already
+        // drops labels entirely below 0.32.
+        "min-zoomed-font-size": 6,
         "line-height": 1.35,
         color: cssVar("--foreground", "#171717"),
         "background-color": card,
@@ -167,8 +172,17 @@ function buildStylesheet(): StylesheetStyle[] {
       },
     },
     { selector: 'node[expandable = "true"]', style: { "border-style": "dashed" } },
-    { selector: 'node[state = "running"]', style: { "border-color": primary, color: primary } },
-    { selector: 'node[state = "error"]', style: { "border-color": destructive, color: destructive } },
+    // The width is repeated here on purpose: the glyph tier sets
+    // `border-width: 0`, and a color alone paints nothing — the state ring
+    // must survive the tier change (see the tier comment above).
+    {
+      selector: 'node[state = "running"]',
+      style: { "border-color": primary, color: primary, "border-width": "2" },
+    },
+    {
+      selector: 'node[state = "error"]',
+      style: { "border-color": destructive, color: destructive, "border-width": "2" },
+    },
     {
       selector: "node:selected",
       style: {
@@ -409,7 +423,7 @@ function applyToCanvas(
   selectedNode: string | null,
   layout: DagLayoutName,
   highlightIds: ReadonlySet<string>,
-): boolean {
+): DagZoomTier {
   cy.elements().remove();
   cy.add(toElements(dag, labels, childCounts));
   cy.nodes().unselect();
@@ -428,9 +442,12 @@ function applyToCanvas(
   }
   // Rebuilds create fresh elements with no classes, so the tier has to be
   // re-applied here rather than only from the zoom handler (whose guard
-  // would see an unchanged tier and skip).
-  applyZoomTier(cy, nextZoomTier("turn", cy.zoom()));
-  return positions !== null;
+  // would see an unchanged tier and skip). The applied tier is returned so
+  // the caller can resync its hysteresis anchor — otherwise the handler keeps
+  // measuring from a tier the canvas no longer shows.
+  const tier = nextZoomTier("turn", cy.zoom());
+  applyZoomTier(cy, tier);
+  return tier;
 }
 
 /** Restyle the canvas for a semantic-zoom tier. */
@@ -537,7 +554,15 @@ export default function CytoscapeDag({
       observer.observe(containerRef.current);
 
       const { dag, labels, childCounts, selectedNode, layout, highlightIds } = latestRef.current;
-      applyToCanvas(cy, dag, labels, childCounts, selectedNode, layout, highlightIds);
+      tierRef.current = applyToCanvas(
+        cy,
+        dag,
+        labels,
+        childCounts,
+        selectedNode,
+        layout,
+        highlightIds,
+      );
       lastApplyRef.current = Date.now();
       if (pendingFitRef.current) {
         pendingFitRef.current = false;
@@ -571,7 +596,15 @@ export default function CytoscapeDag({
         : Math.min(APPLY_DEBOUNCE_MS, APPLY_MAX_WAIT_MS - sinceLast);
     const timer = setTimeout(() => {
       const { dag, labels, childCounts, selectedNode, layout, highlightIds } = latestRef.current;
-      applyToCanvas(cy, dag, labels, childCounts, selectedNode, layout, highlightIds);
+      tierRef.current = applyToCanvas(
+        cy,
+        dag,
+        labels,
+        childCounts,
+        selectedNode,
+        layout,
+        highlightIds,
+      );
       lastApplyRef.current = Date.now();
     }, delay);
     return () => clearTimeout(timer);
@@ -585,7 +618,15 @@ export default function CytoscapeDag({
     const cy = cyRef.current;
     if (!cy) return;
     const { dag, labels, childCounts, selectedNode, highlightIds } = latestRef.current;
-    applyToCanvas(cy, dag, labels, childCounts, selectedNode, layout, highlightIds);
+    tierRef.current = applyToCanvas(
+      cy,
+      dag,
+      labels,
+      childCounts,
+      selectedNode,
+      layout,
+      highlightIds,
+    );
     lastApplyRef.current = Date.now();
   }, [layout]);
 
