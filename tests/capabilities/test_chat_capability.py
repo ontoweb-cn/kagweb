@@ -381,11 +381,15 @@ async def test_approval_parks_and_forwards_label_decision(monkeypatch) -> None:
 
     assert backend.decisions == [("req-1", "once")]
     kinds = [event.type.value for event in events]
-    assert kinds == ["tool_result", "progress", "content", "result"]
+    assert kinds == ["tool_call", "tool_result", "progress", "content", "result"]
     card = events[0]
-    ask = (card.metadata or {}).get("tool_metadata", {}).get("ask_user")
+    assert str((card.metadata or {}).get("call_id", "")).startswith("approval-")
+    call_args = card.metadata.get("args") if isinstance(card.metadata, dict) else None
+    assert isinstance(call_args, dict) and call_args["questions"][0]["id"] == "approval"
+    result_event = events[1]
+    ask = (result_event.metadata or {}).get("tool_metadata", {}).get("ask_user")
     assert ask and ask["questions"][0]["options"][0]["value"] == "once"
-    decision = events[1]
+    decision = events[2]
     assert (decision.metadata or {}).get("approval") == {
         "request_id": "req-1",
         "tool": "shell",

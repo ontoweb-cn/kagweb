@@ -288,12 +288,27 @@ class ChatCapability(TurnCapability):
         question = _approval_question(
             tool=tool, preview=preview, choices=choices, language=language
         )
+        # The same ask_user shape the native tool uses, on both channels the
+        # clients already speak: the web renders its card from the tool_call
+        # args (TracePresentation), the CLI intercepts the tool_result
+        # metadata for the inline prompt. call_id pairs the two in the trace.
+        call_id = f"approval-{request_id or id(event)}"
+        await stream.tool_call(
+            "ask_user",
+            {"questions": [question]},
+            source=self.name,
+            stage="responding",
+            metadata={"call_id": call_id, "call_state": "running"},
+        )
         await stream.tool_result(
             "ask_user",
             "",
             source=self.name,
             stage="responding",
-            metadata={"tool_metadata": {"ask_user": {"questions": [question]}}},
+            metadata={
+                "call_id": call_id,
+                "tool_metadata": {"ask_user": {"questions": [question]}},
+            },
         )
 
         waiter = getattr(getattr(context, "runtime", None), "wait_for_user_reply", None)
