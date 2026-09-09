@@ -118,6 +118,10 @@ class TurnExecutor:
         session_id = execution.session_id
         capability_name = execution.capability
         turn_id = execution.turn_id
+        # Resolved once, up front: the persisted answer's CJK emphasis repair
+        # and the post-turn metadata jobs both key off the response language,
+        # and the former runs before the latter's block is reached.
+        ui_language = str(payload.get("language", "en") or "en")
         attachments = []
         attachment_records = []
         assistant_events: list[dict[str, Any]] = []
@@ -131,7 +135,7 @@ class TurnExecutor:
             # clean_thinking_tags is a second line of defence: providers that
             # inline <think> in the content channel must never be persisted
             # as the user-facing answer.
-            return _assemble_persisted_answer(content_segments)
+            return _assemble_persisted_answer(content_segments, language=ui_language)
 
         # Files the model generated this turn (exec/code_execution artifacts),
         # persisted as assistant-message attachments so the UI shows openable
@@ -602,7 +606,6 @@ class TurnExecutor:
                 # series would let a slow title eat the insight's socket window
                 # — and hold the session's turn lease for up to 40s, rejecting
                 # the user's next message in the meantime.
-                ui_language = str(payload.get("language", "en") or "en")
                 title_result, insight_result = await asyncio.gather(
                     self._maybe_generate_session_title(
                         execution=execution,

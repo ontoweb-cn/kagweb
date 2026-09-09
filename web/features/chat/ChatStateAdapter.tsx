@@ -1645,6 +1645,31 @@ export function ChatStateAdapterProvider({
               },
             );
           },
+          (rejection) => {
+            // An acknowledged-but-refused command never becomes a stream
+            // event. A rejected ``submit_user_reply`` (the turn stopped
+            // waiting for input between the card rendering and the click)
+            // would otherwise leave the card on "Sending your answers…"
+            // forever, so tell the user and refetch the server's truth.
+            if (rejection.type !== "command_ack") return;
+            console.error(
+              `turn command rejected; type=${rejection.command_type}; code=${rejection.error_code}`,
+            );
+            if (rejection.command_type !== "submit_user_reply") return;
+            notify(
+              i18n.t("Your answer could not be submitted. Reloading the conversation."),
+              {
+                tone: "error",
+                durationMs: 6000,
+              },
+            );
+            const sessionId = stateRef.current.sessions[record.key]?.sessionId;
+            if (sessionId) {
+              loadSessionRef.current?.(sessionId).catch(() => {
+                /* non-fatal — local state remains usable */
+              });
+            }
+          },
         ),
       };
       runnersRef.current.set(key, record);

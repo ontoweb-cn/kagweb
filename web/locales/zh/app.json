@@ -4953,5 +4953,7 @@
   "Expert view": "专家视图",
   "Learner view": "学习者视图",
   "Trace detail: Expert mode": "信息显示轨迹：专家模式",
-  "Trace detail: Learner mode": "信息显示轨迹：学习者模式"
+  "Trace detail: Learner mode": "信息显示轨迹：学习者模式",
+  "Your answer could not be submitted. Reloading the conversation.": "答案提交失败，正在重新加载会话。",
+  "Preparing the question…": "正在整理问题…"
 }

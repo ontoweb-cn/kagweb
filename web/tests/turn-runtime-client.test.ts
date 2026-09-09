@@ -318,3 +318,62 @@ test("stopping cancels retries and idle hidden sessions do not reconnect", () =>
   assert.equal(client.state, "stopped");
   assert.equal(scheduler.tasks.length, 0);
 });
+
+test("a refused command reaches onCommandRejected, an accepted one does not", () => {
+  const sockets: FakeSocket[] = [];
+  const scheduler = new FakeScheduler();
+  const rejected: unknown[] = [];
+  const client = new TurnRuntimeClient({
+    socketFactory: () => {
+      const socket = new FakeSocket();
+      sockets.push(socket);
+      return socket;
+    },
+    scheduler,
+    onEvent: () => {},
+    onCommandRejected: (event) => rejected.push(event),
+  });
+  client.connect();
+  sockets[0].open();
+  client.send(
+    buildSubmitUserReply({
+      turnId: "turn-1",
+      text: "continue",
+      commandId: "reply-1",
+    }),
+  );
+
+  // Accepted: the caller is waiting on the stream, not on this hook.
+  sockets[0].message({
+    type: "command_ack",
+    command_id: "reply-1",
+    command_type: "submit_user_reply",
+    accepted: true,
+    turn_id: "turn-1",
+    error_code: "",
+    message: "",
+    protocol_version: "2.0",
+  });
+  assert.equal(rejected.length, 0);
+
+  // Refused: nothing else tells the caller the card is stranded.
+  sockets[0].message({
+    type: "command_ack",
+    command_id: "reply-2",
+    command_type: "submit_user_reply",
+    accepted: false,
+    turn_id: "turn-1",
+    error_code: "turn_not_waiting_input",
+    message: "turn is not waiting for input",
+    protocol_version: "2.0",
+  });
+  assert.equal(rejected.length, 1);
+  const refusal = rejected[0] as {
+    type?: string;
+    command_type?: string;
+    error_code?: string;
+  };
+  assert.equal(refusal.type, "command_ack");
+  assert.equal(refusal.command_type, "submit_user_reply");
+  assert.equal(refusal.error_code, "turn_not_waiting_input");
+});

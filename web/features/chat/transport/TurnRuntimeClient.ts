@@ -38,6 +38,12 @@ export interface TurnRuntimeClientOptions {
   onStateChange?: (state: RuntimeConnectionState) => void;
   onDiagnostic?: (diagnostic: string) => void;
   onReconcile?: (cursor: { turnId: string; afterSeq: number }) => void;
+  /**
+   * A command the server refused to run (``command_ack accepted:false``).
+   * Acknowledged commands are not stream events, so without this hook a
+   * rejected submit leaves its card spinning with no explanation.
+   */
+  onCommandRejected?: (event: ServerEvent) => void;
 }
 
 interface PendingCommand {
@@ -256,6 +262,7 @@ export class TurnRuntimeClient {
         this.options.onDiagnostic?.(
           `turn command rejected; type=${event.command_type}; code=${event.error_code || "rejected"}`,
         );
+        this.options.onCommandRejected?.(event);
       }
       this.options.onEvent(event);
       return;
