@@ -3,6 +3,18 @@
 > 日期：2026-09-09 ｜ 状态：一轮评审已并入（见 §八）｜ 目标版本：0.3.0（未定）
 > 参考：DeepMentor v1.6.5 的 `d7889cd2` / `35a834cc` / `4e1faca2` / `eab0465e`，
 > 以及 `docs/cot-visualization-*.md`、`docs/chat-session-dag*.md`（DeepMentor 仓库）。
+>
+> **实现状态（2026-09-10 补记）**：本方案的 Phase 0–6 **均已在 main 落地**，本文自此作为
+> 设计记录保留，不再是待办清单。各阶段对应提交——
+> Phase 0 `cce36bf`（markdown 标签转义）/ `5474ff6`（tooltip 焦点）；
+> Phase 1 `c02a0bd`（分类内核统一）/ `d0c172a`（跨语言平价锁）；
+> Phase 2 `86b9d82`（turn insight 徽章）；
+> Phase 3 `53e4b17`（DAG 语义缩放 + 思维导图导出）；
+> Phase 4 `f45bf50`（三级披露 + observation 通道 + 学习者/专家模式）；
+> Phase 5 `890feef`（耗时/Token 计数，DSL v1.1）/ `9d2c442`（时间戳兜底毫秒）；
+> Phase 6 `2cdb301`（ask_user 生命周期 + CJK 强调修复）。
+> 文档正文与 §八 评审记录保持原样未改。下述 Phase 顺序、改动清单与风险描述反映的是
+> 当时的规划，实施中若有偏离以代码与提交为准。
 
 ## Context
 
