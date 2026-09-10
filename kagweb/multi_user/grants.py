@@ -54,6 +54,16 @@ def empty_grant(user_id: str) -> dict[str, Any]:
         # policy to override. A multi-user deployment must be usable out of the
         # box; requiring an explicit per-user grant would have made it not.
         "agent_loop": None,
+        # Whether the user may start an agent backend that spawns a LOCAL
+        # process (the CLI and ACP families). This is not a model grant: the
+        # child runs with the server's privileges, so allowing it is handing
+        # the user code execution on this host. It is therefore opt-in —
+        # ``True`` allows, and both ``None`` (the default) and ``False`` deny.
+        # Fail-closed on purpose, and deliberately the opposite direction from
+        # ``agent_loop`` above: an existing deployment has no such key, so it
+        # tightens rather than loosens on upgrade. The HTTP family starts
+        # nothing locally and stays covered by ``agent_loop``.
+        "agent_loop_cli": None,
         "learning_policy": None,
     }
 
@@ -136,6 +146,8 @@ def normalize_grant(user_id: str, payload: dict[str, Any] | None) -> dict[str, A
     base["exec_enabled"] = bool(exec_enabled) if isinstance(exec_enabled, bool) else None
     agent_loop = payload.get("agent_loop")
     base["agent_loop"] = bool(agent_loop) if isinstance(agent_loop, bool) else None
+    agent_loop_cli = payload.get("agent_loop_cli")
+    base["agent_loop_cli"] = bool(agent_loop_cli) if isinstance(agent_loop_cli, bool) else None
     base["learning_policy"] = _normalize_learning_policy(payload.get("learning_policy"))
     return base
 

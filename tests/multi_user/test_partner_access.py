@@ -36,6 +36,30 @@ def test_empty_grant_has_partners_list():
     assert empty_grant("u")["partners"] == []
 
 
+def test_empty_grant_denies_local_agent_processes_by_default():
+    """The local-process grant must start absent, which is deny: starting a
+    CLI/ACP agent runs a child as the server user."""
+    assert empty_grant("u")["agent_loop_cli"] is None
+
+
+def test_normalize_grant_round_trips_the_agent_process_grant():
+    for value in (True, False, None):
+        grant = normalize_grant("u_alice", {"agent_loop_cli": value})
+        assert grant["agent_loop_cli"] is value
+
+    # A non-bool is not coerced into a decision — an arbitrary JSON value must
+    # not be able to read as consent.
+    for junk in ("true", 1, [], {}):
+        assert normalize_grant("u_alice", {"agent_loop_cli": junk})["agent_loop_cli"] is None
+
+
+def test_a_stale_skills_key_normalizes_away():
+    """`skills` was removed with the skills runtime; a saved grant still
+    carrying it must normalize without error and without resurrecting the key."""
+    grant = normalize_grant("u_alice", {"skills": [{"skill_id": "x"}]})
+    assert "skills" not in grant
+
+
 def test_normalize_grant_round_trips_partners():
     grant = normalize_grant(
         "u_alice",

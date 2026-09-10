@@ -29,6 +29,7 @@ function emptyGrant(userId: string): GrantPayload {
     enabled_tools: null,
     mcp_tools: null,
     exec_enabled: null,
+    agent_loop_cli: null,
     learning_policy: null,
   };
 }
@@ -737,6 +738,24 @@ export function GrantEditor({
                       ...current,
                       exec_enabled:
                         current.exec_enabled === false ? null : false,
+                    }))
+                  }
+                />
+              </div>
+            </section>
+            <section className="min-w-0">
+              <SectionTitle>Agent processes</SectionTitle>
+              <div className="space-y-1.5 text-xs">
+                <CheckRow
+                  label="Run agent processes on this host"
+                  description="Off by default. A CLI or ACP agent backend starts a process as the server user, so allowing it grants code execution on this machine. HTTP backends are unaffected."
+                  checked={grant.agent_loop_cli === true}
+                  disabled={controlsDisabled}
+                  onToggle={() =>
+                    setGrant((current) => ({
+                      ...current,
+                      agent_loop_cli:
+                        current.agent_loop_cli === true ? null : true,
                     }))
                   }
                 />

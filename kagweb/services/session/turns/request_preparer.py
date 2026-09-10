@@ -24,7 +24,25 @@ if TYPE_CHECKING:
     from kagweb.services.session.protocol import SessionStoreProtocol
 
 
-def _effective_required_service(capability: str) -> str:
+def _access_denied_message(required: str) -> str:
+    """A refusal the person reading it can act on.
+
+    ``agent_loop_cli`` is denied by default, and the missing grant is not
+    obvious from the capability name — the admin needs to know they are
+    granting code execution on this host, not a model.
+    """
+    if required == "agent_loop_cli":
+        return (
+            "This agent backend runs as a local process with the server's "
+            "privileges. Your account is not allowed to start it; ask an "
+            "administrator to grant agent-process access."
+        )
+    return f"No {required} access is assigned to your account. Please contact an administrator."
+
+
+def _effective_required_service(
+    capability: str, *, agent_loop_block: dict[str, Any] | None = None
+) -> str:
     """The resource a turn needs, resolved against what is actually configured.
 
     A capability's manifest declares a static ``required_service``, but `chat`
@@ -35,6 +53,13 @@ def _effective_required_service(capability: str) -> str:
     for, and resolving it here — where the settings are readable — keeps the
     gate honest without making the manifest dynamic.
 
+    **Which** backend also decides how strict the check is. The CLI and ACP
+    families spawn a child process on this host with the server's privileges, so
+    driving one is code execution as the server user; a user may only do that
+    with an explicit grant (``agent_loop_cli``, denied by default). The HTTP
+    family runs the loop in the operator's own service and starts nothing
+    locally, so it keeps the deployment-wide default.
+
     Everything else keeps its declared service.
     """
     if capability != "chat":
@@ -44,18 +69,25 @@ def _effective_required_service(capability: str) -> str:
         declared = getattr(getattr(entry, "manifest", None), "required_service", "")
         return str(declared or "llm")
 
+    from kagweb.services.agent_loop.builtin import preset_family
     from kagweb.services.agent_loop.settings import (
         get_agent_loop_settings,
         resolve_primary_profile,
     )
 
     try:
-        configured = resolve_primary_profile(get_agent_loop_settings()) is not None
+        block = agent_loop_block if agent_loop_block is not None else get_agent_loop_settings()
+        profile = resolve_primary_profile(block)
     except Exception:
         # An unreadable settings file must not turn into "allow": fall back to
         # the declared service and let the LLM gate decide, as before.
         return "llm"
-    return "agent_loop" if configured else "llm"
+    if profile is None:
+        # No backend → the shell stub. Nothing drives the turn.
+        return "llm"
+    if preset_family(str(profile.get("preset") or "")) == "cli":
+        return "agent_loop_cli"
+    return "agent_loop"
 
 
 class TurnRequestPreparer:
@@ -155,12 +187,17 @@ class TurnRequestPreparer:
                 # session title/insight/summary helpers degrade on their own.
                 # Gating it on "llm" is what rejected every non-admin turn in a
                 # pure agent-loop deployment (backend-llm-deployment.md P0-1).
-                required = _effective_required_service(capability)
+                from kagweb.services.agent_loop.settings import get_agent_loop_settings
+
+                # Read the block once and hand it to the resolver: the
+                # capability reads the same settings again later in the turn,
+                # and there is no need for the gate to be a second hit on the
+                # JSON file on top of that.
+                required = _effective_required_service(
+                    capability, agent_loop_block=get_agent_loop_settings()
+                )
                 if not has_capability_access(required):
-                    raise RuntimeError(
-                        f"No {required} access is assigned to your account. "
-                        "Please contact an administrator."
-                    )
+                    raise RuntimeError(_access_denied_message(required))
                 # Pin the first granted-and-available model as the selection.
                 # With no LLM grant (agent-backend deployment) this stays empty
                 # and the turn runs without a scoped model, which is correct:

@@ -12,6 +12,11 @@ export type GrantPayload = {
   mcp_tools: string[] | null;
   /** null = follow deployment exec policy, false = always disabled. */
   exec_enabled: boolean | null;
+  /**
+   * May this user start a local agent process (CLI/ACP backend)? Unlike the
+   * other tri-states this one is opt-in: `true` allows, `null`/`false` deny.
+   */
+  agent_loop_cli: boolean | null;
   learning_policy: LearningPolicy | null;
 };
 

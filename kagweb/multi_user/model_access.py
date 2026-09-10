@@ -125,6 +125,16 @@ def redacted_model_access(user_id: str | None = None) -> dict[str, list[dict[str
             "available": grant.get("agent_loop") is not False,
         }
     ]
+    # A CLI/ACP backend is a different proposition: it spawns a child process on
+    # THIS host as the server user, so driving it is code execution on the
+    # machine. That is opt-in, which makes the default the opposite of
+    # ``agent_loop`` above — absent denies, and only an explicit true allows.
+    result["agent_loop_cli"] = [
+        {
+            "source": "deployment",
+            "available": grant.get("agent_loop_cli") is True,
+        }
+    ]
     return result
 
 
