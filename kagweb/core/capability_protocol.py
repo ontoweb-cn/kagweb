@@ -37,6 +37,12 @@ class CapabilityManifest:
     cli_aliases: list[str] = field(default_factory=list)
     request_schema: dict[str, Any] = field(default_factory=dict)
     config_defaults: dict[str, Any] = field(default_factory=dict)
+    #: The resource a turn needs before it may run. The access gate checks this
+    #: instead of assuming every capability needs a language model: `chat`
+    #: delegates to an external agent backend, which brings its own model, so
+    #: gating it on the LLM grant rejected every non-admin turn in a
+    #: pure-agent-loop deployment. See `_effective_required_service`.
+    required_service: str = "llm"
 
 
 class TurnCapability(ABC):

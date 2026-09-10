@@ -46,6 +46,14 @@ def empty_grant(user_id: str) -> dict[str, Any]:
         "mcp_tools": None,
         "cli_apps": None,
         "exec_enabled": None,
+        # Whether the user may drive turns through the configured agent
+        # backend. Same tri-state as ``exec_enabled``: ``None`` follows the
+        # deployment (an admin who configured a backend means users may talk to
+        # it — the point of the feature), ``False`` suspends that user, ``True``
+        # is equivalent to ``None`` here since there is no stricter deployment
+        # policy to override. A multi-user deployment must be usable out of the
+        # box; requiring an explicit per-user grant would have made it not.
+        "agent_loop": None,
         "learning_policy": None,
     }
 
@@ -126,6 +134,8 @@ def normalize_grant(user_id: str, payload: dict[str, Any] | None) -> dict[str, A
         base[key] = _normalize_tool_list(payload.get(key))
     exec_enabled = payload.get("exec_enabled")
     base["exec_enabled"] = bool(exec_enabled) if isinstance(exec_enabled, bool) else None
+    agent_loop = payload.get("agent_loop")
+    base["agent_loop"] = bool(agent_loop) if isinstance(agent_loop, bool) else None
     base["learning_policy"] = _normalize_learning_policy(payload.get("learning_policy"))
     return base
 

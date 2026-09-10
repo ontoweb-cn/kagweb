@@ -113,6 +113,18 @@ def redacted_model_access(user_id: str | None = None) -> dict[str, list[dict[str
         from .personal_models import personal_llm_rows
 
         result["llm"].extend(personal_llm_rows())
+    # The agent backend is not a model the admin lends; it is a deployment
+    # setting every user shares. It therefore gets one synthetic entry whose
+    # availability is *not* tied to the LLM catalog, so `has_capability_access`
+    # can gate `chat` on it in an agent-loop deployment. Same tri-state as the
+    # grant's other overrides: an absent value follows the deployment, and only
+    # an explicit false suspends the user.
+    result["agent_loop"] = [
+        {
+            "source": "deployment",
+            "available": grant.get("agent_loop") is not False,
+        }
+    ]
     return result
 
 

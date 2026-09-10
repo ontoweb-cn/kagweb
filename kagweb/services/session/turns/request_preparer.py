@@ -24,6 +24,40 @@ if TYPE_CHECKING:
     from kagweb.services.session.protocol import SessionStoreProtocol
 
 
+def _effective_required_service(capability: str) -> str:
+    """The resource a turn needs, resolved against what is actually configured.
+
+    A capability's manifest declares a static ``required_service``, but `chat`
+    is the one capability whose need depends on the deployment: with an agent
+    backend configured it delegates the turn and never touches KAGWeb's own LLM
+    layer, while the framework-shell stub has nothing to run at all. So the
+    static answer ("llm") is wrong in exactly the deployment this project ships
+    for, and resolving it here — where the settings are readable — keeps the
+    gate honest without making the manifest dynamic.
+
+    Everything else keeps its declared service.
+    """
+    if capability != "chat":
+        from kagweb.runtime.registry.capability_registry import get_capability_registry
+
+        entry = get_capability_registry().get(capability)
+        declared = getattr(getattr(entry, "manifest", None), "required_service", "")
+        return str(declared or "llm")
+
+    from kagweb.services.agent_loop.settings import (
+        get_agent_loop_settings,
+        resolve_primary_profile,
+    )
+
+    try:
+        configured = resolve_primary_profile(get_agent_loop_settings()) is not None
+    except Exception:
+        # An unreadable settings file must not turn into "allow": fall back to
+        # the declared service and let the LLM gate decide, as before.
+        return "llm"
+    return "agent_loop" if configured else "llm"
+
+
 class TurnRequestPreparer:
     if TYPE_CHECKING:
         store: SessionStoreProtocol
@@ -115,23 +149,32 @@ class TurnRequestPreparer:
 
             current_user = get_current_user()
             if not current_user.is_admin:
-                # Single gate, shared with the frontend lock and any HTTP
-                # surface: no usable LLM grant → a clear terminal error here
-                # instead of a silent fall-through to the global client.
-                if not has_capability_access("llm"):
+                # Gate on the resource this turn actually needs, not on the LLM
+                # grant by default. `chat` with an agent backend configured
+                # needs no LLM: the backend brings its own model, and the
+                # session title/insight/summary helpers degrade on their own.
+                # Gating it on "llm" is what rejected every non-admin turn in a
+                # pure agent-loop deployment (backend-llm-deployment.md P0-1).
+                required = _effective_required_service(capability)
+                if not has_capability_access(required):
                     raise RuntimeError(
-                        "No LLM model is assigned to your account. Please contact an administrator."
+                        f"No {required} access is assigned to your account. "
+                        "Please contact an administrator."
                     )
                 # Pin the first granted-and-available model as the selection.
+                # With no LLM grant (agent-backend deployment) this stays empty
+                # and the turn runs without a scoped model, which is correct:
+                # the chat capability never touches KAGWeb's own LLM layer.
                 assigned_llms = [
                     item
                     for item in redacted_model_access(current_user.id).get("llm", [])
                     if item.get("available")
                 ]
-                llm_selection = {
-                    "profile_id": assigned_llms[0].get("profile_id"),
-                    "model_id": assigned_llms[0].get("model_id"),
-                }
+                if assigned_llms:
+                    llm_selection = {
+                        "profile_id": assigned_llms[0].get("profile_id"),
+                        "model_id": assigned_llms[0].get("model_id"),
+                    }
         if llm_selection:
             from kagweb.multi_user.personal_models import merge_personal_llm_profiles
             from kagweb.services.config import get_model_catalog_service
