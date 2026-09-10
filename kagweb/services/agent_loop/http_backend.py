@@ -191,7 +191,15 @@ class HttpAgentLoopBackend(AgentLoopBackend):
             try:
                 obj = json.loads(text)
             except json.JSONDecodeError:
-                logger.debug("agent-loop %s: non-JSON stream line: %.200s", self.name, text)
+                # Length and a short prefix only: this line is unparsed stream
+                # content, so it may be model text rather than framing, and the
+                # log file must not become a copy of the conversation.
+                logger.debug(
+                    "agent-loop %s: non-JSON stream line (%d chars): %.80s",
+                    self.name,
+                    len(text),
+                    text,
+                )
                 continue
             if isinstance(obj, dict):
                 event = _neutral_event(obj, state)

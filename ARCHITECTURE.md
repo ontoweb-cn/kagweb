@@ -10,7 +10,7 @@ The conversation backend itself is not a plain LLM call — it is an external
 **agent loop**, selected at runtime:
 
 ```
-CLI (kagweb_cli)   WebSocket /ws (/api/unified/ws)   Python SDK (KAGWebApp)
+CLI (kagweb_cli)   WebSocket /ws   Python SDK (KAGWebApp)
         │                     │                            │
         └─────────────────────┼────────────────────────────┘
                               ▼

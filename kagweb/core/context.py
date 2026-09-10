@@ -69,16 +69,15 @@ class UnifiedContext:
         enabled_tools: Tool names the user has toggled on (Level 1).
             ``None`` means "not specified", while ``[]`` means
             "explicitly disable all optional tools".
-        allowed_builtin_tools: Whitelist gating the built-in auto-mounted tools
-            (rag / read_memory / web_fetch / …). ``None`` (the product-chat
-            default) means "no gating" — every built-in mounts under its usual
-            context condition. A list restricts which built-ins may mount;
-            partners set this so an owner can deny built-ins per companion.
+        allowed_builtin_tools: Whitelist gating the built-in auto-mounted tools.
+            ``None`` (the product-chat default) means "no gating" — every
+            built-in mounts under its usual context condition. A list restricts
+            which built-ins may mount; partners set this so an owner can deny
+            built-ins per companion.
         active_capability: Capability name selected by the user, or None for plain chat.
         attachments: Images / files sent with the message.
         config_overrides: Per-request config tweaks (e.g. temperature).
         language: UI / response language ("en" | "zh").
-        memory_context: Memory snapshot text injected into the system prompt.
         persona_context: Selected persona's instructions, eagerly injected
             into the system prompt (a persona must shape the voice from the
             first token; empty when no persona is active).
@@ -105,7 +104,6 @@ class UnifiedContext:
     attachments: list[Attachment] = field(default_factory=list)
     config_overrides: dict[str, Any] = field(default_factory=dict)
     language: str = "en"
-    memory_context: str = ""
     persona_context: str = ""
     sidebar_context: str = ""
     source_manifest: str = ""

@@ -737,7 +737,15 @@ class CliAgentLoopBackend(AgentLoopBackend):
         except json.JSONDecodeError:
             # Non-JSON stdout (banners, warnings) is trace noise, not errors,
             # but stays countable so a chatty backend is visible in the logs.
-            logger.debug("agent-loop %s: non-JSON stdout line: %.200s", self.name, text)
+            # Length and a short prefix only: a line that failed to parse may be
+            # the model's own output rather than framing, and the log file must
+            # not become a copy of the conversation.
+            logger.debug(
+                "agent-loop %s: non-JSON stdout line (%d chars): %.80s",
+                self.name,
+                len(text),
+                text,
+            )
             state["dropped_lines"] = int(state.get("dropped_lines") or 0) + 1
             return []
         if not isinstance(obj, dict):

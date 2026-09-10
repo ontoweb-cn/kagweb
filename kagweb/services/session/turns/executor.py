@@ -365,7 +365,6 @@ class TurnExecutor:
                 on_event=_emit_context_event,
                 leaf_message_id=branch_parent_id,
             )
-            memory_context = ""
 
             # Persona: at most one behaviour preset per turn, eagerly
             # injected (a persona must shape the voice from the first
@@ -468,7 +467,6 @@ class TurnExecutor:
                 attachments=attachments,
                 config_overrides=request_config,
                 language=payload.get("language", "en"),
-                memory_context=memory_context,
                 persona_context=persona_context,
                 sidebar_context=sidebar_system_context,
                 source_manifest=source_manifest_text,
@@ -486,7 +484,6 @@ class TurnExecutor:
                     "history_references": history_references,
                     "partner_group_references": partner_group_references,
                     "learner_profile_prompt": learner_profile_prompt,
-                    "memory_context": memory_context,
                     "active_persona": active_persona,
                     "llm_selection": payload.get("llm_selection") or {},
                     "llm_model": str(getattr(llm_config, "model", "") or ""),

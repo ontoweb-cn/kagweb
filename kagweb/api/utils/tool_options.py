@@ -2,9 +2,9 @@
 
 ``tools`` mirrors the user-toggleable system tools (the same pool the chat
 composer / settings expose); ``builtin_tools`` lists the auto-mounted built-in
-tools (rag / read_memory / web_fetch / …) a partner owner can selectively
-allow or deny; ``mcp_tools`` lists every configured MCP tool that a whitelist
-(partner config or user grant) could allow.
+tools a partner owner can selectively allow or deny; ``mcp_tools`` lists every
+configured MCP tool that a whitelist (partner config or user grant) could
+allow.
 
 Each ``mcp_tools`` row carries its provider identity — ``kind`` (``"mcp"``
 today) and ``provider_id`` (the server name) — so the pickers can fold
@@ -31,10 +31,13 @@ async def build_tool_options(
 ) -> dict[str, list[dict[str, Any]]]:
     """Build the configurable-tool surface.
 
-    ``exclude_builtin`` drops built-in tools from the ``builtin_tools`` list —
-    the partners API passes ``{"read_memory", "write_memory"}`` because partners
-    use the mandatory ``partner_*`` memory tools instead and cannot configure
-    chat's memory tools.
+    ``exclude_builtin`` drops built-in tools from the ``builtin_tools`` list.
+    The partners API passes ``{"read_memory", "write_memory"}`` to hide chat's
+    memory tools, which partners do not configure (they use the mandatory
+    ``partner_*`` memory tools instead). Note those two names are not in the
+    registry — nothing mounts them — so the call filters nothing today; the
+    parameter is kept because the intent is real and it costs nothing to
+    honour if such a tool is ever registered.
 
     ``optional_tools`` is an optional allow-list for the user-toggleable
     surface.  The generic builder intentionally owns no admin or partner

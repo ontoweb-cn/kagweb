@@ -206,11 +206,11 @@ class PartnerConfig:
     # User-toggleable system tools (same pool as the chat composer /
     # /settings/tools). None = all of them; [] = none; list = whitelist.
     enabled_tools: list[str] | None = None
-    # Allowed built-in (auto-mounted) tools — rag / read_memory / web_fetch /
-    # … (CONFIGURABLE_BUILTIN_TOOL_NAMES). None = no gating (all mount under
-    # their usual context condition, like the product chat); [] = deny every
-    # built-in; list = whitelist. Lets an owner deny e.g. memory to an
-    # IM-facing partner.
+    # Allowed built-in (auto-mounted) tools — see
+    # ``CONFIGURABLE_BUILTIN_TOOL_NAMES`` for the current set. None = no gating
+    # (all mount under their usual context condition, like the product chat);
+    # [] = deny every built-in; list = whitelist. Lets an owner deny e.g.
+    # memory to an IM-facing partner.
     builtin_tools: list[str] | None = None
     # Configured MCP tools the partner may load. Defaults to ``[]`` — MCP off —
     # because these tools reach host-side capabilities configured
