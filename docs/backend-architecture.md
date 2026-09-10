@@ -3,9 +3,9 @@
 > 适用版本：KAGWeb 0.2.1（`kagweb/__version__.py`）· Python 3.11+
 > 代码根目录：`kagweb/`；本文所有路径均相对仓库根目录。
 > 核对基准：`main` 分支 `c3ffe57`（2026-09-10 实测）
-> 关联文档：[`backend-llm-deployment.md`](./backend-llm-deployment.md)（LLM 部署机制与 7 条产品决策）、[`../ARCHITECTURE.md`](../ARCHITECTURE.md)
+> 关联文档：[`backend-llm-deployment.md`](./backend-llm-deployment.md)（LLM 部署机制与 8 条产品决策）、[`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 >
-> **注意**：本文描述的是**现状**。`backend-llm-deployment.md` §五已就 Skills、人格、合伙人、LLM 设置等做出 7 条移除/改造决策，落地后本文若干章节（尤其 §1 的模块规模表、§7 的多用户授权）将随之变化。
+> **注意**：本文描述的是**现状**。`backend-llm-deployment.md` §五已就 Skills、人格、合伙人、LLM 设置、Intellect 对接等做出 8 条移除/改造决策，落地后本文若干章节（尤其 §1 的模块规模表、§7 的多用户授权）将随之变化。
 
 ## 评审修正记录（2026-09-10，逐条对照代码核实）
 
