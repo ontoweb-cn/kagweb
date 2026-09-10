@@ -46,8 +46,6 @@ import {
 } from '@/components/chat/home/AskUserOptions'
 import { SetupCredentialCard } from '@/components/chat/home/SetupCredentialCard'
 import { extractSetupCredential } from '@/lib/setup-signals'
-import { PartnerDraftCard } from '@/components/chat/home/PartnerDraftCard'
-import { extractPartnerDraft } from '@/lib/partner-draft'
 import ContextReferenceTree, {
   type ContextTreeItem,
 } from '@/components/chat/home/ContextReferenceTree'
@@ -288,7 +286,6 @@ export const AssistantMessage = memo(function AssistantMessage({
   // assistant must not handle itself.
   const setupCredential = useMemo(() => extractSetupCredential(msg.events), [msg.events])
 
-  const partnerDraft = useMemo(() => extractPartnerDraft(msg.events), [msg.events])
 
   // Interleaved segments for the default chat surface — text emitted
   // before the ask_user call renders above the card; text emitted by
@@ -382,7 +379,6 @@ export const AssistantMessage = memo(function AssistantMessage({
           supplements the answer ("here's where to paste the key") rather than
           replacing it, and applies to every branch. */}
       {setupCredential ? <SetupCredentialCard data={setupCredential} /> : null}
-      {partnerDraft ? <PartnerDraftCard data={partnerDraft} /> : null}
     </>
   )
 })

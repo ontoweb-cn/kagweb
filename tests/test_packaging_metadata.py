@@ -82,27 +82,6 @@ def test_mcp_client_is_a_core_dependency(metadata_path: Path) -> None:
     assert mcp_requirements == ["mcp>=1.26.0,<2.0.0"]
 
 
-def test_partners_extra_does_not_redeclare_the_core_mcp_client() -> None:
-    """The `partners` extra is IM channel SDKs only; `mcp` is core now."""
-    with (REPOSITORY_ROOT / "pyproject.toml").open("rb") as file:
-        extras = tomllib.load(file)["project"]["optional-dependencies"]
-
-    assert not [item for item in extras["partners"] if item.split(">")[0].strip() == "mcp"]
-
-
-def test_requirements_mirror_the_core_mcp_client() -> None:
-    """Docker/CI installs read requirements/, which must agree with pyproject."""
-    requirements = REPOSITORY_ROOT / "requirements"
-    cli_text = (requirements / "cli.txt").read_text(encoding="utf-8")
-    partners_text = (requirements / "partners.txt").read_text(encoding="utf-8")
-
-    # cli.txt mirrors the core dependency set, so the client belongs there...
-    assert "mcp>=1.26.0,<2.0.0" in cli_text
-    # ...and partners.txt inherits it transitively rather than redeclaring it.
-    assert "-r server.txt" in partners_text
-    assert "mcp>=" not in partners_text
-
-
 def test_full_app_cron_dependency_matches_every_server_install_surface() -> None:
     expected = "croniter>=6.0.0,<7.0.0"
     with (REPOSITORY_ROOT / "pyproject.toml").open("rb") as file:

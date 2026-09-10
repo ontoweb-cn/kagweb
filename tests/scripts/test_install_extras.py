@@ -154,6 +154,6 @@ def test_every_extra_the_project_declares_resolves() -> None:
     root = Path(__file__).resolve().parents[2]
     extras = install_extras.load_extras(root / "pyproject.toml")
 
-    _, unknown = install_extras.resolve(extras, ["math-animator", "partners"])
+    _, unknown = install_extras.resolve(extras, ["math-animator"])
 
     assert unknown == []

@@ -167,18 +167,3 @@ test("stop defers closing a connecting browser socket until it opens", () => {
   assert.equal(sockets[0].readyState, 3);
   assert.equal(sockets.length, 1);
 });
-
-test("partner composer restores focus after streaming and page return", () => {
-  const source = readFileSync(
-    path.resolve(process.cwd(), "components/partners/PartnerComposer.tsx"),
-    "utf8",
-  );
-
-  assert.match(source, /restoreFocusAfterSendRef\.current = true/);
-  assert.match(source, /if \(disabled \|\| streaming/);
-  assert.match(source, /window\.addEventListener\("blur", rememberFocus\)/);
-  assert.match(
-    source,
-    /document\.addEventListener\("visibilitychange", restoreFocus\)/,
-  );
-});

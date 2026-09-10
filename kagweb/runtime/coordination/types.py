@@ -36,9 +36,6 @@ class TurnCommandKind(StrEnum):
 
 class BackgroundCommandKind(StrEnum):
     CRON_RELOAD = "cron_reload"
-    PARTNER_START = "partner_start"
-    PARTNER_STOP = "partner_stop"
-    PARTNER_RELOAD = "partner_reload"
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,12 +7,10 @@ import { capabilityForPath } from "../lib/capability-routes";
 
 test("capabilityForPath maps LLM features to llm", () => {
   assert.equal(capabilityForPath("/chat"), "llm");
-  assert.equal(capabilityForPath("/partners"), "llm");
 });
 
 test("capabilityForPath matches nested routes by prefix", () => {
   assert.equal(capabilityForPath("/chat/abc-123"), "llm");
-  assert.equal(capabilityForPath("/partners/partner-1"), "llm");
 });
 
 test("capabilityForPath matches on a segment boundary, not a bare prefix", () => {

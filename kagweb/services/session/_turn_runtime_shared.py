@@ -365,25 +365,6 @@ def _llm_selection_dict(value: Any) -> dict[str, str] | None:
     return selection.to_dict() if selection else None
 
 
-def _partner_group_references(value: Any) -> list[dict[str, str]]:
-    """Normalize the structured home-chat reference contract."""
-    if not isinstance(value, list):
-        return []
-    references: list[dict[str, str]] = []
-    seen: set[tuple[str, str]] = set()
-    for raw in value[:20]:
-        if not isinstance(raw, dict):
-            continue
-        group_id = str(raw.get("group_id") or "").strip()[:80]
-        session_key = str(raw.get("session_key") or "").strip()[:120]
-        key = (group_id, session_key)
-        if not all(key) or key in seen:
-            continue
-        seen.add(key)
-        references.append({"group_id": group_id, "session_key": session_key})
-    return references
-
-
 def _request_snapshot_metadata(
     *,
     payload: dict[str, Any],
@@ -392,7 +373,6 @@ def _request_snapshot_metadata(
     config: dict[str, Any],
     attachments: list[dict[str, Any]],
     history_references: list[Any],
-    partner_group_references: list[dict[str, str]],
     persona: str,
     llm_selection: dict[str, str] | None,
 ) -> dict[str, Any]:
@@ -409,8 +389,6 @@ def _request_snapshot_metadata(
         snapshot["config"] = dict(config)
     if history_references:
         snapshot["historyReferences"] = history_references
-    if partner_group_references:
-        snapshot["partnerGroupReferences"] = partner_group_references
     if persona:
         snapshot["persona"] = persona
     if llm_selection:

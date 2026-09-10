@@ -522,7 +522,6 @@ async def test_the_window_key_is_not_persisted_with_the_user_message(tmp_path, m
         config={},
         attachments=[],
         history_references=[],
-        partner_group_references=[],
         persona="",
         llm_selection=None,
     )

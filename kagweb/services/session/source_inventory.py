@@ -52,7 +52,7 @@ class SourceEntry:
     """One row in the per-turn Attached Sources manifest."""
 
     sid: str
-    kind: str  # attachment | history | partner_group
+    kind: str  # attachment | history
     name: str
     full_text: str
     fresh: bool
@@ -114,7 +114,6 @@ async def build_inventory(
     current_turn_ordinal: int,
     fresh_attachment_records: Sequence[dict[str, Any]],
     fresh_history_session_ids: Sequence[Any],
-    fresh_partner_group_references: Sequence[Any] = (),
     language: str = "en",
 ) -> SourceInventory:
     """Compose the session-cumulative inventory for one chat turn.
@@ -135,12 +134,6 @@ async def build_inventory(
         inv,
         store=store,
         history_session_ids=fresh_history_session_ids,
-        current_turn_ordinal=current_turn_ordinal,
-        language=language,
-    )
-    _add_fresh_partner_groups(
-        inv,
-        references=fresh_partner_group_references,
         current_turn_ordinal=current_turn_ordinal,
         language=language,
     )
@@ -278,32 +271,6 @@ async def _add_fresh_history(
         )
 
 
-def _add_fresh_partner_groups(
-    inv: SourceInventory,
-    *,
-    references: Sequence[Any],
-    current_turn_ordinal: int,
-    language: str,
-) -> None:
-    for raw in references:
-        ref = _partner_group_reference(raw)
-        if ref is None:
-            continue
-        text, name = _load_partner_group_reference(ref, language=language)
-        if not text:
-            continue
-        inv.add(
-            SourceEntry(
-                sid=_partner_group_source_id(ref),
-                kind="partner_group",
-                name=name,
-                full_text=text,
-                fresh=True,
-                first_seen_turn=current_turn_ordinal,
-            )
-        )
-
-
 # ----- Historical source collection ---------------------------------------
 
 
@@ -395,30 +362,6 @@ async def _collect_from_user_message(
             )
         )
 
-    # Partner Group transcripts are public speaker/content rows only. Their
-    # service resolver applies ownership and the same absolute transcript cap
-    # used by live Group context; persisted private ``events`` never enter it.
-    for raw in snap.get("partnerGroupReferences") or []:
-        ref = _partner_group_reference(raw)
-        if ref is None:
-            continue
-        sid = _partner_group_source_id(ref)
-        if sid in inv:
-            continue
-        text, name = _load_partner_group_reference(ref, language=language)
-        if not text:
-            continue
-        inv.add(
-            SourceEntry(
-                sid=sid,
-                kind="partner_group",
-                name=name,
-                full_text=text,
-                fresh=False,
-                first_seen_turn=turn_ordinal,
-            )
-        )
-
 
 # ----- Lineage walker (branch-safe, store-protocol-compatible) ------------
 
@@ -476,16 +419,11 @@ def _imported_agent_label(meta: dict[str, Any], lang: str) -> str | None:
 
     A referenced session is "imported" when its id carries the ``imported_``
     prefix or its preferences hold the ``import`` block written at import time.
-    A referenced *partner* session (resolved by :func:`_load_partner_session`)
-    carries ``source == "partner"`` and is framed with the partner's own name.
     """
     prefs = meta.get("preferences") if isinstance(meta, dict) else None
     import_meta = prefs.get("import") if isinstance(prefs, dict) else None
     source = str((import_meta or {}).get("source") or "").strip().lower()
     sid = str(meta.get("session_id") or meta.get("id") or "")
-    if source == "partner":
-        name = str(meta.get("partner_name") or "").strip()
-        return name or ("伙伴" if lang == "zh" else "a partner")
     if not source and not sid.startswith("imported_"):
         return None
     if source in _EXTERNAL_AGENT_LABELS:
@@ -565,89 +503,6 @@ def serialize_referenced_transcript(
     return header + "\n\n" + "\n\n".join(lines)
 
 
-# A referenced *partner* session: ``partner:{partner_id}:{session_key}``. The
-# session_key itself may contain ``:`` (e.g. ``web:abc``), so only the partner
-# id is split off — partner ids are colon-free slugs.
-_PARTNER_REF_PREFIX = "partner:"
-
-
-def _load_partner_session(ref: str, *, language: str = "en") -> tuple[str, str]:
-    """Resolve a ``partner:{pid}:{session_key}`` reference into transcript + title.
-
-    Partner conversations live in the admin-scoped ``PartnerSessionStore`` (one
-    JSONL per session under ``data/partners/<id>/sessions/``), not the main
-    session store — so they resolve here through the partner manager rather than
-    ``store.get_session``. Gated to admins: partner data is admin-scoped (the
-    whole partners API is admin-gated), and this read runs inside the user's
-    turn, so a non-admin must not be able to pull a partner's transcript by
-    hand-crafting a reference id. Returns ``("", "")`` on any miss.
-    """
-    rest = ref[len(_PARTNER_REF_PREFIX) :]
-    pid, _, session_key = rest.partition(":")
-    pid, session_key = pid.strip(), session_key.strip()
-    if not pid or not session_key:
-        return "", ""
-
-    from kagweb.multi_user.context import get_current_user
-
-    if not get_current_user().is_admin:
-        return "", ""
-    try:
-        from kagweb.services.partners import get_partner_manager
-
-        manager = get_partner_manager()
-        if not manager.partner_exists(pid):
-            return "", ""
-        messages = manager.get_history(pid, session_key=session_key, limit=400)
-        config = manager.load_config(pid)
-    except Exception:
-        logger.debug("Failed to resolve partner session %r", ref, exc_info=True)
-        return "", ""
-
-    partner_name = (getattr(config, "name", "") or pid).strip()
-    meta = {"preferences": {"import": {"source": "partner"}}, "partner_name": partner_name}
-    transcript = serialize_referenced_transcript(meta, messages, language=language)
-    if not transcript:
-        return "", ""
-    opener = next((m for m in messages if str(m.get("role")) == "user"), None)
-    first_line = str((opener or {}).get("content", "") or "").strip().splitlines()
-    title = (first_line[0][:60].strip() if first_line else "") or partner_name
-    return transcript, title
-
-
-def _partner_group_reference(raw: Any) -> dict[str, str] | None:
-    if not isinstance(raw, dict):
-        return None
-    group_id = str(raw.get("group_id") or "").strip()
-    session_key = str(raw.get("session_key") or "").strip()
-    if not group_id or not session_key:
-        return None
-    return {"group_id": group_id[:80], "session_key": session_key[:120]}
-
-
-def _partner_group_source_id(ref: dict[str, str]) -> str:
-    composite = f"{ref['group_id']}\0{ref['session_key']}".encode()
-    return "pg-" + hashlib.sha256(composite).hexdigest()[:20]
-
-
-def _load_partner_group_reference(
-    ref: dict[str, str],
-    *,
-    language: str,
-) -> tuple[str, str]:
-    try:
-        from kagweb.services.partner_groups import get_partner_group_manager
-
-        return get_partner_group_manager().referenced_transcript(
-            ref["group_id"],
-            ref["session_key"],
-            language=language,
-        )
-    except Exception:
-        logger.debug("Failed to resolve Partner Group reference %r", ref, exc_info=True)
-        return "", ""
-
-
 async def _load_history_session(
     store: SessionStoreProtocol,
     history_session_id: str,
@@ -656,12 +511,7 @@ async def _load_history_session(
 ) -> tuple[str, str]:
     """Fetch and serialize a referenced history session into transcript +
     title. Returns ``("", "")`` when the session is empty or missing.
-
-    A ``partner:`` reference resolves through the partner store instead of the
-    main session store (see :func:`_load_partner_session`).
     """
-    if history_session_id.startswith(_PARTNER_REF_PREFIX):
-        return _load_partner_session(history_session_id, language=language)
     try:
         meta = await store.get_session(history_session_id)
     except Exception:

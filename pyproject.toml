@@ -134,36 +134,6 @@ server = [
     "psutil>=5.9.0,<8.0.0",
 ]
 
-# Partner channel SDKs. Mirrors requirements/partners.txt.
-# Partners run on the chat agent loop, so there is no engine here — just the
-# IM platform SDKs. The MCP client used for deferred tools is a core dependency
-# (see `mcp` above), not a partners-only one.
-partners = [
-    "kagweb[server]",
-    "python-telegram-bot[socks]>=22.6,<23.0",
-    "wecom-aibot-sdk>=1.0.8,<2.0.0",
-    "lark-oapi>=1.5.0,<2.0.0",
-    "dingtalk-stream>=0.24.0,<1.0.0",
-    "slack-sdk>=3.39.0,<4.0.0",
-    "slackify-markdown>=0.2.0,<1.0.0",
-    "qq-botpy>=1.2.0,<2.0.0",
-    "python-socketio>=5.16.0,<6.0.0",
-    "msgpack>=1.1.0,<2.0.0",
-    "python-socks[asyncio]>=2.8.0,<3.0.0",
-    "socksio>=1.0.0,<2.0.0",
-    "websocket-client>=1.9.0,<2.0.0",
-    "zulip>=0.8.0,<1.0.0",
-    # slack-sdk Socket Mode + napcat need the async `websockets` lib — pin it
-    # explicitly instead of relying on dingtalk-stream/lark-oapi transitives.
-    "websockets>=12.0",
-    # napcat (OneBot v11) media downloads
-    "aiohttp>=3.10.0,<4.0.0",
-    # msteams Bot Framework token validation
-    "PyJWT[crypto]>=2.8.0,<3.0.0",
-    # weixin QR-code login
-    "qrcode>=7.4.0,<9.0.0",
-]
-
 # Optional document-parsing engines for the shared parse layer
 # (kagweb/services/parsing). MinerU is an external CLI / hosted API and is
 # not a pip dependency. Engines import lazily, so these stay opt-in and an
@@ -187,23 +157,6 @@ parse = [
     "kagweb[parse-docling]",
     "kagweb[parse-pymupdf4llm]",
     "kagweb[parse-liteparse]",
-]
-
-# Legacy alias kept for one release: `pip install kagweb[tutorbot]`.
-tutorbot = ["kagweb[partners]"]
-
-# Matrix (Element) channel for partners. Mirrors requirements/matrix.txt.
-# Default Matrix install is non-E2EE so it works without libolm/python-olm.
-matrix = [
-    "matrix-nio>=0.25.2,<1.0.0",
-    "mistune>=3.0.0,<4.0.0",
-    "nh3>=0.2.18,<1.0.0",
-]
-
-# Optional Matrix E2EE addon. Mirrors requirements/matrix-e2e.txt and requires libolm.
-matrix-e2e = [
-    "kagweb[matrix]",
-    "matrix-nio[e2e]>=0.25.2,<1.0.0",
 ]
 
 # Math Animator addon (Manim). Mirrors requirements/math-animator.txt.
@@ -237,10 +190,8 @@ dev = [
     "defusedxml>=0.7.1",
 ]
 
-# Everything: server + partners + non-E2EE matrix + math-animator + dev tools.
+# Everything: server + math-animator + dev tools.
 all = [
-    "kagweb[partners]",
-    "kagweb[matrix]",
     "kagweb[math-animator]",
     "kagweb[dev]",
     "kagweb[video-learning]",

@@ -477,19 +477,7 @@ def _require_codex_oauth_actor() -> None:
     what left ordinary users unable to use Codex at all: an owner-bound
     profile is (correctly) never grantable, and they could not sign in for
     themselves either (#781).
-
-    A partner is refused: it is a synthetic user whose owner is a real
-    account, so letting one in would mean acting on that person's login —
-    including signing them out. Partners inherit the owner's login at call
-    time and need no lifecycle of their own.
     """
-    from kagweb.services.partners.scope import is_partner_user_id
-
-    if is_partner_user_id(get_current_user().id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="A partner uses the Codex login of the account that owns it.",
-        )
 
 
 def _codex_http_exception(error: CodexAuthError) -> HTTPException:

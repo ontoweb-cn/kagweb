@@ -24,7 +24,6 @@ from .._turn_runtime_shared import (
     _count_branch_user_turns,
     _extract_selection_tutor_context,
     _format_selection_tutor_context,
-    _partner_group_references,
     _request_snapshot_metadata,
     _resolve_selection_tutor_context,
     _resolve_turn_outcome,
@@ -262,9 +261,6 @@ class TurnExecutor:
             else:
                 branch_parent_id = None
             history_references = payload.get("history_references", []) or []
-            partner_group_references = _partner_group_references(
-                payload.get("partner_group_references")
-            )
 
             import base64 as _b64
             import uuid as _uuid
@@ -435,7 +431,6 @@ class TurnExecutor:
                 current_turn_ordinal=current_turn_ordinal,
                 fresh_attachment_records=attachment_records,
                 fresh_history_session_ids=history_references,
-                fresh_partner_group_references=partner_group_references,
                 language=str(payload.get("language", "en") or "en"),
             )
             source_manifest_text, source_index = render_manifest(inventory)
@@ -467,7 +462,6 @@ class TurnExecutor:
                         config=request_config,
                         attachments=persisted_attachment_records,
                         history_references=history_references,
-                        partner_group_references=partner_group_references,
                         persona=active_persona,
                         llm_selection=payload.get("llm_selection"),
                     ),
@@ -501,7 +495,6 @@ class TurnExecutor:
                     "turn_id": turn_id,
                     "selection_tutor_context": selection_tutor_context or {},
                     "history_references": history_references,
-                    "partner_group_references": partner_group_references,
                     "learner_profile_prompt": learner_profile_prompt,
                     "active_persona": active_persona,
                     "llm_selection": payload.get("llm_selection") or {},

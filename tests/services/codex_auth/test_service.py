@@ -71,35 +71,6 @@ def test_each_user_gets_their_own_codex_credential_root(
     assert not hasattr(service_module, "PARTNER_USER_PREFIX")
 
 
-def test_partner_turn_inherits_its_owner_codex_login(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    """A partner has a workspace but no account, so it borrows its owner's token.
-
-    Before #711 the credential store followed the partner scope to
-    ``data/partners/<id>/workspace/user``, found nothing, and failed in 0s.
-    """
-    from kagweb.multi_user import paths as paths_module
-    from kagweb.multi_user.context import reset_current_user, set_current_user
-    from kagweb.services.partners.scope import partner_user
-
-    admin_root = (tmp_path / "data").resolve()
-    monkeypatch.setattr(paths_module, "ADMIN_WORKSPACE_ROOT", admin_root)
-    monkeypatch.setattr(paths_module, "USERS_ROOT", admin_root / "users")
-    monkeypatch.setattr(paths_module, "SYSTEM_ROOT", admin_root / "system")
-    monkeypatch.setattr(paths_module, "_path_services", {})
-    monkeypatch.setattr(service_module, "_RELOCATED_SECRET_ROOTS", set())
-
-    as_admin = service_module._codex_secrets_root()
-    token = set_current_user(partner_user("ada"))
-    try:
-        assert service_module._codex_secrets_root() == as_admin
-        assert service_module._codex_user_root() == admin_root / "user"
-    finally:
-        reset_current_user(token)
-
-
 def test_ssh_forward_command_maps_callback_to_frontend_port() -> None:
     assert (
         ssh_forward_command(1457, 4782) == "ssh -N -L 1457:127.0.0.1:4782 <ssh-user>@<server-host>"

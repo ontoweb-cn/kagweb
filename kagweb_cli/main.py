@@ -14,7 +14,6 @@ from .common import build_turn_request, console, maybe_run
 from .config_cmd import register as register_config
 from .doctor import register as register_doctor
 from .init_cmd import register as register_init
-from .partner import register as register_partner
 from .plugin import register as register_plugin
 from .provider_cmd import register as register_provider
 from .session_cmd import register as register_session
@@ -29,21 +28,18 @@ app = typer.Typer(
     add_completion=False,
 )
 
-partner_app = typer.Typer(help="Manage partners (IM-connected companions).")
 chat_app = typer.Typer(help="Interactive chat REPL.")
 plugin_app = typer.Typer(help="List plugins.")
 config_app = typer.Typer(help="Inspect configuration.")
 session_app = typer.Typer(help="Manage shared sessions.")
 provider_app = typer.Typer(help="Manage provider OAuth login.")
 
-app.add_typer(partner_app, name="partner")
 app.add_typer(chat_app, name="chat")
 app.add_typer(plugin_app, name="plugin")
 app.add_typer(config_app, name="config")
 app.add_typer(session_app, name="session")
 app.add_typer(provider_app, name="provider")
 
-register_partner(partner_app)
 register_chat(chat_app)
 register_plugin(plugin_app)
 register_config(config_app)

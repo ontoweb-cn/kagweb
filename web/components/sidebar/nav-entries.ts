@@ -32,8 +32,6 @@ export const PRIMARY_NAV: NavEntry[] = [
     requires: "llm",
     group: "learning",
   },
-  // Partners are temporarily hidden from navigation. Their routes and
-  // services remain available for later restoration.
   {
     href: "/space",
     label: "Learning Space",

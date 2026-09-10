@@ -25,7 +25,6 @@ export interface StartTurnInput {
   bookReferences?: BookReference[];
   readingReferences?: ReadingReference[];
   memoryReferences?: MemoryReferences;
-  skills?: string[];
   persona?: string | null;
   llmSelection?: LLMSelection | null;
   workspaceMode?: string | null;

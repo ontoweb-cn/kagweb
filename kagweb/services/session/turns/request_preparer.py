@@ -14,7 +14,6 @@ from kagweb.core.turn_request import TurnRequest
 from .._turn_runtime_shared import (
     _extract_selection_tutor_context,
     _llm_selection_dict,
-    _partner_group_references,
     _resolve_selection_tutor_context,
     _TurnExecution,
 )
@@ -506,13 +505,6 @@ class TurnRequestPreparer:
                 overrides.get("history_references")
                 if overrides.get("history_references") is not None
                 else preferences.get("history_references") or []
-            ),
-            "partner_group_references": _partner_group_references(
-                overrides.get("partner_group_references")
-                if overrides.get("partner_group_references") is not None
-                else snapshot.get("partnerGroupReferences")
-                or preferences.get("partner_group_references")
-                or []
             ),
             "config": config,
             "persist_user_message": False,

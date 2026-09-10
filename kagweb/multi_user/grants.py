@@ -25,11 +25,6 @@ def empty_grant(user_id: str) -> dict[str, Any]:
         "version": 2,
         "user_id": user_id,
         "models": {"llm": []},
-        # Partners an admin has lent this user. People build their own partners
-        # now, so a grant is only about someone *else's*: it lets the user talk
-        # to the named partners — never configure them — and their side of each
-        # conversation stays private to their account (``[{"partner_id": ...}]``).
-        "partners": [],
         # Tool whitelists share the partner-config semantics for built-ins:
         # ``enabled_tools=None`` means "default" (every tool in the pool),
         # ``[]`` means none, a list is an explicit whitelist. MCP tools can
@@ -133,13 +128,6 @@ def normalize_grant(user_id: str, payload: dict[str, Any] | None) -> dict[str, A
     if not isinstance(items, list):
         items = []
     base["models"]["llm"] = [dict(item) for item in items if isinstance(item, dict)]
-    for key in ("partners",):
-        # Read once, then narrow. Two separate ``.get`` calls cannot be narrowed
-        # together — nothing promises they return the same object — so the
-        # inline-conditional form left this iterating a possible ``None``.
-        raw = payload.get(key)
-        values = raw if isinstance(raw, list) else []
-        base[key] = [dict(item) for item in values if isinstance(item, dict)]
     for key in ("enabled_tools", "mcp_tools", "cli_apps"):
         base[key] = _normalize_tool_list(payload.get(key))
     exec_enabled = payload.get("exec_enabled")

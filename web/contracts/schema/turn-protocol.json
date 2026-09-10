@@ -946,14 +946,6 @@
           "default": null,
           "title": "Parent Message Id"
         },
-        "partner_group_references": {
-          "items": {
-            "additionalProperties": true,
-            "type": "object"
-          },
-          "title": "Partner Group References",
-          "type": "array"
-        },
         "persist_user_message": {
           "default": true,
           "title": "Persist User Message",
@@ -1079,13 +1071,6 @@
           ],
           "default": null,
           "title": "Session Id"
-        },
-        "skills": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Skills",
-          "type": "array"
         },
         "subagent_consult_budget": {
           "anyOf": [

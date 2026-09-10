@@ -49,9 +49,6 @@ export type NotebookId = string;
 export type RecordIds = string[];
 export type NotebookReferences = NotebookReference[];
 export type ParentMessageId = number | null;
-export type PartnerGroupReferences = {
-  [k: string]: unknown;
-}[];
 export type PersistUserMessage = boolean;
 export type Persona = string | null;
 export type ProtocolVersion = "2.0";
@@ -71,7 +68,6 @@ export type SelectionTutorContext = {
   [k: string]: unknown;
 } | null;
 export type SessionId = string | null;
-export type Skills = string[];
 export type SubagentConsultBudget = number | null;
 export type SupersededTurnId = string | null;
 export type TimedMediaId = string | null;
@@ -281,7 +277,6 @@ export interface StartTurnCommand {
   memory_references?: MemoryReferences;
   notebook_references?: NotebookReferences;
   parent_message_id?: ParentMessageId;
-  partner_group_references?: PartnerGroupReferences;
   persist_user_message?: PersistUserMessage;
   persona?: Persona;
   protocol_version: ProtocolVersion;
@@ -295,7 +290,6 @@ export interface StartTurnCommand {
   regenerated_from_message_id?: RegeneratedFromMessageId;
   selection_tutor_context?: SelectionTutorContext;
   session_id?: SessionId;
-  skills?: Skills;
   subagent_consult_budget?: SubagentConsultBudget;
   superseded_turn_id?: SupersededTurnId;
   timed_media_id?: TimedMediaId;

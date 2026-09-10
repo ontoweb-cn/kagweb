@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from kagweb.api.routers.auth import require_admin, require_auth
 from kagweb.multi_user.audit import log_admin_action, log_guardian_action
-from kagweb.multi_user.context import get_current_user
 from kagweb.multi_user.device_credentials import revoke_device_credentials_for_user
 from kagweb.multi_user.grants import (
     LEARNING_AGE_BANDS,
@@ -119,30 +118,6 @@ def _admin_catalog_summary() -> dict[str, list[dict[str, Any]]]:
     return out
 
 
-def _admin_partner_summary() -> list[dict[str, Any]]:
-    """The partners an admin can hand to someone else.
-
-    Admin-managed partners only — the ones with no owner, or that the admin
-    created. A partner someone built for themselves is theirs to share or not;
-    listing it here would let an admin lend out a private companion (and its
-    soul, which people write personally) by a single click. Identity only: no
-    channel wiring or model selection leaks into the assignable summary.
-    """
-    from kagweb.services.partners import get_partner_manager
-
-    admin_id = get_current_user().id
-    return [
-        {
-            "partner_id": str(item.get("partner_id") or ""),
-            "name": item.get("name") or item.get("partner_id") or "",
-            "description": item.get("description") or "",
-            "emoji": item.get("emoji") or "",
-        }
-        for item in get_partner_manager().list_partners()
-        if str(item.get("owner_id") or "") in ("", admin_id)
-    ]
-
-
 def _require_assignable_user(user_id: str) -> tuple[str, dict[str, Any]]:
     user_record = get_user_by_id(user_id)
     if user_record is None:
@@ -207,15 +182,8 @@ def _log_supervisor_action(
 
 @router.get("/admin/resources")
 async def admin_resources(_: object = Depends(require_admin)) -> dict[str, Any]:
-    """Everything an admin can assign to a user: models and
-    the tool surface (system tools + MCP tools, same pool partners use)."""
-    from kagweb.api.utils.tool_options import build_tool_options
-
-    tool_options = await build_tool_options()
-    return {
-        "models": _admin_catalog_summary(),
-        "partners": _admin_partner_summary(),
-    }
+    """Everything an admin can assign to a user: their model catalog."""
+    return {"models": _admin_catalog_summary()}
 
 
 @router.get("/guardians")
@@ -456,7 +424,6 @@ async def put_user_grants(
         target_user_id=user_id,
         summary={
             "model_count": len(grant.get("models", {}).get("llm", []) or []),
-            "partner_count": len(grant.get("partners", []) or []),
             "enabled_tools": grant.get("enabled_tools"),
             "mcp_tool_count": (
                 None if grant.get("mcp_tools") is None else len(grant.get("mcp_tools") or [])

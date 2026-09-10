@@ -172,18 +172,12 @@ def _resolve_owner() -> tuple[str, PathService]:
     "give up and assume admin" fallback fails open onto the most privileged
     account there is).
     """
-    from kagweb.services.partners.scope import is_partner_user_id
-
     from .context import get_current_user_or_none
 
     user = get_current_user_or_none()
     if user is None:
         # No request scope: CLI runs and background jobs act as the deployment.
         return LOCAL_ADMIN_ID, PathService.get_instance()
-    if is_partner_user_id(user.id):
-        # A partner is a synthetic user, not a person: it has a workspace but no
-        # account, so an asset keyed to an account belongs to its owner.
-        return LOCAL_ADMIN_ID, get_admin_path_service()
     if user.scope.kind == "user":
         ensure_scope_workspace(user.scope)
         return user.id, get_path_service_for_scope(user.scope)
@@ -193,16 +187,10 @@ def _resolve_owner() -> tuple[str, PathService]:
 def get_owner_path_service() -> PathService:
     """Resolve to the root of the human account that owns the current scope.
 
-    A partner is a *synthetic* user, not a person: it has a workspace under
-    ``data/partners/<id>`` but no account of its own, and that workspace is
-    created by — and lives inside — the admin tree. Assets keyed to a real
-    account rather than to a workspace (OAuth credentials, above all) must
-    therefore resolve to the owner, or a partner turn would look for a login
-    that can never exist there. Every other scope owns itself.
-
-    Use this only for owner-keyed assets; workspace-keyed ones (rag, skills,
-    notebooks, memory) belong to the partner and go through
-    :func:`get_current_path_service`.
+    Every scope owns itself: assets keyed to a real account rather than to a
+    workspace (OAuth credentials, above all) resolve to that account. Use this
+    only for owner-keyed assets; workspace-keyed ones (attachments, outputs)
+    go through :func:`get_current_path_service`.
     """
     return _resolve_owner()[1]
 

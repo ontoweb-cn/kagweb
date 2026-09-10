@@ -125,61 +125,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Failed to start EventBus: {e}")
 
-    async def _start_partners() -> None:
-        from kagweb.services.partners import get_partner_manager
-
-        manager = get_partner_manager()
-        manager.configure_runtime_owner(application_container.worker_id)
-        await manager.auto_start_partners()
-
-    async def _stop_partners() -> None:
-        from kagweb.services.partners import get_partner_manager
-
-        await get_partner_manager().stop_all(preserve_auto_start=True)
-
-    from kagweb.runtime.coordination import BackgroundCommandKind
-
-    async def _handle_background_command(command) -> None:
-        kind = str(command.kind)
-
-        from kagweb.services.partners import get_partner_manager
-
-        manager = get_partner_manager()
-        manager.configure_runtime_owner(application_container.worker_id)
-        partner_id = str(command.payload.get("partner_id") or "").strip()
-        if not partner_id:
-            raise ValueError(f"Background command {kind!r} needs partner_id")
-        if kind == BackgroundCommandKind.PARTNER_START:
-            instance = await manager.start_partner(partner_id)
-            if bool(command.payload.get("persist_auto_start", True)):
-                manager.save_config(partner_id, instance.config, auto_start=True)
-            return
-        if kind == BackgroundCommandKind.PARTNER_STOP:
-            await manager.stop_partner(
-                partner_id,
-                preserve_auto_start=bool(command.payload.get("preserve_auto_start", False)),
-            )
-            return
-        if kind == BackgroundCommandKind.PARTNER_RELOAD:
-            instance = manager.get_partner(partner_id)
-            if instance is None or not instance.running:
-                return
-            config = manager.load_config(partner_id)
-            if config is not None:
-                instance.config = config
-            await manager.reload_channels(partner_id)
-            return
-        raise ValueError(f"Unknown background command kind: {kind}")
-
     from kagweb.runtime.background_leader import BackgroundLeaderSupervisor
 
+    # Partners are gone; the supervisor remains solely for turn recovery after
+    # a leader failover.
     background_supervisor = BackgroundLeaderSupervisor(
         application_container.coordinator,
         application_container.worker_id,
-        start_callbacks=[_start_partners],
-        stop_callbacks=[_stop_partners],
         recovery_callback=application_container.recover_once,
-        control_callback=_handle_background_command,
         renew_interval_seconds=application_container.settings.renew_interval_seconds,
         recovery_interval_seconds=application_container.settings.recovery_interval_seconds,
     )
@@ -374,8 +327,6 @@ from kagweb.api.routers import (
     imports,
     mcp_settings,
     outputs,
-    partner_groups,
-    partners,
     personas,
     sessions,
     settings,
@@ -448,24 +399,6 @@ app.include_router(
 app.include_router(personas.router, prefix="/api", tags=["personas"], dependencies=_auth)
 app.include_router(system.router, prefix="/api/system", tags=["system"], dependencies=_auth)
 app.include_router(voice.router, prefix="/api/voice", tags=["voice"], dependencies=_auth)
-# Partners are per-user resources now: anyone may build their own, and an admin
-# may assign theirs to others. Only ``_auth`` here — every route in the router
-# declares whether it needs *use* or *manage* rights on the partner it names
-# (see ``multi_user.partner_access``), which a blanket admin gate could not
-# express.
-app.include_router(partners.router, prefix="/api/partners", tags=["partners"], dependencies=_auth)
-app.include_router(
-    partner_groups.router,
-    prefix="/api/partner-groups",
-    tags=["partner-groups"],
-    dependencies=_auth,
-)
-app.include_router(partners.ws_router, prefix="/ws/partners", tags=["partners"])
-app.include_router(
-    partner_groups.ws_router,
-    prefix="/ws/partner-groups",
-    tags=["partner-groups"],
-)
 app.include_router(
     attachments.router,
     prefix="/files/attachments",
