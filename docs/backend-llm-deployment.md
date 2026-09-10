@@ -579,6 +579,18 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 
 **判定基元已有**：`AGENT_LOOP_INTELLECT_PRESETS = frozenset({"intellect", "intellect-team"})`（`runtime_settings.py:97`），已用于自动选择 primary 的优先级。
 
+> **⚠ 该集合已不完整（2026-09-10 补记）**。远端在此期间合入了大量 agent-loop 变更，Intellect 现在有**三个**预设，而集合只含两个：
+>
+> | 预设 | family | 传输 | 是否在集合内 |
+> |---|---|---|---|
+> | `intellect` | **cli** | ACP（`intellect acp`，长驻子进程） | ✅ |
+> | `intellect-team` | http | turn | ✅ |
+> | **`intellect-runs`** | http | runs（`/v1/runs` + SSE） | ❌ **缺失** |
+>
+> `intellect-runs` 的描述是「Intellect **community** api_server over the run endpoints… for containerized deployments that cannot spawn the CLI」——**同属 Intellect 社区版**，按决策 5 的规则应一并启用 LLM 设置。落地前必须把 `intellect-runs` 加入该集合（或改为按 family/名称前缀判定，而非硬编码枚举）。
+
+**另一处必须核对的前提**：`intellect` 预设已从 http **改为 CLI/ACP 族**（`command="intellect"`、`base_args=("acp",)`、`transport="acp"`）。这影响决策 5 的**理由**（见下）与 §1.4 的凭据模型——ACP 子进程走 `cli_backend._build_child_env` 的**同一白名单**（`acp_backend.py:495-497`），`uses_workdir = True`（`:452`），信任边界与 one-shot CLI 一致。
+
 **需要新增的**：前端目前拿不到**解析后的 primary preset**——`_agent_loop_payload()`（`api/routers/settings.py:1048-1101`）返回 `settings` / `effective` / `auto_primary` / `presets` / `bounds`，但不含「谁是 primary 及其 preset」。
 
 **实现方案**：
@@ -601,6 +613,10 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
    用于门控导航顶级项 `models`（`settings-nav.ts:274`）及其 8 个子项。
 
 **为何这个规则是合理的**：Intellect 是唯一由运营者自托管、因而需要运营者自带模型凭据的后端族（社区版/企业版）。Claude Code / Codex 等 CLI 后端自带登录态；hermes / agentscope 等 HTTP 服务的模型由服务端自己配置——**对它们呈现 LLM 设置是误导**，正是 §P1-2「模型选择器指向错误对象」的同类问题。
+
+> **理由的适用性已变化（2026-09-10 补记）**：Intellect 社区版现在是 **CLI/ACP** 后端（`intellect acp`），而 CLI 族**自带登录态**（`~/.claude`、`~/.codex` 模式）——这与「需要运营者自带模型凭据」的原始理由**不再直接对应**。企业版（`intellect-team`）仍是自托管 HTTP 服务，理由依然成立。
+>
+> 这动摇了规则的一致性：若判据是「自托管 HTTP 服务」，则 `intellect`（ACP）与 `hermes`/`agentscope`（HTTP）的划分需要重新审视。**建议在落地前重新确认决策 5 的判据**——是按品牌（Intellect）还是按「是否为自托管 HTTP 服务」。本文不擅自改判，仅标记该冲突。
 
 **联动影响**：
 
@@ -851,6 +867,33 @@ grep -n "def resolve_embedding_runtime_config\|def resolve_videogen_runtime_conf
 | 三目录 31/15/6 文件、12,749/5,165/2,540 行 | 按目录 `find` + `wc` | ✅ |
 
 **方法学教训（R13 的根因）**：本项目多处统计使用 `find -iname` / `find -path`，两者分别只匹配**文件名**与**大小写敏感的路径**。凡声称「某子系统 N 行」时，必须按**目录**枚举后求和，不能依赖名字匹配——`tests/services/partners/` 这类「目录名含 partner、文件名不含」的情况会被完全漏掉。本文件此前的模块行数统计（§一 规模实测）采用的就是按目录枚举，故未受影响。
+
+### 基准漂移复核（2026-09-10，提交时）
+
+提交时远端（`gitee.com/wustbd/kagweb`）已领先 **20+ 个提交**，其中包含大量 `services/agent_loop/` 改动（新增 `acp_backend.py` 692 行、`http_backend.py` +295、`protocol.py` +45；`capabilities/chat/capability.py` ±217；`web/locales/en/app.json` −4,668 行）。本文基准 `c3ffe57` 因此**部分过时**，逐条复核结果如下。
+
+**经复核仍然成立的断言**（本轮于新 HEAD 重新实测）：
+
+| 断言 | 复核方式 | 结果 |
+|---|---|---|
+| `AgentLoopRequest` 无 `model` / `tools` 字段 | 字段全集 | 仍为 `prompt/history/session_id/language/workdir` ✅ |
+| `ChatCapability` 对 LLM 层零依赖 | `grep -c get_llm_config\|llm_selection` | **0** ✅ |
+| `get_tool_schemas()` 零调用者（P0-2 决定性证据） | 全仓库 grep | 仅定义处 ✅ |
+| 轮次门禁仍硬编码 `has_capability_access("llm")`（P0-1） | `request_preparer.py:121` | ✅ |
+| 9 个 LLM 调用点 | 逐文件 grep | ✅ |
+| `SERVICE_NAMES` 仍含 `embedding`/`videogen` 残留（P2-2） | 计数 | 仍 8 个服务 ✅ |
+| Skills 资产、人格预设、合伙人代码均未变 | `ls` + 文件计数 | ✅ 全部仍在 |
+| 子进程环境白名单（§1.4） | `acp_backend.py:495-497` 复用 `_build_child_env` | ✅ 新 ACP 族同样遵守 |
+
+**需要修正的断言**（已在上文对应位置补记）：
+
+1. **决策 5 的判定集合已不完整**——`intellect-runs`（Intellect 社区版，HTTP/runs 传输）未被 `AGENT_LOOP_INTELLECT_PRESETS` 覆盖。
+2. **决策 5 的理由需重新审视**——`intellect` 已改为 CLI/ACP 族，「自托管 HTTP 服务因而需自带凭据」的原始理由对社区版不再直接成立。
+3. **§1 的「两类后端族」表述仍成立但需细化**：family 仍只有 `cli` / `http`，但各新增了子变体——CLI 的 `transport`（`one-shot` | `acp`）、HTTP 的 `protocol`（`turn` | `runs`）。新增预设 `intellect-runs`。
+4. **profile schema 新增两个字段**（`approval_timeout_seconds`、`approval_default`，`settings.py:306-311`），§P1-3 的「完整字段列表」需相应扩充；但**仍无 `model` 字段**，P1-3 的核心结论不变。
+5. **检测能力已增强**：`/agent-loop/test` 现对 ACP 后端执行 `probe()` 握手探测（spawn → initialize → attach → shutdown），§1.6「只看在不在，不看能不能用」对 ACP 族已不再完全成立——**仍是「不发真实轮次」，但已比 `shutil.which` 深入**。
+
+**尚未复核**：`capability.py` 的 ±217 行改动是否影响 §二 的调用点清单；`app.json` 的 −4,668 行是否已顺带清理了决策 4 所列的死词条。两者均需在新基准下重新盘点。
 
 **[R8] `deep_research` 的实际可达性（本轮查清）**
 
