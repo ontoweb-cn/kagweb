@@ -455,6 +455,21 @@ def _string(value: Any) -> str:
     return "" if value is None else str(value).strip()
 
 
+#: The primary-loop picker uses these strings as mode sentinels, so a profile
+#: must not carry one as its id: its radio would collide with the sentinel
+#: (two siblings checked, duplicate React key) and saving that mode would map
+#: the id back to ``null``/``""``.
+_RESERVED_AGENT_LOOP_IDS = frozenset({"__auto__", "__none__"})
+
+
+def _agent_loop_profile_id(value: Any, index: int) -> str:
+    """A profile id that can never collide with a picker sentinel."""
+    candidate = _string(value).strip()
+    if not candidate or candidate in _RESERVED_AGENT_LOOP_IDS:
+        return f"profile-{index + 1}"
+    return candidate
+
+
 def _string_or_list(value: Any) -> str | list[str]:
     if isinstance(value, list):
         return [item for raw in value if (item := _string(raw))]
@@ -1286,7 +1301,7 @@ class RuntimeSettingsService:
         if preset == "intellect" and _string(raw.get("url")).strip():
             preset = "custom-http"
         return {
-            "id": _string(raw.get("id")).strip() or f"profile-{index + 1}",
+            "id": _agent_loop_profile_id(raw.get("id"), index),
             "name": _string(raw.get("name")).strip() or preset or f"profile-{index + 1}",
             "preset": preset,
             "enabled": _coerce_bool(raw.get("enabled"), True),
