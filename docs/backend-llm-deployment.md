@@ -4,7 +4,7 @@
 > 核对基准：`main` 分支 `c3ffe57`（2026-09-10 实测）
 > 关联文档：[`backend-architecture.md`](./backend-architecture.md)、[`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 
-> **文档结构**：§一~§四为**现状分析**（基于代码实测）；**§五为产品决策安排**（7 条方向性决策及其落地分析）；§六为优先级建议。§五的决策 6/7（人格与合伙人移除）会**反转**本文若干早期建议，反转处已在原位置标注。
+> **文档结构**：§一~§四为**现状分析**（基于代码实测）；**§五为产品决策安排**（8 条方向性决策及其落地分析）；§六为优先级建议。§五的决策 6/7（人格与合伙人移除）会**反转**本文若干早期建议，反转处已在原位置标注。
 
 ## 结论摘要
 
@@ -336,7 +336,7 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 
 ---
 
-## 五、产品决策安排（7 条）
+## 五、产品决策安排（8 条）
 
 以下为已确定的产品方向，及其落地所需的代码改动与影响面分析。
 
@@ -584,7 +584,7 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 > | 预设 | family | 传输 | 是否在集合内 |
 > |---|---|---|---|
 > | `intellect` | **cli** | ACP（`intellect acp`，长驻子进程） | ✅ |
-> | `intellect-team` | http | turn | ✅ |
+> | `intellect-team` | http | turn（**实为 runs，见决策 8**） | ✅ |
 > | **`intellect-runs`** | http | runs（`/v1/runs` + SSE） | ❌ **缺失** |
 >
 > `intellect-runs` 的描述是「Intellect **community** api_server over the run endpoints… for containerized deployments that cannot spawn the CLI」——**同属 Intellect 社区版**，按决策 5 的规则应一并启用 LLM 设置。落地前必须把 `intellect-runs` 加入该集合（或改为按 family/名称前缀判定，而非硬编码枚举）。
@@ -660,6 +660,7 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 
 **落地顺序提示**：决策 6 与决策 3/4 在 `pyproject.toml` 打包规则上有依赖——**先落决策 6、再删 `.md` 规则**，否则会静默丢失内置人格（详见决策 3a 打包说明）。
 
+
 ### 决策 7：移除合伙人（Partners）与 IM 通道
 
 **规则**：合伙人功能**只对接 agent backend**，而本项目已无 agent backend，因此**先移除**。将来恢复 IM 接入时，由 **agent backend 自己对接 IM** —— 即 KAGWeb 不为 IM 保留任何接缝。
@@ -732,6 +733,90 @@ kagweb/services/storage/attachment_store.py:38
 
 见决策 6 第 1 项——决策 7 使该字段的两个写入方**全部消失**。
 
+### 决策 8：Intellect 对接全面校正（**本文件最高优先级发现**）
+
+**背景**：为核实「`intellect-team` 是否支持审批」，克隆了 `gitee.com/wustbd/intellect-team`（浅克隆 HEAD `9dcfdfa`）逐项比对。结果推翻了本文此前关于 Intellect 对接的多处判断。
+
+**Intellect 有两个实现，Rust 是权威源**。该仓库自带一份 `docs/agentui-alignment/intellect-team-alignment-requirements.md`（由 AgentUI 团队提出），其中明确：
+
+> BFF SSE 解析器 `parse-intellect-enterprise-run-events-sse.ts` 注释明确引用 Rust `api_server.rs` 作为权威源
+> **Rust `api_server.rs`（8032 行）已超越 Python `adapter.py`（5611 行）成为主版本**
+
+且文件列出 P0 级问题：**Python 版是否仍在维护（P0）** 尚且待 Intellect-Team 确认，超期后「AgentUI 将启用双版本兼容兜底方案」。
+
+#### 权威事件契约（Rust `api_server.rs:2095-2131` `map_event_to_sse`）
+
+| SSE 行 | `type` | 其余字段 |
+|---|---|---|
+| （无） | `assistant.delta` | `text` |
+| （无） | `reasoning.delta` | `text` |
+| （无） | `thinking.progress` | `elapsed_s`, `silent_s` |
+| `event: tool.progress` | `tool.started` | `tool_id`, `name`, `arguments` |
+| `event: tool.progress` | `tool.completed` | `tool_id`, `name`, `result`, `duration_s` |
+| `event: clarify` | `clarify` | `question`, `choices`, `clarify_id` |
+| （无） | `assistant.completed` | `response`, `session_id` |
+| `event: error` | — | `message` |
+
+**关键**：除 `tool.progress` / `clarify` / `error` 外，**其余事件没有 SSE `event:` 行**——只有 `data: {"type": ...}`。事件的区分靠 JSON 体内的 `type` 字段。
+
+#### 两个实现当前都与 kagweb 的翻译器对不上
+
+kagweb 的 `RunsAgentLoopBackend._translate_run_event`（`http_backend.py:460-535`）读的是 `obj["event"]`。实测：
+
+| 语义 | kagweb 期望 | Rust（权威） | Python 当前 |
+|---|---|---|---|
+| 文本增量 | `event=message.delta`, `delta` | `type=assistant.delta`, **`text`** | `event=message.delta`, `type=assistant.delta`, `delta` |
+| 推理增量 | `event=reasoning.available`, `text` | `type=reasoning.delta`, **`text`** | `event=message.delta`, `type=reasoning.delta`, `text` |
+| 工具开始 | `event=tool.started` | `event=tool.progress`, `type=tool.started` | ✅ `event=tool.progress`, `type=tool.started` |
+| 工具结束 | `event=tool.completed` | `event=tool.progress`, `type=tool.completed` | ✅ 同上 |
+| 澄清 | **无分支** | `event=clarify`, `type=clarify` | `event=clarify`（**但无响应端点**） |
+| 心跳 | 无分支 | `type=thinking.progress` | `event=thinking.progress` |
+
+**后果**：
+
+- **Rust（权威）下**：文本与推理**全部静默丢弃**——kagweb 既收不到 `event=message.delta`，也不认 `type=assistant.delta`；工具事件可用；`clarify` 无分支。
+- **Python 下**：文本可用（`delta` 字段匹配）；推理静默丢弃；工具事件可用；`clarify` 无分支。
+- 因为 `_translate_run_event` 末尾 `return []`，**不认识的事件被静默忽略，不报错**——这是最危险的地方：对接失败不产生任何诊断信号。
+
+#### 关联缺陷
+
+**D1（P0）`intellect-team` 预设指向不存在的端点**
+
+```python
+AgentLoopPreset(name="intellect-team", family="http",
+                description="Intellect enterprise (team) agent service.")
+# → protocol 默认 "turn"、turn_path 默认 "/agent/turn"
+```
+
+- 实测 `grep -rn "agent/turn"` 在 intellect-team 全仓库**无任何结果**——该端点不存在。
+- 必须改为 runs 协议。`intellect-runs`（社区版）已正确配置（`turn_path="/v1/runs"`、`protocol="runs"`），企业版应同构。
+- **「intellect-team 支持审批」在 kagweb 中从未生效**——本文此前称「turn 不支持审批」，定性不完整：**服务端支持，kagweb 走错了通道**。
+
+**D2（P0）`clarify` 全链路缺失**
+
+- 用户问：clarify 是否对应 kagweb 的 `ask_user`？**意图相同，机制不同，且 kagweb 实现不全。**
+- 相同之处：都是「agent 向用户提问并等待答复」。kagweb 的 `capability.py:872-935` 已把审批请求映射成 `ask_user` 形状的卡片（`_approval_question`），注释即写「Approval requests — the agent-loop flavour of ask_user」，且 `ask_user` 与 `approval_request` **共用同一套卡片渲染器**（`capability.py:364-370`）。
+- **但 kagweb 没有 clarify 的响应通道**：`protocol.py` 有 `respond_clarify` 抽象方法，而 `RunsAgentLoopBackend` **未实现**（只有 `respond_approval` / `cancel`）。Rust 侧端点是 `POST /v1/chat/completions/{session_id}/clarify`，body `{clarify_id, answer}`。
+- 结论：**若要对齐，clarify 可复用 `ask_user` 的卡片与答复通路**（把 question/choices 映射成 `_approval_question` 那样的卡片，答复经新的 `respond_clarify` 发回）。但需先确认走 Rust 还是同时兼容 Python——**Python 版根本没有这个 HTTP 端点**（两个实现都存在 `clarify_channels`，只是暴露方式不同：Rust 自建路由，Python 停在函数层）。
+
+**D3（P1）`run.cancelled` kagweb 已处理**（更正）
+
+本文第三轮评审曾疑此事件未被处理。实测 `http_backend.py:532-534` **已处理**，收敛为终态 error。此项无需改动。
+
+**D4（P2）进程内取消语义**
+
+kagweb 的 `cancel()` 是**跨进程**的（`POST /v1/runs/{id}/stop`）。而 `AcpAgentLoopBackend` 的 docstring 提到「session-scoped backend keeps its connection alive across turns, so a mid-turn stop must reach the agent as a control message」。若用户的取消需在 Intellect 进程内也触发中止（而不只是 KAGWeb 侧停止消费），需确认 `/stop` 的语义是否足够——本次未核实。
+
+#### 落地建议
+
+1. **判据澄清**：把 `_translate_run_event` 的判据从 `event` 改为「`event or type`」——先按 `type` 分派，`event` 作为命名通道（`tool.progress` / `clarify` / `error`）的辅助。这是**同时兼容两个实现**的最小改动。
+2. **字段兼容**：文本增量同时接受 `delta` 与 `text`。
+3. **兜底与可观测性**：`_translate_run_event` 的末尾 `return []` 应至少 `log.debug` 未识别的事件类型——当前的静默丢弃使对接故障完全不可见（D 系列问题正因此长期未被发现）。
+4. **修 `intellect-team` 预设**（D1）——这是唯一「当前必然失败」的一项。
+5. **澄清 Python 版是否维护**（对齐文档的 P0 问题）——决定 kagweb 是否要做双版本兼容。
+
+> **方法学教训**：本次问题的根因是**只对照了 kagweb 的代码，没有对照被对接方的代码**。前几轮评审中「契约完全匹配」的结论，是在只读 kagweb 侧、并假设 `intellect-team == intellect-runs` 的前提下得出的。跨仓库对接必须**两端都读**，且要确认**哪一端是权威**。
+
 ---
 
 ## 六、优先级建议
@@ -740,6 +825,8 @@ kagweb/services/storage/attachment_store.py:38
 
 | 优先级 | 项 | 出处 | 理由 |
 |---|---|---|---|
+| **P0** | **修 `intellect-team` 预设（D1）** | §五 决策 8 | **当前必然失败**：指向不存在的 `/agent/turn`；一行配置的改动 |
+| **P0** | **`_translate_run_event` 判据改为 `event or type`** | §五 决策 8 | 权威实现（Rust）下文本与推理**静默全丢**；不改则对接无意义 |
 | **P0** | 轮次门禁解耦（`required_service`） | §四 #1 | 决定多用户部署是否可行；决策 1 的前置 |
 | **P0** | 移除死字段 / 死 UI（Skills、Tools 开关） | §五 决策 3 | 消除功能性误导，改动小、风险低 |
 | **P1** | Agent Backend 提为顶级设置项 | §五 决策 2 | 纯前端导航调整，无后端风险 |
@@ -753,6 +840,7 @@ kagweb/services/storage/attachment_store.py:38
 
 **建议的执行批次**：
 
+0. **批次零（对接修复，最高优先）**：决策 8 的 D1（修 `intellect-team` 预设）+ D2 的翻译器判据与字段兼容 + 未识别事件的日志兜底。**这是唯一「不改则 Intellect 对接不成立」的一组**，且改动集中在 `builtin.py` 与 `http_backend.py` 两个文件。
 1. **批次一（低风险收敛）**：决策 3 的死字段/死 UI 清理 + 决策 2/5 的设置导航重构 + 决策 4 中的纯前端部分（导航文案与图标、死词条、孤儿 prompt hints、`presentation.tsx` 的陈旧目录）。这些互不依赖，都不触碰轮次主路径。
 2. **批次二（解除阻断）**：§四 #1 门禁解耦 + 配套的 `grant` 增加 `agent_loop` 维度。这是让多用户 agent-backend 部署可用的关键一步。
 3. **批次三（对接能力）**：§四 #3/#4 profile 增加 `model` 与 `context_window`，打通模型配置与上下文预算。可与批次四并行。
@@ -850,6 +938,23 @@ grep -n "def resolve_embedding_runtime_config\|def resolve_videogen_runtime_conf
 | R15 | 低 | `components/partners/` 记为「25 个文件」 | 实测 **32 个**（18 顶层 + `group/` 14），已在正文注明构成 |
 | R16 | 低 | `main.py` 的 `_handle_background_command` 记为「`:177-209`，56 行」 | 实测 `:179-210`，**32 行**；并补齐 `_start_partners`/`_stop_partners` 的精确区间 |
 | R17 | 低 | `source_inventory.py` 记为「约 100 行」——实为提及数，非行数 | 改为「**50 处**提及」并列出所在区间 |
+
+### 第四轮技术评审（2026-09-10，跨仓库对接核实）
+
+起因是核实「`intellect-team` 是否支持审批」。为此克隆了被对接方仓库 `gitee.com/wustbd/intellect-team`（`9dcfdfa`）逐项比对，**推翻了本文此前多处结论**（详见 §五决策 8）。
+
+| # | 严重度 | 问题 | 修正 |
+|---|---|---|---|
+| R18 | **致命** | **`intellect-team` 预设指向不存在的端点**。该仓库全仓库 `grep "agent/turn"` **无任何结果**，而 kagweb 的预设无 `turn_path`/`protocol` 字段，落到默认 `/agent/turn` → 部署必然 404。`intellect-runs` 已正确配置为 `/v1/runs` + `protocol="runs"`，企业版缺了同样的两行 | 决策 8 D1；列入批次零 |
+| R19 | **高** | **`_translate_run_event` 对权威实现完全失效**。判据是 `obj["event"]`，而权威（Rust `map_event_to_sse`）除 `tool.progress`/`clarify`/`error` 外的**事件没有 SSE `event:` 行**——只有 `data: {"type": ...}`。故 Rust 下文本（`type: assistant.delta`）与推理（`type: reasoning.delta`）**全部静默丢弃** | 决策 8 D2；改为 `event or type` 判据并兼容 `delta`/`text` 两种字段 |
+| R20 | **高** | **本文此前「契约完全匹配」的结论是错的**。第三轮评审只读了 kagweb 一侧，并假设 `intellect-team == intellect-runs`，据此判定两端对齐。**跨仓库对接必须两端都读，且确认哪端权威** | 决策 8 末尾「方法学教训」 |
+| R21 | 中 | 本文称 `intellect-team` 走 turn 协议、「turn 不支持审批，是缺口」——定性错误。实为**服务端支持审批（`POST /v1/runs/{id}/approval`），kagweb 走错了通道** | 决策 8 D1 更正为「预设配置错误」 |
+| R22 | 中 | 本文（第四轮中段）称「`run.cancelled` 未被处理」——**误**。实测 `http_backend.py:532-534` 已处理并收敛为终态 | 决策 8 D3 标注更正 |
+| R23 | 中 | 本文（第四轮中段）称「`thinking.progress` 是思考内容、被静默丢弃」——**误**。它是**心跳脉冲**（只带 `elapsed_s`/`silent_s`，无文本）；真正携带推理文本的是 `message.delta` + `type: reasoning.delta` | 决策 8 表格已更正 |
+| R24 | 补充 | `clarify` 与 `ask_user` 的关系此前未澄清。**意图相同、机制不同**：kagweb 已有把审批映射成 `ask_user` 卡片的机制（`capability.py:872-935`，注释即写「the agent-loop flavour of ask_user」），但 **`respond_clarify` 在 `RunsAgentLoopBackend` 中未实现**，且 Python 版 intellect-team 根本没有该 HTTP 端点 | 决策 8 D2 |
+| R25 | 补充 | 发现一个**可观测性缺陷**：`_translate_run_event` 末尾 `return []`，未识别事件被静默忽略——R18/R19 这类对接故障因此**长期不产生任何诊断信号** | 决策 8 落地建议 #3 |
+
+**本轮方法论收获**：前三轮评审的可靠前提是「同一仓库内的代码可自证」；一旦涉及**跨仓库契约**，这个前提失效——必须克隆对端、确认权威实现、并逐事件比对字段。R18-R20 三个问题全部源于跳过这一步。
 
 **本轮复核实为准确的项**（列出的保留判断，逐条验证）：
 
