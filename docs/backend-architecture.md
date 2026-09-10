@@ -260,10 +260,16 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 | 维度 | 位置 | 策略要点 |
 |---|---|---|
 | 模型访问 | `model_access.py` | 归属者绑定的凭据（`openai_codex`、`codebuddy`）**永不可授予** |
+| Agent 后端（HTTP 族） | `model_access.py` `agent_loop` | 部署级：管理员配了后端即视为允许用户使用，`False` 可暂停单个用户 |
+| Agent 后端（CLI/ACP 族） | `model_access.py` `agent_loop_cli` | **默认拒绝**：该族以服务器 uid spawn 本地进程，授权它等同于授予本机代码执行 |
 | 工具/执行 | `tool_access.py` | MCP 工具对非管理员**默认拒绝** |
 | 伙伴 | `partner_access.py` | 可管理 = 所有者或管理员 |
 | 监护人 | `guardians.py` | 每次调用重新校验身份 |
 | 学习者 | `learner_profile.py` | 年龄/年级/课程/阅读水平 |
+
+**轮次门禁**（`services/session/turns/request_preparer.py`）对**每个非管理员回合**无条件执行，判定"这一轮需要的资源"是否已授权：`CapabilityManifest.required_service` 给出静态答案，`_effective_required_service()` 修正 `chat` 的部署相关情形——配了 agent 后端时它委派给后端、不碰 KAGWeb 自己的 LLM 层，因此按 family 落到 `agent_loop` 或 `agent_loop_cli`；没有后端时（壳 stub）仍是 `llm`。
+
+> 该门禁曾经只在"调用方未固定 `llm_selection`"的分支里执行，而 `llm_selection` 是客户端可传的协议字段——固定它即可跳过资源检查。现已移到分支之外，见 §8.3 与 `tests/services/session/test_turn_access_gate.py`（含走真实 `start_turn` 的用例）。
 
 ## 8. 设计评述
 
@@ -278,7 +284,7 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 
 1. **`ChatOrchestrator` 当前接近直通**。它做 capability 路由 + StreamBus 生命周期 + 完成事件发布，但只有 `chat` 一个能力，路由价值尚未兑现——这是为将来预留的结构，不是当下必需。
 2. **`capabilities/_shared.py` 的 `emit_capability_result()` 与实际持久化分工需要读代码才能厘清**：capability 只写 `context.capability_output` 和 stream，**真正落库的是 `TurnExecutor`**。文档没有把这个边界说清楚，容易误读。
-3. **纯 agent-loop 部署目前只服务管理员**。非管理员仍受 LLM 授权门限制（`request_preparer`）——**本文初稿将其定性为「已知边界，不是 bug」，该定性已被 [`backend-llm-deployment.md`](./backend-llm-deployment.md) 推翻**：在多用户场景下它构成功能性阻断（该文 P0-1），并已列为待修复项。
+3. **纯 agent-loop 部署的门禁已解耦，但按 family 分了档**（2026-09-10 修复）。原先门禁硬编码 `has_capability_access("llm")`，非管理员在多用户部署下每一轮都被拒（`backend-llm-deployment.md` P0-1）；现在按回合实际需要的资源判定。**但 CLI/ACP 族不沿用"默认允许"**：它 spawn 的本地进程以服务器 uid 运行且无沙箱，因此该授权默认拒绝、需管理员显式勾选——这是权限按风险分档，不是恢复阻断。HTTP 族保持默认允许，多用户可用性不受影响。
 
 ## 9. 已知偏差与技术债
 

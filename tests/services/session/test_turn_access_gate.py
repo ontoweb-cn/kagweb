@@ -5,10 +5,17 @@ an *LLM* grant for every non-admin turn, even when the chat capability was
 delegating to an agent backend that brings its own model. In a pure agent-loop
 deployment that rejected every non-admin turn, so the deployment served admins
 only — and nothing in the suite noticed, because the gate had no tests at all.
+
+The second half drives the real `start_turn`, which is where the first fix was
+wrong: the gate was written correctly but placed inside the "no pinned
+llm_selection" branch, so a client that *did* pin a selection skipped it. Unit
+tests over the resolver could never have caught that — the branch structure is
+the thing under test.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -16,6 +23,8 @@ import pytest
 from kagweb.multi_user import model_access
 from kagweb.multi_user.context import reset_current_user, set_current_user
 from kagweb.multi_user.models import CurrentUser, UserScope
+from kagweb.services.session.sqlite_store import SQLiteSessionStore
+from kagweb.services.session.turn_runtime import TurnRuntimeManager
 from kagweb.services.session.turns.request_preparer import _effective_required_service
 
 pytestmark = pytest.mark.asyncio
@@ -215,3 +224,158 @@ def test_the_two_agent_dimensions_default_opposite_ways(tmp_path, monkeypatch) -
         assert model_access.has_capability_access("agent_loop_cli") is False
     finally:
         reset_current_user(token)
+
+
+# ── the gate as assembled in start_turn ──────────────────────────────────
+#
+# The unit tests above prove the resolver and the access predicate are right;
+# they say nothing about whether `start_turn` actually calls them on every
+# path. It did not: a pinned `llm_selection` — a client-supplied protocol
+# field — took the other branch and skipped the resource check entirely.
+# These drive the real entry point so the *structure* is under test.
+
+_CLI_SETTINGS = {
+    "profiles": [{"id": "p", "preset": "claude-code", "enabled": True}],
+    "primary": "p",
+}
+
+
+def _patch_agent_loop(monkeypatch, settings: dict[str, Any]) -> None:
+    monkeypatch.setattr(
+        "kagweb.services.agent_loop.settings.get_agent_loop_settings",
+        lambda: settings,
+    )
+
+
+def _patch_grant(monkeypatch, grant: dict[str, Any]) -> None:
+    """Install a grant whose LLM entry resolves to one usable model."""
+    monkeypatch.setattr(model_access, "load_grant", lambda _uid: grant)
+    monkeypatch.setattr(model_access, "admin_catalog", lambda: {"services": {}})
+    monkeypatch.setattr(
+        model_access,
+        "redacted_model_access",
+        lambda _uid=None: {
+            "llm": [
+                {
+                    "profile_id": "p1",
+                    "model_id": "m1",
+                    "name": "m1",
+                    "model": "m1",
+                    "available": True,
+                }
+            ],
+            "agent_loop": [{"source": "deployment", "available": True}],
+            "agent_loop_cli": [
+                {"source": "deployment", "available": grant.get("agent_loop_cli") is True}
+            ],
+        },
+    )
+
+
+async def _start_turn_error(tmp_path, monkeypatch, *, payload_extra: dict) -> str:
+    """Run a real turn and return the error text, or "" when it was accepted."""
+    store = SQLiteSessionStore(tmp_path / "chat_history.db")
+    runtime = TurnRuntimeManager(store)
+    session = await store.ensure_session(None)
+    payload = {
+        "capability": "chat",
+        "content": "hello",
+        "session_id": session["id"],
+        "language": "en",
+        **payload_extra,
+    }
+    try:
+        await runtime.start_turn(payload)
+    except Exception as exc:  # noqa: BLE001 - the message is the subject
+        return str(exc)
+    return ""
+
+
+#: One granted LLM, so the pinned-selection branch has something to validate.
+_GRANTED_LLM = {"models": {"llm": [{"profile_id": "p1", "model_ids": ["m1"]}]}}
+
+
+async def test_a_pinned_selection_cannot_skip_the_agent_process_gate(tmp_path, monkeypatch) -> None:
+    """The regression: `llm_selection` is client-supplied, and pinning one used
+    to route around the resource check. A user with a granted LLM could start a
+    CLI agent process without the grant that exists to permit it."""
+    _patch_agent_loop(monkeypatch, _CLI_SETTINGS)
+    _patch_grant(monkeypatch, _GRANTED_LLM)  # no agent_loop_cli
+    token = set_current_user(_user(tmp_path))
+    try:
+        error = await _start_turn_error(
+            tmp_path,
+            monkeypatch,
+            payload_extra={"llm_selection": {"profile_id": "p1", "model_id": "m1"}},
+        )
+    finally:
+        reset_current_user(token)
+
+    assert "local process" in error, error
+
+
+async def test_the_gate_also_holds_without_a_pinned_selection(tmp_path, monkeypatch) -> None:
+    _patch_agent_loop(monkeypatch, _CLI_SETTINGS)
+    _patch_grant(monkeypatch, _GRANTED_LLM)
+    token = set_current_user(_user(tmp_path))
+    try:
+        error = await _start_turn_error(tmp_path, monkeypatch, payload_extra={})
+    finally:
+        reset_current_user(token)
+
+    assert "local process" in error, error
+
+
+async def test_the_gate_is_consulted_on_both_paths(tmp_path, monkeypatch) -> None:
+    """Assert the *structure*: whether or not a selection is pinned, the
+    resolver runs. This is the property the first fix violated."""
+    from kagweb.services.session.turns import request_preparer
+
+    seen: list[str] = []
+    real = request_preparer._effective_required_service
+
+    def _spy(capability: str, **kwargs: Any) -> str:
+        resolved = real(capability, **kwargs)
+        seen.append(resolved)
+        return resolved
+
+    monkeypatch.setattr(request_preparer, "_effective_required_service", _spy)
+    _patch_agent_loop(monkeypatch, _CLI_SETTINGS)
+    _patch_grant(monkeypatch, _GRANTED_LLM)
+    token = set_current_user(_user(tmp_path))
+    try:
+        for extra in ({}, {"llm_selection": {"profile_id": "p1", "model_id": "m1"}}):
+            seen.clear()
+            await _start_turn_error(tmp_path, monkeypatch, payload_extra=extra)
+            assert seen == ["agent_loop_cli"], (extra, seen)
+    finally:
+        reset_current_user(token)
+
+
+async def test_an_http_backend_needs_no_cli_grant(tmp_path, monkeypatch) -> None:
+    """The HTTP family starts no local process, so the stricter grant must not
+    apply to it: this is what keeps multi-user deployments usable."""
+    _patch_agent_loop(
+        monkeypatch,
+        {"profiles": [{"id": "p", "preset": "hermes", "enabled": True}], "primary": "p"},
+    )
+    _patch_grant(monkeypatch, _GRANTED_LLM)  # no agent_loop_cli
+    token = set_current_user(_user(tmp_path))
+    try:
+        error = await _start_turn_error(tmp_path, monkeypatch, payload_extra={})
+    finally:
+        reset_current_user(token)
+
+    assert "local process" not in error, error
+
+
+async def test_an_admin_is_never_gated(tmp_path, monkeypatch) -> None:
+    _patch_agent_loop(monkeypatch, _CLI_SETTINGS)
+    _patch_grant(monkeypatch, {"models": {"llm": []}})  # nothing granted at all
+    token = set_current_user(_user(tmp_path, admin=True))
+    try:
+        error = await _start_turn_error(tmp_path, monkeypatch, payload_extra={})
+    finally:
+        reset_current_user(token)
+
+    assert "local process" not in error, error

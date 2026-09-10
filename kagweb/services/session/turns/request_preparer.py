@@ -161,6 +161,42 @@ class TurnRequestPreparer:
             llm_selection = _llm_selection_dict(raw_llm_selection)
         except ValueError as exc:
             raise RuntimeError(str(exc)) from exc
+
+        # The access gate runs for EVERY non-admin turn, before the two
+        # selection branches below — not inside one of them.
+        #
+        # It used to sit in the `else` arm, which meant a caller who *pinned* an
+        # `llm_selection` skipped it completely: that arm only asked whether the
+        # chosen model was granted, never whether the turn's actual resource was
+        # allowed. Since `llm_selection` is a client-supplied protocol field,
+        # any user holding one granted LLM could still start a CLI/ACP agent
+        # process — defeating exactly the check that exists to stop that.
+        from kagweb.multi_user.context import get_current_user
+        from kagweb.multi_user.model_access import (
+            has_capability_access,
+            redacted_model_access,
+        )
+
+        current_user = get_current_user()
+        if not current_user.is_admin:
+            # Gate on the resource this turn actually needs, not on the LLM
+            # grant by default. `chat` with an agent backend configured needs no
+            # LLM: the backend brings its own model, and the session
+            # title/insight/summary helpers degrade on their own. Gating it on
+            # "llm" is what rejected every non-admin turn in a pure agent-loop
+            # deployment (backend-llm-deployment.md P0-1).
+            from kagweb.services.agent_loop.settings import get_agent_loop_settings
+
+            # Read the block once and hand it to the resolver: the capability
+            # reads the same settings again later in the turn, and there is no
+            # need for the gate to be a second hit on the JSON file on top of
+            # that.
+            required = _effective_required_service(
+                capability, agent_loop_block=get_agent_loop_settings()
+            )
+            if not has_capability_access(required):
+                raise RuntimeError(_access_denied_message(required))
+
         if llm_selection:
             try:
                 from kagweb.multi_user.model_access import apply_allowed_llm_selection
@@ -168,50 +204,21 @@ class TurnRequestPreparer:
                 llm_selection = apply_allowed_llm_selection(llm_selection) or {}
             except PermissionError as exc:
                 raise RuntimeError(str(exc)) from exc
-        else:
-            # Non-admin users MUST end up with a concrete llm_selection so we
-            # never silently fall through to the global LLM client (which is
-            # configured from admin runtime settings). Admin keeps the existing behavior
-            # (None llm_selection → default config from admin scope).
-            from kagweb.multi_user.context import get_current_user
-            from kagweb.multi_user.model_access import (
-                has_capability_access,
-                redacted_model_access,
-            )
-
-            current_user = get_current_user()
-            if not current_user.is_admin:
-                # Gate on the resource this turn actually needs, not on the LLM
-                # grant by default. `chat` with an agent backend configured
-                # needs no LLM: the backend brings its own model, and the
-                # session title/insight/summary helpers degrade on their own.
-                # Gating it on "llm" is what rejected every non-admin turn in a
-                # pure agent-loop deployment (backend-llm-deployment.md P0-1).
-                from kagweb.services.agent_loop.settings import get_agent_loop_settings
-
-                # Read the block once and hand it to the resolver: the
-                # capability reads the same settings again later in the turn,
-                # and there is no need for the gate to be a second hit on the
-                # JSON file on top of that.
-                required = _effective_required_service(
-                    capability, agent_loop_block=get_agent_loop_settings()
-                )
-                if not has_capability_access(required):
-                    raise RuntimeError(_access_denied_message(required))
-                # Pin the first granted-and-available model as the selection.
-                # With no LLM grant (agent-backend deployment) this stays empty
-                # and the turn runs without a scoped model, which is correct:
-                # the chat capability never touches KAGWeb's own LLM layer.
-                assigned_llms = [
-                    item
-                    for item in redacted_model_access(current_user.id).get("llm", [])
-                    if item.get("available")
-                ]
-                if assigned_llms:
-                    llm_selection = {
-                        "profile_id": assigned_llms[0].get("profile_id"),
-                        "model_id": assigned_llms[0].get("model_id"),
-                    }
+        elif not current_user.is_admin:
+            # No pinned selection: pin the first granted-and-available model.
+            # With no LLM grant (agent-backend deployment) this stays empty and
+            # the turn runs without a scoped model, which is correct — the chat
+            # capability never touches KAGWeb's own LLM layer.
+            assigned_llms = [
+                item
+                for item in redacted_model_access(current_user.id).get("llm", [])
+                if item.get("available")
+            ]
+            if assigned_llms:
+                llm_selection = {
+                    "profile_id": assigned_llms[0].get("profile_id"),
+                    "model_id": assigned_llms[0].get("model_id"),
+                }
         if llm_selection:
             from kagweb.multi_user.personal_models import merge_personal_llm_profiles
             from kagweb.services.config import get_model_catalog_service

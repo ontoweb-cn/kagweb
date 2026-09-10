@@ -57,26 +57,38 @@ HTTP 靠服务端自己的配置
 
 **关键事实**：`ChatCapability`（`capabilities/chat/capability.py:112-122`）只读 `agent_loop` 设置块并调用 `build_agent_loop_backend()`，**从不触碰 `get_llm_config()`**。`AgentLoopRequest`（`agent_loop/protocol.py:59-75`）的字段只有 `prompt / history / session_id / language / workdir`——**没有 `model`，也没有 `tools`**。
 
-### 1.2 轮次门禁（模型授权）
+### 1.2 轮次门禁（资源授权）
 
-`request_preparer.py:91-134`。顺序上，门禁**先于**后端选择执行（`start_turn` 同步跑完门禁才 `create_task(_run_turn)`）。
+`request_preparer.py`。门禁在 `start_turn` 中**同步**执行（跑完才 `create_task(_run_turn)`），且对**每个非管理员回合无条件生效**——包括调用方固定了 `llm_selection` 的情形。
 
 ```python
-# request_preparer.py:105-134（节选）
-else:
-    current_user = get_current_user()
-    if not current_user.is_admin:
-        # Single gate, shared with the frontend lock and any HTTP surface
-        if not has_capability_access("llm"):
-            raise RuntimeError(
-                "No LLM model is assigned to your account. Please contact an administrator."
-            )
-        assigned_llms = [...]
-        llm_selection = {"profile_id": ..., "model_id": ...}
+# request_preparer.py（节选，2026-09-10 修复后的结构）
+current_user = get_current_user()
+if not current_user.is_admin:
+    # 这一轮实际需要什么资源：chat 在配了 agent 后端时不需要 LLM
+    required = _effective_required_service(capability, agent_loop_block=...)
+    if not has_capability_access(required):
+        raise RuntimeError(...)
+
+if llm_selection:  # 调用方固定了选择：只校验该模型是否被授权
+    llm_selection = apply_allowed_llm_selection(llm_selection) or {}
+elif not current_user.is_admin:  # 否则固定第一个已授权的可用模型
+    ...
 ```
 
-- **管理员**：完全跳过，`llm_selection` 留空 → `executor.py:333-336` 捕获 `NoModelConfiguredError` → `llm_config = None` → 轮次继续 → agent backend 正常运行。✅
-- **非管理员**：`has_capability_access("llm")` 为假 → **抛错，轮次被拒**。❌
+`required` 的取值：
+
+| 情形 | `required` | 默认 |
+|---|---|---|
+| 无 agent 后端（壳 stub） | `llm` | 拒绝（需 LLM 授权） |
+| HTTP 族后端 | `agent_loop` | **允许**（管理员配了后端即视为允许用户使用） |
+| CLI/ACP 族后端 | `agent_loop_cli` | **拒绝**（该族 spawn 服务器权限进程，需显式授权） |
+
+- **管理员**：完全跳过门禁；`llm_selection` 留空 → `executor.py` 捕获 `NoModelConfiguredError` → `llm_config = None` → 轮次继续 → agent backend 正常运行。✅
+- **非管理员**：按上表判定；HTTP 族部署可用，CLI/ACP 族需管理员勾选「Run agent processes on this host」。⚠️
+
+> **历史**：本节曾描述门禁硬编码 `has_capability_access("llm")` 且位于 `else` 分支内，导致非管理员在纯 agent-loop 部署下每轮被拒（§三 P0-1），且固定 `llm_selection` 可跳过检查。两者均已修复。
+
 
 ### 1.3 模型解析链
 
@@ -150,7 +162,7 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 
 ## 三、核心问题
 
-### P0-1 非管理员用户无法使用 agent backend（产品级阻断）
+### P0-1 非管理员用户无法使用 agent backend（产品级阻断）——✅ 已修复
 
 **现象**：纯 agent loop 部署下，管理员能聊天，**任何非管理员用户的每一轮都被拒绝**，错误为 `"No LLM model is assigned to your account."`
 
@@ -159,6 +171,15 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 **证据**：`request_preparer.py:105-134`（门禁）vs `capabilities/chat/capability.py:112-122`（后端选择，无 LLM 依赖）。
 
 **影响**：这与 `ARCHITECTURE.md` 已记录的「纯 agent-loop 部署目前只服务管理员」是同一个问题——但文档把它描述为「待产品决策的已知边界」，而实际上它是**多用户能力被完全阻断**。如果 KAGWeb 的定位是 KAG 后端的 Web 门面，这个阻断必须优先解决。
+
+**修复（2026-09-10）**：门禁改为按回合**实际需要的资源**判定，不再硬编码 `llm`。`CapabilityManifest.required_service` 声明静态需求，`_effective_required_service()` 修正 `chat` 的部署相关情形。
+
+修复过程中发现并处理了两个后续问题，都值得记下来：
+
+1. **权限必须按风险分档，不能只按「是否需要模型」**。CLI/ACP 族以**服务器 uid** spawn 本地子进程且无沙箱（`cli_backend.py` / `acp_backend.py`），用户提示词就是那个进程执行的内容——驱动它等同于本机代码执行。而 `intellect` 预设是 `family="cli"` 且是 auto-primary 的首选，所以默认安装就落在高危族。因此该族**不沿用默认允许**：新增 `agent_loop_cli` 授权维度，`True` 允许、`None`/`False` 拒绝（与 HTTP 族的 `agent_loop` 默认方向**相反**）。HTTP 族保持默认允许，多用户可用性不受影响。
+2. **门禁曾可被绕过**：第一版修复把检查放在「调用方未固定 `llm_selection`」的分支里，而 `llm_selection` 是客户端可传的协议字段——固定它即可跳过资源检查。现已移到分支之外无条件执行，并补了走真实 `start_turn` 的测试（`tests/services/session/test_turn_access_gate.py`）。**纯函数测试看不出这类问题**：分支结构才是被测对象。
+
+> **残留**：CLI/ACP 子进程仍以服务器 uid 运行、无沙箱，这是架构既定（文档多处声明 single-operator shape）。本轮只是把「谁可以启动它」收敛为管理员显式授权，**不等于隔离**。
 
 ### P0-2 KAGWeb 工具层整体不可达
 
@@ -244,7 +265,7 @@ timeout_seconds, session_workspace, consult_enabled, workdir
 
 ## 四、改进建议
 
-### 阶段一：解除阻断（必须，改动小）
+### 阶段一：解除阻断（必须，改动小）——✅ 已落地
 
 **1. 解耦轮次门禁与 LLM 授权**
 
@@ -265,17 +286,22 @@ if not has_capability_access(service):
 
 配套：
 
-- `empty_grant()`（`multi_user/grants.py:23-52`）增加 `"agent_loop": []` 维度；
-- `model_access.py` 增加 `agent_loop` 分支（或复用 `has_capability_access` 的通用形状）；
-- `ChatCapability.manifest` 在检测到 agent loop 后端时声明 `required_service="agent_loop"`。
+- `empty_grant()`（`multi_user/grants.py`）增加 `"agent_loop"` 维度；
+- `model_access.py` 增加 `agent_loop` 分支（复用 `has_capability_access` 的通用形状）；
+- `ChatCapability.manifest` 声明 `required_service`，由 `_effective_required_service()` 按部署修正。
 
 **这是收益最高的一项**：它把「多用户 agent-loop 部署」从「不可能」变成「可用」。
+
+> **落地时的两处修正（2026-09-10）**，都源于"只看了资源需求、没看风险与路径"：
+>
+> 1. **CLI/ACP 族必须默认拒绝，而非默认允许**。该族 spawn 的本地进程以服务器 uid 运行且无沙箱，授权它等同授予本机代码执行；`intellect`（family=cli）又是 auto-primary 首选，默认安装即落在该族。故新增 `agent_loop_cli`（opt-in），与 HTTP 族的 `agent_loop`（默认允许）**方向相反**。
+> 2. **检查必须覆盖所有路径**。第一版把门禁放在"未固定 `llm_selection`"的分支内，而该字段客户端可传——固定它即绕过。已移到分支外，并补 `start_turn` 级测试。
 
 **2. 诚实化工具层**
 
 在 P0-2 解决之前，**不要**在 UI 上把工具呈现为可用。二选一：
 
-- **短期（诚实）**：agent loop 模式下隐藏工具开关与授权项，或明确标注「当前后端不支持」。
+- **短期（诚实）**：agent loop 模式下隐藏工具开关与授权项，或明确标注「当前后端不支持」。**已落地**：`/api/tools`、`PUT /api/settings/enabled-tools`、设置页 Tools 分区与两个前端 lib 均已移除（工具层本体留待与合伙人一并处理）。
 - **长期（打通）**：见阶段三。
 
 ### 阶段二：对接 agent backend 的模型（核心诉求）
@@ -893,20 +919,20 @@ kagweb 的 `cancel()` 是**跨进程**的（`POST /v1/runs/{id}/stop`）。而 `
 
 ## 六、优先级建议
 
-§四的改进项与 §五的产品决策对应关系，以及合并后的执行顺序：
+§四的改进项与 §五的产品决策对应关系，以及合并后的执行顺序。**「状态」列为 2026-09-10 实测**：
 
-| 优先级 | 项 | 出处 | 理由 |
-|---|---|---|---|
-| **P0** | **批次零：Intellect 对接修复（7 项）** | §五 决策 8 §D | **当前必然失败**：(a) 预设指向不存在的 `/agent/turn`；(b) Rust 下文本/推理/工具/审批**四项全失效**且无日志。不改则对接不成立 |
-| **P0** | 轮次门禁解耦（`required_service`） | §四 #1 | 决定多用户部署是否可行；决策 1 的前置 |
-| **P0** | 移除死字段 / 死 UI（Skills、Tools 开关） | §五 决策 3 | 消除功能性误导，改动小、风险低 |
-| **P1** | Agent Backend 提为顶级设置项 | §五 决策 2 | 纯前端导航调整，无后端风险 |
-| **P1** | LLM 设置按 Intellect 门控 | §五 决策 5 | 与决策 2 同一次 UI 改动完成 |
-| **P1** | profile 增加 `model` + `context_window` | §四 #3/#4 | 用户核心诉求；一并修掉 P1-1 上下文错配 |
-| **P1** | 人格子系统整体移出 | §五 决策 6 | 与决策 1 同源；**须早于 `.md` 打包规则移除** |
-| **P1** | 合伙人与 IM 通道移除（约 42,000 行） | §五 决策 7 | 与决策 1 同源；**前置：迁移 `safe_filename`** |
-| **P2** | 学习 / 研究表述清理 | §五 决策 4 | 需先就学习者/监护人功能去留做决策 |
-| **P2** | 工具层与 MCP 的重新定位 | §四 #6、§五 3c | 架构方向，取决于决策 1 的落地深度 |
+| 优先级 | 项 | 出处 | 理由 | 状态 |
+|---|---|---|---|---|
+| **P0** | **批次零：Intellect 对接修复（7 项）** | §五 决策 8 §D | **当前必然失败**：(a) 预设指向不存在的 `/agent/turn`；(b) Rust 下文本/推理/工具/审批**四项全失效**且无日志。不改则对接不成立 | ✅ 已落地（提交 `67d4759`；夹具同步换权威格式） |
+| **P0** | 轮次门禁解耦（`required_service`） | §四 #1 | 决定多用户部署是否可行；决策 1 的前置 | ✅ 已落地（`d2ee506` + 修正 `cec68ff`；CLI/ACP 族另需显式授权） |
+| **P0** | 移除死字段 / 死 UI（Skills、Tools 开关） | §五 决策 3 | 消除功能性误导，改动小、风险低 | ✅ UI/API 已移除（`5faeca0`、`0e25598`）；`kagweb/tools/` 本体留待决策 7 |
+| **P1** | Agent Backend 提为顶级设置项 | §五 决策 2 | 纯前端导航调整，无后端风险 | ✅ 已落地（`21663be`） |
+| **P1** | LLM 设置按 Intellect 门控 | §五 决策 5 | 与决策 2 同一次 UI 改动完成 | ✅ 已落地（`21663be`）；判据改为「自托管 HTTP 服务」，`intellect-runs` 一并覆盖 |
+| **P1** | profile 增加 `model` + `context_window` | §四 #3/#4 | 用户核心诉求；一并修掉 P1-1 上下文错配 | ⬜ 未做 |
+| **P1** | 人格子系统整体移出 | §五 决策 6 | 与决策 1 同源；**须早于 `.md` 打包规则移除** | ⬜ 未做 |
+| **P1** | 合伙人与 IM 通道移除（约 42,000 行） | §五 决策 7 | 与决策 1 同源；**前置：迁移 `safe_filename`** | ⬜ 未做 |
+| **P2** | 学习 / 研究表述清理 | §五 决策 4 | 需先就学习者/监护人功能去留做决策 | ⬜ 部分（`videogen` 导航项已移除；导航改名与学习者子系统待决策 4） |
+| **P2** | 工具层与 MCP 的重新定位 | §四 #6、§五 3c | 架构方向，取决于决策 1 的落地深度 | ⬜ 未做 |
 | **P3** | 凭据打通（codex OAuth 复用） | §四 #10 | 需架构决策（涉及把凭据交给外部进程） |
 
 **建议的执行批次**：
@@ -1107,11 +1133,13 @@ cd web && npm run build && npm run perf:check
 | `AgentLoopRequest` 无 `model` / `tools` 字段 | 字段全集 | 仍为 `prompt/history/session_id/language/workdir` ✅ |
 | `ChatCapability` 对 LLM 层零依赖 | `grep -c get_llm_config\|llm_selection` | **0** ✅ |
 | `get_tool_schemas()` 零调用者（P0-2 决定性证据） | 全仓库 grep | 仅定义处 ✅ |
-| 轮次门禁仍硬编码 `has_capability_access("llm")`（P0-1） | `request_preparer.py:121` | ✅ |
-| 9 个 LLM 调用点 | 逐文件 grep | ✅ |
-| `SERVICE_NAMES` 仍含 `embedding`/`videogen` 残留（P2-2） | 计数 | 仍 8 个服务 ✅ |
-| Skills 资产、人格预设、合伙人代码均未变 | `ls` + 文件计数 | ✅ 全部仍在 |
-| 子进程环境白名单（§1.4） | `acp_backend.py:495-497` 复用 `_build_child_env` | ✅ 新 ACP 族同样遵守 |
+| 轮次门禁仍硬编码 `has_capability_access("llm")`（P0-1） | `request_preparer.py` | ❌ **已不成立**：2026-09-10 起按 `required_service` 分派（§1.2） |
+| 9 个 LLM 调用点 | 逐文件 grep | ✅（旁路调用点未变；主路径仍零依赖） |
+| `SERVICE_NAMES` 仍含 `embedding`/`videogen` 残留（P2-2） | 计数 | ✅ 仍 8 个服务。**注**：`videogen` 有意保留——它有逐模型迁移默认值，删名会静默丢弃已存配置；仅其设置导航项已移除 |
+| Skills 资产、人格预设、合伙人代码均未变 | `ls` + 文件计数 | ✅ 全部仍在（决策 3/6/7 尚未执行） |
+| 子进程环境白名单（§1.4） | `acp_backend.py` 复用 `_build_child_env` | ✅ 新 ACP 族同样遵守 |
+
+> **2026-09-10 补记**：上表成文于 `c3ffe57`。此后工作已落地 P0 批次零（Intellect 对接）、P0 门禁解耦、P1 设置导航与门控、以及工具/技能死面清理；`get_tool_schemas()`、`AgentLoopRequest` 无 model/tools、`ChatCapability` 零 LLM 依赖三条在这些改动后**仍成立**（均已复测）。
 
 **需要修正的断言**（已在上文对应位置补记）：
 

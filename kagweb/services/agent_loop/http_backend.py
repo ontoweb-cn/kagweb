@@ -53,7 +53,7 @@ from .protocol import (
 )
 
 
-def _path_segment(value: Any) -> str:
+def _path_segment(value: str) -> str:
     """Percent-encode a value for use as ONE path segment.
 
     The values interpolated into these URLs (`run_id`, `session_id`) come from
@@ -64,6 +64,10 @@ def _path_segment(value: Any) -> str:
     so a compromised or misconfigured backend could aim the operator's
     credentials at an endpoint that was never intended. Encoding keeps the
     value inside its own segment.
+
+    Typed `str` on purpose: a caller that might hold `None` must decide what an
+    absent id means before building a URL, rather than have it silently become
+    the literal "None" in the path.
     """
     return quote(str(value), safe="")
 
