@@ -256,13 +256,9 @@ async def test_tool_results_emit_a_truncated_observation_excerpt(monkeypatch) ->
     """
     backend = _RecordingBackend(
         [
-            AgentLoopEvent(
-                "tool_call", name="exec", data={"args": {"command": "ls"}, "id": "t1"}
-            ),
+            AgentLoopEvent("tool_call", name="exec", data={"args": {"command": "ls"}, "id": "t1"}),
             AgentLoopEvent("tool_result", name="exec", text="x" * 500, data={"id": "t1"}),
-            AgentLoopEvent(
-                "tool_call", name="exec", data={"args": {"command": "pwd"}, "id": "t2"}
-            ),
+            AgentLoopEvent("tool_call", name="exec", data={"args": {"command": "pwd"}, "id": "t2"}),
             AgentLoopEvent("tool_result", name="exec", text="", data={"id": "t2"}),
         ]
     )

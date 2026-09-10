@@ -31,6 +31,14 @@ on:
       - "web/**"
       - ".github/workflows/tests.yml"
 
+# Python's stdio defaults to the ANSI code page on Windows (cp1252), which
+# cannot encode the status glyphs this workflow prints — the import check died
+# with UnicodeEncodeError before it could report a real result. UTF-8 mode also
+# matches how the runtime reads and writes the CJK-bearing locale files, so the
+# tests exercise the same encoding the product does.
+env:
+  PYTHONUTF8: "1"
+
 jobs:
   lint:
     name: Lint and Format
@@ -219,7 +227,11 @@ jobs:
   python-tests:
     name: Python Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    needs: import-check
+    # Deliberately no `needs: import-check`. This job installs its own
+    # dependencies and runs on Ubuntu only, so it shares nothing with the
+    # import check. Gating it on that job meant a platform-specific failure
+    # there (a Windows encoding bug, say) silently skipped the entire Python
+    # suite on every interpreter — the merge could not be validated at all.
     services:
       redis:
         image: redis:7.4-alpine

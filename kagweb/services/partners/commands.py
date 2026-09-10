@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 import shlex
-from typing import Any, Callable
+from typing import Any
 
 from kagweb.partners.bus.events import InboundMessage
 from kagweb.services.partners.sessions import PartnerSessionStore
@@ -271,7 +272,7 @@ class PartnerCommandHandler:
     def _current_tools(self) -> list[str]:
         configured = getattr(self.config, "enabled_tools", None)
         if configured is None:
-            return default_optional_tools()
+            return list(default_optional_tools())
         available = set(default_optional_tools())
         return [str(name) for name in configured if str(name) in available]
 
@@ -293,7 +294,7 @@ class PartnerCommandHandler:
         return f"{label}: {content}"
 
     @staticmethod
-    def _format_tools(current: list[str], available: list[str]) -> str:
+    def _format_tools(current: Sequence[str], available: Sequence[str]) -> str:
         return "\n".join(
             [
                 "Tools:",

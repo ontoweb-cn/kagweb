@@ -113,7 +113,7 @@ async def detect_agent_loops(block: dict[str, Any] | None = None) -> list[Detect
     for preset in PRESETS.values():
         if preset.family == "cli" and preset.command:
             cli_results.append(detect_cli(preset.name, preset.name, preset.command))
-        elif preset.family == "http" and getattr(preset, "probe_url", ""):
+        elif preset.family == "http" and preset.probe_url:
             # Preset-level reachability probe for HTTP backends that ship a
             # well-known local default (e.g. the Intellect api_server health
             # endpoint) — remote services still require an explicit profile.

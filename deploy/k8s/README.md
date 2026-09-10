@@ -46,4 +46,3 @@ docker build --build-arg NEXT_PUBLIC_BASE_PATH=/kagweb \
 - WebSocket 需要 Ingress 的 upgrade 注解(nginx:`nginx.ingress.kubernetes.io/proxy-http-version: "1.1"` 等);
 - 后端配套:`system.json` 的 `cors_origins` 加入前端完整 origin;若启用
   Codex OAuth,redirect_uri 注册为 `https://<host>/kagweb/api/auth/openai-codex/callback`。
-

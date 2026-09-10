@@ -110,8 +110,7 @@ _MESSAGES: dict[str, dict[str, str]] = {
             "Too many active agent sessions (max {max}); try again after one finishes."
         ),
         "agent_loop.acp_probe_timeout": (
-            "Agent-loop backend {backend!r} did not finish the ACP handshake within "
-            "{seconds}s."
+            "Agent-loop backend {backend!r} did not finish the ACP handshake within {seconds}s."
         ),
         "agent_loop.runs_poll_gave_up": (
             "Agent-loop backend {backend!r} lost the event stream and the run status "

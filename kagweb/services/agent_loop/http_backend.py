@@ -506,14 +506,17 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
                 )
             ]
         if kind == "run.completed":
-            events: list[AgentLoopEvent] = []
+            # A distinct name from the tool branch above: both arms share this
+            # function's scope, and re-using ``events`` tripped mypy's
+            # no-redef (and would silently shadow if the two ever merged).
+            completed: list[AgentLoopEvent] = []
             if state["buf"]:
-                events.append(AgentLoopEvent("content", text="".join(state["buf"])))
+                completed.append(AgentLoopEvent("content", text="".join(state["buf"])))
                 state["buf"] = []
             state["terminal"] = True
             output = str(obj.get("output") or "")
             if output:
-                events.append(AgentLoopEvent("content", text=output))
+                completed.append(AgentLoopEvent("content", text=output))
             usage = obj.get("usage") if isinstance(obj.get("usage"), dict) else {}
             data = {
                 "input_tokens": usage.get("input_tokens"),
@@ -521,8 +524,8 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
                 "total_tokens": usage.get("total_tokens"),
             }
             if any(value is not None for value in data.values()):
-                events.append(AgentLoopEvent("usage", data=data))
-            return events
+                completed.append(AgentLoopEvent("usage", data=data))
+            return completed
         if kind == "run.failed":
             state["terminal"] = True
             return [AgentLoopEvent("error", text=str(obj.get("error") or "run failed"))]

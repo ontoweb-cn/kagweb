@@ -525,7 +525,9 @@ def _provider_choices() -> dict[str, list[dict[str, Any]]]:
                 "label": (
                     "Custom (OpenAI API)"
                     if s.name == "custom"
-                    else "Custom (Anthropic API)" if s.name == "custom_anthropic" else s.label
+                    else "Custom (Anthropic API)"
+                    if s.name == "custom_anthropic"
+                    else s.label
                 ),
                 "base_url": s.default_api_base,
                 "auth_mode": s.auth_mode,
@@ -701,7 +703,9 @@ def _connection_targets() -> list[dict[str, Any]]:
                 "label": (
                     "Custom (OpenAI API)"
                     if spec.name == "custom"
-                    else "Custom (Anthropic API)" if spec.name == "custom_anthropic" else spec.label
+                    else "Custom (Anthropic API)"
+                    if spec.name == "custom_anthropic"
+                    else spec.label
                 ),
                 "default_base_url": spec.default_api_base,
                 "services": services,

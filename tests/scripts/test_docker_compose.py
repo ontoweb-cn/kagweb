@@ -183,13 +183,16 @@ def test_supervisord_runs_as_root_with_unprivileged_children() -> None:
     assert "exec /usr/bin/supervisord" in content
     assert "gosu kagweb /usr/bin/supervisord" not in content
     # Every supervisord program drops to the unprivileged kagweb user, so the
-    # backend/frontend processes never run as root. Each config heredoc closes
-    # with ``EOF``; slice to it so a program's section is bounded correctly.
-    program_blocks = content.split("[program:")[1:]
-    assert program_blocks, "expected supervisord [program:*] sections in the Dockerfile"
-    for block in program_blocks:
-        name = block.splitlines()[0].rstrip("]")
-        section = block.split("EOF")[0]
+    # backend/frontend processes never run as root. Anchor on the header at
+    # line start: the Dockerfile also contains *escaped* copies inside the sed
+    # patterns that slice programs.conf, and a plain ``split("[program:")``
+    # would read those as sections with no ``user=`` directive. Each config
+    # heredoc closes with ``EOF``; slice to it so a program is bounded correctly.
+    program_headers = list(re.finditer(r"^\[program:([^\]]+)\]", content, re.MULTILINE))
+    assert program_headers, "expected supervisord [program:*] sections in the Dockerfile"
+    for match in program_headers:
+        name = match.group(1)
+        section = content[match.end() :].split("EOF")[0]
         assert "user=kagweb" in section, (
             f"supervisord program '{name}' must run as kagweb (user=kagweb)"
         )

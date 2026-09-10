@@ -235,7 +235,13 @@ def _add_fresh(
         extracted = str(rec.get("extracted_text") or "")
         inv.add(
             SourceEntry(
-                sid=f"att-{hashlib.sha1(filename.encode('utf-8')).hexdigest()[:12]}",
+                # A stable short id for a filename, not a security digest — the
+                # whole repo marks these ``usedforsecurity=False`` so bandit's
+                # B324 (weak SHA1) does not fire on an identifier.
+                sid=(
+                    "att-"
+                    + hashlib.sha1(filename.encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
+                ),
                 kind="attachment",
                 name=filename,
                 full_text=extracted,

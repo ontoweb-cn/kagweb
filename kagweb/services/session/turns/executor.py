@@ -113,6 +113,23 @@ class TurnExecutor:
             ui_language: str,
         ) -> None: ...
 
+        # Also supplied by the ``SessionTitleService`` mixin at runtime (both
+        # classes compose into ``TurnRuntimeManager``); declared here so the
+        # static checker sees the method on the class that calls it.
+        async def _maybe_generate_turn_insight(
+            self,
+            *,
+            execution: _TurnExecution,
+            session_id: str,
+            turn_id: str,
+            assistant_message_id: int | str | None,
+            ui_language: str,
+            question: str,
+            answer: str,
+            tool_names: list[str],
+            round_count: int,
+        ) -> None: ...
+
     async def _run_turn(self, execution: _TurnExecution) -> None:
         payload = execution.payload
         session_id = execution.session_id

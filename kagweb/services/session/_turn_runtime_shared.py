@@ -9,8 +9,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 import logging
 import re
-import unicodedata
 from typing import TYPE_CHECKING, Any
+import unicodedata
 
 from kagweb.core.stream import StreamEvent, StreamEventType
 from kagweb.services.llm.utils import clean_thinking_tags
@@ -662,6 +662,7 @@ def _extract_regenerate_flag(config: dict[str, Any] | None) -> bool:
     return bool(raw)
 
 
+@dataclass
 class _LiveSubscriber:
     queue: asyncio.Queue[dict[str, Any]]
 

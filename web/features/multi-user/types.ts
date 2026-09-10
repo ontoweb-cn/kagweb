@@ -65,4 +65,3 @@ export type MultiUserResources = {
   tools: ToolOption[];
   mcp_tools: McpToolOption[];
 };
-
