@@ -115,9 +115,12 @@ class ChatCapability(TurnCapability):
     )
 
     async def run(self, context: UnifiedContext, stream) -> None:  # noqa: ANN001
-        # One settings read per turn: load_system() hits the JSON file (and
-        # may rewrite it), so neither the backend factory nor the request
-        # builder may go to disk a second time.
+        # One settings read for THIS layer: load_system() hits the JSON file
+        # (and may rewrite it), so the backend factory, the request builder and
+        # the consult resolver all reuse this block rather than going to disk
+        # again. The turn gate in the request preparer reads it separately — it
+        # runs before this capability is entered and needs the block to decide
+        # what the turn requires.
         settings = get_agent_loop_settings()
         primary = resolve_primary_profile(settings)
         backend = build_agent_loop_backend(primary) if primary else None
