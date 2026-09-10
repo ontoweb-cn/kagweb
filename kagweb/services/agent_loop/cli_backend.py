@@ -583,24 +583,33 @@ class CliAgentLoopBackend(AgentLoopBackend):
         the settings UI steers operators to the joined form. Dropping rather
         than passing a literal placeholder keeps the CLI on its own configured
         default instead of failing on a value the operator never typed.
+
+        Both placeholders are resolved in a single pass through a sentinel, so
+        the replacement values are never re-scanned: a model literally named
+        ``{prompt}`` must reach the CLI as that literal, and user text
+        containing ``{model}`` must not grow the model argument.
         """
         rendered: list[str] = []
         prompt_pinned = False
+        sentinel = "\x00"  # NUL cannot appear in argv or in a sane chat turn
         for arg in self.extra_args:
-            if "{model}" in arg:
-                if not self.model:
-                    logger.debug(
-                        "agent-loop %s: dropping arg %r — it references {model} "
-                        "but this profile configures no model",
-                        self.name,
-                        arg,
-                    )
-                    continue
-                arg = arg.replace("{model}", self.model)
-            if "{prompt}" in arg:
+            if "{model}" in arg and not self.model:
+                logger.debug(
+                    "agent-loop %s: dropping arg %r — it references {model} "
+                    "but this profile configures no model",
+                    self.name,
+                    arg,
+                )
+                continue
+            pinned = "{prompt}" in arg
+            rendered_arg = (
+                arg.replace("{prompt}", sentinel)
+                .replace("{model}", self.model or "")
+                .replace(sentinel, prompt)
+            )
+            if pinned:
                 prompt_pinned = True
-                arg = arg.replace("{prompt}", prompt)
-            rendered.append(arg)
+            rendered.append(rendered_arg)
         return rendered, prompt_pinned
 
     def build_argv(self, request: AgentLoopRequest) -> list[str]:

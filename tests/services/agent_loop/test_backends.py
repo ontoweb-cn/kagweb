@@ -962,3 +962,37 @@ async def test_http_request_carries_the_model_only_when_configured() -> None:
     without_model = _http_backend(handler)
     [event async for event in without_model.run(_request("hi"))]
     assert "model" not in bodies[-1]
+
+
+def test_cli_placeholders_do_not_retrigger_each_other() -> None:
+    """Substitution is single-pass: a model literally named ``{prompt}`` reaches
+    the CLI as that literal instead of growing the user's turn text, and user
+    text containing ``{model}`` is not replaced with the model name."""
+    backend = build_agent_loop_backend(
+        {
+            "backend": "custom-cli",
+            "command": "a",
+            "model": "{prompt}",  # pathological operator value
+            "args": ["--model={model}", "{prompt}"],
+        }
+    )
+    assert backend.build_argv(_request("USER-TURN")) == [
+        "a",
+        "--model={prompt}",  # the operator's literal model value, intact
+        "USER-TURN",  # the prompt, substituted exactly once
+    ]
+
+
+def test_cli_user_text_containing_model_placeholder_survives() -> None:
+    """The prompt is substituted LAST (via sentinel), so a user typing
+    ``{model}`` in their message must not grow the model argument."""
+    backend = build_agent_loop_backend(
+        {
+            "backend": "custom-cli",
+            "command": "a",
+            "model": "big-model",
+            "args": ["--model={model}", "{prompt}"],
+        }
+    )
+    argv = backend.build_argv(_request("please use {model} today"))
+    assert argv == ["a", "--model=big-model", "please use {model} today"]

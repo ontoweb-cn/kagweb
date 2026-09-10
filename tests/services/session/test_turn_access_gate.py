@@ -414,6 +414,28 @@ async def test_an_admin_is_never_gated(tmp_path, monkeypatch) -> None:
 
 # ── the agent backend's context window reaches the budget ────────────────
 #
+# First line of defence: the hand-off key is internal, and ``TurnRequest``
+# forbids extra fields, so a client cannot inject it wholesale.
+
+
+async def test_a_client_supplied_context_window_key_is_rejected(tmp_path, monkeypatch) -> None:
+    """The executor trusts ``agent_loop_context_window`` on the payload, so the
+    key must not be a client-suppliable turn field. The forbid on
+    ``TurnRequest`` is that guarantee — pinned here, because if it were ever
+    relaxed, a client value would ride past the preparer and drive the history
+    budget."""
+    _patch_agent_loop(monkeypatch, _CLI_WITH_WINDOW)
+    _patch_grant(monkeypatch, {"models": {"llm": []}, "agent_loop_cli": True})
+    error = await _start_turn_error(
+        tmp_path,
+        monkeypatch,
+        payload_extra={"agent_loop_context_window": 5_000_000},
+    )
+    assert "Extra inputs are not permitted" in error, error
+
+
+# ── the agent backend's context window reaches the budget ────────────────
+#
 # The executor builds the context before the capability resolves the agent-loop
 # profile, so the window has to travel on the payload. It is injected for
 # admins too — history budgeting is not an access question.
@@ -478,11 +500,14 @@ async def test_the_profile_context_window_travels_on_the_payload(
     assert payload.get("agent_loop_context_window") == 200_000
 
 
-async def test_no_window_configured_means_no_payload_key(tmp_path, monkeypatch) -> None:
+async def test_no_window_configured_writes_zero(tmp_path, monkeypatch) -> None:
+    """The key is always written now — that is what keeps a client value from
+    surviving. An unconfigured profile writes 0, which the executor maps to no
+    override, so the budget chain still falls back exactly as before."""
     _patch_agent_loop(monkeypatch, _CLI_SETTINGS)  # no context_window key
     _patch_grant(monkeypatch, {"models": {"llm": []}, "agent_loop_cli": True})
     payload = await _turn_payload(tmp_path, monkeypatch, admin=True)
-    assert "agent_loop_context_window" not in payload
+    assert payload.get("agent_loop_context_window") == 0
 
 
 async def test_the_window_key_is_not_persisted_with_the_user_message(tmp_path, monkeypatch) -> None:

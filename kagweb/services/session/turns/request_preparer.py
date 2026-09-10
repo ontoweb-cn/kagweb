@@ -212,8 +212,13 @@ class TurnRequestPreparer:
         except Exception:
             primary_profile = None
         context_window = int((primary_profile or {}).get("context_window") or 0)
-        if context_window > 0:
-            payload = {**payload, "agent_loop_context_window": context_window}
+        # Always written, never merged: the executor trusts this key, so a
+        # client-supplied value must not be able to survive here. (Today
+        # ``TurnRequest`` forbids extra fields and rejects the whole turn, but
+        # that guarantee should not be what stands between a client and the
+        # budget planner.) ``0`` means "not configured"; the executor treats it
+        # as no override.
+        payload["agent_loop_context_window"] = context_window
 
         if llm_selection:
             try:
