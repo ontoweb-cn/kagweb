@@ -30,6 +30,9 @@ test("settings page: stacks every first-level section from overview to about", (
     "network",
     "models",
     "knowledge",
+    // The agent backend is a deployment-level choice, so it is a top-level
+    // section rather than nested under Chat.
+    "agent-loop",
     "chat",
     "learner-profile",
     "guardian",
@@ -48,6 +51,51 @@ test("settings page: stacks every first-level section from overview to about", (
     );
     previousIndex = index;
   }
+});
+
+test("settings navigation: the agent backend is top-level, not under chat", () => {
+  const nav = readWebFile(
+    "features",
+    "settings",
+    "navigation",
+    "settings-nav.ts",
+  );
+  const chatChildren = nav.indexOf("const CHAT_CHILDREN");
+  const categories = nav.indexOf("export const SETTINGS_CATEGORIES");
+  const agentLoop = nav.indexOf('key: "agent-loop"');
+
+  assert.ok(agentLoop > 0, "the agent-loop category is declared");
+  assert.ok(agentLoop > categories, "agent-loop should be a top-level category");
+  assert.ok(
+    agentLoop > chatChildren,
+    "it should no longer live inside the chat children list",
+  );
+  // The key doubles as the section anchor, so renaming it would break the
+  // #agent-loop deep link and the storage-path mapping.
+  assert.match(nav, /href: "\/settings#agent-loop"/);
+});
+
+test("settings navigation: the models section follows the LLM gate", () => {
+  const nav = readWebFile(
+    "features",
+    "settings",
+    "navigation",
+    "settings-nav.ts",
+  );
+  const access = readWebFile(
+    "features",
+    "settings",
+    "navigation",
+    "settings-access.ts",
+  );
+
+  assert.match(nav, /key: "models",\s*\n\s*llmOnly: true/);
+  assert.match(
+    nav,
+    /if \(category\.llmOnly && !access\.enableLlmSettings\) return false;/,
+  );
+  assert.match(access, /enableLlmSettings: boolean;/);
+  assert.match(access, /export function withLlmSettingsGate/);
 });
 
 test("settings scroll: the outer document tracks nested section anchors", () => {

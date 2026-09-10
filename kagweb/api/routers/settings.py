@@ -1077,11 +1077,29 @@ def _agent_loop_payload() -> dict[str, Any]:
 
     effective_primary = str(effective.get("primary") or "")
     stored_primary = str(stored.get("primary") or "")
+    from kagweb.services.agent_loop.builtin import llm_settings_apply, preset_family
+    from kagweb.services.agent_loop.settings import resolve_primary_profile
     from kagweb.services.config.runtime_settings import _auto_primary_agent_loop
+
+    # Which backend actually drives turns, and whether the LLM settings apply to
+    # it. Resolved from the *effective* block (env overrides included) through
+    # the same helper the turn path uses, so the UI cannot disagree with runtime
+    # behaviour.
+    resolved = resolve_primary_profile(effective)
+    resolved_preset = str((resolved or {}).get("preset") or "")
 
     return {
         "settings": _public(stored),
         "effective": _public(effective),
+        "effective_primary": {
+            "id": str((resolved or {}).get("id") or ""),
+            "name": str((resolved or {}).get("name") or ""),
+            "preset": resolved_preset,
+            "family": preset_family(resolved_preset),
+            # Gates the LLM (models and connections) section: only a
+            # self-hosted HTTP backend needs model credentials entered here.
+            "llm_settings_enabled": llm_settings_apply(resolved_preset),
+        },
         # What the default rule (local Intellect first) would pick — shown
         # next to the "Automatic" primary option so the rule is visible.
         "auto_primary": _auto_primary_agent_loop(

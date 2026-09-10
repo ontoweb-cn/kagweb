@@ -9,6 +9,14 @@ export interface SettingsAccess {
   showLearnerOnly: boolean;
   /** Ordinary standard/custom accounts may act as authorized guardians. */
   showGuardianOnly: boolean;
+  /**
+   * Whether the LLM (models and connections) settings apply to the configured
+   * agent backend. Only a self-hosted HTTP backend needs model credentials
+   * entered here — the CLI family carries its own login state, and a generic
+   * HTTP service configures its own models. Defaults to ``true`` so a failed or
+   * pending lookup never hides a section that used to be visible.
+   */
+  enableLlmSettings: boolean;
 }
 
 export const PENDING_SETTINGS_ACCESS: SettingsAccess = {
@@ -16,6 +24,7 @@ export const PENDING_SETTINGS_ACCESS: SettingsAccess = {
   hideAdminOnly: true,
   showLearnerOnly: false,
   showGuardianOnly: false,
+  enableLlmSettings: true,
 };
 
 /** Convert the backend's account identity into the settings visibility model. */
@@ -37,5 +46,15 @@ export function settingsAccessFromAuthStatus(
     showGuardianOnly:
       ordinaryAuthenticatedUser &&
       (authStatus.preset === "standard" || authStatus.preset === "custom"),
+    enableLlmSettings: true,
   };
+}
+
+/** Overlay backend-driven gates onto the account-derived access model. */
+export function withLlmSettingsGate(
+  access: SettingsAccess,
+  llmSettingsEnabled: boolean | null,
+): SettingsAccess {
+  if (llmSettingsEnabled === null) return access;
+  return { ...access, enableLlmSettings: llmSettingsEnabled };
 }

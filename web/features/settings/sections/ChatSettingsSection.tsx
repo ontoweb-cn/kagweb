@@ -7,10 +7,6 @@ import { useSettingsAccess } from "@/features/settings/navigation/SettingsAccess
 import { visibleSettingsChildren } from "@/features/settings/navigation/settings-nav";
 
 const loading = () => <div className="min-h-64" aria-hidden="true" />;
-const AgentLoopSettingsPage = dynamic(
-  () => import("./AgentLoopSettingsSection"),
-  { loading },
-);
 const ToolsSettingsPage = dynamic(() => import("./ToolsSettingsSection"), {
   loading,
 });
@@ -27,8 +23,9 @@ const AttachmentSettingsPage = dynamic(
   { loading },
 );
 
+// The agent backend is a deployment-level choice, so it is its own top-level
+// category now (see SETTINGS_CATEGORIES) rather than a child of Chat.
 const CHAT_SECTIONS = [
-  { key: "agent-loop", Component: AgentLoopSettingsPage },
   { key: "tools", Component: ToolsSettingsPage },
   { key: "capabilities", Component: CapabilitiesSettingsPage },
   { key: "starters", Component: StarterSettingsPage },

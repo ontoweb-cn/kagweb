@@ -138,4 +138,46 @@ PRESETS: dict[str, AgentLoopPreset] = {
 }
 
 
-__all__ = ["AgentLoopPreset", "PRESETS"]
+#: Preset names that identify the self-hosted Intellect services. Matched by
+#: prefix rather than an enumeration so a new Intellect preset is covered
+#: without another edit here (an enumerated set is what let `intellect-runs`
+#: be missed when it was added).
+_INTELLECT_PRESET_PREFIX = "intellect"
+
+
+def preset_family(preset: str) -> str:
+    """The transport family for a preset name (``""`` when unknown)."""
+    entry = PRESETS.get(str(preset or "").strip())
+    return entry.family if entry is not None else ""
+
+
+def is_intellect_preset(preset: str) -> bool:
+    """Whether this preset name is one of the Intellect family.
+
+    Used by the auto-primary rule, which prefers a local Intellect deployment:
+    both editions and both HTTP/ACP transports are equally Intellect.
+    """
+    return str(preset or "").strip().startswith(_INTELLECT_PRESET_PREFIX)
+
+
+def llm_settings_apply(preset: str) -> bool:
+    """Whether the LLM (models and connections) settings apply to this backend.
+
+    Only a **self-hosted HTTP** service needs the operator to bring model
+    credentials through KAGWeb. The CLI family — Claude Code, Codex, Intellect's
+    own ACP transport — carries its own login state in the child's HOME, and a
+    generic HTTP service configures its own models; presenting the section for
+    those is the same misleading affordance as a model picker that has no
+    effect on the conversation.
+    """
+    name = str(preset or "").strip()
+    return is_intellect_preset(name) and preset_family(name) == "http"
+
+
+__all__ = [
+    "AgentLoopPreset",
+    "PRESETS",
+    "is_intellect_preset",
+    "llm_settings_apply",
+    "preset_family",
+]

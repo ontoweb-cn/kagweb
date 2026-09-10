@@ -67,6 +67,13 @@ export interface SettingsCategory {
   learnerOnly?: boolean;
   /** Shown only to authenticated standard users who may act as guardians. */
   guardianOnly?: boolean;
+  /** Admin-owned category, hidden from ordinary users like an adminOnly leaf. */
+  adminOnly?: boolean;
+  /**
+   * Shown only when the LLM settings apply to the configured agent backend
+   * (see ``SettingsAccess.enableLlmSettings``).
+   */
+  llmOnly?: boolean;
 }
 
 export function isSettingsLeafVisible(
@@ -82,6 +89,8 @@ export function isSettingsCategoryVisible(
 ): boolean {
   if (category.learnerOnly && !access.showLearnerOnly) return false;
   if (category.guardianOnly && !access.showGuardianOnly) return false;
+  if (category.adminOnly && access.hideAdminOnly) return false;
+  if (category.llmOnly && !access.enableLlmSettings) return false;
   return (
     !category.children ||
     category.children.some((leaf) => isSettingsLeafVisible(leaf, access))
@@ -194,18 +203,6 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
 
 const CHAT_CHILDREN: SettingsLeaf[] = [
   {
-    key: "agent-loop",
-    href: "/settings#agent-loop",
-    label: { zh: "Agent Loop", en: "Agent Loop" },
-    blurb: {
-      zh: "选择驱动对话的智能体后端（Intellect、HERMES、AgentScope…）。",
-      en: "Choose the agent backend that drives conversations.",
-    },
-    icon: Bot,
-    tile: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    adminOnly: true,
-  },
-  {
     key: "tools",
     href: "/settings#tools",
     label: { zh: "工具", en: "Tools" },
@@ -271,7 +268,23 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     href: "/settings#network",
   },
   {
+    // The key doubles as the section anchor (`CategoryScroll` renders
+    // `id={section.key}`), so it stays `agent-loop` even though the category is
+    // now presented as "Agent Backend" — renaming it would break existing
+    // `#agent-loop` deep links and the storage-path mapping.
+    key: "agent-loop",
+    adminOnly: true,
+    label: { zh: "智能体后端", en: "Agent Backend" },
+    blurb: {
+      zh: "选择驱动对话的智能体后端（Intellect、HERMES、AgentScope…）。",
+      en: "The agent backend that drives conversations.",
+    },
+    icon: Bot,
+    href: "/settings#agent-loop",
+  },
+  {
     key: "models",
+    llmOnly: true,
     label: { zh: "模型", en: "Models" },
     blurb: {
       zh: "语言、搜索、语音与生成模型",

@@ -34,6 +34,12 @@ const ChatSettingsPage = dynamic(
   () => import("@/features/settings/sections/ChatSettingsSection"),
   { loading: sectionLoading },
 );
+// The agent backend reuses its existing section component; only the navigator
+// placement changed (top-level instead of nested under Chat).
+const AgentBackendSettingsPage = dynamic(
+  () => import("@/features/settings/sections/AgentLoopSettingsSection"),
+  { loading: sectionLoading },
+);
 const LearnerProfileSettingsPage = dynamic(
   () => import("@/features/settings/sections/LearnerProfileSettingsSection"),
   { loading: sectionLoading },
@@ -62,6 +68,7 @@ const SETTINGS_SECTIONS = [
     activationKeys: childKeys("models"),
   },
   { key: "knowledge", Component: DocumentParsingSettingsPage },
+  { key: "agent-loop", Component: AgentBackendSettingsPage },
   {
     key: "chat",
     Component: ChatSettingsPage,

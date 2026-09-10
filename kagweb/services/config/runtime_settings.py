@@ -92,9 +92,10 @@ AGENT_LOOP_TIMEOUT_RANGE = (30, 86_400)
 #: enabled profiles (0 disables consultation entirely).
 AGENT_LOOP_CONSULT_BUDGET_RANGE = (0, 12)
 
-#: Presets that pin the auto-primary preference: a local Intellect (community
-#: or enterprise) is the project's default conversation stack.
-AGENT_LOOP_INTELLECT_PRESETS = frozenset({"intellect", "intellect-team"})
+# The Intellect preset family is identified by `is_intellect_preset` and
+# `llm_settings_apply` in `agent_loop.builtin`, which match by prefix. The
+# enumerated set that used to live here was a second source of truth and had
+# already drifted (it never learned about `intellect-runs`).
 
 DEFAULT_AUTH_SETTINGS: dict[str, Any] = {
     "version": 1,
@@ -1483,7 +1484,7 @@ def _auto_primary_agent_loop(profiles: list[dict[str, Any]]) -> str:
     enabled = [profile for profile in profiles if profile.get("enabled")]
     if not enabled:
         return ""
-    from kagweb.services.agent_loop.builtin import PRESETS
+    from kagweb.services.agent_loop.builtin import PRESETS, is_intellect_preset
 
     def _is_local(profile: dict[str, Any]) -> bool:
         preset = PRESETS.get(str(profile.get("preset") or ""))
@@ -1495,7 +1496,7 @@ def _auto_primary_agent_loop(profiles: list[dict[str, Any]]) -> str:
         return host in {"localhost", "::1", "0.0.0.0"} or host.startswith("127.")
 
     for wanted in (
-        [profile for profile in enabled if profile.get("preset") in AGENT_LOOP_INTELLECT_PRESETS],
+        [profile for profile in enabled if is_intellect_preset(str(profile.get("preset") or ""))],
         [profile for profile in enabled if _is_local(profile)],
         enabled,
     ):

@@ -83,6 +83,56 @@ def test_get_returns_presets_and_bounds(client: TestClient) -> None:
         "url": False,
         "api_key": False,
     }
+    # With nothing configured the shell stub drives turns, so no backend is
+    # resolved and the LLM section stays off.
+    assert data["effective_primary"] == {
+        "id": "",
+        "name": "",
+        "preset": "",
+        "family": "",
+        "llm_settings_enabled": False,
+    }
+
+
+def test_effective_primary_gates_llm_settings_by_family(
+    client: TestClient, settings_dir: Path
+) -> None:
+    """Only a self-hosted HTTP backend gets the LLM settings section.
+
+    The CLI family carries its own login state, so presenting model credentials
+    for it is the same misleading affordance the section is meant to remove.
+    """
+    # Intellect enterprise is a self-hosted HTTP service → LLM settings apply.
+    data = _put(
+        client,
+        [_profile(id="team", preset="intellect-team", url="http://intellect.test")],
+        primary="team",
+    )
+    payload = client.get("/api/settings/agent-loop").json()
+    assert payload["effective_primary"]["preset"] == "intellect-team"
+    assert payload["effective_primary"]["family"] == "http"
+    assert payload["effective_primary"]["llm_settings_enabled"] is True
+    assert data  # the PUT above is the setup, not the subject
+
+    # Intellect community is now a CLI/ACP backend → it does not.
+    _put(
+        client,
+        [_profile(id="acp", preset="intellect", command="intellect")],
+        primary="acp",
+    )
+    payload = client.get("/api/settings/agent-loop").json()
+    assert payload["effective_primary"]["preset"] == "intellect"
+    assert payload["effective_primary"]["family"] == "cli"
+    assert payload["effective_primary"]["llm_settings_enabled"] is False
+
+    # A generic HTTP service configures its own models → it does not either.
+    _put(
+        client,
+        [_profile(id="hermes", preset="hermes", url="http://hermes.test")],
+        primary="hermes",
+    )
+    payload = client.get("/api/settings/agent-loop").json()
+    assert payload["effective_primary"]["llm_settings_enabled"] is False
 
 
 def test_put_saves_profiles_and_auto_primary_prefers_local_intellect(
