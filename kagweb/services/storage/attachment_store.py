@@ -35,9 +35,9 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 from urllib.parse import quote
 
-from kagweb.partners.helpers import safe_filename
 from kagweb.services.config import load_system_settings
 from kagweb.services.path_service import get_path_service
+from kagweb.utils.filenames import safe_filename
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,8 @@
-"""Regression tests for partners.helpers.safe_filename."""
+"""Regression tests for utils.filenames.safe_filename.
+
+Relocated from the partner channel layer (which is being removed); ordinary
+chat attachments sanitize through the same helper.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +11,7 @@ import sys
 
 import pytest
 
-from kagweb.partners.helpers import safe_filename
+from kagweb.utils.filenames import safe_filename
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX /tmp path")
