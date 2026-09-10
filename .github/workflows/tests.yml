@@ -289,7 +289,11 @@ jobs:
       - name: Run Python tests
         run: |
           echo "🧪 Running Python tests on Python ${{ matrix.python-version }}"
-          pytest -q tests kagweb/learning/tests
+          # `tests` is the whole suite (pyproject sets testpaths = ["tests"]).
+          # This used to also name `kagweb/learning/tests`, an upstream path
+          # this fork never carried — pytest exited 4 on the missing argument
+          # before collecting a single test, so the suite silently did not run.
+          pytest -q tests
         env:
           PYTHONPATH: ${{ github.workspace }}
           KAGWEB_TEST_REDIS_URL: redis://127.0.0.1:6379/0

@@ -2,13 +2,16 @@ import { expect, test } from "@playwright/test";
 
 const BASE_URL = process.env.WEB_BASE_URL || "http://127.0.0.1:3300";
 
+// The primary surfaces this fork actually serves. Mirrors PRIMARY_NAV +
+// SECONDARY_NAV in `components/sidebar/nav-entries.ts`. Reading, Mastery,
+// Knowledge and Co-Writer were dropped with their layers (see the retired
+// prefixes in tests/api/test_canonical_route_surface.py); auditing them here
+// only ever exercised the 404 page, which passes every assertion below and so
+// reported a false green.
 const surfaces = [
   ["Chat", "/chat"],
-  ["Reading", "/reading"],
-  ["Mastery", "/mastery"],
+  ["Space", "/space"],
   ["Settings", "/settings"],
-  ["Knowledge", "/knowledge-bases"],
-  ["Co-Writer", "/co-writer"],
 ] as const;
 
 const themes = ["snow", "light", "dark", "glass"] as const;

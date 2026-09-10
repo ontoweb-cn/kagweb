@@ -85,24 +85,35 @@ test.describe("Compliance :: Error Handling & UX Signals", () => {
   test("api error surfaces user-friendly feedback (alert or message)", async ({
     page,
   }) => {
-    await page.route("**/api/notebooks", (route) =>
-      route.fulfill({
-        status: 500,
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ detail: "Simulated Backend Failure" }),
-      }),
-    );
+    // The retired /notebooks surface used to carry this check, so it only ever
+    // rendered the 404 page. /settings is a live surface and its
+    // SettingsLoadStatusBanner is the app's real role="alert" path.
+    //
+    // Both endpoints that can raise the banner are failed, and the assertion
+    // targets the untranslated cause string the store builds for a *settings*
+    // failure ("Settings fetch failed: HTTP <status>"). That keeps the check
+    // language-independent — the banner's own copy is localized, so an English
+    // locator fails whenever the UI runs in zh — while still proving it was the
+    // settings fetch, not the status probe (whose message reads
+    // "System status unavailable: …"), that produced the banner.
+    for (const endpoint of ["**/api/settings", "**/api/system/status"]) {
+      await page.route(endpoint, (route) =>
+        route.fulfill({
+          status: 500,
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ detail: "Simulated Backend Failure" }),
+        }),
+      );
+    }
 
-    await page.goto(`${BASE_URL}/notebooks`);
+    await page.goto(`${BASE_URL}/settings`);
 
-    await expectAnyVisible(
-      [
-        page.locator('[role="alert"]'),
-        page.locator('[data-test="notebooks-empty"]'),
-        page.locator('[data-testid="notebooks-empty"]'),
-        page.locator("text=No notebooks"),
-      ],
-      "Expected error banner or empty state after simulated failure",
-    );
+    const banner = page
+      .locator('[role="alert"]')
+      .filter({ hasText: "Settings fetch failed" });
+    await expect(
+      banner,
+      "Expected the settings failure banner to surface the fetch error",
+    ).toBeVisible();
   });
 });

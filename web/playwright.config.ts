@@ -22,7 +22,6 @@ export default defineConfig({
       name: "ui-audit",
       testMatch: "**/*.audit.ts",
       testIgnore: [
-        "**/epub-reader.audit.ts",
         "**/e2e/turn-lifecycle.audit.ts",
         "**/e2e/multi-worker-turns.audit.ts",
       ],
@@ -42,16 +41,6 @@ export default defineConfig({
       name: "multi-worker-turns-mobile",
       testMatch: "**/e2e/multi-worker-turns.audit.ts",
       use: { ...devices["iPhone 13"], reducedMotion: "reduce" },
-    },
-    {
-      name: "epub-reader-chromium",
-      testMatch: "**/epub-reader.audit.ts",
-      use: { ...devices["Desktop Chrome"] },
-    },
-    {
-      name: "epub-reader-webkit",
-      testMatch: "**/epub-reader.audit.ts",
-      use: { ...devices["iPhone 13"] },
     },
   ],
 });
