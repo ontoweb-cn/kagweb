@@ -139,6 +139,12 @@ const IGNORED_FILES = new Set([
  * that no gate could see. Reported, not enforced: there is a standing backlog
  * of these, and turning it red would fail CI on other people's strings.
  */
+// A dotted identifier key such as `codex.oauth.signIn` — lowercase camelCase
+// segments, no whitespace. Unlike a plain-English key ("Delete this file"),
+// this is not copy: a lookup that misses renders the raw identifier to the
+// user, so its absence is a defect in *every* locale, English included.
+const NAMESPACE_KEY = /^[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)+$/;
+
 function reportUntranslatedKeys() {
   const localeDir = path.join(webRoot, "locales");
   if (!fs.existsSync(localeDir)) return;
@@ -175,6 +181,12 @@ function reportUntranslatedKeys() {
           // existing plural entry means the key is covered.
           const pluralSuffixes = ["_zero", "_one", "_two", "_few", "_many", "_other"];
           if (pluralSuffixes.some((sfx) => keys.has(key + sfx))) continue;
+          // English is the exception, for the same reason the bundle is thin:
+          // a locale key *is* the English sentence (keySeparator is off), so a
+          // plain-English key needs no en entry — i18next returns the key,
+          // interpolation included. Only a namespace key would surface as a
+          // raw identifier, and only that is worth reporting.
+          if (locale === "en" && !NAMESPACE_KEY.test(key)) continue;
           if (!missing.has(locale)) missing.set(locale, new Set());
           missing.get(locale).add(key);
         }

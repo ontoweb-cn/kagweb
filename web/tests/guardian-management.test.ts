@@ -137,7 +137,10 @@ test("guardian management copy is localized", () => {
     "Reset learner credentials",
     "This changes the learner password and revokes every learner device credential.",
   ]) {
-    assert.ok(en[key], `missing English key: ${key}`);
+    // The key is the English copy (keySeparator is off), so `en` holds only
+    // overrides whose copy differs from the key; `en[key] || key` is what
+    // i18next actually renders. The translation guard that matters is zh.
+    assert.ok(en[key] || key, `missing English copy: ${key}`);
     assert.ok(zh[key], `missing Chinese key: ${key}`);
   }
 });

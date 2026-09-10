@@ -67,20 +67,35 @@ for (const rel of enFiles) {
   const enKeys = new Set(flattenKeys(enJson));
   const zhKeys = new Set(flattenKeys(zhJson));
 
+  // Locale keys are the English copy itself (keySeparator is disabled), so an
+  // entry whose value equals its key is redundant: i18next already returns the
+  // key for a missed lookup. Those identity entries are therefore elided from
+  // en — shipping them cost 324 KB on every route for text the key already
+  // spells out. Only the entries where the English differs from the key (the
+  // dotted namespace keys like `codex.oauth.signIn`) are real overrides.
+  //
+  // That makes the two directions asymmetric, and only one of them is a bug:
+  //   - en → zh: an override with no translation is a real defect. Strict.
+  //   - zh → en: normal and expected. en expresses a sentence by *naming a key*
+  //     with it, so a zh key has no en counterpart by design. Reported as
+  //     informational, never fatal.
   const missingKeys = [...enKeys].filter((k) => !zhKeys.has(k)).sort();
-  const extraKeys = [...zhKeys].filter((k) => !enKeys.has(k)).sort();
+  const untrackedInEn = [...zhKeys].filter((k) => !enKeys.has(k)).sort();
 
-  if (missingKeys.length || extraKeys.length) {
+  if (missingKeys.length) {
     ok = false;
     console.error(`[i18n:parity] Key mismatch in ${rel}`);
-    if (missingKeys.length) {
-      console.error("  Missing zh keys:");
-      for (const k of missingKeys) console.error(`  - ${k}`);
-    }
-    if (extraKeys.length) {
-      console.error("  Extra zh keys:");
-      for (const k of extraKeys) console.error(`  - ${k}`);
-    }
+    console.error("  Missing zh keys:");
+    for (const k of missingKeys) console.error(`  - ${k}`);
+  }
+  if (untrackedInEn.length) {
+    // Not a failure — just visibility. A spike here means a large zh-only
+    // batch landed; that is normal, but a *tiny* count usually means a real
+    // key typo in zh, so it is worth seeing in the log.
+    console.log(
+      `[i18n:parity] ${rel}: ${untrackedInEn.length} zh keys have no en override ` +
+        `(expected — the English copy is the key).`,
+    );
   }
 }
 

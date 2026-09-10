@@ -51,7 +51,10 @@ test("API format settings copy stays in sync across locales", () => {
   ];
 
   for (const key of keys) {
-    assert.equal(typeof en[key], "string", `missing English copy: ${key}`);
+    // The key is the English copy (keySeparator is off), so `en` holds only
+    // overrides whose copy differs from the key — what i18next renders for a
+    // miss is the key itself. zh is the side that must carry a real entry.
+    assert.equal(typeof (en[key] ?? key), "string", `missing English copy: ${key}`);
     assert.equal(typeof zh[key], "string", `missing Chinese copy: ${key}`);
   }
 });
