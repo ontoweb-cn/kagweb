@@ -179,6 +179,44 @@ async def test_cli_backend_timeout_kills_process(tmp_path: Path) -> None:
     assert excinfo.value.backend == "fake-cli"
 
 
+async def test_stderr_cleanup_never_masks_the_turns_own_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A still-pending stderr drainer must not replace the turn's real error.
+
+    Cleanup cancels that task and awaits it, which re-raises CancelledError —
+    a BaseException, so `suppress(Exception)` does not catch it. When the task
+    happened to have finished (the killed child closes the pipe and the drainer
+    sees EOF) the await returned quietly; when it had not, CancelledError
+    escaped the finally and the caller received it *instead of* AgentLoopError.
+    That is a race, and it failed CI on 3.14 before this was fixed.
+
+    The drainer is held pending here so the race is deterministic rather than
+    timing-dependent — the timeout must still surface as AgentLoopError.
+    """
+
+    async def _never_finishes(proc, tail) -> None:  # noqa: ANN001 - matches the seam
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(CliAgentLoopBackend, "_drain_stderr", staticmethod(_never_finishes))
+
+    script = _write_agent(
+        tmp_path,
+        """
+        import time
+        print("{}", flush=True)
+        time.sleep(30)
+        """,
+    )
+    backend = _cli_backend(script, timeout=1.0)
+
+    with pytest.raises(AgentLoopError) as excinfo:
+        async for _ in backend.run(_request()):
+            pass
+
+    assert excinfo.value.backend == "fake-cli"
+
+
 async def test_cli_backend_closing_stream_kills_process(tmp_path: Path) -> None:
     marker = tmp_path / "survived.marker"
     script = _write_agent(

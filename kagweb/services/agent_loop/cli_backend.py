@@ -646,8 +646,23 @@ class CliAgentLoopBackend(AgentLoopBackend):
                     await proc.wait()
             if stderr_task is not None:
                 stderr_task.cancel()
-                with suppress(Exception):
+                try:
                     await stderr_task
+                except asyncio.CancelledError:
+                    # Awaiting a task we just cancelled re-raises
+                    # CancelledError, and CancelledError is a BaseException —
+                    # so `suppress(Exception)` did not catch it. It escaped
+                    # this cleanup and replaced whatever the turn actually
+                    # failed with: a timeout surfaced to the caller as
+                    # CancelledError instead of AgentLoopError, and a closed
+                    # stream raised it out of GeneratorExit handling. Only the
+                    # cancellation requested on the line above is expected
+                    # here; genuine cancellation of this coroutine must still
+                    # propagate.
+                    if asyncio.current_task().cancelling():
+                        raise
+                except Exception:  # pragma: no cover - defensive
+                    logger.debug("agent-loop %s: stderr drainer failed", self.name, exc_info=True)
             dropped = int(state.get("dropped_lines") or 0)
             if dropped:
                 logger.info(
