@@ -60,6 +60,12 @@ repos:
 
       - id: ruff-format
         args: [--quiet]
+        # CI runs `ruff format --check .`, which also formats the Python code
+        # blocks inside Markdown. The hook's default filter is Python-only, so
+        # a doc with a badly formatted snippet passed locally and failed CI —
+        # exactly the local/CI gap this config pins the version to avoid.
+        # (`ruff check` is left alone: the linter ignores Markdown.)
+        types_or: [python, pyi, markdown]
 
   # ============================================
   # Frontend code formatting and linting

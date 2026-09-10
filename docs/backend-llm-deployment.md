@@ -252,7 +252,7 @@ timeout_seconds, session_workspace, consult_enabled, workdir
 
 ```python
 # CapabilityManifest 增加
-required_service: str = "llm"        # chat 在 agent-loop 模式下改为 "agent_loop"
+required_service: str = "llm"  # chat 在 agent-loop 模式下改为 "agent_loop"
 ```
 
 `request_preparer` 据此判定：
@@ -793,8 +793,9 @@ kagweb 的 `RunsAgentLoopBackend._translate_run_event`（`http_backend.py:460-53
 **D1（P0）`intellect-team` 预设指向不存在的端点**
 
 ```python
-AgentLoopPreset(name="intellect-team", family="http",
-                description="Intellect enterprise (team) agent service.")
+AgentLoopPreset(
+    name="intellect-team", family="http", description="Intellect enterprise (team) agent service."
+)
 # → protocol 默认 "turn"、turn_path 默认 "/agent/turn"
 ```
 
