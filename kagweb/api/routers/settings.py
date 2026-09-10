@@ -67,9 +67,6 @@ from kagweb.services.settings.interface_settings import (
     resolve_languages,
     sanitize_enabled_tools,
 )
-from kagweb.services.settings.interface_settings import (
-    get_enabled_optional_tools as _get_enabled_optional_tools,
-)
 from kagweb.services.settings.starter_settings import (
     TRACE_COUNT_RANGE as STARTER_TRACE_COUNT_RANGE,
 )
@@ -85,12 +82,6 @@ router = APIRouter()
 public_router = APIRouter()
 
 TOUR_CACHE = None
-
-
-def get_enabled_optional_tools() -> list[str]:
-    """Compatibility export; the source of truth lives in the service layer."""
-
-    return _get_enabled_optional_tools()
 
 
 def _settings_file():
@@ -201,10 +192,6 @@ class SidebarDescriptionUpdate(BaseModel):
 
 class SidebarNavOrderUpdate(BaseModel):
     nav_order: SidebarNavOrder
-
-
-class EnabledToolsUpdate(BaseModel):
-    enabled_tools: List[str]
 
 
 class CatalogPayload(BaseModel):
@@ -1977,13 +1964,6 @@ async def update_sidebar_description(update: SidebarDescriptionUpdate):
 async def update_sidebar_nav_order(update: SidebarNavOrderUpdate):
     patch_ui_settings(sidebar_nav_order=update.nav_order.model_dump())
     return {"nav_order": update.nav_order.model_dump()}
-
-
-@router.put("/enabled-tools")
-async def update_enabled_tools(update: EnabledToolsUpdate):
-    sanitized = sanitize_enabled_tools(update.enabled_tools)
-    patch_ui_settings(enabled_optional_tools=sanitized)
-    return {"enabled_optional_tools": sanitized}
 
 
 @router.post("/tests/{service}/start")

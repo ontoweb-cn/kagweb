@@ -54,7 +54,6 @@ import { useMeasuredHeight } from '@/hooks/useMeasuredHeight'
 import { useSetupSync } from '@/hooks/useSetupSync'
 import { consumePendingPrompt } from '@/lib/pending-prompt'
 import { useLLMOptions } from '@/hooks/useLLMOptions'
-import { getEnabledOptionalTools, invalidateEnabledOptionalToolsCache } from '@/lib/tools-settings'
 import { ALL_TOOLS, getChatCapability, type ToolName } from '@/features/capabilities/presentation'
 import { useCapabilityCatalog } from '@/features/capabilities/useCapabilityCatalog'
 import { browserStorage } from '@/shared/storage'
@@ -290,10 +289,10 @@ export default function ChatWorkspace() {
     error: llmOptionsError,
     refresh: refreshLLMOptions,
   } = useLLMOptions()
-  // User-toggleable tools the user has enabled in /settings#tools. This is
-  // the single source of truth for which optional tools the chat agent may
-  // use; the chat composer no longer exposes a picker.
-  const [userEnabledTools, setUserEnabledTools] = useState<string[] | null>(null)
+  // The tool set is the active capability's allow-list. There is no user-level
+  // tool toggle any more: the chat capability delegates each turn to an
+  // external agent backend, which owns its own tools, so a KAGWeb-side switch
+  // could never take effect. The composer never exposed a picker either.
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const attachmentLimits = useAttachmentLimits()
   const [dragging, setDragging] = useState(false)
@@ -826,20 +825,6 @@ export default function ChatWorkspace() {
     setActiveSessionId(state.sessionId || sessionIdParam || null)
   }, [state.sessionId, sessionIdParam, setActiveSessionId])
 
-  const refreshUserEnabledTools = useCallback(async (options?: { force?: boolean }) => {
-    try {
-      const list = await getEnabledOptionalTools({ force: options?.force })
-      setUserEnabledTools(list)
-    } catch {
-      setUserEnabledTools([])
-    }
-  }, [])
-
-  /* Load user tool prefs */
-  useEffect(() => {
-    void refreshUserEnabledTools()
-  }, [refreshUserEnabledTools])
-
   useEffect(() => {
     if (state.llmSelection || !activeLLMDefault) return
     setLLMSelection(activeLLMDefault)
@@ -849,9 +834,6 @@ export default function ChatWorkspace() {
     if (typeof window === 'undefined') return
     const refresh = () => {
       void refreshLLMOptions({ force: true, background: true })
-      // Picks up toggles the user changed in another tab (/settings#tools).
-      invalidateEnabledOptionalToolsCache()
-      void refreshUserEnabledTools({ force: true })
     }
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') refresh()
@@ -864,7 +846,7 @@ export default function ChatWorkspace() {
       window.removeEventListener('pageshow', refresh)
       document.removeEventListener('visibilitychange', refreshWhenVisible)
     }
-  }, [refreshLLMOptions, refreshUserEnabledTools])
+  }, [refreshLLMOptions])
 
   /* Composer setup requested by the URL that opened this page. Runs once:
      from here on the composer is the user's to change. */
@@ -906,18 +888,17 @@ export default function ChatWorkspace() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Keep state.enabledTools = (user's toggleable set) ∩ (capability's allowed
-  // set). Re-runs when the user flips a toggle in /settings#tools or when
-  // the active capability changes. The composer no longer owns this — the
-  // /settings#tools page is the single switchboard.
+  // Keep state.enabledTools = the active capability's allow-list. Re-runs when
+  // the active capability changes. There is no longer a user toggle layer: the
+  // backend owns the tools, so the capability's own list is authoritative.
   useEffect(() => {
-    if (userEnabledTools === null) return
-    const allowed = new Set(activeCap.allowedTools)
-    const next = userEnabledTools.filter(tool => allowed.has(tool as ToolName))
+    const next = [...activeCap.allowedTools]
     const current = state.enabledTools
-    const same = current.length === next.length && current.every((tool, idx) => tool === next[idx])
+    const same =
+      current.length === next.length &&
+      current.every((tool, idx) => tool === next[idx])
     if (!same) setTools(next)
-  }, [activeCap.allowedTools, setTools, state.enabledTools, userEnabledTools])
+  }, [activeCap.allowedTools, setTools, state.enabledTools])
 
   /* ---- handlers ---- */
 
@@ -928,17 +909,12 @@ export default function ChatWorkspace() {
         capabilities[0] ??
         getChatCapability('')
       setCapability(cap.value || null)
-      // Per-capability tool selection now derives from the user's saved
-      // settings (/settings#tools) intersected with the capability's
-      // allow-list.
-      const baseline = userEnabledTools === null ? cap.allowedTools : userEnabledTools
-      const enabledToolsForCap = baseline.filter(tool =>
-        cap.allowedTools.includes(tool as ToolName)
-      )
-      setTools(enabledToolsForCap)
+      // The capability owns the tool set; there is no user-toggle layer to
+      // intersect with any more.
+      setTools([...cap.allowedTools])
       setCapMenuOpen(false)
     },
-    [capabilities, setCapability, setTools, userEnabledTools]
+    [capabilities, setCapability, setTools]
   )
 
   const fileToAttachment = fileToPendingAttachment

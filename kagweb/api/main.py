@@ -34,40 +34,6 @@ class _SuppressWsNoise(logging.Filter):
 
 logging.getLogger("uvicorn.error").addFilter(_SuppressWsNoise())
 
-CONFIG_DRIFT_ERROR_TEMPLATE = (
-    "Configuration Drift Detected: Capability tool references {drift} are not "
-    "registered in the runtime tool registry. Register the missing tools or "
-    "remove the stale tool names from the capability manifests."
-)
-
-
-def validate_tool_consistency():
-    """
-    Validate that capability manifests only reference tools that are actually
-    registered in the runtime ``ToolRegistry``.
-    """
-    try:
-        from kagweb.runtime.registry.capability_registry import get_capability_registry
-        from kagweb.runtime.registry.tool_registry import get_tool_registry
-
-        capability_registry = get_capability_registry()
-        tool_registry = get_tool_registry()
-        available_tools = set(tool_registry.list_tools())
-
-        referenced_tools = set()
-        for manifest in capability_registry.get_manifests():
-            referenced_tools.update(manifest.get("tools_used", []) or [])
-
-        drift = referenced_tools - available_tools
-        if drift:
-            raise RuntimeError(CONFIG_DRIFT_ERROR_TEMPLATE.format(drift=drift))
-    except RuntimeError:
-        logger.exception("Configuration validation failed")
-        raise
-    except Exception:
-        logger.exception("Failed to load configuration for validation")
-        raise
-
 
 def _build_cors_settings() -> dict[str, object]:
     """Build CORS settings for both localhost and remote Docker deployments."""
@@ -109,9 +75,6 @@ async def lifespan(app: FastAPI):
     # Execute on startup
     logger.info("Application startup")
     app.state.ready = False
-
-    # Validate configuration consistency
-    validate_tool_consistency()
 
     # Build one process-level dependency graph.  Every adapter resolves turns
     # through this container, so a WebSocket cannot accidentally construct a
@@ -421,9 +384,6 @@ from kagweb.api.routers import (
     unified_ws,
     voice,
 )
-from kagweb.api.routers import (
-    tools as tools_router,
-)
 from kagweb.api.routers.multi_user import router as multi_user_router  # noqa: E402
 
 # Auth router is public — login/logout/register/status require no token
@@ -486,7 +446,6 @@ app.include_router(
     dependencies=_auth,
 )
 app.include_router(personas.router, prefix="/api", tags=["personas"], dependencies=_auth)
-app.include_router(tools_router.router, prefix="/api/tools", tags=["tools"], dependencies=_auth)
 app.include_router(system.router, prefix="/api/system", tags=["system"], dependencies=_auth)
 app.include_router(voice.router, prefix="/api/voice", tags=["voice"], dependencies=_auth)
 # Partners are per-user resources now: anyone may build their own, and an admin

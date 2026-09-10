@@ -7,9 +7,6 @@ import { useSettingsAccess } from "@/features/settings/navigation/SettingsAccess
 import { visibleSettingsChildren } from "@/features/settings/navigation/settings-nav";
 
 const loading = () => <div className="min-h-64" aria-hidden="true" />;
-const ToolsSettingsPage = dynamic(() => import("./ToolsSettingsSection"), {
-  loading,
-});
 const CapabilitiesSettingsPage = dynamic(
   () => import("./CapabilitiesSettingsSection"),
   { loading },
@@ -23,10 +20,11 @@ const AttachmentSettingsPage = dynamic(
   { loading },
 );
 
-// The agent backend is a deployment-level choice, so it is its own top-level
-// category now (see SETTINGS_CATEGORIES) rather than a child of Chat.
+// The agent backend is its own top-level category now (see
+// SETTINGS_CATEGORIES). The Tools section was removed with the tool surface:
+// the chat capability delegates to an external backend, so a tool toggle could
+// never take effect — the backend owns its own tools.
 const CHAT_SECTIONS = [
-  { key: "tools", Component: ToolsSettingsPage },
   { key: "capabilities", Component: CapabilitiesSettingsPage },
   { key: "starters", Component: StarterSettingsPage },
   { key: "attachments", Component: AttachmentSettingsPage },

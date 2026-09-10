@@ -22,7 +22,6 @@ import {
   SlidersHorizontal,
   Sparkles,
   UserRound,
-  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -203,17 +202,6 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
 
 const CHAT_CHILDREN: SettingsLeaf[] = [
   {
-    key: "tools",
-    href: "/settings#tools",
-    label: { zh: "工具", en: "Tools" },
-    blurb: {
-      zh: "对话智能体可调用的内置工具。",
-      en: "Built-in tools the chat agent can invoke.",
-    },
-    icon: Wrench,
-    tile: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-  },
-  {
     key: "capabilities",
     href: "/settings#capabilities",
     label: { zh: "能力", en: "Capabilities" },
@@ -381,7 +369,6 @@ const STORAGE_PATHS: Record<string, string> = {
   stt: "data/user/settings/model_catalog.json",
   imagegen: "data/user/settings/model_catalog.json",
   videogen: "data/user/settings/model_catalog.json",
-  tools: "data/user/settings/interface.json",
   attachments: "data/user/settings/system.json",
   capabilities: "data/user/settings/main.yaml",
   "agent-loop": "data/user/settings/system.json",
