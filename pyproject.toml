@@ -218,6 +218,10 @@ acp = ["agent-client-protocol==0.12.1"]
 # Dev/test tooling. Mirrors requirements/dev.txt.
 dev = [
     "kagweb[server]",
+    # The ACP transport is an optional extra, but its tests are part of the
+    # suite and error at import without the SDK — keep it here so a dev/test
+    # install runs them (mirrors requirements/acp.txt).
+    "kagweb[acp]",
     "pytest>=7.0.0",
     "pytest-asyncio>=0.23.0",
     "pre-commit>=3.0.0",

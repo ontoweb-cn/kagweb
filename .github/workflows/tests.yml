@@ -269,6 +269,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements/server.txt
           pip install -r requirements/partners.txt
+          # The ACP transport is an optional extra, but its tests are part of
+          # the suite and must not silently vanish; install it so they run.
+          pip install -r requirements/acp.txt
           pip install pytest pytest-asyncio
 
       - name: Install optional LightRAG SDK

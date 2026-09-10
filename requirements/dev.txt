@@ -8,6 +8,9 @@
 # Use this file for Docker/CI when pyproject.toml/source code aren't yet available.
 
 -r server.txt
+# The ACP transport's tests are part of the suite and error at import without
+# the SDK, so a dev/test install carries it like the fixture builders below.
+-r acp.txt
 
 pytest>=7.0.0
 pytest-asyncio>=0.23.0

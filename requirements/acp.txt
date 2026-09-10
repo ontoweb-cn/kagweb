@@ -1,0 +1,14 @@
+# ============================================
+# KAGWeb Agent Client Protocol — Dependencies
+# ============================================
+# Mirrors pyproject.toml `[project.optional-dependencies].acp`.
+# Keep in sync with pyproject.toml when adding/updating dependencies.
+#
+# Preferred install (from a source clone): pip install -e ".[acp]"
+# Use this file for Docker/CI when pyproject.toml/source code aren't yet available.
+#
+# Needed by the `intellect acp` transport (kagweb/services/agent_loop/acp_backend.py)
+# and by its tests. The pin tracks the version the installed intellect-agent
+# ships with; the ACP handshake negotiates the actual protocol revision.
+
+agent-client-protocol==0.12.1
