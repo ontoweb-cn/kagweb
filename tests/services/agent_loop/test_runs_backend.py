@@ -217,3 +217,70 @@ async def test_stream_failure_degrades_to_status_polling() -> None:
     assert events[-1].data["total_tokens"] == 3
     # the run status was polled, no live events were available
     assert any(call.url.path.endswith("/runs/run_1") and call.method == "GET" for call in calls)
+
+
+# ── the remote ids are attacker-influenced; they must stay in their segment ──
+
+
+def test_hostile_run_id_cannot_escape_its_path_segment() -> None:
+    """`run_id` comes from the backend's start response and rides into URLs
+    that carry the operator's Authorization header. Left raw, `../..` is
+    normalised by httpx into a different path on the configured host."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(202, json={"run_id": "../../admin/secret"})
+
+    backend = RunsAgentLoopBackend(
+        name="intellect-runs",
+        url="http://gateway.test",
+        turn_path="/v1/runs",
+        api_key="k",
+        headers={},
+        timeout_seconds=5,
+        transport=httpx.MockTransport(handler),
+    )
+    backend._run_id = "../../admin/secret"
+
+    url = backend._runs_url(backend._run_id, "events")
+    # Every separator the value carried is percent-encoded, so the whole value
+    # is ONE segment: the literal ".." is harmless without an unescaped "/".
+    assert url == "http://gateway.test/v1/runs/..%2F..%2Fadmin%2Fsecret/events"
+
+
+def test_hostile_session_id_cannot_escape_the_clarify_path() -> None:
+    backend = RunsAgentLoopBackend(
+        name="intellect-runs",
+        url="http://gateway.test",
+        turn_path="/v1/runs",
+        api_key="k",
+        headers={},
+        timeout_seconds=5,
+    )
+    backend._session_id = "../../admin?x=1"
+
+    url = backend._clarify_url()
+    assert url == ("http://gateway.test/v1/chat/completions/..%2F..%2Fadmin%3Fx%3D1/clarify")
+    # No query or fragment was split off.
+    assert "?" not in url and "#" not in url
+
+
+async def test_an_unknown_event_logs_its_labels_but_not_its_body(caplog) -> None:
+    """Unrecognised events are worth a trace, but the payload carries model
+    text, tool results and tool arguments — logging the object would write
+    conversation content to the log file."""
+    secret = "SENSITIVE-ANSWER-TEXT"
+    calls: list[httpx.Request] = []
+    body = (
+        'data: {"event": "some.new.event", "type": "brand.new.type",'
+        f' "output": "{secret}"}}\n'
+        "\n"
+        ": stream closed\n"
+    )
+    backend = _mock_backend(calls, sse_body=body)
+
+    with caplog.at_level("DEBUG", logger="kagweb.services.agent_loop.http_backend"):
+        [event async for event in backend.run(AgentLoopRequest(prompt="hi"))]
+
+    logged = "\n".join(record.getMessage() for record in caplog.records)
+    assert "brand.new.type" in logged  # the labels are still reported
+    assert secret not in logged  # the body is not

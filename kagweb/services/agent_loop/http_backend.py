@@ -35,6 +35,7 @@ from contextlib import nullcontext
 import json
 import logging
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -50,6 +51,22 @@ from .protocol import (
     AgentLoopEvent,
     AgentLoopRequest,
 )
+
+
+def _path_segment(value: Any) -> str:
+    """Percent-encode a value for use as ONE path segment.
+
+    The values interpolated into these URLs (`run_id`, `session_id`) come from
+    the remote backend's responses and event stream, and this client attaches
+    the operator's ``Authorization`` header to every request it builds. Left
+    raw, a value like ``../../admin`` is normalised by httpx into a different
+    path on the configured host, and ``?``/``#`` split off a query or fragment —
+    so a compromised or misconfigured backend could aim the operator's
+    credentials at an endpoint that was never intended. Encoding keeps the
+    value inside its own segment.
+    """
+    return quote(str(value), safe="")
+
 
 logger = logging.getLogger(__name__)
 
@@ -309,7 +326,16 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
     # -- URL helpers ---------------------------------------------------------
 
     def _runs_url(self, *suffix: str) -> str:
-        return f"{self.url}{self.turn_path}{'/' + '/'.join(suffix) if suffix else ''}"
+        path = "/".join(_path_segment(part) for part in suffix)
+        return f"{self.url}{self.turn_path}{'/' + path if path else ''}"
+
+    def _clarify_url(self) -> str:
+        """The clarify endpoint, which is NOT under ``turn_path``.
+
+        Intellect exposes it as ``POST /v1/chat/completions/{session_id}/clarify``
+        — a sibling of the runs API, keyed by session rather than by run.
+        """
+        return f"{self.url}/v1/chat/completions/{_path_segment(self._session_id)}/clarify"
 
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/json, text/event-stream", **self.headers}
@@ -617,12 +643,17 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         # Unknown shapes are the one case that must leave a trace: silently
         # dropping them is what let the field-name mismatches above go
         # unnoticed for so long.
+        #
+        # Only the labels are logged, never the body. An unrecognised event is
+        # still an event, and this channel's payloads carry model text
+        # (``output``), tool results (``result``) and tool arguments — logging
+        # the object would write conversation content to the log file. The
+        # labels are bounded too, since they come from the remote backend.
         logger.debug(
-            "agent-loop %s: unrecognised run event (type=%r event=%r): %.200s",
+            "agent-loop %s: unrecognised run event (type=%.100s event=%.100s)",
             self.name,
-            obj.get("type"),
-            obj.get("event"),
-            obj,
+            str(obj.get("type") or ""),
+            str(obj.get("event") or ""),
         )
         return []
 
@@ -662,11 +693,7 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
     async def respond_clarify(self, request_id: str, answer: str) -> None:
         """Deliver the user's answer to an in-flight ``clarify``.
 
-        The clarify endpoint is NOT under the run path: Intellect exposes it as
-        ``POST /v1/chat/completions/{session_id}/clarify`` with
-        ``{"clarify_id", "answer"}``, keyed by session rather than by run. That
-        is why this does not reuse ``_runs_url`` — it is a sibling of the runs
-        API, not a child of it.
+        The clarify endpoint is NOT under the run path; see ``_clarify_url``.
         """
         if not self._session_id:
             # Nothing to address: without a server session id the request would
@@ -679,7 +706,7 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             return
         async with httpx.AsyncClient(transport=self._transport) as client:
             await client.post(
-                f"{self.url}/v1/chat/completions/{self._session_id}/clarify",
+                self._clarify_url(),
                 json={"clarify_id": request_id, "answer": answer},
                 headers=self._headers(),
             )
