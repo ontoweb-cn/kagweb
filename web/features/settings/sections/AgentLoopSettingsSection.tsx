@@ -45,6 +45,17 @@ type StoredProfile = {
   session_workspace: boolean;
   consult_enabled: boolean;
   workdir: string;
+  /** The model this backend should run; "" = the backend's own default. */
+  model: string;
+  /** The backend's real context window for history budgeting; 0 = unknown. */
+  context_window: number;
+  /**
+   * Approval policy. There is no UI for these yet, but they are loaded and
+   * sent back unchanged: the save replaces the whole profile list, so omitting
+   * them would reset an operator's out-of-band policy to the defaults.
+   */
+  approval_timeout_seconds?: number;
+  approval_default?: string;
   api_key_set?: boolean;
 };
 
@@ -64,7 +75,11 @@ type AgentLoopPayload = {
   auto_primary: string;
   env_overrides: Record<string, boolean>;
   presets: PresetInfo[];
-  bounds: { timeout_seconds: [number, number]; consult_budget: [number, number] };
+  bounds: {
+    timeout_seconds: [number, number];
+    consult_budget: [number, number];
+    context_window: [number, number];
+  };
 };
 
 type DetectInfo = {
@@ -188,6 +203,13 @@ function draftToRequest(draft: DraftProfile) {
     session_workspace: draft.session_workspace,
     consult_enabled: draft.consult_enabled,
     workdir: draft.workdir,
+    model: draft.model,
+    context_window: draft.context_window,
+    // Echoed so a save keeps whatever policy is stored. This form has no
+    // approval controls, and the PUT replaces the whole profile list — sending
+    // nothing here would silently reset an out-of-band policy to the defaults.
+    approval_timeout_seconds: draft.approval_timeout_seconds ?? 60,
+    approval_default: draft.approval_default ?? "deny",
   };
 }
 
@@ -494,6 +516,8 @@ export default function AgentLoopSettingsPage() {
       session_workspace: true,
       consult_enabled: true,
       workdir: "",
+      model: "",
+      context_window: 0,
     });
     setDrafts((current) => [...(current ?? []), draft]);
     setExpanded(tempId);
@@ -848,6 +872,22 @@ export default function AgentLoopSettingsPage() {
                                 />
                               }
                             />
+                            <SettingRow
+                              title={t("Model")}
+                              description={t(
+                                "Sent as the request body's model field. Leave blank to let the service choose.",
+                              )}
+                              control={
+                                <input
+                                  className={`${inputClass} w-[280px] max-w-[40vw] font-mono`}
+                                  placeholder={t("service default")}
+                                  value={draft.model}
+                                  onChange={(event) =>
+                                    update(draft.id, { model: event.target.value })
+                                  }
+                                />
+                              }
+                            />
                             <div className="py-3">
                               <div className="text-[13.5px] font-medium text-[var(--foreground)]">
                                 {t("Extra headers")}
@@ -885,18 +925,34 @@ export default function AgentLoopSettingsPage() {
                                 />
                               }
                             />
+                            <SettingRow
+                              title={t("Model")}
+                              description={t(
+                                "Substituted for {model} in the extra arguments. Leave blank to use the CLI's own configured default.",
+                              )}
+                              control={
+                                <input
+                                  className={`${inputClass} w-[280px] max-w-[40vw] font-mono`}
+                                  placeholder={t("CLI default")}
+                                  value={draft.model}
+                                  onChange={(event) =>
+                                    update(draft.id, { model: event.target.value })
+                                  }
+                                />
+                              }
+                            />
                             <div className="py-3">
                               <div className="text-[13.5px] font-medium text-[var(--foreground)]">
                                 {t("Extra arguments")}
                               </div>
                               <p className="mb-2 mt-1 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
                                 {t(
-                                  "One argument per line, appended to the preset's argv. Use {prompt} to place the user turn.",
+                                  "One argument per line, appended to the preset's argv. Use {prompt} to place the user turn and {model} for the model above — prefer --model={model}, since an argument referencing {model} is dropped entirely when no model is set.",
                                 )}
                               </p>
                               <textarea
                                 className={`${inputClass} min-h-20 resize-y font-mono text-[12.5px] leading-relaxed`}
-                                placeholder={"--model\nbig-model\n{prompt}"}
+                                placeholder={"--model={model}\n{prompt}"}
                                 value={draft.argsText}
                                 onChange={(event) =>
                                   update(draft.id, { argsText: event.target.value })
@@ -970,6 +1026,30 @@ export default function AgentLoopSettingsPage() {
                               onChange={(event) =>
                                 update(draft.id, {
                                   timeout_seconds: Number(event.target.value),
+                                })
+                              }
+                            />
+                          }
+                        />
+                        <SettingRow
+                          title={t("Context window")}
+                          description={t(
+                            "This backend's real context window, used to size the history budget. 0 = unknown, which falls back to a small default. Between {{min}} and {{max}} tokens.",
+                            {
+                              min: payload.bounds?.context_window?.[0] ?? 1_024,
+                              max: payload.bounds?.context_window?.[1] ?? 1_000_000,
+                            },
+                          )}
+                          control={
+                            <input
+                              className={`${inputClass} w-36`}
+                              type="number"
+                              min={0}
+                              max={payload.bounds?.context_window?.[1] ?? 1_000_000}
+                              value={draft.context_window}
+                              onChange={(event) =>
+                                update(draft.id, {
+                                  context_window: Number(event.target.value),
                                 })
                               }
                             />

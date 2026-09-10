@@ -92,6 +92,13 @@ AGENT_LOOP_TIMEOUT_RANGE = (30, 86_400)
 #: enabled profiles (0 disables consultation entirely).
 AGENT_LOOP_CONSULT_BUDGET_RANGE = (0, 12)
 
+#: Bounds for a profile's declared context window. The ceiling mirrors
+#: ``MAX_EFFECTIVE_CONTEXT_WINDOW`` (the budget planner refuses to plan past it
+#: even if a backend claims more); the floor is a small-but-plausible window, so
+#: a typo like ``200`` is refused rather than silently starving the turn.
+#: ``0`` is not clamped — it means "not configured" (see the profile normalizer).
+AGENT_LOOP_CONTEXT_WINDOW_RANGE = (1_024, 1_000_000)
+
 # The Intellect preset family is identified by `is_intellect_preset` and
 # `llm_settings_apply` in `agent_loop.builtin`, which match by prefix. The
 # enumerated set that used to live here was a second source of truth and had
@@ -427,6 +434,22 @@ _APPROVAL_DEFAULT_CHOICES = ("deny", "once", "session", "always")
 def _approval_default(value: Any) -> str:
     choice = _string(value).lower()
     return choice if choice in _APPROVAL_DEFAULT_CHOICES else "deny"
+
+
+def _agent_loop_context_window(value: Any) -> int:
+    """One profile's declared context window, or ``0`` for "not configured".
+
+    Zero is meaningful here and must survive normalization: it is how an
+    operator says "I don't know this backend's window", leaving the budget
+    planner on its own fallback. So this cannot go through
+    ``_coerce_clamped_int``, whose clamp would turn an absent value into the
+    floor and silently claim a 1,024-token window.
+    """
+    raw = _coerce_int(value, 0)
+    if raw <= 0:
+        return 0
+    low, high = AGENT_LOOP_CONTEXT_WINDOW_RANGE
+    return max(low, min(high, raw))
 
 
 def _coerce_port(value: Any, default: int) -> int:
@@ -1325,6 +1348,15 @@ class RuntimeSettingsService:
             # Empty = the per-session workspace. A non-empty value is honoured
             # only inside the block's allowed_workdir_roots (see workdir.py).
             "workdir": _string(raw.get("workdir")).strip(),
+            # The model this backend should run. Empty = leave it to the
+            # backend's own default (the CLI's config file, the service's
+            # setting). CLI profiles reference it as `{model}` in `args`; HTTP
+            # profiles send it in the request body.
+            "model": _string(raw.get("model")).strip(),
+            # The backend's real context window, used for history budgeting
+            # instead of the 16K fallback that applies when no model name is
+            # known. 0 = not configured (the window is guessed).
+            "context_window": _agent_loop_context_window(raw.get("context_window")),
             # Approval policy for control-capable backends: how long a parked
             # turn waits for a decision, and what answers for the user when
             # nothing arrives (timeout, headless entry point).

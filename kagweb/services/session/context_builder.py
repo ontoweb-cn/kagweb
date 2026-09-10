@@ -156,17 +156,33 @@ class ContextBuilder:
         self.history_budget_ratio = history_budget_ratio
         self.summary_target_ratio = summary_target_ratio
 
-    def _effective_context_window(self, llm_config: LLMConfig | None) -> int:
-        # ``None`` means a bare turn (no model configured): fall through to
-        # the registry default via empty model/None window.
+    def _effective_context_window(
+        self, llm_config: LLMConfig | None, context_window_override: int | None = None
+    ) -> int:
+        # An agent backend knows the window it runs with and KAGWeb does not
+        # (the profile carries it), so an explicit value wins over anything
+        # derivable here. ``resolve_effective_context_window`` still applies its
+        # own ceiling.
+        #
+        # ``None`` config with no override means a bare turn (no model
+        # configured): fall through to the registry default via empty
+        # model/None window.
         return resolve_effective_context_window(
-            context_window=getattr(llm_config, "context_window", None),
+            context_window=(
+                context_window_override
+                if context_window_override
+                else getattr(llm_config, "context_window", None)
+            ),
             model=str(getattr(llm_config, "model", "") or ""),
             max_tokens=getattr(llm_config, "max_tokens", None),
         )
 
-    def _history_budget(self, llm_config: LLMConfig | None) -> int:
-        effective_context_window = self._effective_context_window(llm_config)
+    def _history_budget(
+        self, llm_config: LLMConfig | None, context_window_override: int | None = None
+    ) -> int:
+        effective_context_window = self._effective_context_window(
+            llm_config, context_window_override
+        )
         ratio_budget = max(256, int(effective_context_window * self.history_budget_ratio))
         return min(ratio_budget, MAX_HISTORY_PLAN_TOKENS)
 
@@ -185,10 +201,14 @@ class ContextBuilder:
         # leaves almost no headroom before the next compaction.
         return max(128, int(budget * (1 - self.summary_target_ratio)))
 
-    def _rebuild_source_budget(self, llm_config: LLMConfig | None) -> int:
+    def _rebuild_source_budget(
+        self, llm_config: LLMConfig | None, context_window_override: int | None = None
+    ) -> int:
         # A raw prefix is eligible for drift-free rebuild up to this threshold;
         # beyond it we degrade to fold-in (existing summary + new turns).
-        ratio_budget = max(1024, self._effective_context_window(llm_config) // 2)
+        ratio_budget = max(
+            1024, self._effective_context_window(llm_config, context_window_override) // 2
+        )
         return min(ratio_budget, MAX_RAW_REBUILD_TOKENS)
 
     def _build_history(self, summary: str, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -425,6 +445,11 @@ class ContextBuilder:
         # ``None`` = bare turn: no model configured, capability decides
         # whether that is fatal. Budgets fall back to registry defaults.
         llm_config: LLMConfig | None = None,
+        # The agent backend's own context window, when the profile declares one.
+        # An agent-loop turn has no ``llm_config``, so without this the budget
+        # falls back to the 16K registry default even though the backend may run
+        # a 200K window — the history planner would summarise far too early.
+        context_window_override: int | None = None,
         language: str = "en",
         on_event: Callable[[StreamEvent], Awaitable[None]] | None = None,
         leaf_message_id: int | None = None,
@@ -437,9 +462,11 @@ class ContextBuilder:
             session_id, leaf_message_id=leaf_message_id
         )
         if session is None:
-            return ContextBuildResult([], "", "", [], 0, self._history_budget(llm_config))
+            return ContextBuildResult(
+                [], "", "", [], 0, self._history_budget(llm_config, context_window_override)
+            )
 
-        budget = self._history_budget(llm_config)
+        budget = self._history_budget(llm_config, context_window_override)
         summary_budget = self._summary_budget(budget, llm_config)
         recent_budget = self._recent_budget(budget)
 
@@ -484,7 +511,7 @@ class ContextBuilder:
         # monotonically. Only beyond that budget degrade to fold-in.
         rebuild_from_raw = bool(prefix_transcript) and count_tokens(
             prefix_transcript
-        ) <= self._rebuild_source_budget(llm_config)
+        ) <= self._rebuild_source_budget(llm_config, context_window_override)
         merge_parts: list[str] = []
         if rebuild_from_raw:
             merge_parts.append(f"Conversation history to summarize:\n{prefix_transcript}")

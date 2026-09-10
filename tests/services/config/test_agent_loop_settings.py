@@ -284,3 +284,35 @@ def test_reserved_picker_ids_are_regenerated() -> None:
     ]
     # The dangling sentinel primary is healed by the auto rule.
     assert block["primary"] not in {"__auto__", "__none__"}
+
+
+def test_model_and_context_window_normalize() -> None:
+    """The two fields that let an operator describe the backend's model.
+
+    `context_window` is the interesting one: 0 means "not configured" and must
+    survive normalization, because the budget planner treats it as absent — a
+    clamp to the floor would silently claim a 1,024-token window.
+    """
+    block = _normalize_agent_loop(
+        {
+            "profiles": [
+                {"id": "a", "preset": "claude-code"},
+                {"id": "b", "preset": "claude-code", "model": "  claude-sonnet-5  "},
+                {"id": "c", "preset": "claude-code", "context_window": 200000},
+                {"id": "d", "preset": "claude-code", "context_window": 5},
+                {"id": "e", "preset": "claude-code", "context_window": 99_999_999},
+                {"id": "f", "preset": "claude-code", "context_window": "abc"},
+            ],
+        }
+    )
+    by_id = {profile["id"]: profile for profile in block["profiles"]}
+
+    assert by_id["a"]["model"] == ""
+    assert by_id["a"]["context_window"] == 0  # unset stays unset
+
+    assert by_id["b"]["model"] == "claude-sonnet-5"  # trimmed
+
+    assert by_id["c"]["context_window"] == 200000
+    assert by_id["d"]["context_window"] == 1_024  # below floor → clamped up
+    assert by_id["e"]["context_window"] == 1_000_000  # above ceiling → clamped down
+    assert by_id["f"]["context_window"] == 0  # unparseable → unset, not floored

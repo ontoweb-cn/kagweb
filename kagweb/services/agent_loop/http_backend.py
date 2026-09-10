@@ -109,6 +109,7 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         headers: dict[str, str],
         timeout_seconds: float,
         transport: httpx.AsyncBaseTransport | None = None,
+        model: str = "",
     ) -> None:
         self.name = name
         self.url = url.rstrip("/")
@@ -116,6 +117,11 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         self.api_key = str(api_key or "")
         self.headers = {str(k): str(v) for k, v in (headers or {}).items()}
         self.timeout_seconds = float(timeout_seconds) if timeout_seconds else 0.0
+        #: The profile's chosen model, sent in the request body when set. Empty
+        #: means the service picks its own, and the key is omitted entirely so a
+        #: deployment that never sets a model sees the exact request it did
+        #: before this field existed.
+        self.model = str(model or "").strip()
         # Test/embedding hook: injected httpx transport (never set by the
         # settings-driven factory).
         self._transport = transport
@@ -130,6 +136,10 @@ class HttpAgentLoopBackend(AgentLoopBackend):
             "prompt": request.prompt,
             "history": request.history,
         }
+        if self.model:
+            # Omitted when unset, so an existing deployment's request body is
+            # byte-for-byte what it was before this field existed.
+            payload["model"] = self.model
         headers = {
             "Accept": "text/event-stream, application/x-ndjson, application/jsonl",
             **self.headers,
@@ -320,6 +330,7 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         headers: dict[str, str],
         timeout_seconds: float,
         transport: httpx.AsyncBaseTransport | None = None,
+        model: str = "",
     ) -> None:
         super().__init__(
             name=name,
@@ -329,6 +340,7 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             headers=headers,
             timeout_seconds=timeout_seconds,
             transport=transport,
+            model=model,
         )
         self._run_id = ""
         #: The server's own session id, captured from the event stream. The
@@ -363,6 +375,9 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             payload["conversation_history"] = request.history
         if request.session_id:
             payload["session_id"] = request.session_id
+        if self.model:
+            # Omitted when unset: an existing deployment's body is unchanged.
+            payload["model"] = self.model
         state: dict[str, Any] = {"buf": [], "terminal": False}
         # Seed from the request so a clarify can still be answered when the
         # stream never reports the server's own session id; an authoritative

@@ -241,29 +241,52 @@ _CLI_SETTINGS = {
 
 
 def _patch_agent_loop(monkeypatch, settings: dict[str, Any]) -> None:
+    """Install an agent-loop block the way the runtime actually sees one.
+
+    ``load_system`` normalizes the block before it is returned, so callers get
+    clamped/defaulted values. Stubbing the accessor with a raw literal would
+    skip that step and let a test assert behaviour production never sees — so
+    the literal is pushed through the real normalizer here.
+    """
+    from kagweb.services.config.runtime_settings import (
+        RuntimeSettingsService,
+    )
+
+    service = RuntimeSettingsService.get_instance()
+    normalized = service._normalize_agent_loop({"agent_loop": settings or {}})
+
     monkeypatch.setattr(
         "kagweb.services.agent_loop.settings.get_agent_loop_settings",
-        lambda: settings,
+        lambda: normalized,
     )
 
 
 def _patch_grant(monkeypatch, grant: dict[str, Any]) -> None:
-    """Install a grant whose LLM entry resolves to one usable model."""
+    """Install a grant view derived from *grant*, so the stub stays honest.
+
+    The LLM rows and the ``agent_loop_cli`` availability both follow what the
+    grant actually holds — a stub that always reported a usable model would
+    send the non-admin path into selection validation the real grant never
+    justifies.
+    """
+    llm_rows = [
+        {
+            "profile_id": str(item.get("profile_id") or ""),
+            "model_id": "m1",
+            "name": "m1",
+            "model": "m1",
+            "available": True,
+        }
+        for item in (grant.get("models", {}) or {}).get("llm", []) or []
+        if isinstance(item, dict)
+    ]
     monkeypatch.setattr(model_access, "load_grant", lambda _uid: grant)
     monkeypatch.setattr(model_access, "admin_catalog", lambda: {"services": {}})
     monkeypatch.setattr(
         model_access,
         "redacted_model_access",
         lambda _uid=None: {
-            "llm": [
-                {
-                    "profile_id": "p1",
-                    "model_id": "m1",
-                    "name": "m1",
-                    "model": "m1",
-                    "available": True,
-                }
-            ],
+            "llm": llm_rows,
             "agent_loop": [{"source": "deployment", "available": True}],
             "agent_loop_cli": [
                 {"source": "deployment", "available": grant.get("agent_loop_cli") is True}
@@ -273,7 +296,12 @@ def _patch_grant(monkeypatch, grant: dict[str, Any]) -> None:
 
 
 async def _start_turn_error(tmp_path, monkeypatch, *, payload_extra: dict) -> str:
-    """Run a real turn and return the error text, or "" when it was accepted."""
+    """Run a real turn and return the error text, or "" when it was accepted.
+
+    The access gate raises synchronously inside ``start_turn``, so a rejection
+    is returned straight away. On acceptance the turn task is awaited too, so no
+    work is left running past the test.
+    """
     store = SQLiteSessionStore(tmp_path / "chat_history.db")
     runtime = TurnRuntimeManager(store)
     session = await store.ensure_session(None)
@@ -285,9 +313,12 @@ async def _start_turn_error(tmp_path, monkeypatch, *, payload_extra: dict) -> st
         **payload_extra,
     }
     try:
-        await runtime.start_turn(payload)
+        _session, turn = await runtime.start_turn(payload)
     except Exception as exc:  # noqa: BLE001 - the message is the subject
         return str(exc)
+    execution = runtime._executions.get(turn["id"])
+    if execution is not None and execution.task is not None:
+        await execution.task
     return ""
 
 
@@ -379,3 +410,95 @@ async def test_an_admin_is_never_gated(tmp_path, monkeypatch) -> None:
         reset_current_user(token)
 
     assert "local process" not in error, error
+
+
+# ── the agent backend's context window reaches the budget ────────────────
+#
+# The executor builds the context before the capability resolves the agent-loop
+# profile, so the window has to travel on the payload. It is injected for
+# admins too — history budgeting is not an access question.
+
+_CLI_WITH_WINDOW = {
+    "profiles": [{"id": "p", "preset": "claude-code", "enabled": True, "context_window": 200_000}],
+    "primary": "p",
+}
+
+
+async def _turn_payload(tmp_path, monkeypatch, *, admin: bool) -> dict[str, Any]:
+    """Run a real turn and return the payload the executor ran with.
+
+    Asserts on the payload rather than intercepting ``ContextBuilder.build``:
+    the payload is the contract between the request preparer (which knows the
+    profile's window) and the executor (which builds the context before the
+    capability resolves that profile). The builder's own handling of the
+    override is covered by unit tests in ``test_context_builder.py``.
+    """
+    store = SQLiteSessionStore(tmp_path / "chat_history.db")
+    runtime = TurnRuntimeManager(store)
+    session = await store.ensure_session(None)
+    captured: dict[str, Any] = {}
+    real_run_turn = runtime._run_turn
+
+    async def _spy(execution):  # noqa: ANN001
+        captured.update(execution.payload)
+        return await real_run_turn(execution)
+
+    monkeypatch.setattr(runtime, "_run_turn", _spy)
+
+    token = set_current_user(_user(tmp_path, admin=admin))
+    try:
+        _session, turn = await runtime.start_turn(
+            {
+                "capability": "chat",
+                "content": "hi",
+                "session_id": session["id"],
+                "language": "en",
+            }
+        )
+        execution = runtime._executions.get(turn["id"])
+        if execution is not None and execution.task is not None:
+            await execution.task
+    finally:
+        reset_current_user(token)
+    return captured
+
+
+@pytest.mark.parametrize("admin", [False, True])
+async def test_the_profile_context_window_travels_on_the_payload(
+    tmp_path, monkeypatch, admin
+) -> None:
+    """Admins need the window too — sizing the history budget is not an access
+    question, and an agent-loop turn has no ``llm_config`` to derive it from."""
+    _patch_agent_loop(monkeypatch, _CLI_WITH_WINDOW)
+    # No LLM grant: for a non-admin that keeps the turn on the "no pinned
+    # selection" path, which is what the payload assertion is about. Admins are
+    # ungated either way.
+    _patch_grant(monkeypatch, {"models": {"llm": []}, "agent_loop_cli": True})
+    payload = await _turn_payload(tmp_path, monkeypatch, admin=admin)
+    assert payload.get("agent_loop_context_window") == 200_000
+
+
+async def test_no_window_configured_means_no_payload_key(tmp_path, monkeypatch) -> None:
+    _patch_agent_loop(monkeypatch, _CLI_SETTINGS)  # no context_window key
+    _patch_grant(monkeypatch, {"models": {"llm": []}, "agent_loop_cli": True})
+    payload = await _turn_payload(tmp_path, monkeypatch, admin=True)
+    assert "agent_loop_context_window" not in payload
+
+
+async def test_the_window_key_is_not_persisted_with_the_user_message(tmp_path, monkeypatch) -> None:
+    """It is an internal hand-off key, not part of the request the session
+    stores — a snapshot carrying it would resurface on regenerate."""
+    from kagweb.services.session._turn_runtime_shared import _request_snapshot_metadata
+
+    snapshot = _request_snapshot_metadata(
+        payload={"agent_loop_context_window": 200_000, "language": "en"},
+        content="hi",
+        capability="chat",
+        config={},
+        attachments=[],
+        history_references=[],
+        partner_group_references=[],
+        persona="",
+        llm_selection=None,
+    )
+    assert "agent_loop_context_window" not in snapshot["request_snapshot"]

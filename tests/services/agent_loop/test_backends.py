@@ -873,3 +873,92 @@ def test_usage_event_is_not_emitted_without_counters() -> None:
 
 def test_codex_token_count_without_counters_emits_nothing() -> None:
     assert translate_codex({"msg": {"type": "token_count", "info": {}}}, {}) == []
+
+
+# ---------------------------------------------------------------------------
+# The profile's model field
+# ---------------------------------------------------------------------------
+
+
+def test_factory_threads_the_model_onto_every_family() -> None:
+    """The model is a profile field, so it must reach CLI, ACP and both HTTP
+    families — not just the one that happens to use it most."""
+    cli = build_agent_loop_backend(
+        {"backend": "claude-code", "command": "claude", "model": "claude-sonnet-5"}
+    )
+    assert cli.model == "claude-sonnet-5"
+
+    http = build_agent_loop_backend({"backend": "hermes", "url": "http://h:1", "model": "qwen-max"})
+    assert http.model == "qwen-max"
+
+    runs = build_agent_loop_backend(
+        {"backend": "intellect-runs", "url": "http://r:1", "model": "gpt-5"}
+    )
+    assert runs.model == "gpt-5"
+
+
+def test_an_absent_model_leaves_every_family_unconfigured() -> None:
+    # No model key at all → empty, which is what keeps existing deployments
+    # byte-identical (no `--model` arg, no `model` in the request body).
+    for spec in (
+        {"backend": "claude-code", "command": "claude"},
+        {"backend": "hermes", "url": "http://h:1"},
+    ):
+        assert build_agent_loop_backend(spec).model == ""
+
+
+def test_cli_substitutes_the_model_placeholder() -> None:
+    backend = build_agent_loop_backend(
+        {
+            "backend": "custom-cli",
+            "command": "a",
+            "model": "big-model",
+            "args": ["--model={model}", "{prompt}"],
+        }
+    )
+    assert backend.build_argv(_request("Q")) == ["a", "--model=big-model", "Q"]
+
+
+def test_cli_drops_an_argument_that_references_an_unset_model() -> None:
+    """No model configured → the whole `--model={model}` element disappears, so
+    the CLI falls back to its own configured default instead of receiving a
+    literal placeholder (or a bare `--model` flag)."""
+    backend = build_agent_loop_backend(
+        {
+            "backend": "custom-cli",
+            "command": "a",
+            "args": ["--model={model}", "{prompt}"],
+        }
+    )
+    assert backend.build_argv(_request("Q")) == ["a", "Q"]
+
+
+def test_cli_keeps_other_args_when_the_model_is_unset() -> None:
+    # Only the element carrying {model} is dropped; the rest survive.
+    backend = build_agent_loop_backend(
+        {
+            "backend": "custom-cli",
+            "command": "a",
+            "args": ["--verbose", "--model={model}", "--json", "{prompt}"],
+        }
+    )
+    assert backend.build_argv(_request("Q")) == ["a", "--verbose", "--json", "Q"]
+
+
+async def test_http_request_carries_the_model_only_when_configured() -> None:
+    """The model key is omitted when unset, so a deployment that never sets one
+    sends exactly the body it sent before the field existed."""
+    bodies: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(request.content))
+        return httpx.Response(200, text='{"kind": "content", "text": "ok"}\n')
+
+    with_model = _http_backend(handler)
+    with_model.model = "qwen-max"
+    [event async for event in with_model.run(_request("hi"))]
+    assert bodies[-1]["model"] == "qwen-max"
+
+    without_model = _http_backend(handler)
+    [event async for event in without_model.run(_request("hi"))]
+    assert "model" not in bodies[-1]

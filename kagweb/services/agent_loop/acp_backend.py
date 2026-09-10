@@ -460,12 +460,18 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         base_args: list[str],
         env: dict[str, str],
         timeout_seconds: float,
+        model: str = "",
     ) -> None:
         self.name = name
         self.command = command
         self.base_args = list(base_args)
         self.env = {str(key): str(value) for key, value in (env or {}).items()}
         self.timeout_seconds = float(timeout_seconds) if timeout_seconds else 0.0
+        #: The profile's chosen model. The ACP surface has no argv placeholder
+        #: to substitute it into (the handshake negotiates the agent's session),
+        #: so it is recorded for diagnostics; a future ACP model-select request
+        #: would read it here.
+        self.model = str(model or "").strip()
         # Hash the config into the manager key: the operator env block may
         # carry credentials, and they must not sit in plaintext dict keys.
         import hashlib

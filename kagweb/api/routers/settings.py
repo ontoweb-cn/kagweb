@@ -43,6 +43,7 @@ from kagweb.services.config import (
 from kagweb.services.config.origins import normalize_origins
 from kagweb.services.config.runtime_settings import (
     AGENT_LOOP_CONSULT_BUDGET_RANGE,
+    AGENT_LOOP_CONTEXT_WINDOW_RANGE,
     AGENT_LOOP_TIMEOUT_RANGE,
     CHAT_ATTACHMENT_CHARS_RANGE,
     CHAT_ATTACHMENT_MAX_FILE_MB_RANGE,
@@ -295,6 +296,13 @@ class AgentLoopProfileUpdate(BaseModel):
     #: nothing arrives (timeout, headless entry point).
     approval_timeout_seconds: int = Field(default=60, ge=5, le=600)
     approval_default: str = "deny"
+    #: The model this backend should run. Empty = the backend's own default.
+    #: CLI profiles reference it as ``{model}`` in ``args``; HTTP profiles send
+    #: it in the request body.
+    model: str = ""
+    #: The backend's real context window, used for history budgeting. 0 = not
+    #: configured (the budget planner falls back to its model-name heuristics).
+    context_window: int = Field(default=0, ge=0, le=AGENT_LOOP_CONTEXT_WINDOW_RANGE[1])
 
 
 class AgentLoopSettingsUpdate(BaseModel):
@@ -1002,6 +1010,8 @@ def _agent_loop_profile_block(
         "workdir": profile.workdir.strip(),
         "approval_timeout_seconds": profile.approval_timeout_seconds,
         "approval_default": profile.approval_default,
+        "model": profile.model.strip(),
+        "context_window": profile.context_window,
     }
 
 
@@ -1109,6 +1119,7 @@ def _agent_loop_payload() -> dict[str, Any]:
         "bounds": {
             "timeout_seconds": list(AGENT_LOOP_TIMEOUT_RANGE),
             "consult_budget": list(AGENT_LOOP_CONSULT_BUDGET_RANGE),
+            "context_window": list(AGENT_LOOP_CONTEXT_WINDOW_RANGE),
         },
     }
 

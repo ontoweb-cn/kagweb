@@ -199,11 +199,11 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 
 **影响**：用户能开一个永远不生效的开关，管理员能授一个永远用不上的权限。这是**功能性误导**，比死代码更糟。
 
-### P1-1 上下文窗口错配
+### P1-1 上下文窗口错配 —— ✅ 已修复
 
 **现象**：agent loop 部署下历史预算被钉死在最低档。
 
-**链路**：`executor.py:337` 把 `llm_config`（此处为 `None`）传给 `ContextBuilder.build()` → `context_builder.py:159-170` `_effective_context_window()` → `resolve_effective_context_window()` → 无模型名可匹配 → 回落 `DEFAULT_CONTEXT_WINDOW_FALLBACK = 16_384`（`llm/context_window.py:7`）→ 乘 `history_budget_ratio = 0.35`。
+**链路**：`executor.py` 把 `llm_config`（此处为 `None`）传给 `ContextBuilder.build()` → `_effective_context_window()` → `resolve_effective_context_window()` → 无模型名可匹配 → 回落 `DEFAULT_CONTEXT_WINDOW_FALLBACK = 16_384`（`llm/context_window.py`）→ 乘 `history_budget_ratio = 0.35`。
 
 **结果：约 5,734 token 的历史预算**，喂给一个通常有 200K~1M 窗口的 Claude Code / Codex。
 
@@ -211,9 +211,24 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 
 **影响**：长会话过早触发摘要甚至截断，丢掉本该保留的上下文。
 
+**修复（2026-09-10）**：profile 新增 `context_window`，操作者填该后端的真实窗口。注入路径受**时序约束**约束——`executor` 建 context 时（`_run_turn` 内）capability 尚未解析 profile，故值经内部 payload 键 `agent_loop_context_window` 传递：
+
+```
+agent_loop 设置块 → request_preparer 提取 primary 的 context_window（非 0 才注入）
+                  → payload["agent_loop_context_window"]
+                  → executor 传给 builder.build(context_window_override=…)
+                  → _effective_context_window 优先采用，并仍受 MAX_EFFECTIVE_CONTEXT_WINDOW 约束
+```
+
+要点：
+- **管理员与非管理员都注入**——历史预算是运维问题，不是权限问题。
+- 该键在 `TurnRequest.model_validate()` **之后**附加，因此不在公开 schema 内，也不被 `_request_snapshot_metadata` 持久化（有测试钉死这两点）。
+- **未配置（0）时行为完全不变**：不注入，走原回落链。
+- `0 = 未配置` 是刻意的语义，因此不能走 `_coerce_clamped_int`（它的下钳会把它变成 1,024，等于谎报一个窗口）。
+
 ### P1-2 模型选择器指向错误对象
 
-`llm_selection`（`core/turn_request.py:22-26`）随轮次请求下发，前端在伙伴配置等界面仍在发送。但在 agent loop 模式下：
+`llm_selection`（`core/turn_request.py`）随轮次请求下发，前端在伙伴配置等界面仍在发送。但在 agent loop 模式下：
 
 - `ChatCapability` 完全不读它（grep 无命中）；
 - 它只影响 KAGWeb 自己的 LLM 层（标题、洞察、摘要）；
@@ -221,9 +236,11 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 
 用户换一个模型，对话行为**毫无变化**，且没有任何提示说明这一点。
 
-### P1-3 profile schema 没有 model 概念
+> **部分缓解（2026-09-10）**：profile 现在有 `model` 字段（见 P1-3），因此"给后端指定模型"这件事有了正确的入口。选择器本身的误导性未动——它仍指向 KAGWeb 自己的 LLM 层，把 `llm_selection` 映射到 profile 覆盖（或按后端隐藏它）仍是未做的决策。
 
-`runtime_settings.py:1272-1310` 的完整字段：
+### P1-3 profile schema 没有 model 概念 —— ✅ 已修复
+
+原字段集（`runtime_settings.py` 的 profile 归一化）：
 
 ```
 id, name, preset, enabled, command, args, env,
@@ -231,7 +248,17 @@ url, turn_path, headers, api_key,
 timeout_seconds, session_workspace, consult_enabled, workdir
 ```
 
-无 `model`。CLI 后端只能靠 `args`（前端占位符正是 `--model\nbig-model\n{prompt}`，`AgentLoopSettingsSection.tsx:899`）或 `env`；**HTTP 后端连塞的地方都没有**。
+无 `model`。CLI 后端只能靠 `args`（前端占位符正是 `--model\nbig-model\n{prompt}`）或 `env`；**HTTP 后端连塞的地方都没有**。
+
+**修复（2026-09-10）**：新增 `model` 与 `context_window`。`model` 的空值语义是"用后端自己的默认"：
+
+| family | `model` 如何生效 |
+|---|---|
+| CLI | `args` 里的 `{model}` 占位符被替换（`--model={model}` 与 `--model {model}` 均可）。**未配置 model 时，含 `{model}` 的整条参数被丢弃**——于是 CLI 用自己的默认，而不是收到一个字面占位符或裸 `--model` 标志。前端 helper 文本推荐 `--model={model}` 这种同条写法。 |
+| HTTP（turn / runs） | 作为请求体字段发送；**未配置时不发该键**，既有部署的请求体逐字不变。 |
+| ACP | 记录在实例上（ACP 无 argv 占位符可替换，握手协商 agent 会话）；保留供未来的 model-select 请求与诊断。 |
+
+`model` **不**加入 `AGENT_LOOP_ENV_OVERRIDABLE_KEYS`：环境覆盖是部署级 pin 的场景（`KAGWEB_AGENT_LOOP_COMMAND` 等），而 model 是每 profile 的常规配置。
 
 ### P1-4 凭据双份，互不相通
 
@@ -304,7 +331,7 @@ if not has_capability_access(service):
 - **短期（诚实）**：agent loop 模式下隐藏工具开关与授权项，或明确标注「当前后端不支持」。**已落地**：`/api/tools`、`PUT /api/settings/enabled-tools`、设置页 Tools 分区与两个前端 lib 均已移除（工具层本体留待与合伙人一并处理）。
 - **长期（打通）**：见阶段三。
 
-### 阶段二：对接 agent backend 的模型（核心诉求）
+### 阶段二：对接 agent backend 的模型（核心诉求）——✅ 已落地
 
 **3. profile 增加 `model` 字段**
 
@@ -314,32 +341,39 @@ if not has_capability_access(service):
   "preset": "claude-code",
   "command": "claude",
   "model": "claude-sonnet-5",        // 新增
-  "args": ["--model", "{model}", "{prompt}"],   // CLI：占位符替换
+  "args": ["--model={model}", "{prompt}"],   // CLI：占位符替换
   "context_window": 200000,          // 新增：后端真实窗口
   ...
 }
 ```
 
-- **CLI 族**：把 `{model}` 做占位符替换注入 argv；未配置 `model` 时保持现状（不传）。
-- **HTTP 族**：请求体增加 `"model"` 字段，写进 `http_backend.py:101-106` 的契约。
+- **CLI 族**：`{model}` 占位符替换注入 argv。未配置 `model` 时**含 `{model}` 的整条参数被丢弃**（不是保留字面占位符，也不是留下裸 `--model`），于是 CLI 用自己的默认。前端 helper 因此推荐 `--model={model}` 这种同条写法。
+- **HTTP 族**：请求体增加 `"model"` 字段（turn 与 runs 两个协议都加）；**未配置时不发该键**，既有部署的请求体逐字不变。
+- **ACP 族**：记录在实例上备用（无 argv 占位符；握手协商 agent 会话）。
 
 **4. 打通上下文窗口**
 
-`AgentLoopProfile` 增加 `context_window`，`ContextBuilder` 优先从 profile 取，而非从 `llm_config` 推导：
+`ContextBuilder` 优先采用 profile 声明的窗口，而非从 `llm_config` 推导：
 
 ```python
-def _effective_context_window(self, llm_config, agent_loop_profile=None) -> int:
-    if agent_loop_profile and agent_loop_profile.get("context_window"):
-        return min(agent_loop_profile["context_window"], MAX_EFFECTIVE_CONTEXT_WINDOW)
-    ...  # 现有回落链
+def _effective_context_window(self, llm_config, context_window_override=None) -> int:
+    return resolve_effective_context_window(
+        context_window=context_window_override or getattr(llm_config, "context_window", None),
+        model=...,
+        max_tokens=...,
+    )
 ```
+
+实现补充（与本文初稿的设想不同，原因见下）：**值不是从 profile 直接取的**。`executor` 在 `_run_turn` 内建 context，早于 capability 解析 agent-loop profile，所以实际路径是「request preparer 提取 → payload 内部键 → executor 传入 override」。详见 P1-1 的修复说明。
 
 这直接修掉 P1-1，且让「历史预算」这个决策重新归属于**真正消费历史的那一方**。
 
-**5. 模型选择器要么生效，要么隐藏**
+**5. 模型选择器要么生效，要么隐藏** —— ⬜ 未做
 
 - 若采纳 #3：把 `llm_selection` 映射到 profile 的 `model` 覆盖（`profile_id → agent_loop profile id`），使选择器真正生效；
 - 否则：agent loop 模式下在 UI 上隐藏模型选择器，避免误导。
+
+> `model` 字段已就位，因此这两条现在都可执行；但仍需在「映射」与「隐藏」之间做产品决策（P1-2 的误导性尚未消除）。
 
 ### 阶段三：收敛与清理
 
@@ -928,7 +962,7 @@ kagweb 的 `cancel()` 是**跨进程**的（`POST /v1/runs/{id}/stop`）。而 `
 | **P0** | 移除死字段 / 死 UI（Skills、Tools 开关） | §五 决策 3 | 消除功能性误导，改动小、风险低 | ✅ UI/API 已移除（`5faeca0`、`0e25598`）；`kagweb/tools/` 本体留待决策 7 |
 | **P1** | Agent Backend 提为顶级设置项 | §五 决策 2 | 纯前端导航调整，无后端风险 | ✅ 已落地（`21663be`） |
 | **P1** | LLM 设置按 Intellect 门控 | §五 决策 5 | 与决策 2 同一次 UI 改动完成 | ✅ 已落地（`21663be`）；判据改为「自托管 HTTP 服务」，`intellect-runs` 一并覆盖 |
-| **P1** | profile 增加 `model` + `context_window` | §四 #3/#4 | 用户核心诉求；一并修掉 P1-1 上下文错配 | ⬜ 未做 |
+| **P1** | profile 增加 `model` + `context_window` | §四 #3/#4 | 用户核心诉求；一并修掉 P1-1 上下文错配 | ✅ 已落地（`model` 走 `{model}` 占位符/请求体；`context_window` 经 payload 键注入预算；未配置时行为不变） |
 | **P1** | 人格子系统整体移出 | §五 决策 6 | 与决策 1 同源；**须早于 `.md` 打包规则移除** | ⬜ 未做 |
 | **P1** | 合伙人与 IM 通道移除（约 42,000 行） | §五 决策 7 | 与决策 1 同源；**前置：迁移 `safe_filename`** | ⬜ 未做 |
 | **P2** | 学习 / 研究表述清理 | §五 决策 4 | 需先就学习者/监护人功能去留做决策 | ⬜ 部分（`videogen` 导航项已移除；导航改名与学习者子系统待决策 4） |
@@ -949,7 +983,7 @@ kagweb 的 `cancel()` 是**跨进程**的（`POST /v1/runs/{id}/stop`）。而 `
    **这是唯一「不改则 Intellect 对接不成立」的一组**，改动集中在 `builtin.py` 与 `http_backend.py` 两个文件。**已决策 Rust-only**，不做 Python 双版本兼容（Python 版待 Rust 成熟后逐步放弃）。
 1. **批次一（低风险收敛）**：决策 3 的死字段/死 UI 清理 + 决策 2/5 的设置导航重构 + 决策 4 中的纯前端部分（导航文案与图标、死词条、孤儿 prompt hints、`presentation.tsx` 的陈旧目录）。这些互不依赖，都不触碰轮次主路径。
 2. **批次二（解除阻断）**：§四 #1 门禁解耦 + 配套的 `grant` 增加 `agent_loop` 维度。这是让多用户 agent-backend 部署可用的关键一步。
-3. **批次三（对接能力）**：§四 #3/#4 profile 增加 `model` 与 `context_window`，打通模型配置与上下文预算。可与批次四并行。
+3. **批次三（对接能力）**：§四 #3/#4 profile 增加 `model` 与 `context_window`，打通模型配置与上下文预算。可与批次四并行。**✅ 已完成**（`context_window` 的实际注入路径与本文初稿设想不同，受 executor 建 context 的时序约束，见 P1-1）。
 4. **批次四（子系统移除，本体量最大）**：
    - 4a. **先迁移 `safe_filename`** 到 `kagweb/utils/`，验证 `attachment_store.py` 正常（**阻断性前置**）。
    - 4b. 决策 7 合伙人移除（约 42,000 行）。

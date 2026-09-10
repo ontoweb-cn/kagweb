@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from kagweb.services.llm.context_window import DEFAULT_CONTEXT_WINDOW_FALLBACK
 from kagweb.services.session.context_builder import (
     MAX_HISTORY_PLAN_TOKENS,
     MAX_RAW_REBUILD_TOKENS,
@@ -652,3 +653,34 @@ class TestContextBuilderSummarizePaths:
         assert result.conversation_summary == ""
         assert all(m["role"] != "system" for m in result.conversation_history)
         store.update_summary.assert_not_called()
+
+
+class TestAgentLoopContextWindowOverride:
+    """An agent-loop turn has no ``llm_config``, so without an override the
+    budget falls back to the 16K default while the backend may run 200K — the
+    history planner would summarise far too early."""
+
+    def test_override_supplies_the_window_when_no_model_is_configured(self) -> None:
+        builder = ContextBuilder(store=MagicMock(), history_budget_ratio=0.35)
+        budget = builder._history_budget(None, context_window_override=200_000)
+        assert budget == int(200_000 * 0.35)
+
+    def test_without_the_override_a_bare_turn_keeps_the_small_default(self) -> None:
+        builder = ContextBuilder(store=MagicMock(), history_budget_ratio=0.35)
+        assert builder._history_budget(None) == int(DEFAULT_CONTEXT_WINDOW_FALLBACK * 0.35)
+
+    def test_the_override_wins_over_an_llm_config_window(self) -> None:
+        builder = ContextBuilder(store=MagicMock(), history_budget_ratio=0.35)
+        cfg = MagicMock()
+        cfg.max_tokens = 4096
+        cfg.model = "test-model"
+        cfg.context_window = 32_000
+        budget = builder._history_budget(cfg, context_window_override=200_000)
+        assert budget == int(200_000 * 0.35)
+
+    def test_the_override_still_obeys_the_absolute_caps(self) -> None:
+        builder = ContextBuilder(store=MagicMock(), history_budget_ratio=0.35)
+        # Above MAX_EFFECTIVE_CONTEXT_WINDOW the resolver clamps, then the plan
+        # cap applies — a backend cannot talk the planner past its ceiling.
+        budget = builder._history_budget(None, context_window_override=5_000_000)
+        assert budget == MAX_HISTORY_PLAN_TOKENS

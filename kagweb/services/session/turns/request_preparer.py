@@ -162,6 +162,18 @@ class TurnRequestPreparer:
         except ValueError as exc:
             raise RuntimeError(str(exc)) from exc
 
+        # One agent-loop settings read for the whole gate block: the access
+        # check needs the block to resolve what the turn requires, and the
+        # context window below needs the primary profile from the same block.
+        # Read out here rather than inside the non-admin branch so an admin turn
+        # gets the context window too — budgeting is every operator's problem.
+        from kagweb.services.agent_loop.settings import (
+            get_agent_loop_settings,
+            resolve_primary_profile,
+        )
+
+        agent_loop_block = get_agent_loop_settings()
+
         # The access gate runs for EVERY non-admin turn, before the two
         # selection branches below — not inside one of them.
         #
@@ -185,17 +197,23 @@ class TurnRequestPreparer:
             # title/insight/summary helpers degrade on their own. Gating it on
             # "llm" is what rejected every non-admin turn in a pure agent-loop
             # deployment (backend-llm-deployment.md P0-1).
-            from kagweb.services.agent_loop.settings import get_agent_loop_settings
-
-            # Read the block once and hand it to the resolver: the capability
-            # reads the same settings again later in the turn, and there is no
-            # need for the gate to be a second hit on the JSON file on top of
-            # that.
-            required = _effective_required_service(
-                capability, agent_loop_block=get_agent_loop_settings()
-            )
+            required = _effective_required_service(capability, agent_loop_block=agent_loop_block)
             if not has_capability_access(required):
                 raise RuntimeError(_access_denied_message(required))
+
+        # A profile may declare the window its backend actually runs with. The
+        # executor builds the context (and so the history budget) before the
+        # chat capability resolves the profile, so the value has to travel on
+        # the payload — an internal key, added after ``TurnRequest`` validation
+        # so it is not part of the public schema, and not among the keys
+        # ``_request_snapshot_metadata`` persists.
+        try:
+            primary_profile = resolve_primary_profile(agent_loop_block)
+        except Exception:
+            primary_profile = None
+        context_window = int((primary_profile or {}).get("context_window") or 0)
+        if context_window > 0:
+            payload = {**payload, "agent_loop_context_window": context_window}
 
         if llm_selection:
             try:

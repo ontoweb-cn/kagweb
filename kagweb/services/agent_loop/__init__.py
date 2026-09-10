@@ -47,6 +47,9 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
         raise AgentLoopError(t("agent_loop.unknown_backend", backend=name), backend=name)
 
     timeout = float(resolved.get("timeout_seconds") or 0.0)
+    #: The operator's chosen model, if any. Empty means "use the backend's own
+    #: default" and leaves every code path exactly as it was without this field.
+    model = str(resolved.get("model") or "").strip()
     if preset.family == "cli":
         command = str(resolved.get("command") or "").strip() or preset.command
         if not command:
@@ -64,6 +67,7 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
                 base_args=list(preset.base_args),
                 env=env,
                 timeout_seconds=timeout,
+                model=model,
             )
         return CliAgentLoopBackend(
             name=name,
@@ -74,6 +78,7 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
             timeout_seconds=timeout,
             translator=TRANSLATORS.get(preset.translator, translate_generic),
             text_output=bool(resolved.get("text_output")),
+            model=model,
         )
 
     url = str(resolved.get("url") or "").strip()
@@ -91,6 +96,7 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
             api_key=str(resolved.get("api_key") or ""),
             headers=headers,
             timeout_seconds=timeout,
+            model=model,
         )
     return HttpAgentLoopBackend(
         name=name,
@@ -99,6 +105,7 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
         api_key=str(resolved.get("api_key") or ""),
         headers=headers,
         timeout_seconds=timeout,
+        model=model,
     )
 
 

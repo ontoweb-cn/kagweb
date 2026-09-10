@@ -527,6 +527,7 @@ class CliAgentLoopBackend(AgentLoopBackend):
         timeout_seconds: float,
         translator: Translator,
         text_output: bool = False,
+        model: str = "",
     ) -> None:
         self.name = name
         self.command = command
@@ -539,6 +540,9 @@ class CliAgentLoopBackend(AgentLoopBackend):
         # NDJSON, no progress events). The whole stream becomes exactly one
         # content block once the child exits cleanly.
         self.text_output = text_output
+        #: The operator's chosen model, substituted into `{model}` in
+        #: ``extra_args``. Empty = leave the CLI on its own configured default.
+        self.model = str(model or "").strip()
 
     @staticmethod
     def _prompt_with_history(request: AgentLoopRequest) -> str:
@@ -567,16 +571,44 @@ class CliAgentLoopBackend(AgentLoopBackend):
         transcript = "\n\n".join(lines)
         return f"Conversation so far:\n\n{transcript}\n\n{request.prompt}"
 
+    def _render_extra_args(self, prompt: str) -> tuple[list[str], bool]:
+        """Resolve ``{model}`` / ``{prompt}`` in ``extra_args``.
+
+        Returns the rendered list and whether the prompt was pinned inside it
+        (in which case it must not also be appended).
+
+        ``{model}`` with no model configured drops the WHOLE element. That is
+        exact for the recommended ``--model={model}`` spelling, which vanishes
+        cleanly; the separated ``--model {model}`` would leave a bare flag, so
+        the settings UI steers operators to the joined form. Dropping rather
+        than passing a literal placeholder keeps the CLI on its own configured
+        default instead of failing on a value the operator never typed.
+        """
+        rendered: list[str] = []
+        prompt_pinned = False
+        for arg in self.extra_args:
+            if "{model}" in arg:
+                if not self.model:
+                    logger.debug(
+                        "agent-loop %s: dropping arg %r — it references {model} "
+                        "but this profile configures no model",
+                        self.name,
+                        arg,
+                    )
+                    continue
+                arg = arg.replace("{model}", self.model)
+            if "{prompt}" in arg:
+                prompt_pinned = True
+                arg = arg.replace("{prompt}", prompt)
+            rendered.append(arg)
+        return rendered, prompt_pinned
+
     def build_argv(self, request: AgentLoopRequest) -> list[str]:
         prompt = self._prompt_with_history(request)
-        argv = [self.command, *self.base_args]
-        if any("{prompt}" in arg for arg in self.extra_args):
-            # Custom backends may pin the prompt anywhere in the argv.
-            argv.extend(arg.replace("{prompt}", prompt) for arg in self.extra_args)
-        else:
-            argv.extend(self.extra_args)
-            if prompt:
-                argv.append(prompt)
+        extra_args, prompt_pinned = self._render_extra_args(prompt)
+        argv = [self.command, *self.base_args, *extra_args]
+        if not prompt_pinned and prompt:
+            argv.append(prompt)
         return argv
 
     async def run(self, request: AgentLoopRequest) -> AsyncIterator[AgentLoopEvent]:

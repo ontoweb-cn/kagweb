@@ -164,7 +164,14 @@ MAX_LINE_BYTES = 4 MiB
 
 三个翻译器都是**纯函数**，因此可脱离进程单独测试。加一个新 CLI 后端 = 一个模板 + 一个翻译器，不动 capability。
 
+**profile 的 `model` 与 `context_window`**（2026-09-10 新增）：
+
+- `model` — 该后端应运行的模型。CLI 族在 `args` 里以 `{model}` 占位符引用（未配置 model 时含该占位符的整条参数被丢弃，于是 CLI 用自己的默认）；HTTP 族作为请求体字段发送（未配置时不发该键）。ACP 族记录备用。
+- `context_window` — 该后端的真实窗口，用于历史预算。`0` = 未配置。**注入路径受时序约束**：`executor` 在 `_run_turn` 内建 context，早于 capability 解析 profile，因此值由 `request_preparer` → payload 内部键 `agent_loop_context_window` → `builder.build(context_window_override=…)` 传递。未配置时不注入，预算链保持原样。
+
 **信任边界（设计得最扎实的一处）**：子进程环境是**白名单**的，只有 PATH/HOME/TMPDIR 等基础变量加上运营者显式配置的 `env` 块。服务器环境携带 `AUTH_PASSWORD_HASH`、`POCKETBASE_ADMIN_PASSWORD` 以及启动时导出的供应商密钥，这些**不会**流向子进程。
+
+> 该族**以服务器进程的权限运行子进程**，代码与文档多处声明这是 single-operator 形态；多用户部署应使用 HTTP 族。驱动 CLI/ACP 族因此需要显式的 `agent_loop_cli` 授权（见 §7）。
 
 **并发**：每进程 `_MAX_CONCURRENT_TURNS = 4`（`cli_backend.py:126`）——每个 agent loop 都可能是重量级 Node 运行时，故设信号量限流。
 
@@ -175,11 +182,13 @@ MAX_LINE_BYTES = 4 MiB
 ```
 POST {url}{turn_path}
 Authorization: Bearer <api_key>
-{"session_id": …, "language": …, "prompt": …, "history": [{role, content}, …]}
+{"session_id": …, "language": …, "prompt": …, "history": [{role, content}, …], "model": …}
 
 → 200: SSE 或 NDJSON，每行一个对象
   {"kind": "content"|"thinking"|…, "text": …, "name": …, "data": {…}}
 ```
+
+`model` **仅在 profile 配置了它时才出现**。runs 协议同构（`{"input", "conversation_history", "session_id", "model"}`）。
 
 预设 `intellect` / `intellect-team` / `hermes` / `agentscope` / `custom-http` 说同一套契约。**没有 `kind` 的对象回落到启发式翻译器**，使外部服务可以渐进迁移。
 

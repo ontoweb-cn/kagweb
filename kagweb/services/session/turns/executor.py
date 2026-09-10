@@ -40,6 +40,21 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _payload_context_window(payload: dict[str, Any]) -> int | None:
+    """The agent backend's declared context window, or ``None`` when unset.
+
+    The request preparer puts this on the payload because the context is built
+    here, before the chat capability resolves the agent-loop profile — so this
+    is the only point at which the window is knowable. Absent or non-positive
+    values mean "not configured" and leave the budget chain to its own fallback.
+    """
+    try:
+        value = int(payload.get("agent_loop_context_window") or 0)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
 def _count_llm_rounds(events: list[dict[str, Any]]) -> int:
     """Distinct exploration steps in this turn's assistant events.
 
@@ -361,6 +376,10 @@ class TurnExecutor:
             history_result = await builder.build(
                 session_id=session_id,
                 llm_config=llm_config,
+                # The agent backend's own window, put on the payload by the
+                # request preparer. Absent (the usual case) leaves the budget
+                # chain exactly as it was.
+                context_window_override=_payload_context_window(payload),
                 language=payload.get("language", "en"),
                 on_event=_emit_context_event,
                 leaf_message_id=branch_parent_id,
