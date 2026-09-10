@@ -73,6 +73,22 @@ def test_ordered_tool_names_prefers_the_stamped_name() -> None:
     assert _ordered_tool_names(events) == ["exec", "legacy"]
 
 
+def test_live_subscriber_accepts_its_queue() -> None:
+    """Regression: the class carried a bare ``queue`` annotation with no
+    ``@dataclass``, so ``_LiveSubscriber(queue=...)`` raised TypeError — and it
+    is constructed on the live turn-subscription path, so every real-time turn
+    subscription failed before yielding anything. Annotating a field does not
+    create an initialiser; this pins the decorator in place."""
+    import asyncio
+
+    from kagweb.services.session._turn_runtime_shared import _LiveSubscriber
+
+    queue: asyncio.Queue[Any] = asyncio.Queue()
+    subscriber = _LiveSubscriber(queue=queue)
+
+    assert subscriber.queue is queue
+
+
 class _Store:
     def __init__(self) -> None:
         self.writes: list[tuple[Any, dict[str, Any]]] = []

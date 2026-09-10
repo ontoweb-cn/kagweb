@@ -18,6 +18,7 @@ import re
 
 import pytest
 
+from kagweb.core.stream import StreamEvent, StreamEventType
 from kagweb.multi_user.context import reset_current_user, set_current_user
 from kagweb.multi_user.models import CurrentUser, UserScope
 from kagweb.services.session.pocketbase_store import PocketBaseSessionStore
@@ -169,6 +170,71 @@ async def test_flush_mirrors_whole_batch_in_one_file_write(
     lines = [json.loads(line) for line in mirror.read_text().splitlines()]
     assert [line["content"] for line in lines] == [f"chunk-{i}" for i in range(5)]
     assert open_calls == 1
+
+
+async def test_a_post_done_insight_event_still_reaches_the_subscriber(
+    tmp_path, stub_workspace
+) -> None:
+    """The turn-insight badge is published *after* DONE, inside the client's
+    15s post-DONE socket hold. So the subscription must survive the terminal
+    event: the generator ends on the producer's ``None`` sentinel, never on
+    DONE itself. Nothing covered this — a subscriber that stopped at DONE
+    would have silently dropped every badge while all the judge's own tests
+    (which call it in isolation) stayed green.
+    """
+    store = SQLiteSessionStore(tmp_path / "chat_history.db")
+    runtime = TurnRuntimeManager(store)
+    session = await store.ensure_session(None)
+    turn = await store.create_turn(session["id"], capability="chat")
+    execution = _TurnExecution(
+        turn_id=turn["id"],
+        session_id=session["id"],
+        capability="chat",
+        payload={},
+    )
+    runtime._executions[turn["id"]] = execution
+
+    received: list[dict] = []
+
+    async def _consume() -> None:
+        async for item in runtime.subscribe_turn(turn["id"], after_seq=0):
+            received.append(item)
+
+    consumer = asyncio.create_task(_consume())
+    await asyncio.sleep(0)  # let the subscriber attach before publishing
+
+    await runtime._publish_live_event(
+        execution,
+        StreamEvent(type=StreamEventType.DONE, source="chat", metadata={"status": "completed"}),
+    )
+    await runtime._publish_live_event(
+        execution,
+        StreamEvent(
+            type=StreamEventType.PROGRESS,
+            source="turn_runtime",
+            stage="insight",
+            content="",
+            metadata={
+                "trace_kind": "turn_insight",
+                "takeaway": "found the root cause",
+                "insight_type": "pivot",
+            },
+        ),
+    )
+    # The producer's sentinel is what ends the stream.
+    for subscriber in execution.subscribers:
+        subscriber.queue.put_nowait(None)
+    await asyncio.wait_for(consumer, timeout=5)
+
+    kinds = [item.get("type") for item in received]
+    assert "done" in kinds, kinds
+    badges = [
+        item
+        for item in received
+        if (item.get("metadata") or {}).get("trace_kind") == "turn_insight"
+    ]
+    assert badges, f"the post-DONE badge never reached the subscriber: {kinds}"
+    assert kinds.index("done") < kinds.index("progress"), kinds
 
 
 async def test_flush_is_idempotent_per_execution(tmp_path, stub_workspace) -> None:
