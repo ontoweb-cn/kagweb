@@ -86,13 +86,6 @@ class GuardianCredentialResetPayload(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
-class SkillInstallPayload(BaseModel):
-    ref: str
-    name: str | None = None
-    force: bool = False
-    allow_unverified: bool = False
-
-
 def _admin_catalog_summary() -> dict[str, list[dict[str, Any]]]:
     catalog = ModelCatalogService(
         path=get_admin_path_service().get_settings_file("model_catalog")

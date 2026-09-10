@@ -5,7 +5,6 @@ import {
   Bot,
   Boxes,
   Brain,
-  Clapperboard,
   FileScan,
   Image as ImageIcon,
   Info,
@@ -185,18 +184,6 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
     icon: ImageIcon,
     tile: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
     service: "imagegen",
-  },
-  {
-    key: "videogen",
-    href: "/settings#videogen",
-    label: { zh: "文生视频", en: "Video Generation" },
-    blurb: {
-      zh: "chat videogen 工具使用的文生视频模型。",
-      en: "Text-to-video model for the chat videogen tool.",
-    },
-    icon: Clapperboard,
-    tile: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-    service: "videogen",
   },
 ];
 

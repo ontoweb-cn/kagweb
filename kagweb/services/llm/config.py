@@ -199,7 +199,10 @@ def _get_llm_config_from_resolver() -> LLMConfig:
         # on this type. Everything below is a model that EXISTS but is broken
         # and must surface as a failed turn, never as a stub.
         raise NoModelConfiguredError(
-            "No active LLM model is configured. Please set it in Settings > Catalog."
+            "No LLM model is configured. Conversations are unaffected while an "
+            "agent backend is set (Settings > Agent Backend), but KAGWeb's own "
+            "calls — session titles, turn insights and history summaries — need "
+            "one here: Settings > Models."
         )
     if not resolved.effective_url and resolved.provider_mode != "oauth":
         raise LLMConfigError(

@@ -84,10 +84,6 @@ class UnifiedContext:
             first token; empty when no persona is active).
         sidebar_context: High-priority grounding for an isolated sidebar tutor
             (for example, the exact passage selected in another chat).
-        skills_manifest: System-prompt Skills block — one line per
-            capability skill visible to this user, plus any ``always``
-            skills' full bodies. The model pulls full skill content on
-            demand via the ``read_skill`` tool.
         source_manifest: Plain-text manifest of attached sources (one line per
             source: id/name/type/preview). Empty when no sources are attached.
             Consumed by the chat capability to render an "Attached Sources"
@@ -112,7 +108,6 @@ class UnifiedContext:
     memory_context: str = ""
     persona_context: str = ""
     sidebar_context: str = ""
-    skills_manifest: str = ""
     source_manifest: str = ""
     runtime: TurnRuntimeContext = field(default_factory=TurnRuntimeContext)
     interaction: InteractionState = field(default_factory=InteractionState)

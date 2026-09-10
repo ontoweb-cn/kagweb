@@ -85,7 +85,6 @@ class TurnRequest(BaseModel):
     reading_references: list[ReadingReference] = Field(default_factory=list)
     memory_references: list[MemoryReference] = Field(default_factory=list)
     attachments: list[OutgoingAttachment] = Field(default_factory=list)
-    skills: list[str] = Field(default_factory=list)
 
     persona: str | None = None
     llm_selection: LLMSelection | None = None

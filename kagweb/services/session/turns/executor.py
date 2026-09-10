@@ -385,7 +385,6 @@ class TurnExecutor:
                 account = get_user_by_id(current_user.id)
                 if account and str(account[1].get("preset") or "standard") == "learner":
                     learner_profile_prompt = prompt_block(account[1].get("learner_profile"))
-            skills_manifest = ""
             requested_persona = str(payload.get("persona") or "").strip()
             persona_context = ""
             if requested_persona:
@@ -472,7 +471,6 @@ class TurnExecutor:
                 memory_context=memory_context,
                 persona_context=persona_context,
                 sidebar_context=sidebar_system_context,
-                skills_manifest=skills_manifest,
                 source_manifest=source_manifest_text,
                 runtime=TurnRuntimeContext(
                     turn_id=turn_id,

@@ -25,7 +25,6 @@ function emptyGrant(userId: string): GrantPayload {
     version: 2,
     user_id: userId,
     models: { llm: [] },
-    skills: [],
     partners: [],
     enabled_tools: null,
     mcp_tools: null,
@@ -198,13 +197,6 @@ export function GrantEditor({
   const dirty =
     Boolean(savedFingerprint) && currentFingerprint !== savedFingerprint;
 
-  const skillIds = useMemo(
-    () =>
-      new Set(
-        grant.skills.map((item) => String(item.skill_id || item.id || "")),
-      ),
-    [grant.skills],
-  );
   const partnerIds = useMemo(
     () =>
       new Set(
@@ -247,19 +239,6 @@ export function GrantEditor({
       next.models.llm = items.filter((item) =>
         Array.isArray(item.model_ids) ? item.model_ids.length > 0 : true,
       );
-      return next;
-    });
-  }
-
-  function toggleSkill(name: string) {
-    setGrant((current) => {
-      const next = structuredClone(current) as GrantPayload;
-      const exists = skillIds.has(name);
-      next.skills = exists
-        ? next.skills.filter(
-            (item) => String(item.skill_id || item.id || "") !== name,
-          )
-        : [...next.skills, { skill_id: name, access: "use", source: "admin" }];
       return next;
     });
   }
@@ -425,9 +404,6 @@ export function GrantEditor({
             <div className="flex flex-wrap gap-1.5 text-[11px] text-[var(--muted-foreground)]">
               <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
                 {selectedModelCount} models
-              </span>
-              <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
-                {skillIds.size} skills
               </span>
               <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
                 {partnerIds.size} partners
@@ -616,20 +592,6 @@ export function GrantEditor({
                       </label>
                     ))}
                   </div>
-                ))}
-              </div>
-            </section>
-            <section className="min-w-0">
-              <SectionTitle>Skills</SectionTitle>
-              <div className="space-y-1.5 text-xs">
-                {(resources?.skills || []).map((skill) => (
-                  <CheckRow
-                    key={skill.name}
-                    label={skill.name}
-                    checked={skillIds.has(skill.name)}
-                    disabled={controlsDisabled}
-                    onToggle={() => toggleSkill(skill.name)}
-                  />
                 ))}
               </div>
             </section>

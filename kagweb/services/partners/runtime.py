@@ -602,12 +602,6 @@ class PartnerRunner:
         )
         msg.metadata["_attachment_records"] = attachment_records
 
-        # Partner-scope context blocks (soul) are assembled
-        # inside the partner scope so the same service locators the chat
-        # turn-runtime uses resolve to the partner workspace.
-        with user_context(partner_user(self.partner_id, name=self.config.name)):
-            skills_manifest = self._build_skills_manifest()
-
         metadata: dict[str, Any] = {
             "turn_id": turn_id,
             "source": "partner",
@@ -707,7 +701,6 @@ class PartnerRunner:
             attachments=attachments,
             language=self._language(),
             persona_context=persona_context,
-            skills_manifest=skills_manifest,
             source_manifest=source_manifest,
             metadata=metadata,
         )
@@ -746,11 +739,6 @@ class PartnerRunner:
         if configured is None:
             return None
         return [str(name) for name in configured]
-
-    def _build_skills_manifest(self) -> str:
-        # Skills were removed with the capability layer; partners ship no
-        # skill manifest.
-        return ""
 
     def _language(self) -> str:
         lang = str(getattr(self.config, "language", "") or "").strip().lower()

@@ -4,7 +4,6 @@ export type GrantPayload = {
   models: {
     llm: Array<Record<string, unknown>>;
   };
-  skills: Array<Record<string, unknown>>;
   /** Admin-assigned partners the user may see & consult ([{ partner_id }]). */
   partners: Array<Record<string, unknown>>;
   /** null = default (all system tools), [] = none, array = whitelist. */
@@ -49,7 +48,6 @@ export type MultiUserResources = {
       models?: Array<{ model_id: string; name: string; model?: string }>;
     }>;
   };
-  skills: Array<{ name: string; description?: string; tags?: string[] }>;
   partners: Array<{ partner_id: string; name: string; description?: string }>;
   reading_materials: Array<{
     material_id: string;
