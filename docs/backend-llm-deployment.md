@@ -737,6 +737,8 @@ kagweb/services/storage/attachment_store.py:38
 
 **背景**：为核实「`intellect-team` 是否支持审批」，克隆了 `gitee.com/wustbd/intellect-team`（浅克隆 HEAD `9dcfdfa`）逐项比对。结果推翻了本文此前关于 Intellect 对接的多处判断。
 
+**对齐范围（已决策）**：**只对齐 Rust**。Rust 是权威且活跃演进的主版本；Python 版待 Rust 成熟后逐步放弃，kagweb **不做双版本兼容**。
+
 **Intellect 有两个实现，Rust 是权威源**。该仓库自带一份 `docs/agentui-alignment/intellect-team-alignment-requirements.md`（由 AgentUI 团队提出），其中明确：
 
 > BFF SSE 解析器 `parse-intellect-enterprise-run-events-sse.ts` 注释明确引用 Rust `api_server.rs` 作为权威源
@@ -744,7 +746,7 @@ kagweb/services/storage/attachment_store.py:38
 
 且文件列出 P0 级问题：**Python 版是否仍在维护（P0）** 尚且待 Intellect-Team 确认，超期后「AgentUI 将启用双版本兼容兜底方案」。
 
-#### 权威事件契约（Rust `api_server.rs:2095-2131` `map_event_to_sse`）
+##### A. Rust 内部映射：`map_event_to_sse`（`api_server.rs:2095-2131`）
 
 | SSE 行 | `type` | 其余字段 |
 |---|---|---|
@@ -759,7 +761,7 @@ kagweb/services/storage/attachment_store.py:38
 
 **关键**：除 `tool.progress` / `clarify` / `error` 外，**其余事件没有 SSE `event:` 行**——只有 `data: {"type": ...}`。事件的区分靠 JSON 体内的 `type` 字段。
 
-#### 两个实现当前都与 kagweb 的翻译器对不上
+##### B. 两个实现与 kagweb 翻译器的对照
 
 kagweb 的 `RunsAgentLoopBackend._translate_run_event`（`http_backend.py:460-535`）读的是 `obj["event"]`。实测：
 
@@ -807,7 +809,68 @@ AgentLoopPreset(name="intellect-team", family="http",
 
 kagweb 的 `cancel()` 是**跨进程**的（`POST /v1/runs/{id}/stop`）。而 `AcpAgentLoopBackend` 的 docstring 提到「session-scoped backend keeps its connection alive across turns, so a mid-turn stop must reach the agent as a control message」。若用户的取消需在 Intellect 进程内也触发中止（而不只是 KAGWeb 侧停止消费），需确认 `/stop` 的语义是否足够——本次未核实。
 
+##### C. 实际线上格式（Rust `/v1/runs/{run_id}/events` 实测）
+
+> 上表列的是 `map_event_to_sse` 的**返回值**。实际落到 SSE 线上前还要经过 forwarder 一次包装（`api_server.rs:5129-5131`）：`None` 的返回值被改写为 `"message.delta"`。**这才是 BFF 真正收到的东西。**
+
+每个 `data:` 行是 `RunEvent`（`run_state.rs:211-217`，`#[serde(flatten)] payload`）：
+
+```json
+{"event": <名>, "run_id": "...", "timestamp": 123.4, <payload 展平>}
+```
+
+| `event` | `type`（payload 内） | 其余字段 | 来源 |
+|---|---|---|---|
+| `message.delta` | `assistant.delta` | `text` | `map_event_to_sse` `None` 分支 → `:5131` |
+| `message.delta` | `reasoning.delta` | `text` | 同上 |
+| `message.delta` | `thinking.progress` | `elapsed_s`, `silent_s` | 同上（**心跳，无文本**） |
+| `message.delta` | `assistant.completed` | `response`, `session_id` | 同上 |
+| `message.delta` | `interim_assistant` | `content` | 同上 |
+| `tool.progress` | `tool.started` | `tool_id`, `name`, `arguments` | `:2109` |
+| `tool.progress` | `tool.completed` | `tool_id`, `name`, `result`, `duration_s` | `:2113` |
+| `clarify` | `clarify` | `question`, `choices`, `clarify_id` | `:2129` |
+| `error` | — | `message` | `:2117` |
+| `run.started` | — | `session_id` | `:4979`（直接 `RunEvent::new`） |
+| `approval.request` | — | **`tool_name`**, `arguments`, `choices` | `:5178` |
+| `approval.responded` | — | `choice` | `:5206` |
+| `run.completed` | — | `output`, `usage` | `:5297` |
+| `run.failed` | — | `error` | `:5317` |
+| `run.cancelled` | — | — | 终态补发（`run_state.rs:231` `is_terminal`） |
+| `run.stopping` | — | — | `:5612` |
+
+> **行号提示**：对齐文档（`intellect-team-alignment-requirements.md`）引用的 Rust 行号（1558/1564/4517 等）**已过时**——该文件写于 Rust 版本更早期。本文以上为 `9dcfdfa` 实测。行号变动本身也印证了对齐文档的判断：**Rust 是活跃演进的主版本**。
+
+##### D. kagweb 与 Rust 的差异清单（Rust-only 对齐目标）
+
+| kagweb 分支（`http_backend.py`） | 读取 | Rust 实际 | 差异 |
+|---|---|---|---|
+| 文本 | `event=message.delta`, **`delta`** | `event=message.delta`, `type=assistant.delta`, **`text`** | ❌ 字段名不符 → **内容全丢** |
+| 推理 | `event=reasoning.available` | `event=message.delta`, `type=reasoning.delta` | ❌ 事件名不符 → **推理全丢** |
+| 工具 | `event=tool.started` / `tool.completed` | `event=tool.progress` + `type=…` | ❌ 事件名不符 → **工具生命周期全丢** |
+| 审批 | `event=approval.request`, `tool`, `preview` | `event=approval.request` ✅, **`tool_name`**, `arguments` | ⚠ 事件名对，字段错 → 工具名回落为 `"tool"`、预览为空 |
+| 完成 | `event=run.completed`, `output`, `usage` | 同 | ✅ |
+| 失败 | `event=run.failed`, `error` | 同 | ✅ |
+| 取消 | `event=run.cancelled` | 同 | ✅ |
+| 澄清 | **无分支** | `event=clarify`, `type=clarify`, `question`, `choices`, `clarify_id` | ❌ 未实现 |
+| 心跳 | 无分支 | `event=message.delta`, `type=thinking.progress` | 可忽略（无文本） |
+
+**结论**：在 Rust（权威）下，**文本、推理、工具、审批四项全部失效**——只有终态与失败可用。这不是边缘差异，是**主功能不可用**。
+
 #### 落地建议
+
+**Rust-only 对齐**（已决策：只对齐 Rust，Python 版待其成熟后逐步放弃）——需改 `_translate_run_event` 一个方法：
+
+1. **判据改为 `type` 优先、`event` 兜底**：`kind = obj.get("type") or obj.get("event")`，再按语义分派。这样 `type=assistant.delta` 与 `event=run.completed` 都能命中。**不再做 Python 兼容**。
+2. **文本增量读 `text`**（现读 `delta`）——`assistant.delta` 与 `reasoning.delta` 都用 `text`。
+3. **工具分支改判 `type`**：`tool.started` / `tool.completed`（`event` 一律是 `tool.progress`），字段用 `name`/`result`/`duration_s`（现读 `tool`/`preview`）。
+4. **审批字段改读 `tool_name`**（现读 `tool`），预览改读 `arguments`（现读 `preview`）。
+5. **新增 `clarify` 分支**：映射为 `ask_user` 形状的卡片（复用 `_approval_question` 的构造方式），答复经 `respond_clarify` → `POST /v1/chat/completions/{session_id}/clarify`（body `{clarify_id, answer}`）。
+6. **兜底与可观测性**：末尾 `return []` 前对未识别的 `type`/`event` 记 `log.debug`——当前静默丢弃使上述全部问题长期不可见。
+7. **`intellect-team` 预设补齐** `turn_path="/v1/runs"` + `protocol="runs"`（见 D1）。
+
+**遗留决策点**：Python 版仍会用旧格式发 `delta` 字段。Rust-only 后，若部署连的是 Python 版 intellect-team，文本将读不到。鉴于已决定逐步放弃 Python 版，这属于**可接受的有意破坏**，但应在 `builtin.py` 的 `intellect-team` 描述中注明「requires Rust api_server」。
+
+> **落地时必须同步的两点**：(1) `intellect-team` 预设须补 `turn_path` / `protocol`（D1），否则改动无从生效；(2) 该预设的 `description` 应注明「requires Rust api_server」——Rust-only 后连 Python 版后端会出现**静默无输出**，描述里写清楚可省下一次排查。
 
 1. **判据澄清**：把 `_translate_run_event` 的判据从 `event` 改为「`event or type`」——先按 `type` 分派，`event` 作为命名通道（`tool.progress` / `clarify` / `error`）的辅助。这是**同时兼容两个实现**的最小改动。
 2. **字段兼容**：文本增量同时接受 `delta` 与 `text`。
@@ -953,6 +1016,9 @@ grep -n "def resolve_embedding_runtime_config\|def resolve_videogen_runtime_conf
 | R23 | 中 | 本文（第四轮中段）称「`thinking.progress` 是思考内容、被静默丢弃」——**误**。它是**心跳脉冲**（只带 `elapsed_s`/`silent_s`，无文本）；真正携带推理文本的是 `message.delta` + `type: reasoning.delta` | 决策 8 表格已更正 |
 | R24 | 补充 | `clarify` 与 `ask_user` 的关系此前未澄清。**意图相同、机制不同**：kagweb 已有把审批映射成 `ask_user` 卡片的机制（`capability.py:872-935`，注释即写「the agent-loop flavour of ask_user」），但 **`respond_clarify` 在 `RunsAgentLoopBackend` 中未实现**，且 Python 版 intellect-team 根本没有该 HTTP 端点 | 决策 8 D2 |
 | R25 | 补充 | 发现一个**可观测性缺陷**：`_translate_run_event` 末尾 `return []`，未识别事件被静默忽略——R18/R19 这类对接故障因此**长期不产生任何诊断信号** | 决策 8 落地建议 #3 |
+| R26 | **高** | **权威契约的层次此前未厘清**。`map_event_to_sse` 的返回值不是线上格式——forwarder 会把 `None` 分支改写为 `event="message.delta"`（`api_server.rs:5131`）。故 Rust 线上**有** `event` 字段，但文本/推理/工具全部靠 `type` 区分。据此重列差异清单：**文本、推理、工具、审批四项在 Rust 下全部失效**（不止文本与推理） | 决策 8 新增 `A/B/C/D` 四小节，给出权威契约与完整差异表 |
+| R27 | 补充 | 对齐文档引用的 Rust 行号（1558/1564/4517）**已过时** | 以 `9dcfdfa` 实测行号替换，并注明该文档写于更早期 |
+| R28 | 补充 | 审批字段亦不符：Rust 发 **`tool_name`**、`arguments`，kagweb 读 `tool`、`preview` → 工具名回落为通用 `"tool"`、预览为空 | 决策 8 差异表 D 行 + 落地建议 #4 |
 
 **本轮方法论收获**：前三轮评审的可靠前提是「同一仓库内的代码可自证」；一旦涉及**跨仓库契约**，这个前提失效——必须克隆对端、确认权威实现、并逐事件比对字段。R18-R20 三个问题全部源于跳过这一步。
 
