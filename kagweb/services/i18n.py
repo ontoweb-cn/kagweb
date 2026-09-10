@@ -99,6 +99,11 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.approval_choice_always_hint": "Remember this approval",
         "agent_loop.approval_choice_deny": "Deny",
         "agent_loop.approval_choice_deny_hint": "Do not run it; tell the agent no",
+        "agent_loop.clarify_header": "The agent is asking",
+        "agent_loop.clarify_prompt": "The agent needs more information to continue.",
+        "agent_loop.clarify_placeholder": "Type your reply…",
+        "agent_loop.clarify_decision": "Answer sent to the agent.",
+        "agent_loop.clarify_skipped": "No answer was given; the agent will continue without it.",
         "agent_loop.request_unsupported": (
             "The backend requested {kind} for {tool!r} but cannot receive an answer; "
             "continuing without it."
@@ -224,6 +229,11 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.approval_choice_always_hint": "记住此授权",
         "agent_loop.approval_choice_deny": "拒绝",
         "agent_loop.approval_choice_deny_hint": "不执行，并告知智能体",
+        "agent_loop.clarify_header": "智能体正在询问",
+        "agent_loop.clarify_prompt": "智能体需要更多信息才能继续。",
+        "agent_loop.clarify_placeholder": "输入你的回答…",
+        "agent_loop.clarify_decision": "已把回答发送给智能体。",
+        "agent_loop.clarify_skipped": "未作答，智能体将在没有该信息的情况下继续。",
         "agent_loop.request_unsupported": (
             "后端请求了 {kind}（{tool!r}），但该后端无法接收答复，已继续执行。"
         ),

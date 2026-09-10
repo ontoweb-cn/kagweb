@@ -517,9 +517,13 @@ class _ControlledBackend(_RecordingBackend):
     def __init__(self, events: list[AgentLoopEvent]) -> None:
         super().__init__(events)
         self.decisions: list[tuple[str, str]] = []
+        self.clarifications: list[tuple[str, str]] = []
 
     async def respond_approval(self, request_id: str, choice: str) -> None:
         self.decisions.append((request_id, choice))
+
+    async def respond_clarify(self, request_id: str, answer: str) -> None:
+        self.clarifications.append((request_id, answer))
 
 
 def _approval_event() -> AgentLoopEvent:
@@ -528,6 +532,14 @@ def _approval_event() -> AgentLoopEvent:
         name="shell",
         text="rm -rf build/",
         data={"request_id": "req-1", "choices": ["once", "always", "deny"]},
+    )
+
+
+def _clarify_event() -> AgentLoopEvent:
+    return AgentLoopEvent(
+        "clarify_request",
+        text="Which database should I target?",
+        data={"request_id": "clr-1", "choices": ["postgres", "sqlite"]},
     )
 
 
@@ -696,6 +708,71 @@ async def test_approval_from_uncontrolled_backend_degrades_to_progress(monkeypat
     # approved here.
     assert str(note.content) == "rm -rf build/"
     assert (note.metadata or {}).get("kind") == "approval_request"
+
+
+async def test_clarify_parks_and_forwards_the_free_text_answer(monkeypatch) -> None:
+    """A clarify asks a question, so its answer is free text and goes to
+    ``respond_clarify`` — not the approval's bounded-choice path."""
+    backend = _ControlledBackend([_clarify_event(), AgentLoopEvent("content", text="ok")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "controlled", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+
+    async def waiter():
+        return {"answers": [{"questionId": "clarify", "text": "postgres please"}]}
+
+    events = await _collect_full(_context_with_waiter(waiter), StreamBus())
+
+    assert backend.clarifications == [("clr-1", "postgres please")]
+    assert backend.decisions == []  # never routed through the approval path
+
+    card = next(event for event in events if event.type.value == "tool_call")
+    call_args = card.metadata.get("args") if isinstance(card.metadata, dict) else None
+    assert isinstance(call_args, dict)
+    question = call_args["questions"][0]
+    assert question["id"] == "clarify"
+    assert question["prompt"] == "Which database should I target?"
+    # The agent's own question is the prompt; its suggestions become options.
+    assert [option["label"] for option in question["options"]] == ["postgres", "sqlite"]
+    # Free text stays available even when choices were offered.
+    assert question["allow_free_text"] is True
+
+    resolved = next(event for event in events if (event.metadata or {}).get("ask_user_resolved"))
+    assert resolved.metadata["clarify"] == {"request_id": "clr-1", "answer": "postgres please"}
+    assert context_answer(events) == "ok"
+
+
+async def test_clarify_timeout_is_reported_as_skipped_not_invented(monkeypatch) -> None:
+    """A clarify has no policy answer: on timeout the turn must tell the agent
+    nothing rather than fabricate text it would act on."""
+    import kagweb.capabilities.chat.capability as cap
+
+    backend = _ControlledBackend([_clarify_event(), AgentLoopEvent("content", text="ok")])
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "controlled", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(cap, "_approval_timeout", lambda profile: 0.05)
+
+    async def waiter():
+        await asyncio.sleep(5)
+        return {"answers": [{"questionId": "clarify", "text": "too late"}]}
+
+    events = await _collect_full(_context_with_waiter(waiter), StreamBus())
+
+    assert backend.clarifications == [("clr-1", "")]
+    resolved = next(event for event in events if (event.metadata or {}).get("ask_user_resolved"))
+    assert resolved.metadata["clarify"]["answer"] == ""
+    assert resolved.metadata["answers"] == [{"questionId": "clarify", "text": ""}]
 
 
 def context_answer(events: list[Any]) -> str:

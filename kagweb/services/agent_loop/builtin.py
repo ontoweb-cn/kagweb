@@ -92,7 +92,15 @@ PRESETS: dict[str, AgentLoopPreset] = {
         AgentLoopPreset(
             name="intellect-team",
             family="http",
-            description="Intellect enterprise (team) agent service.",
+            description=(
+                "Intellect enterprise (team) agent service over the run "
+                "endpoints (/v1/runs + SSE). The event vocabulary is aligned to "
+                "Intellect's Rust api_server (the authoritative implementation); "
+                "answering a clarify needs that server, which exposes the "
+                "response endpoint."
+            ),
+            turn_path="/v1/runs",
+            protocol="runs",
         ),
         AgentLoopPreset(
             name="intellect-runs",

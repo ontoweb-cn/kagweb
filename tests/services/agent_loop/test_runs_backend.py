@@ -12,17 +12,35 @@ from kagweb.services.agent_loop.protocol import AgentLoopRequest
 
 pytestmark = pytest.mark.asyncio
 
+# The authoritative wire shape, taken from Intellect's Rust api_server (the
+# implementation that owns this channel). Every frame is a RunEvent carrying
+# ``event`` (the SSE channel) plus a flattened payload whose ``type`` is what
+# actually distinguishes content kinds — text, reasoning and the completions
+# all ride ``event="message.delta"``, and both tool transitions ride
+# ``event="tool.progress"``. Dispatching on ``event`` alone therefore loses
+# text, reasoning and tools; this fixture exists to pin the ``type``-first
+# reading, and replaces an earlier one that encoded the same wrong assumption
+# as the code under test (so it passed either way).
 SSE_BODY = (
-    'data: {"event": "message.delta", "delta": "Hello "}\n'
+    'data: {"event": "run.started", "session_id": "srv-session", "run_id": "run_1"}\n'
     "\n"
-    'data: {"event": "message.delta", "delta": "world"}\n'
+    'data: {"event": "message.delta", "type": "reasoning.delta", "text": "weighing options"}\n'
     "\n"
-    'data: {"event": "tool.started", "tool": "shell", "preview": "ls"}\n'
+    'data: {"event": "message.delta", "type": "thinking.progress",'
+    ' "elapsed_s": 1.2, "silent_s": 0.4}\n'
     "\n"
-    'data: {"event": "tool.completed", "tool": "shell"}\n'
+    'data: {"event": "message.delta", "type": "assistant.delta", "text": "Hello "}\n'
     "\n"
-    'data: {"event": "approval.request", "tool": "shell",'
-    ' "choices": ["once", "deny"]}\n'
+    'data: {"event": "message.delta", "type": "assistant.delta", "text": "world"}\n'
+    "\n"
+    'data: {"event": "tool.progress", "type": "tool.started",'
+    ' "name": "shell", "arguments": {"command": "ls"}, "tool_id": "t1"}\n'
+    "\n"
+    'data: {"event": "tool.progress", "type": "tool.completed",'
+    ' "name": "shell", "result": "a.txt", "duration_s": 0.25, "tool_id": "t1"}\n'
+    "\n"
+    'data: {"event": "approval.request", "tool_name": "shell",'
+    ' "arguments": "rm -rf build", "choices": ["once", "deny"]}\n'
     "\n"
     'data: {"event": "run.completed", "output": "final answer",'
     ' "usage": {"input_tokens": 1, "output_tokens": 2, "total_tokens": 3}}\n'
@@ -41,6 +59,8 @@ def _mock_backend(calls: list[httpx.Request], sse_body: str = SSE_BODY):
             return httpx.Response(200, text=sse_body, headers={"content-type": "text/event-stream"})
         if path.endswith("/approval"):
             return httpx.Response(200, json={"resolved": 1})
+        if path.endswith("/clarify"):
+            return httpx.Response(200, json={"answered": 1})
         if path.endswith("/stop"):
             return httpx.Response(200, json={"stopped": True})
         if path.endswith("/runs/run_1"):
@@ -83,6 +103,7 @@ async def test_run_stream_maps_events_and_forwards_approval(tmp_path) -> None:
     kinds = [event.kind for event in events]
     # deltas buffer into one block, flushed at the tool boundary
     assert kinds == [
+        "thinking",
         "content",
         "tool_call",
         "tool_result",
@@ -90,12 +111,17 @@ async def test_run_stream_maps_events_and_forwards_approval(tmp_path) -> None:
         "content",
         "usage",
     ]
-    assert events[0].text == "Hello world"
-    assert events[1].name == "shell"
-    assert events[3].data["request_id"] == "run_1"  # approvals resolve per run
-    assert events[3].data["choices"] == ["once", "deny"]
-    assert events[4].text == "final answer"
-    assert events[5].data == {"input_tokens": 1, "output_tokens": 2, "total_tokens": 3}
+    assert events[0].text == "weighing options"
+    assert events[1].text == "Hello world"
+    assert events[2].name == "shell"
+    assert events[2].data["args"] == {"command": "ls"}
+    assert events[3].name == "shell"
+    assert events[3].text == "a.txt"
+    assert events[3].data["duration_s"] == 0.25
+    assert events[4].data["request_id"] == "run_1"  # approvals resolve per run
+    assert events[4].data["choices"] == ["once", "deny"]
+    assert events[5].text == "final answer"
+    assert events[6].data == {"input_tokens": 1, "output_tokens": 2, "total_tokens": 3}
 
     # the start request carried the prompt and the history
     start = calls[0]
@@ -106,6 +132,53 @@ async def test_run_stream_maps_events_and_forwards_approval(tmp_path) -> None:
     # the approval decision reached the control endpoint with our vocabulary
     approval = next(call for call in calls if call.url.path.endswith("/approval"))
     assert json.loads(approval.content) == {"choice": "once"}
+
+
+async def test_approval_reads_the_authoritative_tool_fields(tmp_path) -> None:
+    """Rust sends ``tool_name`` / ``arguments``; reading ``tool`` / ``preview``
+    silently degraded every approval to a generic name and an empty preview."""
+    calls: list[httpx.Request] = []
+    backend = _mock_backend(calls)
+
+    events = [event async for event in backend.run(AgentLoopRequest(prompt="hi"))]
+    approval = next(event for event in events if event.kind == "approval_request")
+
+    assert approval.name == "shell"
+    assert approval.text == "rm -rf build"
+
+
+async def test_clarify_is_surfaced_and_answered_on_its_own_endpoint(tmp_path) -> None:
+    """A clarify is a question, not a decision: it must surface as a
+    ``clarify_request`` and its answer must go to the clarify endpoint, which
+    is keyed by the *server's* session id and lives outside the run path."""
+    body = SSE_BODY.replace(
+        'data: {"event": "approval.request", "tool_name": "shell",'
+        ' "arguments": "rm -rf build", "choices": ["once", "deny"]}\n'
+        "\n",
+        'data: {"event": "clarify", "type": "clarify", "clarify_id": "c-1",'
+        ' "question": "Which database?", "choices": ["postgres", "sqlite"]}\n'
+        "\n",
+    )
+    calls: list[httpx.Request] = []
+    backend = _mock_backend(calls, sse_body=body)
+
+    events = []
+    async for event in backend.run(AgentLoopRequest(prompt="hi", session_id="s1")):
+        events.append(event)
+        if event.kind == "clarify_request":
+            await backend.respond_clarify("c-1", "postgres")
+
+    clarify = next(event for event in events if event.kind == "clarify_request")
+    assert clarify.text == "Which database?"
+    assert clarify.data["request_id"] == "c-1"
+    assert clarify.data["choices"] == ["postgres", "sqlite"]
+    # the stream resumes: the run still completes
+    assert events[-1].kind in {"usage", "content"}
+
+    answer = next(call for call in calls if call.url.path.endswith("/clarify"))
+    # the server's session id from ``run.started``, not the KAGWeb one we sent
+    assert answer.url.path == "/v1/chat/completions/srv-session/clarify"
+    assert json.loads(answer.content) == {"clarify_id": "c-1", "answer": "postgres"}
 
 
 async def test_stream_failure_degrades_to_status_polling() -> None:

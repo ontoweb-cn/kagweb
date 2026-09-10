@@ -302,6 +302,9 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             transport=transport,
         )
         self._run_id = ""
+        #: The server's own session id, captured from the event stream. The
+        #: clarify endpoint is keyed by it (not by the KAGWeb session id).
+        self._session_id = ""
 
     # -- URL helpers ---------------------------------------------------------
 
@@ -323,6 +326,10 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         if request.session_id:
             payload["session_id"] = request.session_id
         state: dict[str, Any] = {"buf": [], "terminal": False}
+        # Seed from the request so a clarify can still be answered when the
+        # stream never reports the server's own session id; an authoritative
+        # value from ``run.started`` / ``assistant.completed`` overrides it.
+        self._session_id = request.session_id or ""
         timeout = httpx.Timeout(
             connect=15.0,
             read=self.timeout_seconds or 300.0,
@@ -460,42 +467,108 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
     def _translate_run_event(
         self, obj: dict[str, Any], state: dict[str, Any]
     ) -> list[AgentLoopEvent]:
-        kind = str(obj.get("event") or "")
-        if kind == "message.delta":
-            delta = str(obj.get("delta") or "")
+        """Map one run-channel event onto the neutral schema.
+
+        The channel is defined by Intellect's Rust ``api_server``, which is the
+        authoritative implementation. Its wire shape is a ``RunEvent`` —
+        ``{"event": <channel>, ...payload}`` — and the payload's own ``type`` is
+        what actually separates content kinds: ``assistant.delta``,
+        ``reasoning.delta``, ``thinking.progress``, ``assistant.completed`` and
+        ``interim_assistant`` all arrive under ``event="message.delta"``, and
+        both tool transitions arrive under ``event="tool.progress"``.
+
+        So dispatch on ``type`` first and fall back to ``event`` — the same
+        order ``cli_backend.translate_generic`` already uses for vendor frames.
+        Reading ``event`` alone silently drops text, reasoning, tools and
+        approvals (only the ``event``-named terminal states survive), and
+        because this method used to end in a bare ``return []`` there was no
+        diagnostic to show it.
+        """
+        kind = str(obj.get("type") or "").strip() or str(obj.get("event") or "").strip()
+
+        # -- assistant text --------------------------------------------------
+        if kind in {"assistant.delta", "message.delta"}:
+            # ``message.delta`` is the legacy channel name (older adapters emit
+            # it with a ``delta`` field and no ``type``); the authoritative
+            # shape carries ``text`` under ``type="assistant.delta"``.
+            delta = str(obj.get("text") or obj.get("delta") or "")
             if delta:
                 state["buf"].append(delta)
             return []
+
+        # -- reasoning -------------------------------------------------------
+        if kind in {"reasoning.delta", "reasoning.available"}:
+            text = str(obj.get("text") or "")
+            return [AgentLoopEvent("thinking", text=text)] if text else []
+
+        # -- complete assistant blocks ---------------------------------------
+        if kind in {"interim_assistant", "assistant.completed"}:
+            events = self._flush_buffered_content(state)
+            self._remember_session(obj)
+            body = str(obj.get("content") or obj.get("response") or "")
+            if body:
+                events.append(AgentLoopEvent("content", text=body))
+            return events
+
+        # -- tools -----------------------------------------------------------
         if kind in {"tool.started", "tool.completed", "tool.failed"}:
-            events: list[AgentLoopEvent] = []
-            if state["buf"]:
-                events.append(AgentLoopEvent("content", text="".join(state["buf"])))
-                state["buf"] = []
-            tool = str(obj.get("tool") or "tool")
+            events = self._flush_buffered_content(state)
+            name = str(obj.get("name") or obj.get("tool") or "tool")
             if kind == "tool.started":
+                arguments = obj.get("arguments")
+                if not isinstance(arguments, dict):
+                    arguments = None
                 events.append(
-                    AgentLoopEvent("tool_call", name=tool, text=str(obj.get("preview") or ""))
+                    AgentLoopEvent(
+                        "tool_call",
+                        name=name,
+                        text=str(obj.get("preview") or ""),
+                        data={"args": arguments} if arguments is not None else {},
+                    )
                 )
             else:
+                data: dict[str, Any] = {
+                    "is_error": kind == "tool.failed" or bool(obj.get("error")),
+                }
+                duration = obj.get("duration_s")
+                if isinstance(duration, (int, float)):
+                    data["duration_s"] = float(duration)
                 events.append(
                     AgentLoopEvent(
                         "tool_result",
-                        name=tool,
-                        data={"is_error": kind == "tool.failed" or bool(obj.get("error"))},
+                        name=name,
+                        text=str(obj.get("result") or ""),
+                        data=data,
                     )
                 )
             return events
-        if kind == "reasoning.available":
-            text = str(obj.get("text") or "")
-            return [AgentLoopEvent("thinking", text=text)] if text else []
+
+        # -- clarify (the agent asks the user a question mid-turn) -----------
+        if kind == "clarify":
+            # Buffered narration stays buffered, exactly as for an approval:
+            # it belongs to the answer that resumes after the user replies.
+            return [
+                AgentLoopEvent(
+                    "clarify_request",
+                    text=str(obj.get("question") or ""),
+                    data={
+                        "request_id": str(obj.get("clarify_id") or ""),
+                        "choices": [str(choice) for choice in (obj.get("choices") or [])],
+                    },
+                )
+            ]
+
+        # -- approval --------------------------------------------------------
         if kind == "approval.request":
-            # Any buffered narration stays buffered: it flushes into a content
+            # Buffered narration stays buffered: it flushes into a content
             # block when the run completes.
             return [
                 AgentLoopEvent(
                     "approval_request",
-                    name=str(obj.get("tool") or "tool"),
-                    text=str(obj.get("preview") or ""),
+                    name=str(obj.get("tool_name") or obj.get("tool") or "tool"),
+                    # ``arguments`` is the authoritative field; ``preview`` is
+                    # the legacy one.
+                    text=str(obj.get("arguments") or obj.get("preview") or ""),
                     data={
                         # The runs API resolves approvals per run, not per request.
                         "request_id": str(obj.get("run_id") or self._run_id),
@@ -505,34 +578,74 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
                     },
                 )
             ]
+
+        # -- run lifecycle ---------------------------------------------------
+        if kind == "run.started":
+            self._remember_session(obj)
+            return []
         if kind == "run.completed":
-            # A distinct name from the tool branch above: both arms share this
-            # function's scope, and re-using ``events`` tripped mypy's
-            # no-redef (and would silently shadow if the two ever merged).
-            completed: list[AgentLoopEvent] = []
-            if state["buf"]:
-                completed.append(AgentLoopEvent("content", text="".join(state["buf"])))
-                state["buf"] = []
+            events = self._flush_buffered_content(state)
+            self._remember_session(obj)
             state["terminal"] = True
             output = str(obj.get("output") or "")
             if output:
-                completed.append(AgentLoopEvent("content", text=output))
+                events.append(AgentLoopEvent("content", text=output))
             usage = obj.get("usage") if isinstance(obj.get("usage"), dict) else {}
-            data = {
+            usage_data = {
                 "input_tokens": usage.get("input_tokens"),
                 "output_tokens": usage.get("output_tokens"),
                 "total_tokens": usage.get("total_tokens"),
             }
-            if any(value is not None for value in data.values()):
-                completed.append(AgentLoopEvent("usage", data=data))
-            return completed
+            if any(value is not None for value in usage_data.values()):
+                events.append(AgentLoopEvent("usage", data=usage_data))
+            return events
         if kind == "run.failed":
             state["terminal"] = True
             return [AgentLoopEvent("error", text=str(obj.get("error") or "run failed"))]
         if kind == "run.cancelled":
             state["terminal"] = True
             return [AgentLoopEvent("error", text="run cancelled")]
+
+        # -- recognised no-ops -----------------------------------------------
+        # ``thinking.progress`` is a heartbeat (elapsed/silent only, no text);
+        # ``run.stopping`` precedes the cancelled terminal; ``approval.responded``
+        # echoes a decision we already surfaced. Handled explicitly so they do
+        # not look like unknown traffic in the debug log.
+        if kind in {"thinking.progress", "run.stopping", "approval.responded"}:
+            return []
+
+        # Unknown shapes are the one case that must leave a trace: silently
+        # dropping them is what let the field-name mismatches above go
+        # unnoticed for so long.
+        logger.debug(
+            "agent-loop %s: unrecognised run event (type=%r event=%r): %.200s",
+            self.name,
+            obj.get("type"),
+            obj.get("event"),
+            obj,
+        )
         return []
+
+    @staticmethod
+    def _flush_buffered_content(state: dict[str, Any]) -> list[AgentLoopEvent]:
+        """Drain the delta buffer into one content block (or nothing)."""
+        if not state["buf"]:
+            return []
+        events = [AgentLoopEvent("content", text="".join(state["buf"]))]
+        state["buf"] = []
+        return events
+
+    def _remember_session(self, obj: dict[str, Any]) -> None:
+        """Keep the server's session id, which the clarify endpoint addresses.
+
+        The run channel reports it on ``run.started`` / ``assistant.completed``;
+        it is the *Intellect* session, which is what ``/v1/chat/completions/
+        {session_id}/clarify`` is keyed by — not the KAGWeb session id we send
+        when starting the run.
+        """
+        session_id = str(obj.get("session_id") or "")
+        if session_id:
+            self._session_id = session_id
 
     # -- control plane -------------------------------------------------------
 
@@ -543,6 +656,31 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             await client.post(
                 self._runs_url(self._run_id, "approval"),
                 json={"choice": choice},
+                headers=self._headers(),
+            )
+
+    async def respond_clarify(self, request_id: str, answer: str) -> None:
+        """Deliver the user's answer to an in-flight ``clarify``.
+
+        The clarify endpoint is NOT under the run path: Intellect exposes it as
+        ``POST /v1/chat/completions/{session_id}/clarify`` with
+        ``{"clarify_id", "answer"}``, keyed by session rather than by run. That
+        is why this does not reuse ``_runs_url`` — it is a sibling of the runs
+        API, not a child of it.
+        """
+        if not self._session_id:
+            # Nothing to address: without a server session id the request would
+            # be a guaranteed 404, so skip it rather than add noise.
+            logger.debug(
+                "agent-loop %s: cannot answer clarify %s without a server session id",
+                self.name,
+                request_id,
+            )
+            return
+        async with httpx.AsyncClient(transport=self._transport) as client:
+            await client.post(
+                f"{self.url}/v1/chat/completions/{self._session_id}/clarify",
+                json={"clarify_id": request_id, "answer": answer},
                 headers=self._headers(),
             )
 

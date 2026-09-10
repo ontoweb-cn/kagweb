@@ -304,16 +304,22 @@ class ChatCapability(TurnCapability):
         usage: dict[str, Any] = {}
         bridge = _AgentLoopRoundBridge(stream, source="chat", stage="responding")
         async for event in backend.run(request):
-            if event.kind == "approval_request" and getattr(backend, "supports_control", False):
-                # The approval card is its own trace unit, and the frontend
-                # splits the trace at it: settle the open round first so the
-                # rounds before the card stay above it and the resumed round
-                # opens a fresh group below, instead of one group straddling
-                # the card.
+            if event.kind in {"approval_request", "clarify_request"} and getattr(
+                backend, "supports_control", False
+            ):
+                # The card is its own trace unit, and the frontend splits the
+                # trace at it: settle the open round first so the rounds before
+                # the card stay above it and the resumed round opens a fresh
+                # group below, instead of one group straddling the card.
                 await bridge.finish(terminal=False)
-                await self._handle_approval_request(
-                    context, stream, backend, event, profile, language
-                )
+                if event.kind == "approval_request":
+                    await self._handle_approval_request(
+                        context, stream, backend, event, profile, language
+                    )
+                else:
+                    await self._handle_clarify_request(
+                        context, stream, backend, event, profile, language
+                    )
                 continue
             if event.kind == "usage":
                 usage.update({k: v for k, v in event.data.items() if v is not None})
@@ -416,6 +422,82 @@ class ChatCapability(TurnCapability):
         )
         if request_id:
             await backend.respond_approval(request_id, choice)
+
+    async def _handle_clarify_request(
+        self,
+        context: UnifiedContext,
+        stream,  # noqa: ANN001
+        backend: AgentLoopBackend,
+        event: AgentLoopEvent,
+        profile: dict[str, Any],
+        language: str,
+    ) -> None:
+        """Ask the user one question mid-turn, then hand the answer back.
+
+        This is the same shape of interaction as an approval — the backend's
+        generator parks until a reply arrives, and the card rides the clients'
+        existing ``ask_user`` rendering — but the two differ in what they ask.
+        An approval wants a bounded decision and falls back to a policy on
+        silence (``approval_default``); a clarify wants free text and has no
+        policy answer, so a timeout resolves it as skipped rather than
+        inventing a reply the agent would act on.
+        """
+        data = event.data if isinstance(event.data, dict) else {}
+        request_id = str(data.get("request_id") or "")
+        prompt = event.text or str(data.get("question") or "")
+        choices = [str(choice) for choice in (data.get("choices") or [])]
+        timeout = _approval_timeout(profile)
+
+        question = _clarify_question(prompt=prompt, choices=choices, language=language)
+        call_id = f"clarify-{request_id or id(event)}"
+        await stream.tool_call(
+            "ask_user",
+            {"questions": [question]},
+            source=self.name,
+            stage="responding",
+            metadata={"call_id": call_id, "call_state": "running"},
+        )
+        await stream.tool_result(
+            "ask_user",
+            "",
+            source=self.name,
+            stage="responding",
+            metadata={
+                "call_id": call_id,
+                "tool_metadata": {"ask_user": {"questions": [question]}},
+            },
+        )
+
+        waiter = getattr(getattr(context, "runtime", None), "wait_for_user_reply", None)
+        reply: dict[str, Any] | None = None
+        if waiter is not None and timeout > 0:
+            try:
+                reply = await asyncio.wait_for(waiter(), timeout=timeout)
+            except asyncio.TimeoutError:
+                reply = None
+            except asyncio.CancelledError:
+                if asyncio.current_task().cancelling():
+                    raise
+                reply = None
+        answer = _clarify_answer_from_reply(reply)
+
+        await stream.progress(
+            t("agent_loop.clarify_decision", language=language)
+            if answer
+            else t("agent_loop.clarify_skipped", language=language),
+            source=self.name,
+            stage="responding",
+            metadata={
+                "clarify": {"request_id": request_id, "answer": answer},
+                # The same resolution marker the web's ask_user card renderer
+                # consumes: it flips the pending card to its answered state.
+                "ask_user_resolved": True,
+                "ask_user_tool_call_id": call_id,
+                "answers": [{"questionId": "clarify", "text": answer}],
+            },
+        )
+        if request_id and getattr(backend, "supports_control", False):
+            await backend.respond_clarify(request_id, answer)
 
     async def _run_consult(
         self,
@@ -955,6 +1037,48 @@ def _approval_choice_from_reply(
         if text in {value, label}:
             return str(option.get("value") or default_choice)
     return default_choice
+
+
+def _clarify_question(*, prompt: str, choices: list[str], language: str) -> dict[str, Any]:
+    """One ``ask_user`` question for a mid-turn ``clarify``.
+
+    Same card shape as an approval, but the text is the agent's own question —
+    there is no fixed vocabulary to render — and free text is the primary way
+    to answer, so the input stays open even when the agent suggested choices.
+    """
+    return {
+        "id": "clarify",
+        "header": t("agent_loop.clarify_header", language=language),
+        "prompt": prompt or t("agent_loop.clarify_prompt", language=language),
+        "options": [
+            # The card renders options by ``label`` alone, so a suggestion has
+            # to carry one; ``value`` is kept for the reply-matching path.
+            {"value": choice, "label": choice, "description": None}
+            for choice in choices
+            if choice.strip()
+        ],
+        "multi_select": False,
+        "allow_free_text": True,
+        "placeholder": t("agent_loop.clarify_placeholder", language=language),
+    }
+
+
+def _clarify_answer_from_reply(reply: dict[str, Any] | None) -> str:
+    """The user's free-text answer, or ``""`` when they did not answer.
+
+    Unlike an approval there is no policy fallback: a clarify that goes
+    unanswered must read as skipped, because any invented text would be acted
+    on by the agent as if the user had said it.
+    """
+    if not isinstance(reply, dict):
+        return ""
+    answers = reply.get("answers")
+    if isinstance(answers, list) and answers and isinstance(answers[0], dict):
+        text = str(answers[0].get("text") or "")
+        if text.strip():
+            return text.strip()
+    fallback = reply.get("text")
+    return fallback.strip() if isinstance(fallback, str) else ""
 
 
 __all__ = ["ChatCapability"]

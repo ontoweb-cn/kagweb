@@ -21,7 +21,7 @@ from kagweb.services.agent_loop.cli_backend import (
     translate_codex,
     translate_generic,
 )
-from kagweb.services.agent_loop.http_backend import HttpAgentLoopBackend
+from kagweb.services.agent_loop.http_backend import HttpAgentLoopBackend, RunsAgentLoopBackend
 from kagweb.services.agent_loop.protocol import AgentLoopRequest
 
 pytestmark = pytest.mark.asyncio
@@ -444,6 +444,20 @@ def test_factory_http_requires_url() -> None:
     )
     assert isinstance(backend, HttpAgentLoopBackend)
     assert backend.endpoint() == "http://as:9000/v1/chat"
+
+
+def test_intellect_http_presets_ride_the_run_channel() -> None:
+    """Both Intellect HTTP presets must select the runs transport.
+
+    ``intellect-team`` used to carry no ``turn_path``/``protocol``, so it fell
+    back to the preset default ``/agent/turn`` — an endpoint the service does
+    not expose, making every turn a guaranteed 404. The failure was invisible
+    because the transport is chosen from the very fields that were missing.
+    """
+    for preset in ("intellect-team", "intellect-runs"):
+        backend = build_agent_loop_backend({"backend": preset, "url": "http://intellect.test"})
+        assert isinstance(backend, RunsAgentLoopBackend), preset
+        assert backend.turn_path == "/v1/runs", preset
 
 
 # ---------------------------------------------------------------------------
