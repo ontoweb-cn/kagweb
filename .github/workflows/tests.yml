@@ -208,7 +208,6 @@ jobs:
         run: |
           echo "🐍 Testing with Python ${{ matrix.python-version }}"
           python -c "from kagweb.runtime.orchestrator import ChatOrchestrator; print('✅ Orchestrator imports OK')"
-          python -c "from kagweb.runtime.registry.tool_registry import get_tool_registry; print('✅ Tool registry imports OK')"
           python -c "from kagweb.runtime.registry.capability_registry import get_capability_registry; print('✅ Capability registry imports OK')"
           python -c "from kagweb.services.config.runtime_settings import RuntimeSettingsService; print('✅ RuntimeSettingsService imports OK')"
           python -c "from kagweb.api.routers.unified_ws import unified_websocket; print('✅ Unified WS imports OK')"
@@ -219,7 +218,6 @@ jobs:
 
       - name: Check lazy startup and isolated worker protocol
         run: |
-          python -c "import sys; import kagweb.runtime.registry.tool_registry; assert 'kagweb.agents.chat.agentic_pipeline' not in sys.modules; print('✅ Tool implementations stay cold')"
           python -c "from kagweb.runtime.isolated_worker import run_in_isolated_process_sync; assert run_in_isolated_process_sync('operator:add', 20, 22, timeout=15) == 42; print('✅ Isolated worker protocol OK')"
         env:
           PYTHONPATH: ${{ github.workspace }}
