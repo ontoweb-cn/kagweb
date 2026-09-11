@@ -17,10 +17,8 @@ import {
   Palette,
   Paperclip,
   Search,
-  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
-  UserRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -61,10 +59,6 @@ export interface SettingsCategory {
   href: string;
   /** Nested anchors (omitted for direct-section categories). */
   children?: SettingsLeaf[];
-  /** Shown only when the backend reports an active learner policy. */
-  learnerOnly?: boolean;
-  /** Shown only to authenticated standard users who may act as guardians. */
-  guardianOnly?: boolean;
   /** Admin-owned category, hidden from ordinary users like an adminOnly leaf. */
   adminOnly?: boolean;
   /**
@@ -85,8 +79,6 @@ export function isSettingsCategoryVisible(
   category: SettingsCategory,
   access: SettingsAccess,
 ): boolean {
-  if (category.learnerOnly && !access.showLearnerOnly) return false;
-  if (category.guardianOnly && !access.showGuardianOnly) return false;
   if (category.adminOnly && access.hideAdminOnly) return false;
   if (category.llmOnly && !access.enableLlmSettings) return false;
   return (
@@ -286,28 +278,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     icon: MessagesSquare,
     href: "/settings#chat",
     children: CHAT_CHILDREN,
-  },
-  {
-    key: "learner-profile",
-    learnerOnly: true,
-    label: { zh: "学习档案", en: "Learner profile" },
-    blurb: {
-      zh: "调整年龄、年级与讲解偏好。",
-      en: "Adjust age, grade, and explanation preferences.",
-    },
-    icon: UserRound,
-    href: "/settings#learner-profile",
-  },
-  {
-    key: "guardian",
-    guardianOnly: true,
-    label: { zh: "监护管理", en: "Guardian" },
-    blurb: {
-      zh: "查看已授权学习者与学习材料。",
-      en: "Review authorized learners and learning materials.",
-    },
-    icon: ShieldCheck,
-    href: "/settings#guardian",
   },
   {
     key: "about",

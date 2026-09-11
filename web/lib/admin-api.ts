@@ -1,6 +1,6 @@
 import { apiFetch, apiUrl } from "@/lib/api";
 
-export type AccountPreset = "standard" | "learner" | "custom";
+export type AccountPreset = "standard" | "custom";
 
 export interface UserRecord {
   id: string;
@@ -16,50 +16,6 @@ export interface UserRecord {
     default: "none" | "read";
     books: Record<string, "none" | "read" | "edit">;
   };
-}
-
-export interface LearnerProfile {
-  age?: number;
-  grade_level?: string;
-  curriculum?: string;
-  language?: string;
-  reading_level?: string;
-  explanation_style?: string;
-}
-
-export async function getLearnerProfile(
-  username: string,
-): Promise<LearnerProfile | null> {
-  const res = await apiFetch(
-    apiUrl(`/api/auth/users/${encodeURIComponent(username)}/learner-profile`),
-  );
-  if (!res.ok) throw new Error("Failed to fetch learner profile");
-  const data = (await res.json()) as {
-    learner_profile?: LearnerProfile | null;
-  };
-  return data.learner_profile ?? null;
-}
-
-export async function setLearnerProfile(
-  username: string,
-  profile: LearnerProfile,
-): Promise<LearnerProfile | null> {
-  const res = await apiFetch(
-    apiUrl(`/api/auth/users/${encodeURIComponent(username)}/learner-profile`),
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(profile),
-    },
-  );
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail ?? "Failed to save learner profile");
-  }
-  const data = (await res.json()) as {
-    learner_profile?: LearnerProfile | null;
-  };
-  return data.learner_profile ?? null;
 }
 
 export async function listUsers(): Promise<UserRecord[]> {

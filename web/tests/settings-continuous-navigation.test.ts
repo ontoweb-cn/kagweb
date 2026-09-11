@@ -34,8 +34,6 @@ test("settings page: stacks every first-level section from overview to about", (
     // section rather than nested under Chat.
     "agent-loop",
     "chat",
-    "learner-profile",
-    "guardian",
     "about",
   ];
 

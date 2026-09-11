@@ -247,7 +247,7 @@ the four user-toggleable tools (`brainstorm`, `web_search`, `paper_search`,
 | LLM providers | `kagweb/services/llm/` | OpenAI Chat Completions **and** Responses API wire protocols (`WireAPI = auto/responses/chat_completions`), Anthropic, Azure, Codex OAuth, Copilot, CodeBuddy, embedding-free |
 | Sessions | `kagweb/services/session/` | SQLite + PocketBase stores, turn runtime (prepare/execute/lifecycle/title), request snapshots, regenerate |
 | Turn coordination | `kagweb/runtime/` | multi-worker leader election, background commands (partners), memory reclaim |
-| Multi-user | `kagweb/multi_user/` | grants, model/tool/partner access, guardians, learner profiles |
+| Multi-user | `kagweb/multi_user/` | grants, model/tool/MCP access, audit |
 | Settings | `kagweb/services/config/` | model catalog (llm/task/search/tts/stt/imagegen), runtime settings, connection tests |
 | Partners | `kagweb/partners/` + `kagweb/services/partners/` | IM channels (Telegram/Discord/Slack/Feishu/WeCom/Napcat/MS Teams/...), per-partner workspace & soul |
 | Web | `web/` | Next.js, subpath-deployable (`NEXT_PUBLIC_BASE_PATH`), settings/multi-user/partners/space UIs |

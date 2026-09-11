@@ -42,87 +42,6 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
-  readonly "/api/auth/device-login": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /**
-     * Device Login
-     * @description Exchange a device pairing code and PIN for the account's normal cookie.
-     */
-    readonly post: operations["device_login_api_auth_device_login_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/auth/device/heartbeat": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /**
-     * Device Heartbeat
-     * @description Refresh a device lease and account bounded daily usage.
-     */
-    readonly post: operations["device_heartbeat_api_auth_device_heartbeat_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/auth/devices": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /**
-     * List Devices
-     * @description List local device credential metadata without credential secrets.
-     */
-    readonly get: operations["list_devices_api_auth_devices_get"];
-    readonly put?: never;
-    /**
-     * Issue Device
-     * @description Issue a revocable device credential for an ordinary local account.
-     */
-    readonly post: operations["issue_device_api_auth_devices_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/auth/devices/{device_credential_id}": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    readonly post?: never;
-    /** Revoke Device */
-    readonly delete: operations["revoke_device_api_auth_devices__device_credential_id__delete"];
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
   readonly "/api/auth/is_first_user": {
     readonly parameters: {
       readonly query?: never;
@@ -258,30 +177,6 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
-  readonly "/api/auth/profile/learner-profile": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /**
-     * Get Current Learner Profile
-     * @description Return the authenticated learner's own profile.
-     */
-    readonly get: operations["get_current_learner_profile_api_auth_profile_learner_profile_get"];
-    /**
-     * Put Current Learner Profile
-     * @description Update only the authenticated learner's own profile.
-     */
-    readonly put: operations["put_current_learner_profile_api_auth_profile_learner_profile_put"];
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
   readonly "/api/auth/register": {
     readonly parameters: {
       readonly query?: never;
@@ -371,27 +266,6 @@ export interface paths {
      * @description Delete a user. Admins cannot delete their own account.
      */
     readonly delete: operations["remove_user_api_auth_users__username__delete"];
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/auth/users/{username}/learner-profile": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /**
-     * Get Learner Profile
-     * @description Return the structured profile managed for an ordinary learner.
-     */
-    readonly get: operations["get_learner_profile_api_auth_users__username__learner_profile_get"];
-    /** Put Learner Profile */
-    readonly put: operations["put_learner_profile_api_auth_users__username__learner_profile_put"];
-    readonly post?: never;
-    readonly delete?: never;
     readonly options?: never;
     readonly head?: never;
     readonly patch?: never;
@@ -488,110 +362,6 @@ export interface paths {
     readonly put?: never;
     readonly post?: never;
     readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/multi-user/guardians": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /** List Guardian Relationships */
-    readonly get: operations["list_guardian_relationships_api_multi_user_guardians_get"];
-    readonly put?: never;
-    /** Authorize Guardian Relationship */
-    readonly post: operations["authorize_guardian_relationship_api_multi_user_guardians_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/multi-user/guardians/{relationship_id}": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    readonly post?: never;
-    /** Revoke Guardian Relationship */
-    readonly delete: operations["revoke_guardian_relationship_api_multi_user_guardians__relationship_id__delete"];
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/multi-user/learners/{learner_user_id}/credentials/reset": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /** Reset Learner Credentials */
-    readonly post: operations["reset_learner_credentials_api_multi_user_learners__learner_user_id__credentials_reset_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/multi-user/learners/{learner_user_id}/restrictions": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /** Get Guardian Restrictions */
-    readonly get: operations["get_guardian_restrictions_api_multi_user_learners__learner_user_id__restrictions_get"];
-    /** Put Guardian Restrictions */
-    readonly put: operations["put_guardian_restrictions_api_multi_user_learners__learner_user_id__restrictions_put"];
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/multi-user/me/guardianships": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /** My Guardianships */
-    readonly get: operations["my_guardianships_api_multi_user_me_guardianships_get"];
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/multi-user/me/guardianships/{relationship_id}": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    readonly post?: never;
-    /** Revoke My Guardianship */
-    readonly delete: operations["revoke_my_guardianship_api_multi_user_me_guardianships__relationship_id__delete"];
     readonly options?: never;
     readonly head?: never;
     readonly patch?: never;
@@ -2368,7 +2138,7 @@ export interface components {
        * @default standard
        * @enum {string}
        */
-      readonly preset: "standard" | "learner" | "custom";
+      readonly preset: "standard" | "custom";
       /** Username */
       readonly username: string;
     };
@@ -2505,7 +2275,7 @@ export interface components {
        */
       readonly is_admin: boolean;
       /** Preset */
-      readonly preset?: ("standard" | "learner" | "custom") | null;
+      readonly preset?: ("standard" | "custom") | null;
       /** Role */
       readonly role?: string | null;
       /** User Id */
@@ -2626,30 +2396,6 @@ export interface components {
       readonly name: string;
     };
     /**
-     * DeviceCredentialCreateRequest
-     * @description Admin payload for issuing a local ordinary-user device credential.
-     */
-    readonly DeviceCredentialCreateRequest: {
-      /** Daily Limit Minutes */
-      readonly daily_limit_minutes: number;
-      /** Device Name */
-      readonly device_name: string;
-      /** Expires In Days */
-      readonly expires_in_days: number;
-      /** User Id */
-      readonly user_id: string;
-    };
-    /**
-     * DeviceLoginRequest
-     * @description Payload for the built-in device-credential login endpoint.
-     */
-    readonly DeviceLoginRequest: {
-      /** Pairing Code */
-      readonly pairing_code: string;
-      /** Pin */
-      readonly pin: string;
-    };
-    /**
      * DoclingRemoteTest
      * @description Draft Docling remote-server test. ``api_token`` is tri-state: ``None``
      *     falls back to the stored key, ``""`` clears it, a string supplies it (so
@@ -2750,27 +2496,6 @@ export interface components {
         readonly [key: string]: unknown;
       };
     };
-    /** GuardianAuthorizationPayload */
-    readonly GuardianAuthorizationPayload: {
-      /** Guardian User Id */
-      readonly guardian_user_id: string;
-      /** Learner User Id */
-      readonly learner_user_id: string;
-      /** Permissions */
-      readonly permissions?: readonly string[];
-    };
-    /** GuardianCredentialResetPayload */
-    readonly GuardianCredentialResetPayload: {
-      /** New Password */
-      readonly new_password: string;
-    };
-    /** GuardianRestrictionsPayload */
-    readonly GuardianRestrictionsPayload: {
-      /** Age Band */
-      readonly age_band: string;
-      /** Allowed Surfaces */
-      readonly allowed_surfaces: readonly string[];
-    };
     /** HTTPValidationError */
     readonly HTTPValidationError: {
       /** Detail */
@@ -2835,21 +2560,6 @@ export interface components {
        * @enum {string}
        */
       readonly language: "zh" | "en";
-    };
-    /** LearnerProfileRequest */
-    readonly LearnerProfileRequest: {
-      /** Age */
-      readonly age?: number | null;
-      /** Curriculum */
-      readonly curriculum?: string | null;
-      /** Explanation Style */
-      readonly explanation_style?: string | null;
-      /** Grade Level */
-      readonly grade_level?: string | null;
-      /** Language */
-      readonly language?: string | null;
-      /** Reading Level */
-      readonly reading_level?: string | null;
     };
     /** LLMSelection */
     readonly LLMSelection: {
@@ -3743,7 +3453,7 @@ export interface components {
        * @default standard
        * @enum {string}
        */
-      readonly preset: "standard" | "learner" | "custom";
+      readonly preset: "standard" | "custom";
       /** Role */
       readonly role: string;
       /** Username */
@@ -3802,10 +3512,6 @@ export type SchemaCodexReasoningEffortUpdate =
   components["schemas"]["CodexReasoningEffortUpdate"];
 export type SchemaCreatePersonaRequest =
   components["schemas"]["CreatePersonaRequest"];
-export type SchemaDeviceCredentialCreateRequest =
-  components["schemas"]["DeviceCredentialCreateRequest"];
-export type SchemaDeviceLoginRequest =
-  components["schemas"]["DeviceLoginRequest"];
 export type SchemaDoclingRemoteTest =
   components["schemas"]["DoclingRemoteTest"];
 export type SchemaDocumentParsingInstall =
@@ -3818,20 +3524,12 @@ export type SchemaErrorEnvelope = components["schemas"]["ErrorEnvelope"];
 export type SchemaFetchModelsPayload =
   components["schemas"]["FetchModelsPayload"];
 export type SchemaGrantPayload = components["schemas"]["GrantPayload"];
-export type SchemaGuardianAuthorizationPayload =
-  components["schemas"]["GuardianAuthorizationPayload"];
-export type SchemaGuardianCredentialResetPayload =
-  components["schemas"]["GuardianCredentialResetPayload"];
-export type SchemaGuardianRestrictionsPayload =
-  components["schemas"]["GuardianRestrictionsPayload"];
 export type SchemaHttpValidationError =
   components["schemas"]["HTTPValidationError"];
 export type SchemaImportedMessage = components["schemas"]["ImportedMessage"];
 export type SchemaImportedSession = components["schemas"]["ImportedSession"];
 export type SchemaInstallPayload = components["schemas"]["InstallPayload"];
 export type SchemaLanguageUpdate = components["schemas"]["LanguageUpdate"];
-export type SchemaLearnerProfileRequest =
-  components["schemas"]["LearnerProfileRequest"];
 export type SchemaLlmSelection = components["schemas"]["LLMSelection"];
 export type SchemaLoginRequest = components["schemas"]["LoginRequest"];
 export type SchemaManagedUpdateRequest =
@@ -3941,190 +3639,6 @@ export interface operations {
         };
         content: {
           readonly "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly device_login_api_auth_device_login_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["DeviceLoginRequest"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly device_heartbeat_api_auth_device_heartbeat_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly list_devices_api_auth_devices_get: {
-    readonly parameters: {
-      readonly query?: {
-        readonly include_revoked?: boolean;
-        readonly user_id?: string | null;
-      };
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly issue_device_api_auth_devices_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["DeviceCredentialCreateRequest"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 201: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly revoke_device_api_auth_devices__device_credential_id__delete: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly device_credential_id: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
         };
       };
       /** @description Validation Error */
@@ -4396,80 +3910,6 @@ export interface operations {
       };
     };
   };
-  readonly get_current_learner_profile_api_auth_profile_learner_profile_get: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly put_current_learner_profile_api_auth_profile_learner_profile_put: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["LearnerProfileRequest"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
   readonly register_api_auth_register_post: {
     readonly parameters: {
       readonly query?: never;
@@ -4624,84 +4064,6 @@ export interface operations {
       };
     };
     readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly get_learner_profile_api_auth_users__username__learner_profile_get: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly username: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly put_learner_profile_api_auth_users__username__learner_profile_put: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly username: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["LearnerProfileRequest"];
-      };
-    };
     readonly responses: {
       /** @description Successful Response */
       readonly 200: {
@@ -4963,310 +4325,6 @@ export interface operations {
         readonly Authorization?: string | null;
       };
       readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly list_guardian_relationships_api_multi_user_guardians_get: {
-    readonly parameters: {
-      readonly query?: {
-        readonly include_revoked?: boolean;
-      };
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly authorize_guardian_relationship_api_multi_user_guardians_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["GuardianAuthorizationPayload"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 201: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly revoke_guardian_relationship_api_multi_user_guardians__relationship_id__delete: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly relationship_id: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly reset_learner_credentials_api_multi_user_learners__learner_user_id__credentials_reset_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly learner_user_id: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["GuardianCredentialResetPayload"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly get_guardian_restrictions_api_multi_user_learners__learner_user_id__restrictions_get: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly learner_user_id: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly put_guardian_restrictions_api_multi_user_learners__learner_user_id__restrictions_put: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly learner_user_id: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["GuardianRestrictionsPayload"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly my_guardianships_api_multi_user_me_guardianships_get: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly revoke_my_guardianship_api_multi_user_me_guardianships__relationship_id__delete: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly relationship_id: string;
-      };
       readonly cookie?: {
         readonly dt_token?: string | null;
       };

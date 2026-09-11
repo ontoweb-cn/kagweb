@@ -26,9 +26,7 @@ def mu_isolated_root(tmp_path, monkeypatch) -> Path:
     """
     from kagweb.multi_user import (
         audit,
-        device_credentials,
         grants,
-        guardians,
         identity,
         paths,
     )
@@ -62,13 +60,7 @@ def mu_isolated_root(tmp_path, monkeypatch) -> Path:
     )
 
     monkeypatch.setattr(grants, "GRANTS_DIR", system_root / "grants")
-    monkeypatch.setattr(guardians, "GUARDIANS_FILE", system_root / "guardians.json")
     monkeypatch.setattr(audit, "SYSTEM_ROOT", system_root)
-    monkeypatch.setattr(
-        device_credentials,
-        "DEVICE_CREDENTIALS_FILE",
-        system_root / "auth" / "device_credentials.json",
-    )
 
     # The ``auth.json`` bootstrap admin is process-global state rather than a
     # path, and it now takes part in the first-user promotion decision (#849).

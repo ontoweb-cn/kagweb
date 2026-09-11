@@ -1,38 +1,5 @@
 import { apiFetch, apiUrl } from "@/lib/api";
 
-export interface LearnerProfile {
-  age?: number;
-  grade_level?: string;
-  curriculum?: string;
-  language?: string;
-  reading_level?: string;
-  explanation_style?: string;
-}
-
-export async function getOwnLearnerProfile(): Promise<LearnerProfile | null> {
-  const res = await apiFetch(apiUrl("/api/auth/profile/learner-profile"));
-  if (!res.ok) throw new Error("Failed to fetch learner profile");
-  const data = (await res.json()) as {
-    learner_profile?: LearnerProfile | null;
-  };
-  return data.learner_profile ?? null;
-}
-
-export async function setOwnLearnerProfile(
-  profile: LearnerProfile,
-): Promise<LearnerProfile | null> {
-  const res = await apiFetch(apiUrl("/api/auth/profile/learner-profile"), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(profile),
-  });
-  if (!res.ok) throw new Error("Failed to save learner profile");
-  const data = (await res.json()) as {
-    learner_profile?: LearnerProfile | null;
-  };
-  return data.learner_profile ?? null;
-}
-
 export interface ProfileInfo {
   id: string;
   username: string;

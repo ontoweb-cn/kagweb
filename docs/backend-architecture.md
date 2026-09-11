@@ -54,7 +54,7 @@ KAGWeb 后端是**框架外壳（framework shell）**，不是「带 LLM 调用�
 | `api/` | 31 | 10,775 | HTTP/WS API，214 HTTP + 3 WS 端点 |
 | `runtime/` | 39 | 6,680 | 编排、注册表、协调、leader 选举 |
 | `utils/` | 12 | 3,256 | 文档抽取、文件类型等 |
-| `multi_user/` | 15 | 2,718 | 鉴权、授权、监护人、学习者档案 |
+| `multi_user/` | 11 | 1,666 | 鉴权、授权、审计 |
 | `tools/` | 10 | 1,800 | 内置工具（4 个） |
 | `core/` | 9 | 946 | 协议定义（context / stream / tool / capability） |
 | `capabilities/` | 5 | 851 | 轮次能力层（含 `chat` 唯一内置实现） |
@@ -237,12 +237,11 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 
 | 前缀 | 职责 |
 |---|---|
-| `/api/auth` | 登录/登出/注册、档案、设备、Codex OAuth 回调（公开） |
+| `/api/auth` | 登录/登出/注册、档案、Codex OAuth 回调（公开） |
 | `/api/sessions` | 会话 CRUD、trace 导出、组织、测验结果 |
 | `/api/settings` | UI 偏好、模型目录、网络、agent-loop、解析、OAuth |
-| `/api/multi-user` | 授权、监护人、学习者 |
+| `/api/multi-user` | 授权（模型/工具/MCP/执行/Agent 后端） |
 | `/api/capabilities` | 能力清单与可调项 |
-| `/api/partners`、`/api/partner-groups` | IM 伙伴与群组 |
 | `/api/tools`、`/api/personas`、`/api/system`、`/api/voice` | 工具、人格、系统、语音 |
 | `/files/outputs`、`/files/attachments` | 产物与附件 |
 | **`/ws`** | **统一轮次协议（start_turn / subscribe / cancel / reply / regenerate）** |
@@ -272,9 +271,6 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 | Agent 后端（HTTP 族） | `model_access.py` `agent_loop` | 部署级：管理员配了后端即视为允许用户使用，`False` 可暂停单个用户 |
 | Agent 后端（CLI/ACP 族） | `model_access.py` `agent_loop_cli` | **默认拒绝**：该族以服务器 uid spawn 本地进程，授权它等同于授予本机代码执行 |
 | 工具/执行 | `tool_access.py` | MCP 工具对非管理员**默认拒绝** |
-| 伙伴 | `partner_access.py` | 可管理 = 所有者或管理员 |
-| 监护人 | `guardians.py` | 每次调用重新校验身份 |
-| 学习者 | `learner_profile.py` | 年龄/年级/课程/阅读水平 |
 
 **轮次门禁**（`services/session/turns/request_preparer.py`）对**每个非管理员回合**无条件执行，判定"这一轮需要的资源"是否已授权：`CapabilityManifest.required_service` 给出静态答案，`_effective_required_service()` 修正 `chat` 的部署相关情形——配了 agent 后端时它委派给后端、不碰 KAGWeb 自己的 LLM 层，因此按 family 落到 `agent_loop` 或 `agent_loop_cli`；没有后端时（壳 stub）仍是 `llm`。
 

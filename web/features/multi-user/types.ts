@@ -4,8 +4,6 @@ export type GrantPayload = {
   models: {
     llm: Array<Record<string, unknown>>;
   };
-  /** Admin-assigned partners the user may see & consult ([{ partner_id }]). */
-  partners: Array<Record<string, unknown>>;
   /** null = default (all system tools), [] = none, array = whitelist. */
   enabled_tools: string[] | null;
   /** null = default (all MCP tools), [] = none, array = whitelist. */
@@ -17,20 +15,6 @@ export type GrantPayload = {
    * other tri-states this one is opt-in: `true` allows, `null`/`false` deny.
    */
   agent_loop_cli: boolean | null;
-  learning_policy: LearningPolicy | null;
-};
-
-export type LearningPolicy = {
-  age_band: "6-8" | "9-12" | "13-15";
-  locked_persona: "teacher";
-  allowed_capabilities: Array<"chat" | "immersive_reading">;
-  default_capability: "chat" | "immersive_reading";
-  allowed_surfaces: Array<"chat" | "reading">;
-  reading: {
-    allow_upload: boolean;
-    material_ids: string[];
-    extensions: string[];
-  };
 };
 
 export type ToolOption = { name: string; description?: string };
@@ -53,18 +37,6 @@ export type MultiUserResources = {
       models?: Array<{ model_id: string; name: string; model?: string }>;
     }>;
   };
-  partners: Array<{ partner_id: string; name: string; description?: string }>;
-  reading_materials: Array<{
-    material_id: string;
-    title: string;
-    filename: string;
-    render_mode: string;
-  }>;
-  reading_extensions: Array<{
-    id: string;
-    name: string;
-    version: string;
-  }>;
   tools: ToolOption[];
   mcp_tools: McpToolOption[];
 };

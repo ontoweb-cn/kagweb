@@ -1,7 +1,6 @@
 """Auth router — login, logout, status, registration, profile, and user-management endpoints."""
 
 from contextvars import Token as _CtxToken
-from datetime import datetime, timedelta, timezone
 import logging
 import re
 
@@ -30,15 +29,7 @@ from kagweb.services.config import load_auth_settings
 _SECURE = bool(load_auth_settings()["cookie_secure"])
 _SAMESITE = "none" if _SECURE else "lax"
 
-from kagweb.multi_user.audit import log_admin_action, log_usage
 from kagweb.multi_user.context import set_current_user, user_from_token_payload
-from kagweb.multi_user.device_credentials import (
-    heartbeat_device_credential,
-    issue_device_credential,
-    list_device_credentials,
-    revoke_device_credential,
-)
-from kagweb.multi_user.identity import get_user_by_id
 from kagweb.multi_user.models import AccountPreset
 from kagweb.multi_user.paths import local_admin_user
 from kagweb.services.auth import (
@@ -48,7 +39,6 @@ from kagweb.services.auth import (
     TokenPayload,
     add_user,
     authenticate,
-    authenticate_device,
     authenticate_pb,
     create_token,
     decode_token,
@@ -58,11 +48,7 @@ from kagweb.services.auth import (
     list_users,
     register_pb,
     set_avatar,
-    set_learner_profile,
     set_role,
-)
-from kagweb.services.auth import (
-    get_learner_profile as load_learner_profile,
 )
 from kagweb.services.codex_auth.contracts import CodexAuthError
 from kagweb.services.codex_auth.service import deliver_codex_oauth_callback
@@ -103,22 +89,6 @@ class LoginRequest(BaseModel):
 
     username: str
     password: str
-
-
-class DeviceLoginRequest(BaseModel):
-    """Payload for the built-in device-credential login endpoint."""
-
-    pairing_code: str = Field(min_length=8, max_length=128)
-    pin: str = Field(min_length=6, max_length=6)
-
-
-class DeviceCredentialCreateRequest(BaseModel):
-    """Admin payload for issuing a local ordinary-user device credential."""
-
-    user_id: str = Field(min_length=1, max_length=64)
-    device_name: str = Field(min_length=1, max_length=80)
-    expires_in_days: int = Field(ge=1, le=365)
-    daily_limit_minutes: int = Field(ge=5, le=1440)
 
 
 class RegisterRequest(BaseModel):
@@ -490,12 +460,7 @@ async def auth_status(
         if info:
             avatar = str(info.get("avatar") or "")
             raw_preset = str(info.get("preset") or "standard")
-            if raw_preset == "learner":
-                preset = "learner"
-            elif raw_preset == "custom":
-                preset = "custom"
-            else:
-                preset = "standard"
+            preset = "custom" if raw_preset == "custom" else "standard"
     return AuthStatusResponse(
         enabled=True,
         authenticated=payload is not None,
@@ -553,82 +518,6 @@ async def login(body: LoginRequest, response: Response) -> dict:
         "role": result.role,
         "is_admin": result.role == "admin",
     }
-
-
-def _require_builtin_device_auth() -> None:
-    if not AUTH_ENABLED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Device credentials require built-in authentication.",
-        )
-    if POCKETBASE_ENABLED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Device credentials are not supported in PocketBase mode.",
-        )
-
-
-@router.post("/device-login")
-async def device_login(body: DeviceLoginRequest, response: Response) -> dict:
-    """Exchange a device pairing code and PIN for the account's normal cookie."""
-
-    _require_builtin_device_auth()
-    payload = authenticate_device(body.pairing_code, body.pin)
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect device credentials",
-        )
-
-    token = create_token(
-        payload.username,
-        payload.role,
-        payload.user_id,
-        device_credential_id=payload.device_credential_id,
-        device_session_nonce=payload.device_session_nonce,
-    )
-    response.set_cookie(value=token, max_age=_COOKIE_MAX_AGE, **_cookie_attrs())
-    logger.info(f"User '{payload.username}' logged in with a device credential")
-    return {
-        "ok": True,
-        "user_id": payload.user_id,
-        "username": payload.username,
-        "role": payload.role,
-        "is_admin": payload.role == "admin",
-        "device_credential_id": payload.device_credential_id,
-    }
-
-
-@router.post("/device/heartbeat")
-async def device_heartbeat(
-    response: Response,
-    payload: TokenPayload | None = Depends(require_auth),
-) -> dict:
-    """Refresh a device lease and account bounded daily usage."""
-
-    if not AUTH_ENABLED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Device credentials require built-in authentication.",
-        )
-    if payload is None or not payload.device_credential_id or not payload.device_session_nonce:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This session does not use a device credential.",
-        )
-    try:
-        device = heartbeat_device_credential(
-            payload.device_credential_id,
-            user_id=payload.user_id,
-            session_nonce=payload.device_session_nonce,
-        )
-    except ValueError:
-        response.delete_cookie(**_cookie_attrs())
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Device session is no longer active",
-        ) from None
-    return {"ok": not device.pop("limit_reached"), **device}
 
 
 @router.post("/logout")
@@ -900,188 +789,10 @@ async def get_avatar_image(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/devices")
-async def list_devices(
-    user_id: str | None = None,
-    include_revoked: bool = False,
-    _: TokenPayload = Depends(require_admin),
-) -> dict:
-    """List local device credential metadata without credential secrets."""
-
-    _require_builtin_device_auth()
-    credentials = list_device_credentials(user_id=user_id, include_revoked=include_revoked)
-    users = {str(user.get("id") or ""): str(user.get("username") or "") for user in list_users()}
-    return {
-        "devices": [
-            {**device, "username": users.get(device["user_id"], "")} for device in credentials
-        ]
-    }
-
-
-@router.post("/devices", status_code=status.HTTP_201_CREATED)
-async def issue_device(
-    body: DeviceCredentialCreateRequest,
-    current: TokenPayload = Depends(require_admin),
-) -> dict:
-    """Issue a revocable device credential for an ordinary local account."""
-
-    _require_builtin_device_auth()
-    if get_user_by_id(body.user_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    try:
-        device, pairing_code, pin = issue_device_credential(
-            user_id=body.user_id,
-            device_name=body.device_name,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=body.expires_in_days),
-            daily_limit_minutes=body.daily_limit_minutes,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    log_admin_action(
-        "device_credential_issue",
-        target_user_id=body.user_id,
-        summary={
-            "device_credential_id": device["id"],
-            "device_name": device["device_name"],
-            "expires_at": device["expires_at"],
-            "daily_limit_minutes": device["daily_limit_minutes"],
-        },
-    )
-    logger.info(
-        f"Admin '{current.username if current else 'local'}' issued device "
-        f"credential {device['id']} for user id '{body.user_id}'"
-    )
-    return {
-        "device": device,
-        "pairing_code": pairing_code,
-        "pin": pin,
-    }
-
-
-@router.delete("/devices/{device_credential_id}")
-async def revoke_device(
-    device_credential_id: str,
-    current: TokenPayload = Depends(require_admin),
-) -> dict:
-    _require_builtin_device_auth()
-    device = revoke_device_credential(
-        device_credential_id,
-        revoked_by=str(current.user_id if current else ""),
-    )
-    if device is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Device credential not found",
-        )
-    log_admin_action(
-        "device_credential_revoke",
-        target_user_id=device["user_id"],
-        summary={"device_credential_id": device["id"]},
-    )
-    return {"device": device, "ok": True}
-
-
 @router.get("/users", response_model=list[UserInfo])
 async def get_users(_: TokenPayload = Depends(require_admin)) -> list[UserInfo]:
     """List all registered users. Requires admin role."""
     return [UserInfo(**u) for u in list_users()]
-
-
-def _require_local_learner(current: TokenPayload) -> tuple[str, dict]:
-    """Resolve a self-service profile request to its local learner account."""
-
-    if current.role != "user":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Learner profile required"
-        )
-    account = get_user_by_id(current.user_id)
-    if account is None or account[0] != current.username:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    if str(account[1].get("preset") or "standard") != "learner":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Learner profile required"
-        )
-    return account
-
-
-@router.get("/profile/learner-profile")
-async def get_current_learner_profile(current: TokenPayload = Depends(require_auth)) -> dict:
-    """Return the authenticated learner's own profile."""
-    _require_local_learner(current)
-    profile = load_learner_profile(current.username)
-    return {"learner_profile": profile}
-
-
-@router.put("/profile/learner-profile")
-async def put_current_learner_profile(
-    body: LearnerProfileRequest,
-    current: TokenPayload = Depends(require_auth),
-) -> dict:
-    """Update only the authenticated learner's own profile."""
-    _require_local_learner(current)
-    from kagweb.multi_user.learner_profile import normalize_profile
-
-    try:
-        profile = normalize_profile(body.model_dump(exclude_none=True))
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
-    updated = set_learner_profile(current.username, profile)
-    log_usage(
-        "learner_profile",
-        current.user_id,
-        "self_update",
-        {"fields": sorted(profile or {})},
-    )
-    return {"learner_profile": updated}
-
-
-@router.get("/users/{username}/learner-profile")
-async def get_learner_profile(username: str, _: TokenPayload = Depends(require_admin)) -> dict:
-    """Return the structured profile managed for an ordinary learner."""
-    from kagweb.multi_user.identity import get_user
-
-    user = get_user(username)
-    if (
-        user is None
-        or str(user.get("role") or "user") != "user"
-        or str(user.get("preset") or "standard") != "learner"
-    ):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return {"learner_profile": user.get("learner_profile")}
-
-
-@router.put("/users/{username}/learner-profile")
-async def put_learner_profile(
-    username: str,
-    body: LearnerProfileRequest,
-    current: TokenPayload = Depends(require_admin),
-) -> dict:
-    from kagweb.multi_user.identity import get_user
-    from kagweb.multi_user.learner_profile import normalize_profile
-
-    user = get_user(username)
-    if (
-        user is None
-        or str(user.get("role") or "user") != "user"
-        or str(user.get("preset") or "standard") != "learner"
-    ):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    try:
-        profile = normalize_profile(body.model_dump(exclude_none=True))
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
-    updated = set_learner_profile(username, profile)
-    log_admin_action(
-        "learner_profile_update",
-        target_user_id=str(user.get("id") or ""),
-        summary={"fields": sorted(profile or {})},
-    )
-    logger.info("Admin '%s' updated learner profile for '%s'", current.username, username)
-    return {"learner_profile": updated}
 
 
 @router.post("/users", status_code=status.HTTP_201_CREATED)
@@ -1143,29 +854,6 @@ async def admin_create_user(
             role = str(item.get("role") or "user")
             preset = str(item.get("preset") or "standard")
             break
-    if preset == "learner":
-        from kagweb.multi_user.grants import learner_grant, save_grant
-
-        try:
-            save_grant(user_id, learner_grant(user_id))
-        except Exception as exc:
-            rolled_back = False
-            try:
-                rolled_back = delete_user(body.username)
-            except Exception:
-                logger.exception(
-                    "Failed to roll back user '%s' after learner grant initialization failed",
-                    body.username,
-                )
-            if not rolled_back:
-                logger.error(
-                    "Learner account '%s' may remain after grant initialization failed",
-                    body.username,
-                )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="The learner preset could not be initialized.",
-            ) from exc
     logger.info(
         f"Admin '{current.username if current else 'local'}' created user '{body.username}' "
         f"(role={role!r}, preset={preset!r})"

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 Role = Literal["admin", "user"]
-AccountPreset = Literal["standard", "learner", "custom"]
+AccountPreset = Literal["standard", "custom"]
 ScopeKind = Literal["admin", "user"]
 
 

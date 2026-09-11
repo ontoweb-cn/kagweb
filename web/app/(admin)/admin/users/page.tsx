@@ -13,8 +13,6 @@ import {
   type AccountPreset,
 } from "@/lib/admin-api";
 import { GrantEditor } from "@/features/multi-user/components/GrantEditor";
-import { LearnerProfileEditor } from "@/features/multi-user/components/LearnerProfileEditor";
-import { GuardianRelationshipsEditor } from "@/features/multi-user/components/GuardianRelationshipsEditor";
 import { UserAvatar } from "@/components/UserAvatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { filterUsersByQuery } from "@/lib/admin-users";
@@ -392,11 +390,7 @@ export default function AdminUsersPage() {
                             <span className="mt-1 block text-[11px] text-[var(--muted-foreground)]">
                               {t("Preset: {{preset}}", {
                                 preset: t(
-                                  user.preset === "learner"
-                                    ? "Learner"
-                                    : user.preset === "custom"
-                                      ? "Custom"
-                                      : "Standard",
+                                  user.preset === "custom" ? "Custom" : "Standard",
                                 ),
                               })}
                             </span>
@@ -471,23 +465,7 @@ export default function AdminUsersPage() {
                       {canManageAssignments && expandedUserId === user.id && (
                         <tr>
                           <td colSpan={4} className="p-0">
-                            <GrantEditor
-                              key={user.id}
-                              userId={user.id}
-                              lockLearningPolicy={user.preset === "learner"}
-                            />
-                            {user.preset === "learner" && (
-                              <>
-                                <GuardianRelationshipsEditor
-                                  learnerId={user.id}
-                                  learnerUsername={user.username}
-                                  users={users}
-                                />
-                                <LearnerProfileEditor
-                                  username={user.username}
-                                />
-                              </>
-                            )}
+                            <GrantEditor key={user.id} userId={user.id} />
                           </td>
                         </tr>
                       )}
@@ -631,11 +609,11 @@ export default function AdminUsersPage() {
                 {t("Account preset")}
               </legend>
               <div
-                className="grid grid-cols-3 gap-1 rounded-lg bg-[var(--muted)]/50 p-1"
+                className="grid grid-cols-2 gap-1 rounded-lg bg-[var(--muted)]/50 p-1"
                 role="group"
                 aria-label={t("Account preset")}
               >
-                {(["standard", "learner", "custom"] as const).map((preset) => (
+                {(["standard", "custom"] as const).map((preset) => (
                   <button
                     key={preset}
                     type="button"
@@ -648,28 +626,14 @@ export default function AdminUsersPage() {
                         : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                     }`}
                   >
-                    {t(
-                      preset === "learner"
-                        ? "Learner"
-                        : preset === "custom"
-                          ? "Custom"
-                          : "Standard",
-                    )}
+                    {t(preset === "custom" ? "Custom" : "Standard")}
                   </button>
                 ))}
               </div>
               <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--muted-foreground)]">
-                {createPreset === "learner"
-                  ? t(
-                      "Chat and Immersive Reading only, with uploads and tools disabled until assigned.",
-                    )
-                  : createPreset === "custom"
-                    ? t(
-                        "Create an ordinary account, then customize its assignments.",
-                      )
-                    : t(
-                        "Create an ordinary account with the default workspace behavior.",
-                      )}
+                {createPreset === "custom"
+                  ? t("Create an ordinary account, then customize its assignments.")
+                  : t("Create an ordinary account with the default workspace behavior.")}
               </p>
             </fieldset>
 

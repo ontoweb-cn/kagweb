@@ -391,14 +391,6 @@ class TurnExecutor:
             from kagweb.services.persona import PersonaService, get_persona_service
 
             current_user = get_current_user()
-            learner_profile_prompt = ""
-            if not current_user.is_admin:
-                from kagweb.multi_user.identity import get_user_by_id
-                from kagweb.multi_user.learner_profile import prompt_block
-
-                account = get_user_by_id(current_user.id)
-                if account and str(account[1].get("preset") or "standard") == "learner":
-                    learner_profile_prompt = prompt_block(account[1].get("learner_profile"))
             requested_persona = str(payload.get("persona") or "").strip()
             persona_context = ""
             if requested_persona:
@@ -495,7 +487,6 @@ class TurnExecutor:
                     "turn_id": turn_id,
                     "selection_tutor_context": selection_tutor_context or {},
                     "history_references": history_references,
-                    "learner_profile_prompt": learner_profile_prompt,
                     "active_persona": active_persona,
                     "llm_selection": payload.get("llm_selection") or {},
                     "llm_model": str(getattr(llm_config, "model", "") or ""),

@@ -36,7 +36,7 @@ def profile_client(mu_isolated_root, monkeypatch):
     from kagweb.services.auth import TokenPayload
 
     alice = save_user("alice", "$2b$12$placeholder", role="admin")
-    bob = save_user("bob", "$2b$12$placeholder", role="user", preset="learner")
+    bob = save_user("bob", "$2b$12$placeholder", role="user")
     standard = save_user("sam", "$2b$12$placeholder", role="user")
 
     tokens = {
@@ -99,63 +99,6 @@ def test_put_profile_sets_marker_on_own_record_only(profile_client):
     users = load_users()
     assert users["bob"]["avatar"] == "icon:leaf:teal"
     assert users["alice"]["avatar"] == ""
-
-
-def test_learner_profile_endpoints_are_self_service(profile_client):
-    from kagweb.multi_user.identity import load_users
-
-    client, _ = profile_client
-    url = "/api/auth/profile/learner-profile"
-
-    assert client.get(url).status_code == 401
-    assert client.get(url, headers=_auth("user-token")).json() == {"learner_profile": None}
-    assert client.get(url, headers=_auth("admin-token")).status_code == 403
-    assert client.get(url, headers=_auth("standard-token")).status_code == 403
-    assert client.get(url, headers=_auth("ghost-token")).status_code == 404
-
-    response = client.put(
-        url,
-        headers=_auth("user-token"),
-        json={"age": 9, "grade_level": "  primary_4  ", "language": "zh-CN"},
-    )
-    assert response.status_code == 200
-    assert response.json() == {
-        "learner_profile": {
-            "schema_version": 1,
-            "age": 9,
-            "grade_level": "primary_4",
-            "language": "zh-CN",
-        }
-    }
-    assert client.get(url, headers=_auth("user-token")).json() == response.json()
-    assert load_users()["bob"]["learner_profile"]["grade_level"] == "primary_4"
-    assert load_users()["alice"]["learner_profile"] is None
-
-    cleared = client.put(url, headers=_auth("user-token"), json={})
-    assert cleared.status_code == 200
-    assert cleared.json() == {"learner_profile": None}
-
-    invalid = client.put(url, headers=_auth("user-token"), json={"grade_level": " "})
-    assert invalid.status_code == 422
-
-
-def test_admin_learner_profile_endpoints_are_scoped_to_ordinary_users(profile_client):
-    client, _ = profile_client
-    url = "/api/auth/users/bob/learner-profile"
-
-    assert client.get(url, headers=_auth("user-token")).status_code == 403
-    assert client.get(url, headers=_auth("admin-token")).json() == {"learner_profile": None}
-
-    response = client.put(
-        url, headers=_auth("admin-token"), json={"age": 10, "explanation_style": "concrete"}
-    )
-    assert response.status_code == 200
-    assert response.json()["learner_profile"]["age"] == 10
-    assert client.get(url, headers=_auth("admin-token")).json() == response.json()
-
-    admin_url = "/api/auth/users/alice/learner-profile"
-    assert client.get(admin_url, headers=_auth("admin-token")).status_code == 404
-    assert client.put(admin_url, headers=_auth("admin-token"), json={"age": 10}).status_code == 404
 
 
 def test_put_profile_rejects_img_and_malformed_markers(profile_client):

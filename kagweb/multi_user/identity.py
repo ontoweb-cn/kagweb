@@ -21,7 +21,6 @@ from .book_permission import (
     normalize_book_permission,
     public_permission_dict,
 )
-from .learner_profile import normalize_profile
 from .models import AccountPreset, Role
 from .paths import PROJECT_ROOT, SYSTEM_ROOT, migrate_legacy_multi_user_tree
 
@@ -73,7 +72,7 @@ def _canonical_record(
     if role not in {"admin", "user"}:
         role = default_role
     preset = str(value.get("preset") or "standard")
-    if preset not in {"standard", "learner", "custom"}:
+    if preset not in {"standard", "custom"}:
         preset = "standard"
     record = {
         "id": str(value.get("id") or new_user_id()),
@@ -86,8 +85,6 @@ def _canonical_record(
     }
     if "book_permission" in value:
         record["book_permission"] = canonical_book_permission(value.get("book_permission"))
-    if "learner_profile" in value:
-        record["learner_profile"] = normalize_profile(value.get("learner_profile"))
     return record
 
 
@@ -245,8 +242,9 @@ def save_user(
         effective_role: Role = role if account_exists else "admin"
         existing = users.get(username) or {}
         effective_preset = str(existing.get("preset") or preset or "standard")
-        if effective_preset not in {"standard", "learner", "custom"}:
-            effective_preset = preset
+        if effective_preset not in {"standard", "custom"}:
+            # Legacy "learner" rows degrade silently to the standard preset.
+            effective_preset = "standard"
         record = {
             "id": str(existing.get("id") or new_user_id()),
             "hash": hashed_password,
@@ -256,7 +254,6 @@ def save_user(
             "avatar": str(existing.get("avatar") or ""),
             "preset": effective_preset,
             "book_permission": canonical_book_permission(existing.get("book_permission")),
-            "learner_profile": normalize_profile(existing.get("learner_profile")),
         }
         users[username] = record
         _write_users(users)
@@ -293,30 +290,6 @@ def get_user_by_id(user_id: str) -> tuple[str, dict[str, Any]] | None:
         if str(record.get("id") or "") == user_id:
             return username, record
     return None
-
-
-def get_learner_profile(username: str) -> dict[str, Any] | None:
-    """Return a learner account's structured profile, if present."""
-    record = get_user(username)
-    if record is None or str(record.get("preset") or "standard") != "learner":
-        return None
-    return normalize_profile(record.get("learner_profile"))
-
-
-def set_learner_profile(username: str, profile: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Atomically replace one ordinary user's structured learner profile."""
-    with _USERS_WRITE_LOCK:
-        users = load_users()
-        record = users.get(username)
-        if (
-            record is None
-            or str(record.get("role") or "user") != "user"
-            or str(record.get("preset") or "standard") != "learner"
-        ):
-            return None
-        record["learner_profile"] = normalize_profile(profile)
-        _write_users(users)
-        return record["learner_profile"]
 
 
 def set_book_permission(username: str, permission: BookPermission) -> bool:
@@ -377,14 +350,6 @@ def delete_user(username: str) -> bool:
         user_id = str(record.get("id") or "")
         users.pop(username, None)
         _write_users(users)
-    try:
-        from .guardians import revoke_relationships_for_user
-
-        # Route guards also revalidate both accounts, so a rare cleanup failure
-        # can never make a deleted-user relationship usable.
-        revoke_relationships_for_user(user_id, reason="user_deleted")
-    except Exception:
-        logger.exception("Could not revoke guardian relationships after user deletion")
     return True
 
 
@@ -470,21 +435,6 @@ def set_role(username: str, role: Role) -> bool:
         return False
     users[username]["role"] = role
     _write_users(users)
-    return True
-
-
-def set_preset(username: str, preset: AccountPreset) -> bool:
-    """Update an account's configuration preset without changing its role."""
-    if preset not in {"standard", "learner", "custom"}:
-        raise ValueError("preset must be 'standard', 'learner', or 'custom'")
-    if not USERS_FILE.exists():
-        return False
-    with _USERS_WRITE_LOCK:
-        users = load_users()
-        if username not in users:
-            return False
-        users[username]["preset"] = preset
-        _write_users(users)
     return True
 
 

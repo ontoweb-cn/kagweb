@@ -40,19 +40,10 @@ const AgentBackendSettingsPage = dynamic(
   () => import("@/features/settings/sections/AgentLoopSettingsSection"),
   { loading: sectionLoading },
 );
-const LearnerProfileSettingsPage = dynamic(
-  () => import("@/features/settings/sections/LearnerProfileSettingsSection"),
-  { loading: sectionLoading },
-);
-const GuardianSettingsPage = dynamic(
-  () => import("@/features/settings/sections/GuardianSettingsSection"),
-  { loading: sectionLoading },
-);
 const AboutSettingsPage = dynamic(
   () => import("@/features/settings/sections/AboutSettingsSection"),
   { loading: sectionLoading },
 );
-
 const childKeys = (key: string) =>
   SETTINGS_CATEGORIES.find((category) => category.key === key)?.children?.map(
     (child) => child.key,
@@ -74,8 +65,6 @@ const SETTINGS_SECTIONS = [
     Component: ChatSettingsPage,
     activationKeys: childKeys("chat"),
   },
-  { key: "learner-profile", Component: LearnerProfileSettingsPage },
-  { key: "guardian", Component: GuardianSettingsPage },
   { key: "about", Component: AboutSettingsPage },
 ] as const;
 

@@ -5,10 +5,6 @@ export interface SettingsAccess {
   resolved: boolean;
   /** Admin-owned settings stay hidden on auth failures and for ordinary users. */
   hideAdminOnly: boolean;
-  /** The self-service learner profile belongs only to learner accounts. */
-  showLearnerOnly: boolean;
-  /** Ordinary standard/custom accounts may act as authorized guardians. */
-  showGuardianOnly: boolean;
   /**
    * Whether the LLM (models and connections) settings apply to the configured
    * agent backend. Only a self-hosted HTTP backend needs model credentials
@@ -22,8 +18,6 @@ export interface SettingsAccess {
 export const PENDING_SETTINGS_ACCESS: SettingsAccess = {
   resolved: false,
   hideAdminOnly: true,
-  showLearnerOnly: false,
-  showGuardianOnly: false,
   enableLlmSettings: true,
 };
 
@@ -41,11 +35,6 @@ export function settingsAccessFromAuthStatus(
   return {
     resolved: true,
     hideAdminOnly: Boolean(authStatus.enabled) && !authStatus.is_admin,
-    showLearnerOnly:
-      ordinaryAuthenticatedUser && authStatus.preset === "learner",
-    showGuardianOnly:
-      ordinaryAuthenticatedUser &&
-      (authStatus.preset === "standard" || authStatus.preset === "custom"),
     enableLlmSettings: true,
   };
 }
