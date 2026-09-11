@@ -740,7 +740,11 @@ class CliAgentLoopBackend(AgentLoopBackend):
                 self.name,
                 MAX_LINE_BYTES,
             )
-        return b"".join(chunks).decode("utf-8", "replace")
+        # A Windows child writes its stdout in text mode, so plain "line"
+        # endings arrive as CRLF (and a stray CR is possible from any
+        # dialect). Normalize before the answer becomes user-visible text —
+        # the NDJSON path never sees this because JSON parsing tolerates it.
+        return b"".join(chunks).decode("utf-8", "replace").replace("\r\n", "\n").replace("\r", "\n")
 
     async def _iter_stdout(
         self, proc: asyncio.subprocess.Process, state: dict[str, Any]
