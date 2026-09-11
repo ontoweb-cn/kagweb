@@ -777,16 +777,6 @@ export const UserMessage = memo(function UserMessage({
       kind: t('Chat History'),
       label: '',
     })),
-    ...(snap?.persona
-      ? [
-          {
-            key: 'persona',
-            icon: UserRound,
-            kind: t('Persona'),
-            label: snap.persona,
-          } satisfies ContextTreeItem,
-        ]
-      : []),
   ]
 
   return (

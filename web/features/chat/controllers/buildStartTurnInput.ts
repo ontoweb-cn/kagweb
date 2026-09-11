@@ -79,7 +79,6 @@ export function buildStartTurnInput(input: StartTurnInput): StartTurnCommand {
     book_references: input.bookReferences ?? [],
     reading_references: input.readingReferences ?? [],
     memory_references: input.memoryReferences ?? [],
-    persona: input.persona ?? null,
     llm_selection: input.llmSelection ?? null,
     workspace_mode: input.workspaceMode ?? null,
     mastery_path_id: input.masteryPathId ?? null,
@@ -121,7 +120,6 @@ export function legacySendMessageInput(
     notebookReferences: legacy.notebookReferences,
     historyReferences: legacy.historyReferences,
     questionNotebookReferences: legacy.questionNotebookReferences,
-    persona: legacy.persona,
     memoryReferences: legacy.memoryReferences,
   };
 }

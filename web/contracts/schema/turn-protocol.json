@@ -951,18 +951,6 @@
           "title": "Persist User Message",
           "type": "boolean"
         },
-        "persona": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Persona"
-        },
         "protocol_version": {
           "const": "2.0",
           "title": "Protocol Version",

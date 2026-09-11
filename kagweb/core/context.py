@@ -78,9 +78,6 @@ class UnifiedContext:
         attachments: Images / files sent with the message.
         config_overrides: Per-request config tweaks (e.g. temperature).
         language: UI / response language ("en" | "zh").
-        persona_context: Selected persona's instructions, eagerly injected
-            into the system prompt (a persona must shape the voice from the
-            first token; empty when no persona is active).
         sidebar_context: High-priority grounding for an isolated sidebar tutor
             (for example, the exact passage selected in another chat).
         source_manifest: Plain-text manifest of attached sources (one line per
@@ -104,7 +101,6 @@ class UnifiedContext:
     attachments: list[Attachment] = field(default_factory=list)
     config_overrides: dict[str, Any] = field(default_factory=dict)
     language: str = "en"
-    persona_context: str = ""
     sidebar_context: str = ""
     source_manifest: str = ""
     runtime: TurnRuntimeContext = field(default_factory=TurnRuntimeContext)

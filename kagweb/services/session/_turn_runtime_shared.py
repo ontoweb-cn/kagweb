@@ -373,7 +373,6 @@ def _request_snapshot_metadata(
     config: dict[str, Any],
     attachments: list[dict[str, Any]],
     history_references: list[Any],
-    persona: str,
     llm_selection: dict[str, str] | None,
 ) -> dict[str, Any]:
     """Persist the front-end context chips with the user message."""
@@ -389,8 +388,6 @@ def _request_snapshot_metadata(
         snapshot["config"] = dict(config)
     if history_references:
         snapshot["historyReferences"] = history_references
-    if persona:
-        snapshot["persona"] = persona
     if llm_selection:
         snapshot["llmSelection"] = llm_selection
     return {"request_snapshot": snapshot}

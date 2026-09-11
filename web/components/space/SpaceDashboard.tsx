@@ -9,13 +9,11 @@ import {
   Github,
   History,
   Plug,
-  UserRound,
   type LucideIcon,
 } from "lucide-react";
 
 import { SPACE_MCP_SURFACE, loadMcpSurface } from "@/components/mcp/surface";
 import { listSessions } from "@/lib/session-api";
-import { listPersonas } from "@/lib/personas-api";
 
 /**
  * Learning Space dashboard — the hub of `/space`.
@@ -28,7 +26,7 @@ import { listPersonas } from "@/lib/personas-api";
 
 type Lang = { zh: string; en: string };
 
-type DashKey = "chat_history" | "personas" | "mcp";
+type DashKey = "chat_history" | "mcp";
 
 interface DashboardItem {
   key: DashKey;
@@ -87,19 +85,6 @@ const GROUPS: DashboardGroup[] = [
   {
     label: { zh: "个性化", en: "Personalization" },
     items: [
-      {
-        key: "personas",
-        href: "/space/personas",
-        icon: UserRound,
-        title: { zh: "Personas", en: "Personas" },
-        blurb: {
-          zh: "可在每轮对话中套用的行为预设。",
-          en: "Behavior presets you can apply per chat turn.",
-        },
-        unit: { zh: "个预设", en: "personas" },
-        tile: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-        load: async () => (await listPersonas()).length,
-      },
       {
         key: "mcp",
         href: "/space/mcp",

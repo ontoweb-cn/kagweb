@@ -115,7 +115,6 @@ async def test_configured_backend_streams_and_publishes_result(monkeypatch) -> N
     context = UnifiedContext(
         session_id="sess-1",
         user_message="question",
-        persona_context="Be terse.",
         source_manifest="- id:1 file.txt",
         language="en",
         conversation_history=[
@@ -142,7 +141,9 @@ async def test_configured_backend_streams_and_publishes_result(monkeypatch) -> N
     ]
     # Grounding blocks are folded into the prompt ahead of the user message.
     request = backend.requests[0]
-    assert request.prompt.startswith("Be terse.")
+    # The agent-loop prompt opens with the grounding blocks (source manifest
+    # first now that the persona block is gone), then the user message.
+    assert request.prompt.startswith("Attached sources:")
     assert "file.txt" in request.prompt
     assert request.prompt.endswith("question")
     assert request.history == [

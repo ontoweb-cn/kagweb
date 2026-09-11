@@ -37,8 +37,6 @@ export interface SessionPreferences {
   llm_selection?: LLMSelection | null;
   /** Persistent mastery state associated with this conversation. */
   mastery_path_id?: string;
-  /** Session-level persona preference; "" / absent = Default (no persona). */
-  persona?: string;
   /** Edit-branching: maps a parent_message_id → the child id currently
    *  shown at that branch point. Missing keys default to the latest
    *  sibling (most recently created child). */

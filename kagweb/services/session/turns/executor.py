@@ -381,26 +381,6 @@ class TurnExecutor:
                 leaf_message_id=branch_parent_id,
             )
 
-            # Persona: at most one behaviour preset per turn, eagerly
-            # injected (a persona must shape the voice from the first
-            # token). Resolution: the user's own workspace first; non-admin
-            # users fall back to admin-authored presets (personas carry no
-            # privileged workflow, so no grant gate applies).
-            from kagweb.multi_user.context import get_current_user
-            from kagweb.multi_user.paths import get_admin_path_service
-            from kagweb.services.persona import PersonaService, get_persona_service
-
-            current_user = get_current_user()
-            requested_persona = str(payload.get("persona") or "").strip()
-            persona_context = ""
-            if requested_persona:
-                persona_context = get_persona_service().load_for_context(requested_persona)
-                if not persona_context and not current_user.is_admin:
-                    persona_context = PersonaService(
-                        root=get_admin_path_service().get_workspace_dir() / "personas"
-                    ).load_for_context(requested_persona)
-            active_persona = requested_persona if persona_context else ""
-
             source_manifest_text = ""
             source_index: dict[str, str] = {}
 
@@ -454,7 +434,6 @@ class TurnExecutor:
                         config=request_config,
                         attachments=persisted_attachment_records,
                         history_references=history_references,
-                        persona=active_persona,
                         llm_selection=payload.get("llm_selection"),
                     ),
                     **parent_kwargs,
@@ -472,7 +451,6 @@ class TurnExecutor:
                 attachments=attachments,
                 config_overrides=request_config,
                 language=payload.get("language", "en"),
-                persona_context=persona_context,
                 sidebar_context=sidebar_system_context,
                 source_manifest=source_manifest_text,
                 runtime=TurnRuntimeContext(
@@ -487,7 +465,6 @@ class TurnExecutor:
                     "turn_id": turn_id,
                     "selection_tutor_context": selection_tutor_context or {},
                     "history_references": history_references,
-                    "active_persona": active_persona,
                     "llm_selection": payload.get("llm_selection") or {},
                     "llm_model": str(getattr(llm_config, "model", "") or ""),
                     "llm_provider": str(getattr(llm_config, "provider_name", "") or ""),

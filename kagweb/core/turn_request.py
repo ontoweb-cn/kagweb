@@ -85,7 +85,6 @@ class TurnRequest(BaseModel):
     memory_references: list[MemoryReference] = Field(default_factory=list)
     attachments: list[OutgoingAttachment] = Field(default_factory=list)
 
-    persona: str | None = None
     llm_selection: LLMSelection | None = None
     workspace_mode: str | None = None
     mastery_path_id: str | None = None

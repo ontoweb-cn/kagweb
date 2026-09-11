@@ -11,7 +11,6 @@ import {
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { UserRound } from "lucide-react";
 import ChatSpaceMenu, {
   type ChatSpaceSelectionCounts,
 } from "@/components/chat/space/ChatSpaceMenu";
@@ -30,19 +29,8 @@ interface ComposerInputProps {
   onInputChange: (content: string) => void;
   onPaste: (e: React.ClipboardEvent) => void;
   selectedCounts: ChatSpaceSelectionCounts;
-  /** Hide the Persona entry (main chat: persona has its own selector). */
-  personaAvailable: boolean;
   onSelectAttach: () => void;
   onSelectHistoryPicker: () => void;
-  onSelectPersonaPicker: () => void;
-  /**
-   * Wires the `/persona` slash command. Typing "/" (then any prefix of
-   * "persona") at the start of an empty composer pops a command hint;
-   * selecting it clears the input and invokes this callback to open the
-   * session persona selector. Omitted on surfaces without session
-   * personas, which disables the slash popup.
-   */
-  onOpenPersonaSelector?: () => void;
   /**
    * Override the default placeholder.
    */
@@ -86,22 +74,6 @@ export function stripTrailingAtMention(value: string): string {
   return value.replace(/(^|\s)@[^\s]*$/, "$1").replace(/\s+$/, "");
 }
 
-/**
- * `/persona` slash-command detection (Codex-style: command position is the
- * very start of the input, not mid-text like @ mentions). Active while the
- * text before the cursor is "/" plus any prefix of "persona" — `/x` or a
- * trailing space closes the popup.
- */
-export function shouldOpenSlashPopup(
-  value: string,
-  cursorPos: number,
-): boolean {
-  const prefix = value.slice(0, cursorPos);
-  const match = /^\/([a-z]*)$/i.exec(prefix);
-  if (!match) return false;
-  return "persona".startsWith(match[1].toLowerCase());
-}
-
 export const ComposerInput = memo(
   forwardRef<ComposerInputHandle, ComposerInputProps>(function ComposerInput(
     {
@@ -112,11 +84,8 @@ export const ComposerInput = memo(
       onInputChange,
       onPaste,
       selectedCounts,
-      personaAvailable,
       onSelectAttach,
       onSelectHistoryPicker,
-      onSelectPersonaPicker,
-      onOpenPersonaSelector,
       placeholder,
       placeholderCompletion,
       minHeight = 28,
@@ -126,8 +95,6 @@ export const ComposerInput = memo(
     const { t } = useTranslation();
     const [input, setInput] = useState("");
     const [showAtPopup, setShowAtPopup] = useState(false);
-    const [showSlashPopup, setShowSlashPopup] = useState(false);
-    const slashEnabled = Boolean(onOpenPersonaSelector);
 
     // Latest text mirrored into a ref by the change handlers (never updated
     // during render). The @space handlers and the imperative handle read
@@ -178,11 +145,8 @@ export const ComposerInput = memo(
         setInputBoth(value);
         onInputChange(value);
         setShowAtPopup(shouldOpenAtPopup(value, cursorPos));
-        setShowSlashPopup(
-          slashEnabled && shouldOpenSlashPopup(value, cursorPos),
-        );
       },
-      [setInputBoth, onInputChange, slashEnabled],
+      [setInputBoth, onInputChange],
     );
 
     const handleTextareaClick = useCallback(
@@ -190,20 +154,9 @@ export const ComposerInput = memo(
         const target = e.currentTarget;
         const cursorPos = target.selectionStart ?? target.value.length;
         setShowAtPopup(shouldOpenAtPopup(target.value, cursorPos));
-        setShowSlashPopup(
-          slashEnabled && shouldOpenSlashPopup(target.value, cursorPos),
-        );
       },
-      [slashEnabled],
+      [],
     );
-
-    const handleSelectSlashPersona = useCallback(() => {
-      // The slash text is a command, not message content — clear it.
-      setInputBoth("");
-      onInputChange("");
-      setShowSlashPopup(false);
-      onOpenPersonaSelector?.();
-    }, [setInputBoth, onInputChange, onOpenPersonaSelector]);
 
     const doSend = useCallback(() => {
       const content = inputRef.current.trim();
@@ -215,7 +168,6 @@ export const ComposerInput = memo(
       setInputBoth("");
       onInputChange("");
       setShowAtPopup(false);
-      setShowSlashPopup(false);
     }, [canSendEmpty, onSend, setInputBoth, onInputChange]);
 
     const clearTrailingMention = useCallback(() => {
@@ -226,17 +178,6 @@ export const ComposerInput = memo(
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        // With the slash popup open, Enter/Tab confirm the command instead
-        // of submitting "/persona" as a message.
-        if (
-          showSlashPopup &&
-          !isComposingRef.current &&
-          (e.key === "Enter" || e.key === "Tab")
-        ) {
-          e.preventDefault();
-          handleSelectSlashPersona();
-          return;
-        }
         // Tab takes the offered question — but only into an empty composer, so
         // Tab keeps meaning "leave this box" the moment there is a draft in it.
         if (
@@ -255,14 +196,11 @@ export const ComposerInput = memo(
           if (!isStreaming) doSend();
         } else if (e.key === "Escape") {
           setShowAtPopup(false);
-          setShowSlashPopup(false);
         }
       },
       [
         doSend,
         isStreaming,
-        showSlashPopup,
-        handleSelectSlashPersona,
         isComposingRef,
         onInputChange,
         placeholderCompletion,
@@ -271,42 +209,33 @@ export const ComposerInput = memo(
     );
 
     const handleSelectSpaceItem = useCallback(
-      (key: "attach" | "chat_history" | "persona") => {
+      (key: "attach" | "chat_history") => {
         clearTrailingMention();
         setShowAtPopup(false);
         if (key === "attach") onSelectAttach();
         else if (key === "chat_history") onSelectHistoryPicker();
-        else if (key === "persona") onSelectPersonaPicker();
       },
-      [
-        clearTrailingMention,
-        onSelectAttach,
-        onSelectHistoryPicker,
-        onSelectPersonaPicker,
-      ],
+      [clearTrailingMention, onSelectAttach, onSelectHistoryPicker],
     );
 
-    // Close the @/slash popups on outside click. Without this, clicking
+    // Close the @-mention popup on outside click. Without this, clicking
     // anywhere outside the popup or textarea left the menu hovering
     // indefinitely. We bind on mousedown so the close fires before a
     // synthetic click on a sibling button (e.g. the Tools menu) can
     // re-open something else.
     const popupRef = useRef<HTMLDivElement>(null);
-    const slashPopupRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
-      if (!showAtPopup && !showSlashPopup) return;
+      if (!showAtPopup) return;
       const handler = (e: MouseEvent) => {
         const target = e.target as Node | null;
         if (!target) return;
         if (popupRef.current?.contains(target)) return;
-        if (slashPopupRef.current?.contains(target)) return;
         if (textareaRef.current?.contains(target)) return;
         setShowAtPopup(false);
-        setShowSlashPopup(false);
       };
       document.addEventListener("mousedown", handler);
       return () => document.removeEventListener("mousedown", handler);
-    }, [showAtPopup, showSlashPopup, textareaRef]);
+    }, [showAtPopup, textareaRef]);
 
     const basePlaceholder = placeholder ?? t("How can I help you today?");
     // The Tab hint used to be a separate pill under the textarea — its own
@@ -330,43 +259,8 @@ export const ComposerInput = memo(
             <ChatSpaceMenu
               variant="mention"
               selectedCounts={selectedCounts}
-              personaAvailable={personaAvailable}
               onSelectItem={handleSelectSpaceItem}
             />
-          </div>
-        )}
-        {showSlashPopup && (
-          <div
-            ref={slashPopupRef}
-            className="absolute bottom-full left-0 z-[70] mb-2"
-          >
-            <div
-              role="listbox"
-              aria-label={t("Commands")}
-              className="w-[300px] rounded-xl border border-[var(--border)] bg-[var(--popover)] py-1.5 shadow-lg backdrop-blur-md"
-            >
-              <button
-                type="button"
-                role="option"
-                aria-selected
-                onClick={handleSelectSlashPersona}
-                className="flex w-full items-center gap-2.5 bg-[var(--muted)]/60 px-3 py-2 text-left text-[12.5px] transition-colors"
-              >
-                <UserRound
-                  size={14}
-                  strokeWidth={1.7}
-                  className="shrink-0 text-[var(--muted-foreground)]"
-                />
-                {/* Command syntax token — must not be localized. */}
-                {/* eslint-disable-next-line i18n/no-literal-ui-text */}
-                <span className="font-medium text-[var(--foreground)]">
-                  /persona
-                </span>
-                <span className="min-w-0 truncate text-[var(--muted-foreground)]">
-                  {t("Switch the persona for this chat session")}
-                </span>
-              </button>
-            </div>
           </div>
         )}
         <div className="relative">

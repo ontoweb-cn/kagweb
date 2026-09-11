@@ -26,7 +26,6 @@ import {
   Network,
   Paperclip,
   Sparkles,
-  UserRound,
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
@@ -114,12 +113,6 @@ const SPACE_CATEGORIES: Record<string, SpaceCategoryDef> = {
     label: 'Chat history',
     icon: History,
   },
-  persona: {
-    key: 'persona',
-    href: '/space/personas',
-    label: 'Persona',
-    icon: UserRound,
-  },
 }
 
 export function ActivityBody({
@@ -149,19 +142,6 @@ export function ActivityBody({
       >
         {space.historySessionIds.map(id => (
           <SpaceItemRow key={id} title={sessions.get(id) ?? id} subtitle={id.slice(0, 8)} />
-        ))}
-      </SpaceSubsection>
-    )
-  }
-  if (space.personas.length > 0) {
-    spaceSubsections.push(
-      <SpaceSubsection
-        key="persona"
-        category={SPACE_CATEGORIES.persona}
-        count={space.personas.length}
-      >
-        {space.personas.map(persona => (
-          <SpaceItemRow key={persona} title={persona} />
         ))}
       </SpaceSubsection>
     )

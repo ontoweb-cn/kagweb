@@ -25,7 +25,6 @@ export interface StartTurnInput {
   bookReferences?: BookReference[];
   readingReferences?: ReadingReference[];
   memoryReferences?: MemoryReferences;
-  persona?: string | null;
   llmSelection?: LLMSelection | null;
   workspaceMode?: string | null;
   masteryPathId?: string | null;
@@ -55,6 +54,5 @@ export interface LegacySendMessageArguments {
   notebookReferences?: NotebookReference[];
   historyReferences?: string[];
   questionNotebookReferences?: number[];
-  persona?: string;
   memoryReferences?: MemoryReferences;
 }

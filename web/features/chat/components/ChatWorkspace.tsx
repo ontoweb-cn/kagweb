@@ -268,7 +268,6 @@ export default function ChatWorkspace() {
     setTools,
     setCapability,
     setLLMSelection,
-    setPersonaSelection,
     sendMessage,
     cancelStreamingTurn,
     submitUserReply,
@@ -348,10 +347,6 @@ export default function ChatWorkspace() {
   const attachmentErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [capMenuOpen, setCapMenuOpen] = useState(false)
   const [showHistoryPicker, setShowHistoryPicker] = useState(false)
-  // Session persona selector (toolbar chip / `/persona` / @space entry all
-  // open the same dropdown). The selection itself lives in the unified chat
-  // context (state.personaSelection) so it follows the session.
-  const [personaSelectorOpen, setPersonaSelectorOpen] = useState(false)
   const [selectedHistorySessions, setSelectedHistorySessions] = useState<SelectedHistorySession[]>(
     []
   )
@@ -1132,9 +1127,6 @@ export default function ChatWorkspace() {
         (attachments.some(a => a.type === 'image')
           ? t('Please analyze the attached image(s).')
           : '')
-      // Persona is NOT passed per-call here: it is a session-level
-      // preference (state.personaSelection) that sendMessage resolves and
-      // sends with every turn.
       sendMessage(messageContent, extraAttachments, undefined, [], historyReferencesPayload)
       shouldAutoScrollRef.current = true
       setAttachments([])
@@ -1159,16 +1151,9 @@ export default function ChatWorkspace() {
   const handleSelectHistoryPicker = useCallback(() => {
     setShowHistoryPicker(true)
   }, [])
-  const handleSelectPersonaPicker = useCallback(() => {
-    // The @space "Persona" entry now opens the session persona selector.
-    setPersonaSelectorOpen(true)
-  }, [])
   const handleRemoveHistory = useCallback((sessionId: string) => {
     setSelectedHistorySessions(prev => prev.filter(item => item.sessionId !== sessionId))
   }, [])
-  const handleClearPersona = useCallback(() => {
-    setPersonaSelection('')
-  }, [setPersonaSelection])
   const handleCloseHistoryPicker = useCallback(() => {
     setShowHistoryPicker(false)
   }, [])
@@ -1418,12 +1403,6 @@ export default function ChatWorkspace() {
             onSetSpaceMenuOpen={setSpaceMenuOpen}
             onSelectLLM={setLLMSelection}
             onSelectHistoryPicker={handleSelectHistoryPicker}
-            onSelectPersonaPicker={handleSelectPersonaPicker}
-            onClearPersona={handleClearPersona}
-            personaSelection={state.personaSelection}
-            onPersonaSelectionChange={setPersonaSelection}
-            personaSelectorOpen={personaSelectorOpen}
-            onPersonaSelectorOpenChange={setPersonaSelectorOpen}
             onSend={handleSend}
             awaitingUserReply={awaitingUserReply}
             onRemoveAttachment={removeAttachment}

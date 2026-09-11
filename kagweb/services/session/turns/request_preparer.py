@@ -119,7 +119,6 @@ class TurnRequestPreparer:
         payload = TurnRequest.model_validate(
             {key: value for key, value in payload.items() if key != "type"}
         ).to_payload()
-        persona_explicit = "persona" in payload
         if not payload.get("language"):
             from kagweb.services.settings.interface_settings import (
                 get_response_language,
@@ -145,14 +144,6 @@ class TurnRequestPreparer:
             "requested_capability": requested_capability,
             "config": validated_public_config,
         }
-        # Persona is a session-level preference (mirrors llm_selection): an
-        # explicit ``persona`` key in the payload — including an empty string,
-        # which means "Default" / no persona — wins and is persisted below.
-        # Without one, the session's stored preference survives reloads.
-        persona_pref = str(
-            (payload.get("persona") if "persona" in payload else preferences.get("persona")) or ""
-        ).strip()
-        payload = {**payload, "persona": persona_pref}
         raw_llm_selection = payload.get("llm_selection")
         if raw_llm_selection is None:
             raw_llm_selection = preferences.get("llm_selection")
@@ -345,9 +336,6 @@ class TurnRequestPreparer:
                 )
         if llm_selection:
             preference_update["llm_selection"] = llm_selection
-        if persona_explicit:
-            # Persist explicit set AND explicit clear ("" = back to Default).
-            preference_update["persona"] = persona_pref
         await self.store.update_session_preferences(session["id"], preference_update)
         try:
             if lease is None:

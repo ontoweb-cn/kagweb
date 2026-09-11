@@ -129,9 +129,6 @@ export interface ChatState {
    *  Read by the composer's course pill and sent with every turn, so Course
    *  Study senses the same course the learner can see it is bound to. */
   courseId: string;
-  /** Session-level persona preference; "" = Default (no persona). Applies
-   *  to every following message until changed (persisted on the session). */
-  personaSelection: string;
   messages: MessageItem[];
   isStreaming: boolean;
   currentStage: string;
@@ -190,7 +187,6 @@ export interface MessageRequestSnapshot {
   readingReferences?: ReadingReferencePayload[];
   masteryPathId?: string;
   timedMediaId?: string;
-  persona?: string;
   memoryReferences?: MemoryReferencePayload;
   llmSelection?: LLMSelection | null;
   /** Stable identity of the material open for this turn. */
@@ -248,7 +244,6 @@ interface SessionSnapshot {
   llmSelection?: LLMSelection | null;
   masteryPathId?: string | null;
   courseId?: string;
-  personaSelection?: string;
   language?: string;
   selectedBranches?: Record<string, number>;
 }
@@ -262,7 +257,6 @@ type Action =
   // composer omits it and means "the one on screen".
   | { type: "SET_MASTERY_PATH_ID"; masteryPathId: string | null; key?: string }
   | { type: "SET_COURSE_ID"; courseId: string }
-  | { type: "SET_PERSONA_SELECTION"; persona: string }
   | { type: "SET_LANGUAGE"; lang: string }
   | {
       type: "ADD_USER_MSG";
@@ -347,7 +341,6 @@ function createSessionEntry(
     llmSelection: null,
     masteryPathId: null,
     courseId: "",
-    personaSelection: "",
     messages: [],
     isStreaming: false,
     currentStage: "",
@@ -485,11 +478,6 @@ function reducer(state: ProviderState, action: Action): ProviderState {
       return updateSelectedSession(state, (session) => ({
         ...session,
         courseId: action.courseId,
-      }));
-    case "SET_PERSONA_SELECTION":
-      return updateSelectedSession(state, (session) => ({
-        ...session,
-        personaSelection: action.persona,
       }));
     case "SET_LANGUAGE":
       return updateSelectedSession(state, (session) => ({
@@ -822,10 +810,6 @@ function reducer(state: ProviderState, action: Action): ProviderState {
               action.courseId !== undefined
                 ? action.courseId
                 : existing.courseId,
-            personaSelection:
-              action.personaSelection !== undefined
-                ? action.personaSelection
-                : existing.personaSelection,
             messages: action.messages,
             isStreaming: (action.status || "idle") === "running",
             currentStage: "",
@@ -1024,7 +1008,6 @@ interface ChatContextValue {
   setLLMSelection: (selection: LLMSelection | null) => void;
   setMasteryPathId: (masteryPathId: string | null) => void;
   setCourseId: (courseId: string) => void;
-  setPersonaSelection: (persona: string) => void;
   setLanguage: (lang: string) => void;
   sendMessage: (
     content: string,
@@ -1034,7 +1017,6 @@ interface ChatContextValue {
     historyReferences?: HistoryReferencePayload,
     options?: SendMessageOptions,
     questionNotebookReferences?: QuestionNotebookReferencePayload,
-    persona?: string,
     memoryReferences?: MemoryReferencePayload,
   ) => void;
   cancelStreamingTurn: () => void;
@@ -1217,10 +1199,6 @@ function hydrateRequestSnapshot(
   const questionNotebookReferences = asQuestionReferences(
     stored.questionNotebookReferences,
   );
-  const persona =
-    typeof stored.persona === "string" && stored.persona.length > 0
-      ? stored.persona
-      : "";
   const memoryReferences = asMemoryReferences(stored.memoryReferences);
   const bookReferences = normalizeBookReferences(stored.bookReferences);
   const readingReferences = normalizeReadingReferences(
@@ -1253,7 +1231,6 @@ function hydrateRequestSnapshot(
   if (readingReferences.length) {
     snapshot.readingReferences = readingReferences;
   }
-  if (persona) snapshot.persona = persona;
   if (memoryReferences.length) snapshot.memoryReferences = memoryReferences;
   if (llmSelection) snapshot.llmSelection = llmSelection;
   if (masteryPathId) snapshot.masteryPathId = masteryPathId;
@@ -1800,10 +1777,6 @@ export function ChatStateAdapterProvider({
           typeof session.preferences?.course_id === "string"
             ? session.preferences.course_id
             : "",
-        personaSelection:
-          typeof session.preferences?.persona === "string"
-            ? session.preferences.persona
-            : "",
         // Model output language is account-level state. Historical sessions
         // may have stale persisted preferences, so new turns follow the
         // current response-language setting rather than their original value.
@@ -1932,7 +1905,6 @@ export function ChatStateAdapterProvider({
       historyReferences?: HistoryReferencePayload,
       options?: SendMessageOptions,
       questionNotebookReferences?: QuestionNotebookReferencePayload,
-      persona?: string,
       memoryReferences?: MemoryReferencePayload,
     ) => {
       const msgAttachments = attachments?.map((a) => ({
@@ -1964,11 +1936,6 @@ export function ChatStateAdapterProvider({
         replaySnapshot?.masteryPathId ?? session.masteryPathId;
       const effectiveLanguage =
         replaySnapshot?.language ?? readStoredResponseLanguage();
-      // Persona resolution: replay snapshot wins; then an explicit per-call
-      // persona (quiz follow-up surface); then the session-level preference.
-      // Always a string — "" means Default / no persona.
-      const effectivePersona =
-        replaySnapshot?.persona ?? persona ?? session.personaSelection ?? "";
       const effectiveMemoryReferences =
         replaySnapshot?.memoryReferences ?? memoryReferences;
       const effectiveBookReferences =
@@ -2047,7 +2014,6 @@ export function ChatStateAdapterProvider({
         ...(effectiveMasteryPathId
           ? { masteryPathId: effectiveMasteryPathId }
           : {}),
-        ...(effectivePersona ? { persona: effectivePersona } : {}),
         ...(effectiveMemoryReferences?.length
           ? { memoryReferences: [...effectiveMemoryReferences] }
           : {}),
@@ -2157,11 +2123,6 @@ export function ChatStateAdapterProvider({
         timedMediaId: effectiveWatchingTurnFields.timed_media_id ?? null,
         timedMediaViewport:
           effectiveWatchingTurnFields.timed_media_viewport ?? null,
-        // Always sent (possibly ""): an explicit key is the backend's signal
-        // to persist the value into session.preferences — "" clears back to
-        // Default. Omitting the key would make the backend fall back to the
-        // stored preference, so a clear could never propagate.
-        persona: effectivePersona,
         memoryReferences: effectiveMemoryReferences,
         llmSelection: effectiveLLMSelection,
         capabilityConfig: finalTurnConfig,
@@ -2279,7 +2240,6 @@ export function ChatStateAdapterProvider({
       llmSelection: current.llmSelection,
       masteryPathId: current.masteryPathId,
       courseId: current.courseId,
-      personaSelection: current.personaSelection,
       messages: current.messages,
       isStreaming: current.isStreaming,
       currentStage: current.currentStage,
@@ -2321,10 +2281,6 @@ export function ChatStateAdapterProvider({
 
   const setCourseId = useCallback((courseId: string) => {
     dispatch({ type: "SET_COURSE_ID", courseId: courseId.trim() });
-  }, []);
-
-  const setPersonaSelection = useCallback((persona: string) => {
-    dispatch({ type: "SET_PERSONA_SELECTION", persona });
   }, []);
 
   const setLanguage = useCallback((lang: string) => {
@@ -2402,9 +2358,6 @@ export function ChatStateAdapterProvider({
         undefined,
         undefined,
         { parentMessageId: parentId },
-        undefined,
-        undefined,
-        undefined,
       );
     },
     [loadSession, sendMessage],
@@ -2493,7 +2446,6 @@ export function ChatStateAdapterProvider({
       setLLMSelection,
       setMasteryPathId,
       setCourseId,
-      setPersonaSelection,
       setLanguage,
       sendMessage,
       cancelStreamingTurn,
@@ -2518,7 +2470,6 @@ export function ChatStateAdapterProvider({
       setLLMSelection,
       setMasteryPathId,
       setCourseId,
-      setPersonaSelection,
       setLanguage,
       sendMessage,
       cancelStreamingTurn,

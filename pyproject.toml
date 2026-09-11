@@ -209,14 +209,12 @@ include = ["kagweb*", "kagweb_cli*"]
 
 [tool.setuptools.package-data]
 # Runtime data shipped inside the kagweb package: prompt YAMLs (loaded by
-# PromptManager from PACKAGE_ROOT/kagweb/.../prompts/*.yaml), markdown
-# templates (builtin SKILL.md files, vision_solver prompts), and helper shell
+# PromptManager from PACKAGE_ROOT/kagweb/.../prompts/*.yaml) and helper
 # scripts. Without these, ``pip install kagweb`` ships a wheel missing
 # every agent prompt and capability fails at first use.
 kagweb = [
     "**/*.yaml",
     "**/*.yml",
-    "**/*.md",
     "**/*.json",
     "**/*.sh",
     "**/*.j2",

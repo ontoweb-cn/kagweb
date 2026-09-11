@@ -93,7 +93,6 @@ export interface SpaceReferenceSummary {
   notebookRecordCount: number
   notebookIds: string[]
   questionEntryIds: number[]
-  personas: string[]
   memoryKinds: Array<'summary' | 'profile'>
 }
 
@@ -301,7 +300,6 @@ export function buildSessionActivity(
   const notebookIds = new Set<string>()
   let notebookRecordCount = 0
   const questionEntryIds = new Set<number>()
-  const personas = new Set<string>()
   const memoryKinds = new Set<'summary' | 'profile'>()
   const attachments: AttachmentWithOrigin[] = []
   const artifacts: AttachmentWithOrigin[] = []
@@ -450,7 +448,6 @@ export function buildSessionActivity(
         notebookRecordCount += n.record_ids?.length ?? 0
       })
       snap.questionNotebookReferences?.forEach(q => questionEntryIds.add(q))
-      if (snap.persona) personas.add(snap.persona)
       snap.memoryReferences?.forEach(k => memoryKinds.add(k))
     }
   })
@@ -474,7 +471,6 @@ export function buildSessionActivity(
     notebookRecordCount,
     notebookIds: Array.from(notebookIds),
     questionEntryIds: Array.from(questionEntryIds),
-    personas: Array.from(personas),
     memoryKinds: Array.from(memoryKinds),
   }
 
@@ -486,7 +482,6 @@ export function buildSessionActivity(
     space.bookIds.length === 0 &&
     space.notebookIds.length === 0 &&
     space.questionEntryIds.length === 0 &&
-    space.personas.length === 0 &&
     space.memoryKinds.length === 0
 
   return {

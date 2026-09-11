@@ -522,7 +522,6 @@ async def test_the_window_key_is_not_persisted_with_the_user_message(tmp_path, m
         config={},
         attachments=[],
         history_references=[],
-        persona="",
         llm_selection=None,
     )
     assert "agent_loop_context_window" not in snapshot["request_snapshot"]

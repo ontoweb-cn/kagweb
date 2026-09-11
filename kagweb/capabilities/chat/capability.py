@@ -641,7 +641,6 @@ def _build_request(
     blocks = [
         block.strip()
         for block in (
-            context.persona_context,
             context.sidebar_context,
             f"Attached sources:\n{context.source_manifest}" if context.source_manifest else "",
             consult_manifest or "",

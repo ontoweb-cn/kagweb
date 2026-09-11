@@ -1,35 +1,24 @@
 "use client";
 
 import { Fragment, memo, useEffect, useRef, useState } from "react";
-import { ChevronRight, History, Paperclip, UserRound } from "lucide-react";
+import { ChevronRight, History, Paperclip } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { setPickerOrigin } from "@/lib/picker-origin";
 
-type SelectableSpaceKey = "attach" | "chat_history" | "persona";
+type SelectableSpaceKey = "attach" | "chat_history";
 
 export interface ChatSpaceSelectionCounts {
   attachments: number;
   chatHistory: number;
-  persona: number;
 }
 
 interface ChatSpaceMenuProps {
   variant: "toolbar" | "mention";
   selectedCounts: ChatSpaceSelectionCounts;
-  /**
-   * Hide the Persona entry. The main chat sets this to false — its
-   * persona lives in the standalone toolbar selector (and `/persona`),
-   * not in this menu.
-   */
-  personaAvailable?: boolean;
   onSelectItem: (key: SelectableSpaceKey) => void;
 }
 
-const ITEM_ORDER: SelectableSpaceKey[] = [
-  "attach",
-  "chat_history",
-  "persona",
-];
+const ITEM_ORDER: SelectableSpaceKey[] = ["attach", "chat_history"];
 
 function countFor(
   key: SelectableSpaceKey,
@@ -40,8 +29,6 @@ function countFor(
       return counts.attachments;
     case "chat_history":
       return counts.chatHistory;
-    case "persona":
-      return counts.persona;
     default:
       return 0;
   }
@@ -50,7 +37,6 @@ function countFor(
 export default memo(function ChatSpaceMenu({
   variant,
   selectedCounts,
-  personaAvailable = true,
   onSelectItem,
 }: ChatSpaceMenuProps) {
   const { t } = useTranslation();
@@ -59,10 +45,7 @@ export default memo(function ChatSpaceMenu({
 
   // Render the items in a fixed, hand-tuned order so the menu always reads
   // the same regardless of how it may be reordered.
-  const items = ITEM_ORDER.filter((key) => {
-    if (key === "persona") return personaAvailable;
-    return true;
-  }).map((key) => {
+  const items = ITEM_ORDER.map((key) => {
     // Composer-only concepts (not Space pages) are defined here rather
     // than in any shared nav registry.
     if (key === "attach") {
@@ -71,14 +54,6 @@ export default memo(function ChatSpaceMenu({
         label: "Attach files",
         description: "Upload images, Office docs, code & text.",
         icon: Paperclip,
-      };
-    }
-    if (key === "persona") {
-      return {
-        key,
-        label: "Persona",
-        description: "Apply a behavior persona for this turn.",
-        icon: UserRound,
       };
     }
     return {

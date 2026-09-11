@@ -239,7 +239,6 @@
   "contextBudget.segment.mcp_tools": "MCP tools",
   "contextBudget.segment.tool_manifest": "Tool manifest",
   "contextBudget.segment.extended_tools": "Extended tools",
-  "contextBudget.segment.persona_style": "Persona style",
   "contextBudget.segment.partner_turn_policy": "Partner turn policy",
   "contextBudget.segment.memory": "Memory",
   "contextBudget.segment.knowledge_base_note": "Knowledge base note",
@@ -288,6 +287,5 @@
   "{{count}} connection_one": "{{count}} connection",
   "{{count}} connection_other": "{{count}} connections",
   "YouTube URL": "https://youtu.be/…",
-  "Invidious API URL": "http://127.0.0.1:3000",
-  "personas.count.suffix": "personas"
+  "Invidious API URL": "http://127.0.0.1:3000"
 }

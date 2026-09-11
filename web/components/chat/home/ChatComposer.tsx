@@ -38,12 +38,10 @@ import type { LLMOption } from "@/lib/llm-options";
 import ChatSpaceMenu from "@/components/chat/space/ChatSpaceMenu";
 import ContextBudgetChip, { type ContextBudget } from "./ContextBudgetChip";
 import ModelSelector from "./ModelSelector";
-import PersonaSelector from "./PersonaSelector";
 
 type SpaceSelectionCounts = {
   attachments: number;
   chatHistory: number;
-  persona: number;
 };
 import ContextReferenceTree, {
   type ContextTreeItem,
@@ -162,12 +160,6 @@ export default memo(function ChatComposer({
   onSetSpaceMenuOpen,
   onSelectLLM,
   onSelectHistoryPicker,
-  onSelectPersonaPicker,
-  onClearPersona,
-  personaSelection,
-  onPersonaSelectionChange,
-  personaSelectorOpen,
-  onPersonaSelectorOpenChange,
   onSend,
   onRemoveAttachment,
   onPreviewAttachment,
@@ -219,17 +211,6 @@ export default memo(function ChatComposer({
   onSetSpaceMenuOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   onSelectLLM: (selection: LLMSelection | null) => void;
   onSelectHistoryPicker: () => void;
-  onSelectPersonaPicker: () => void;
-  onClearPersona: () => void;
-  /**
-   * Session-persona wiring (main chat only). When `onPersonaSelectionChange`
-   * is provided, the toolbar shows a PersonaSelector chip and the composer
-   * accepts the `/persona` slash command.
-   */
-  personaSelection?: string;
-  onPersonaSelectionChange?: (persona: string) => void;
-  personaSelectorOpen?: boolean;
-  onPersonaSelectorOpenChange?: (open: boolean) => void;
   onSend: (content: string) => void;
   onRemoveAttachment: (index: number) => void;
   onPreviewAttachment?: (index: number) => void;
@@ -415,7 +396,6 @@ export default memo(function ChatComposer({
   const spaceSelectionCounts: SpaceSelectionCounts = {
     attachments: attachments.length,
     chatHistory: selectedHistorySessions.length,
-    persona: 0,
   };
   // Badge on the "+" button = how many things are selected through the
   // "+" menu.
@@ -540,15 +520,8 @@ export default memo(function ChatComposer({
             onInputChange={handleInputChange}
             onPaste={onPaste}
             selectedCounts={spaceSelectionCounts}
-            personaAvailable={!onPersonaSelectionChange}
             onSelectAttach={handlePickFiles}
             onSelectHistoryPicker={onSelectHistoryPicker}
-            onSelectPersonaPicker={onSelectPersonaPicker}
-            onOpenPersonaSelector={
-              onPersonaSelectionChange && onPersonaSelectorOpenChange
-                ? () => onPersonaSelectorOpenChange(true)
-                : undefined
-            }
             placeholder={inputPlaceholder}
             placeholderCompletion={inputPlaceholderCompletion}
             minHeight={hasMessages ? 28 : 64}
@@ -824,12 +797,10 @@ export default memo(function ChatComposer({
                       <ChatSpaceMenu
                         variant="toolbar"
                         selectedCounts={spaceSelectionCounts}
-                        personaAvailable={!onPersonaSelectionChange}
                         onSelectItem={(key) => {
                           onSetSpaceMenuOpen(false);
                           if (key === "attach") handlePickFiles();
                           else if (key === "chat_history") onSelectHistoryPicker();
-                          else if (key === "persona") onSelectPersonaPicker();
                         }}
                       />
                     </motion.div>
@@ -838,14 +809,6 @@ export default memo(function ChatComposer({
               </div>
 
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                {onPersonaSelectionChange ? (
-                  <PersonaSelector
-                    value={personaSelection ?? ""}
-                    onChange={onPersonaSelectionChange}
-                    open={personaSelectorOpen}
-                    onOpenChange={onPersonaSelectorOpenChange}
-                  />
-                ) : null}
                 <ModelSelector
                   options={llmOptions}
                   activeDefault={activeLLMDefault}

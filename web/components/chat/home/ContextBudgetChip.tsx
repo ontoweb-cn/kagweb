@@ -29,7 +29,6 @@ const SEGMENT_COLORS: Record<string, string> = {
   mcp_tools: "#10b981",
   tool_manifest: "#84cc16",
   extended_tools: "#f59e0b",
-  persona_style: "#f97316",
   partner_turn_policy: "#d946ef",
   memory: "#a855f7",
   knowledge_base_note: "#8b5cf6",

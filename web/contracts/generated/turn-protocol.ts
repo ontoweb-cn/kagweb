@@ -50,7 +50,6 @@ export type RecordIds = string[];
 export type NotebookReferences = NotebookReference[];
 export type ParentMessageId = number | null;
 export type PersistUserMessage = boolean;
-export type Persona = string | null;
 export type ProtocolVersion = "2.0";
 export type QuestionNotebookReferences = number[];
 export type ReadingMaterialId = string | null;
@@ -278,7 +277,6 @@ export interface StartTurnCommand {
   notebook_references?: NotebookReferences;
   parent_message_id?: ParentMessageId;
   persist_user_message?: PersistUserMessage;
-  persona?: Persona;
   protocol_version: ProtocolVersion;
   question_notebook_references?: QuestionNotebookReferences;
   reading_material_id?: ReadingMaterialId;

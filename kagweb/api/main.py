@@ -327,7 +327,6 @@ from kagweb.api.routers import (
     imports,
     mcp_settings,
     outputs,
-    personas,
     sessions,
     settings,
     space_mcp,
@@ -396,7 +395,6 @@ app.include_router(
     tags=["space-mcp"],
     dependencies=_auth,
 )
-app.include_router(personas.router, prefix="/api", tags=["personas"], dependencies=_auth)
 app.include_router(system.router, prefix="/api/system", tags=["system"], dependencies=_auth)
 app.include_router(voice.router, prefix="/api/voice", tags=["voice"], dependencies=_auth)
 app.include_router(

@@ -402,43 +402,6 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
-  readonly "/api/personas": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /** List Personas */
-    readonly get: operations["list_personas_api_personas_get"];
-    readonly put?: never;
-    /** Create Persona */
-    readonly post: operations["create_persona_api_personas_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/personas/{name}": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /** Get Persona */
-    readonly get: operations["get_persona_api_personas__name__get"];
-    /** Update Persona */
-    readonly put: operations["update_persona_api_personas__name__put"];
-    readonly post?: never;
-    /** Delete Persona */
-    readonly delete: operations["delete_persona_api_personas__name__delete"];
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
   readonly "/api/sessions": {
     readonly parameters: {
       readonly query?: never;
@@ -2380,21 +2343,6 @@ export interface components {
       /** Reasoning Effort */
       readonly reasoning_effort?: string | null;
     };
-    /** CreatePersonaRequest */
-    readonly CreatePersonaRequest: {
-      /**
-       * Content
-       * @default
-       */
-      readonly content: string;
-      /**
-       * Description
-       * @default
-       */
-      readonly description: string;
-      /** Name */
-      readonly name: string;
-    };
     /**
      * DoclingRemoteTest
      * @description Draft Docling remote-server test. ``api_token`` is tri-state: ``None``
@@ -3238,11 +3186,6 @@ export interface components {
        * @default true
        */
       readonly persist_user_message: boolean;
-      /**
-       * Persona
-       * @default null
-       */
-      readonly persona: string | null;
       /** Question Notebook References */
       readonly question_notebook_references?: readonly number[];
       /**
@@ -3404,15 +3347,6 @@ export interface components {
       /** Turn Insight Enabled */
       readonly turn_insight_enabled?: boolean | null;
     };
-    /** UpdatePersonaRequest */
-    readonly UpdatePersonaRequest: {
-      /** Content */
-      readonly content?: string | null;
-      /** Description */
-      readonly description?: string | null;
-      /** Rename To */
-      readonly rename_to?: string | null;
-    };
     /**
      * UpdateProfileRequest
      * @description Payload for the PUT /profile endpoint.
@@ -3510,8 +3444,6 @@ export type SchemaChatStarterSettingsUpdate =
   components["schemas"]["ChatStarterSettingsUpdate"];
 export type SchemaCodexReasoningEffortUpdate =
   components["schemas"]["CodexReasoningEffortUpdate"];
-export type SchemaCreatePersonaRequest =
-  components["schemas"]["CreatePersonaRequest"];
 export type SchemaDoclingRemoteTest =
   components["schemas"]["DoclingRemoteTest"];
 export type SchemaDocumentParsingInstall =
@@ -3585,8 +3517,6 @@ export type SchemaTurnRequest = components["schemas"]["TurnRequest"];
 export type SchemaTurnStatus = components["schemas"]["TurnStatus"];
 export type SchemaTurnSummary = components["schemas"]["TurnSummary"];
 export type SchemaUiSettingsUpdate = components["schemas"]["UISettingsUpdate"];
-export type SchemaUpdatePersonaRequest =
-  components["schemas"]["UpdatePersonaRequest"];
 export type SchemaUpdateProfileRequest =
   components["schemas"]["UpdateProfileRequest"];
 export type SchemaUpdateSettingsRequest =
@@ -4452,197 +4382,6 @@ export interface operations {
         content: {
           readonly "application/json": {
             readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly list_personas_api_personas_get: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: readonly {
-              readonly [key: string]: unknown;
-            }[];
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly create_persona_api_personas_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["CreatePersonaRequest"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly get_persona_api_personas__name__get: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly name: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly update_persona_api_personas__name__put: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly name: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["UpdatePersonaRequest"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly delete_persona_api_personas__name__delete: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly name: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: string;
           };
         };
       };
