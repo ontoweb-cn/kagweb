@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, Save } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import McpToolGroups from "@/components/common/McpToolGroups";
-import { toggleToolName as toggleName } from "@/lib/mcp-tool-groups";
 import { fetchAdminResources, fetchUserGrant, saveUserGrant } from "../api";
 import type { GrantPayload, MultiUserResources } from "../types";
 
@@ -15,7 +14,6 @@ function emptyGrant(userId: string): GrantPayload {
     version: 2,
     user_id: userId,
     models: { llm: [] },
-    enabled_tools: null,
     mcp_tools: null,
     exec_enabled: null,
     agent_loop_cli: null,
@@ -201,21 +199,8 @@ export function GrantEditor({ userId }: { userId: string }) {
     });
   }
 
-  function setToolList(
-    key: "enabled_tools" | "mcp_tools",
-    value: string[] | null,
-  ) {
+  function setToolList(key: "mcp_tools", value: string[] | null) {
     setGrant((current) => ({ ...current, [key]: value }));
-  }
-
-  // Named apart from the imported `toggleName` helper it wraps, and narrowed to
-  // the one key that still uses it: MCP rows go through McpToolGroups now.
-  function toggleGrantTool(key: "enabled_tools", name: string) {
-    setGrant((current) => {
-      const list = current[key];
-      if (list === null) return current;
-      return { ...current, [key]: toggleName(list, name) };
-    });
   }
 
   async function save() {
@@ -252,10 +237,6 @@ export function GrantEditor({ userId }: { userId: string }) {
         ? "text-emerald-700 dark:text-emerald-300"
         : "text-[var(--muted-foreground)]";
 
-  const toolsSummary =
-    grant.enabled_tools === null
-      ? "all tools"
-      : `${grant.enabled_tools.length} tools`;
   // MCP tools deny-by-default for non-admin users: ``null`` grants none until
   // the admin switches to Custom and picks specific tool names.
   const mcpSummary =
@@ -289,9 +270,6 @@ export function GrantEditor({ userId }: { userId: string }) {
             <div className="flex flex-wrap gap-1.5 text-[11px] text-[var(--muted-foreground)]">
               <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
                 {selectedModelCount} models
-              </span>
-              <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
-                {toolsSummary}
               </span>
               <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
                 {mcpSummary}
@@ -338,36 +316,6 @@ export function GrantEditor({ userId }: { userId: string }) {
               </div>
             </section>
 
-            <section className="min-w-0">
-              <SectionTitle>System tools</SectionTitle>
-              <ModeSwitch
-                isCustom={grant.enabled_tools !== null}
-                disabled={controlsDisabled}
-                onDefault={() => setToolList("enabled_tools", null)}
-                onCustom={() =>
-                  setToolList(
-                    "enabled_tools",
-                    (resources?.tools || []).map((tool) => tool.name),
-                  )
-                }
-              />
-              {grant.enabled_tools !== null && (
-                <div className="space-y-1.5 text-xs">
-                  {(resources?.tools || []).map((tool) => (
-                    <CheckRow
-                      key={tool.name}
-                      label={tool.name}
-                      description={tool.description}
-                      checked={grant.enabled_tools!.includes(tool.name)}
-                      disabled={controlsDisabled}
-                      onToggle={() =>
-                        toggleGrantTool("enabled_tools", tool.name)
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
             <section className="min-w-0">
               <SectionTitle>MCP tools</SectionTitle>
               <ModeSwitch

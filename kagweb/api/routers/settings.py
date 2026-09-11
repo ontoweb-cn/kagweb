@@ -66,12 +66,10 @@ from kagweb.services.settings.interface_settings import (
 from kagweb.services.settings.interface_settings import (
     atomic_update,
     resolve_languages,
-    sanitize_enabled_tools,
 )
 from kagweb.services.settings.starter_settings import (
     TRACE_COUNT_RANGE as STARTER_TRACE_COUNT_RANGE,
 )
-from kagweb.tools.builtin import USER_TOGGLEABLE_TOOL_NAMES
 
 router = APIRouter()
 # Public UI-settings router. The app shell bootstraps the interface language
@@ -107,11 +105,6 @@ DEFAULT_UI_SETTINGS = {
     **INTERFACE_DEFAULTS,
     "sidebar_description": "✨ ONTOWEB@WUST",
     "sidebar_nav_order": DEFAULT_SIDEBAR_NAV_ORDER,
-    # User-toggleable chat tools. Default = all on; the /settings/tools page
-    # is the single switchboard. Removed names (e.g. tools that ship later
-    # and the user hasn't seen yet) are ignored on read; missing names from a
-    # legacy file fall back to the default (all on).
-    "enabled_optional_tools": list(USER_TOGGLEABLE_TOOL_NAMES),
     # When true, chat auto-plays each assistant reply via TTS. Per-user UI
     # preference (not catalog); the chat surface also keeps a per-session
     # override on top of this global default.
@@ -425,12 +418,6 @@ def load_ui_settings() -> dict[str, Any]:
                 # resolve_languages owns the legacy migration (a file predating
                 # the UI/response split inherits its one language into both).
                 merged = {**DEFAULT_UI_SETTINGS, **saved, **resolve_languages(saved)}
-                # Filter persisted enabled_optional_tools to current
-                # toggleable set so retired tool names can't leak into
-                # the per-turn payload.
-                merged["enabled_optional_tools"] = sanitize_enabled_tools(
-                    merged.get("enabled_optional_tools")
-                )
                 return merged
         except Exception:
             pass
@@ -1900,8 +1887,8 @@ async def get_ui_settings():
     during bootstrap. Theme rides along so those pages can paint in the right
     one instead of flashing.
 
-    Everything else under ``ui`` (sidebar_nav_order, enabled_optional_tools,
-    chat_response_timeout, …) describes what the deployment has turned on, so
+    Everything else under ``ui`` (sidebar_nav_order, chat_response_timeout,
+    …) describes what the deployment has turned on, so
     it stays behind auth: read it from the ``ui`` key of GET /settings.
     """
     settings = load_ui_settings()

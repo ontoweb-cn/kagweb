@@ -298,7 +298,7 @@ export function TopNavList({
   const groups = useOrderedGroups();
 
   return (
-    <nav aria-label={t("Learning")} className="md:hidden">
+    <nav aria-label={t("Workspace")} className="md:hidden">
       {groups.map((group) => (
         <div key={group.id}>
           <div className="flex items-center gap-1.5 px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
@@ -363,7 +363,7 @@ export default function TopBanner({
       </div>
 
       <nav
-        aria-label={t("Learning")}
+        aria-label={t("Workspace")}
         className="flex items-center gap-1 max-md:hidden"
       >
         {groups.map((group) => (

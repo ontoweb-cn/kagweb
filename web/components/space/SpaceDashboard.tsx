@@ -16,7 +16,7 @@ import { SPACE_MCP_SURFACE, loadMcpSurface } from "@/components/mcp/surface";
 import { listSessions } from "@/lib/session-api";
 
 /**
- * Learning Space dashboard — the hub of `/space`.
+ * Space dashboard — the hub of `/space`.
  *
  * Replaces the old "land directly in a section behind a side list" flow with a
  * single overview the learner enters from. Each tile is a real entry point that
@@ -171,7 +171,7 @@ export default function SpaceDashboard() {
     <div>
       <header className="mb-8">
         <h1 className="font-serif text-[24px] font-semibold leading-tight tracking-tight text-[var(--foreground)]">
-          {tr({ zh: "学习空间", en: "Learning Space" })}
+          {tr({ zh: "空间", en: "Space" })}
         </h1>
         <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-[var(--muted-foreground)]">
           {tr({

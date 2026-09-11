@@ -1,9 +1,9 @@
-import { GraduationCap, House, LayoutGrid, Settings } from "lucide-react";
+import { House, Layers, LayoutGrid, Settings } from "lucide-react";
 
 import type { Capability } from "@/lib/capability-routes";
 
 /** Which top-banner menu group an entry belongs to (see ``TOP_NAV_GROUPS``). */
-export type TopNavGroupId = "learning";
+export type TopNavGroupId = "workspace";
 
 export interface NavEntry {
   href: string;
@@ -26,18 +26,18 @@ export interface NavEntry {
 export const PRIMARY_NAV: NavEntry[] = [
   {
     href: "/chat",
-    label: "Learning Agent",
+    label: "Chat",
     icon: House,
     tooltipKey: "Home tooltip",
     requires: "llm",
-    group: "learning",
+    group: "workspace",
   },
   {
     href: "/space",
-    label: "Learning Space",
+    label: "Space",
     icon: LayoutGrid,
     tooltipKey: "Space tooltip",
-    group: "learning",
+    group: "workspace",
   },
 ];
 
@@ -64,10 +64,10 @@ export interface TopNavGroup {
  *  as a column in the sidebar. */
 export const TOP_NAV_GROUPS: TopNavGroup[] = [
   {
-    id: "learning",
-    label: "Learning",
-    icon: GraduationCap,
-    entries: PRIMARY_NAV.filter((entry) => entry.group === "learning"),
+    id: "workspace",
+    label: "Workspace",
+    icon: Layers,
+    entries: PRIMARY_NAV.filter((entry) => entry.group === "workspace"),
   },
 ];
 

@@ -107,18 +107,6 @@ export interface SessionDetail {
   active_turns?: ActiveTurnSummary[];
 }
 
-export interface QuizResultItem {
-  question_id?: string;
-  question: string;
-  question_type?: string;
-  options?: Record<string, string>;
-  user_answer: string;
-  correct_answer: string;
-  explanation?: string;
-  difficulty?: string;
-  is_correct: boolean;
-}
-
 async function expectJson<T>(response: Response): Promise<T> {
   if (response.status === 401 && typeof window !== "undefined") {
     window.location.href = loginHref(browserReturnPath(window.location));
@@ -227,22 +215,6 @@ export async function deleteSession(sessionId: string): Promise<void> {
   });
   await expectJson<{ deleted: boolean }>(response);
   invalidateClientCache("sessions:");
-}
-
-export async function recordQuizResults(
-  sessionId: string,
-  answers: QuizResultItem[],
-  turnId?: string | null,
-): Promise<void> {
-  const response = await apiFetch(
-    apiUrl(`/api/sessions/${sessionId}/quiz-results`),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers, turn_id: turnId || "" }),
-    },
-  );
-  await expectJson<{ recorded: boolean }>(response);
 }
 
 export async function deleteMessage(

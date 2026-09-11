@@ -109,7 +109,7 @@ def parse_document_with_mineru(
         print("Install the current CLI with `pip install mineru` for images and Office files.")
         return False
 
-    # Project root is 3 levels up from kagweb/tools/question/
+    # Project root is 3 levels up from this module
     project_root = Path(__file__).parent.parent.parent.parent
     if output_base_dir is None:
         base_dir = project_root / "reference_papers"

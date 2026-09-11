@@ -14,9 +14,7 @@ cannot express, both of which a user-facing external-tool store needs:
   therefore not a gate. This view refuses an unauthorised provider tool at
   ``execute``, which is the one place every call path goes through.
 
-Built-in tools are untouched by the allowlist: which built-ins mount is
-already decided per turn by ``tool_composition``. The allowlist here governs
-only *provider* (deferred) tools.
+The allowlist here governs only *provider* (deferred) tools.
 """
 
 from __future__ import annotations
@@ -27,7 +25,6 @@ from typing import Any
 
 from kagweb.core.tool_protocol import BaseTool, ToolDefinition, ToolLookup, ToolResult
 from kagweb.runtime.providers.allowlist import Allowlist
-from kagweb.tools.prompting import compose_prompt_text
 
 logger = logging.getLogger(__name__)
 
@@ -103,26 +100,6 @@ class ScopedToolRegistry:
 
     def build_openai_schemas(self, names: list[str] | None = None) -> list[dict[str, Any]]:
         return [d.to_openai_schema() for d in self.get_definitions(names)]
-
-    def get_prompt_hints(self, names: list[str], language: str = "en") -> list[tuple[str, Any]]:
-        return [
-            (tool.name, tool.get_prompt_hints(language=language))
-            for tool in self.get_enabled(names)
-        ]
-
-    def build_prompt_text(
-        self,
-        names: list[str],
-        format: str = "list",
-        language: str = "en",
-        **opts: Any,
-    ) -> str:
-        return compose_prompt_text(
-            self.get_prompt_hints(names, language=language),
-            format=format,
-            language=language,
-            **opts,
-        )
 
     # ── execution ──────────────────────────────────────────────────────
 

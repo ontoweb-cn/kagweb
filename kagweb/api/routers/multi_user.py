@@ -108,7 +108,6 @@ async def put_user_grants(
         target_user_id=user_id,
         summary={
             "model_count": len(grant.get("models", {}).get("llm", []) or []),
-            "enabled_tools": grant.get("enabled_tools"),
             "mcp_tool_count": (
                 None if grant.get("mcp_tools") is None else len(grant.get("mcp_tools") or [])
             ),

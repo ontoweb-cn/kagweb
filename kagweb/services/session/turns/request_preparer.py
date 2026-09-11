@@ -251,33 +251,6 @@ class TurnRequestPreparer:
                 )
             except ValueError as exc:
                 raise RuntimeError(str(exc)) from exc
-        # If the caller didn't pin a per-turn tool list (e.g. non-web
-        # channels or the new web UI which sources tools from
-        # /settings/tools), back-fill from the user's saved toggleable-tool
-        # preference so the chat pipeline sees the same set the user picked
-        # in Settings. Callers that explicitly pass ``tools`` (including
-        # an empty list) keep their value untouched.
-        if payload.get("tools") is None:
-            try:
-                from kagweb.services.settings.interface_settings import (
-                    get_enabled_optional_tools,
-                )
-
-                payload = {**payload, "tools": list(get_enabled_optional_tools())}
-            except Exception:
-                payload = {**payload, "tools": []}
-        # Admin-imposed per-user tool whitelist (grant v2). Sits after the
-        # back-fill so explicit caller lists and settings defaults pass the
-        # same gate; this is the single enforcement point for every
-        # capability's turn.
-        from kagweb.multi_user.tool_access import allowed_optional_tools
-
-        allowed_tools = allowed_optional_tools()
-        if allowed_tools is not None:
-            payload = {
-                **payload,
-                "tools": [t for t in (payload.get("tools") or []) if t in allowed_tools],
-            }
         payload = {**payload, "llm_selection": llm_selection}
         lease = None
         if self.coordinator is not None:
@@ -291,7 +264,6 @@ class TurnRequestPreparer:
                 raise RuntimeError("Session already has an active or recovering turn")
         preference_update: dict[str, Any] = {
             "capability": requested_capability,
-            "tools": list(payload.get("tools") or []),
             "language": str(payload.get("language") or "en"),
         }
 

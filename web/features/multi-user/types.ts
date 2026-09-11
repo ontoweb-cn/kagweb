@@ -4,8 +4,6 @@ export type GrantPayload = {
   models: {
     llm: Array<Record<string, unknown>>;
   };
-  /** null = default (all system tools), [] = none, array = whitelist. */
-  enabled_tools: string[] | null;
   /** null = default (all MCP tools), [] = none, array = whitelist. */
   mcp_tools: string[] | null;
   /** null = follow deployment exec policy, false = always disabled. */

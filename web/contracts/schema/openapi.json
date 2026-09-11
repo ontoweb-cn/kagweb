@@ -9646,7 +9646,7 @@
     },
     "/api/settings/ui": {
       "get": {
-        "description": "Return the pre-session UI preferences: theme and the two languages.\n\nPublic by design, which is why it is a narrow projection rather than the\nsaved ``ui`` blob. The app shell — and the statically prerendered auth\npages, which have no session at all — adopt the persisted languages here\nduring bootstrap. Theme rides along so those pages can paint in the right\none instead of flashing.\n\nEverything else under ``ui`` (sidebar_nav_order, enabled_optional_tools,\nchat_response_timeout, …) describes what the deployment has turned on, so\nit stays behind auth: read it from the ``ui`` key of GET /settings.",
+        "description": "Return the pre-session UI preferences: theme and the two languages.\n\nPublic by design, which is why it is a narrow projection rather than the\nsaved ``ui`` blob. The app shell — and the statically prerendered auth\npages, which have no session at all — adopt the persisted languages here\nduring bootstrap. Theme rides along so those pages can paint in the right\none instead of flashing.\n\nEverything else under ``ui`` (sidebar_nav_order, chat_response_timeout,\n…) describes what the deployment has turned on, so\nit stays behind auth: read it from the ``ui`` key of GET /settings.",
         "operationId": "get_ui_settings_api_settings_ui_get",
         "responses": {
           "200": {

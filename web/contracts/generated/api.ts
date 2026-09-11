@@ -1572,8 +1572,8 @@ export interface paths {
      *     during bootstrap. Theme rides along so those pages can paint in the right
      *     one instead of flashing.
      *
-     *     Everything else under ``ui`` (sidebar_nav_order, enabled_optional_tools,
-     *     chat_response_timeout, …) describes what the deployment has turned on, so
+     *     Everything else under ``ui`` (sidebar_nav_order, chat_response_timeout,
+     *     …) describes what the deployment has turned on, so
      *     it stays behind auth: read it from the ``ui`` key of GET /settings.
      */
     readonly get: operations["get_ui_settings_api_settings_ui_get"];

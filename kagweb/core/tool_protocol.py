@@ -95,30 +95,6 @@ class ToolDefinition:
 
 
 @dataclass
-class ToolAlias:
-    """Alternative tool name or sub-mode exposed in prompts."""
-
-    name: str
-    description: str = ""
-    input_format: str = ""
-    when_to_use: str = ""
-    phase: str = ""
-
-
-@dataclass
-class ToolPromptHints:
-    """Prompt-level guidance describing when and how to use a tool."""
-
-    short_description: str = ""
-    when_to_use: str = ""
-    input_format: str = ""
-    guideline: str = ""
-    note: str = ""
-    phase: str = ""
-    aliases: list[ToolAlias] = field(default_factory=list)
-
-
-@dataclass
 class ToolResult:
     """Standardised return value from a tool execution.
 
@@ -192,14 +168,6 @@ class ToolLookup(Protocol):
 
     def build_openai_schemas(self, names: list[str] | None = None) -> list[dict[str, Any]]: ...
 
-    def build_prompt_text(
-        self,
-        names: list[str],
-        format: str = "list",
-        language: str = "en",
-        **opts: Any,
-    ) -> str: ...
-
     async def execute(self, name: str, /, **kwargs: Any) -> Any: ...
 
 
@@ -240,13 +208,6 @@ class BaseTool(ABC):
     async def execute(self, **kwargs: Any) -> ToolResult:
         """Run the tool with the given keyword arguments."""
         ...
-
-    def get_prompt_hints(self, language: str = "en") -> ToolPromptHints:
-        """Return prompt-level metadata for dynamic prompt assembly."""
-        definition = self.get_definition()
-        return ToolPromptHints(
-            short_description=definition.description,
-        )
 
     @property
     def name(self) -> str:

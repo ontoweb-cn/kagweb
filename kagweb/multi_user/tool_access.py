@@ -1,19 +1,11 @@
 """Per-user tool and exec access resolution (grant v2).
 
-Optional built-in tools keep the partner config semantics for real users:
-``None`` means "unrestricted / follow defaults", a set is an explicit
-whitelist. MCP tools are different because they can proxy host-side
-capabilities through configured MCP servers. For non-admin real users an
-absent MCP grant is therefore deny-by-default; administrators remain
-unrestricted. Synthetic scopes (partners) are handled by the chat pipeline,
-where their owner-scoped whitelist travels through context metadata
-(``mcp_tools_filter`` / ``enabled_tools``).
+MCP tools can proxy host-side capabilities through configured MCP servers.
+For non-admin real users an absent MCP grant is therefore deny-by-default;
+administrators remain unrestricted.
 
 Enforcement points:
 
-* ``allowed_optional_tools`` — turn_runtime filters every turn's ``tools``
-  payload (single choke point for all capabilities), and the tools router
-  filters the /settings/tools listing so the UI matches.
 * ``allowed_mcp_tools`` — the chat pipeline intersects this with any
   caller-scoped ``mcp_tools_filter`` before building the deferred-tool
   loader, so a granted-away MCP tool can be neither listed nor loaded. For
@@ -39,17 +31,6 @@ def _current_grant() -> dict | None:
     if user.is_admin:
         return None
     return load_grant(user.id)
-
-
-def allowed_optional_tools() -> set[str] | None:
-    """Whitelist of user-toggleable tool names, ``None`` = unrestricted."""
-    grant = _current_grant()
-    if grant is None:
-        return None
-    value = grant.get("enabled_tools")
-    if value is None:
-        return None
-    return {str(name) for name in value}
 
 
 def allowed_mcp_tools() -> set[str] | None:
@@ -107,7 +88,6 @@ def combine_whitelists(caller: set[str] | None, user: set[str] | None) -> set[st
 __all__ = [
     "allowed_cli_apps",
     "allowed_mcp_tools",
-    "allowed_optional_tools",
     "combine_whitelists",
     "exec_override",
 ]

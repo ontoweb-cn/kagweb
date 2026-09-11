@@ -20,7 +20,7 @@ function BackToHub() {
         strokeWidth={1.8}
         className="transition-transform group-hover:-translate-x-0.5"
       />
-      {t("Learning Space")}
+      {t("Space")}
     </Link>
   );
 }

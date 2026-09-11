@@ -12,7 +12,6 @@ Two complementary pieces live here:
 from kagweb.i18n.metadata_i18n import (
     capability_description_i18n,
     localized_description,
-    tool_description_i18n,
 )
 from kagweb.i18n.status_i18n import StatusI18n
 
@@ -20,5 +19,4 @@ __all__ = [
     "StatusI18n",
     "capability_description_i18n",
     "localized_description",
-    "tool_description_i18n",
 ]
