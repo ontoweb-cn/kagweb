@@ -387,6 +387,8 @@ KAGWeb 不再持有工具实现，改为**桥接**：
 
 这比「把 4 个工具塞进 prompt」更符合 agent-native 的架构方向，也复用了 KAGWeb 已有的 `services/mcp/`。
 > **✅ 决策记录（2026-09-11）**：MCP 重定位采纳**撤退**——整块移除（`services/mcp/` ~3.4k 行、两个路由、Space MCP 页 + admin registry UI、`runtime/providers/`、`ToolRegistry`/`ScopedToolRegistry`/`deferred_tools`、`core/tool_protocol.py`、`mcp_tools` grant 维度、`mcp` 依赖与 brand-icons 管线）。理由：工具投递一环自 in-process loop 移除后即断裂（`build_tool_view` 零生产调用者），且无「用户自有 MCP server 参与对话」的真实需求；配置面虽活跃但不支撑任何端到端价值。附件可达性缺口已按「附件落盘 session workspace + manifest 带路径」落地（同日，`attachment_workspace.py`）。
+>
+> **✅ 后续收口（2026-09-11，人工 E2E）**：① 附件链路人工端到端验证（CLI backend 对话上传附件 → manifest 路径 → agent 实读 → 删除清理）首次走通——此前物化门控读取 profile 上不存在的 `family` 键，**真实环境从未触发**（`claude-code` 预设下 agent 拿不到文件）；family 现经 `agent_loop.settings.profile_family()` 从 preset 注册表派生，随 preparer 单次 settings 读取放 payload 下发（`agent_loop_profile_family`），executor 兜底探测仅作 fallback。② 会话删除现同步回收 workspace：附件副本、按 turn id 键控的 `events.jsonl` 目录、空会话目录（agent 自写产物保留）；附件 store 原件清理收敛进 `workspace_cleanup.purge_session_artifacts`（API 路由与 SDK facade 共用）。③ CLI `run` 的 `--tool` 选项喂给已删除的契约字段导致 `kagweb run chat` 必然 pydantic 报错，已随工具包移除一并摘除。
 
 **7. 清理模型目录残留**（P2-2）
 
