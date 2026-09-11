@@ -578,7 +578,7 @@ class SQLiteSessionStore:
         """Back-fill ``user_answer_images_json`` on legacy DBs.
 
         The column stores a JSON array of ``{id, url, filename, mime_type}``
-        records for image attachments uploaded as part of the learner's
+        records for image attachments uploaded as part of the user's
         answer. The bytes themselves live in the AttachmentStore; we only
         keep references in the row so notebook_entries stays lean.
         """
@@ -597,7 +597,7 @@ class SQLiteSessionStore:
         """Back-fill ``ai_judgment`` on legacy DBs.
 
         Stores the latest AI-judge text per entry as plain markdown. Empty
-        string means the learner has not run the AI judge for this entry
+        string means the user has not run the AI judge for this entry
         yet.
         """
         cols = {row[1] for row in conn.execute("PRAGMA table_info(notebook_entries)").fetchall()}
@@ -1827,7 +1827,7 @@ class SQLiteSessionStore:
     # because a flat "Recents" list mixed them in with ordinary chats and
     # clicking one dropped the reader into the generic chat surface without
     # their material — but
-    # hiding them meant a learner had no way back to a reading conversation
+    # hiding them meant the user had no way back to a reading conversation
     # except by reopening its collection. The sidebar now files them under
     # their collection and ``sessionRoute`` sends a click back to the reader,
     # so they belong in the list like everything else.
@@ -2214,7 +2214,7 @@ class SQLiteSessionStore:
             conditions.append(f"n.session_id IN ({placeholders})")
             params.extend(query.session_ids)
         if query.search:
-            # ESCAPE so a learner searching for "50%" or "a_b" gets literal
+            # ESCAPE so a user searching for "50%" or "a_b" gets literal
             # matches instead of the wildcards those characters would be.
             needle = f"%{_escape_like(query.search)}%"
             conditions.append(
@@ -2553,9 +2553,9 @@ class SQLiteSessionStore:
         """Whether a category already claims this name, ignoring case.
 
         The table's UNIQUE index is case-sensitive, so "Math" and "math"
-        both fit — but they read as one pile to a learner, and the agent
+        both fit — but they read as one pile to the user, and the agent
         resolves names case-insensitively, so it would file into the first
-        and report a name the learner sees twice in the rail.
+        and report a name the user sees twice in the rail.
         """
         row = conn.execute(
             "SELECT id FROM notebook_categories WHERE name = ? COLLATE NOCASE",
@@ -2583,7 +2583,7 @@ class SQLiteSessionStore:
         self,
         session_ids: Sequence[str] | None = None,
     ) -> list[dict[str, Any]]:
-        # The scope narrows the *count*, never the list: a category the learner
+        # The scope narrows the *count*, never the list: a category the user
         # created still exists inside a course that has not filled it yet, and
         # dropping the row would make it look deleted. Hence the condition rides
         # on the join instead of a WHERE clause.
@@ -2700,7 +2700,7 @@ class SQLiteSessionStore:
         """Add/remove many entries to one category in a single transaction.
 
         Returns the number of links actually changed, so a caller that asked
-        to file 20 questions can tell the learner "18 filed, 2 already there"
+        to file 20 questions can tell the user "18 filed, 2 already there"
         instead of claiming a no-op succeeded.
         """
         if not entry_ids:

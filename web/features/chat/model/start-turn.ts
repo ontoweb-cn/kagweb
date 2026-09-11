@@ -13,7 +13,6 @@ export interface StartTurnInput {
   content: string;
   capability?: string | null;
   sessionId?: string | null;
-  tools?: string[] | null;
   language?: string | null;
   capabilityConfig?: Record<string, unknown>;
   allowedCapabilityConfigKeys?: readonly string[];

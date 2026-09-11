@@ -71,7 +71,6 @@ export type SubagentConsultBudget = number | null;
 export type SupersededTurnId = string | null;
 export type TimedMediaId = string | null;
 export type TimeSeconds = number;
-export type Tools = string[] | null;
 export type Type1 = "message" | "start_turn";
 export type WorkspaceMode = string | null;
 export type AfterSeq = number;
@@ -292,7 +291,6 @@ export interface StartTurnCommand {
   superseded_turn_id?: SupersededTurnId;
   timed_media_id?: TimedMediaId;
   timed_media_viewport?: TimedMediaViewport | null;
-  tools?: Tools;
   type?: Type1;
   workspace_mode?: WorkspaceMode;
 }

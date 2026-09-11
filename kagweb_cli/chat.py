@@ -30,7 +30,6 @@ from .common import (
 class ChatState:
     session_id: str | None = None
     capability: str = "chat"
-    tools: list[str] = field(default_factory=list)
     language: str = "en"
     history_references: list[str] = field(default_factory=list)
     config: dict[str, Any] = field(default_factory=dict)
@@ -41,7 +40,6 @@ def register(app: typer.Typer) -> None:
     def chat(
         ctx: typer.Context,
         session: str | None = typer.Option(None, "--session", help="Resume an existing session."),
-        tool: list[str] = typer.Option([], "--tool", "-t", help="Pre-enable tool(s)."),
         capability: str = typer.Option("chat", "--capability", "-c", help="Initial capability."),
         history_ref: list[str] = typer.Option([], "--history-ref", help="Referenced session ids."),
         language: str = typer.Option("en", "--language", "-l", help="Response language."),
@@ -63,7 +61,6 @@ def register(app: typer.Typer) -> None:
         state = ChatState(
             session_id=session,
             capability=capability,
-            tools=list(tool),
             language=language,
             history_references=[item.strip() for item in history_ref if item.strip()],
             config=initial_config,
@@ -81,7 +78,6 @@ async def _chat_repl(state: ChatState) -> None:
             raise typer.Exit(code=1)
         preferences = existing.get("preferences", {}) or {}
         state.capability = str(preferences.get("capability") or state.capability or "chat")
-        state.tools = list(preferences.get("tools") or state.tools)
         state.language = str(preferences.get("language") or state.language)
         state.history_references = list(
             preferences.get("history_references") or state.history_references
@@ -93,7 +89,6 @@ async def _chat_repl(state: ChatState) -> None:
             "Type a message to chat. Ctrl-C interrupts a running turn. Commands:\n"
             "  /quit  /session  /status  /new  /clear\n"
             "  /regenerate (alias /retry) — re-run the last user message\n"
-            "  /tool on|off <name>\n"
             "  /cap <name>\n"
             "  /history add <id> | /history clear\n"
             "  /show last|<n> — expand a tool result or captured thinking\n"
@@ -144,7 +139,6 @@ async def _chat_repl(state: ChatState) -> None:
                 content=user_input,
                 capability=state.capability,
                 session_id=state.session_id,
-                tools=list(state.tools),
                 language=state.language,
                 config=dict(state.config),
                 history_references=list(state.history_references),
@@ -178,14 +172,6 @@ def _apply_command(raw: str, state: ChatState) -> bool:
         return True
     if command == "/refs":
         _print_refs(state)
-        return True
-    if command == "/tool" and len(parts) >= 3:
-        action, tool_name = parts[1], parts[2]
-        if action == "on" and tool_name not in state.tools:
-            state.tools.append(tool_name)
-        elif action == "off" and tool_name in state.tools:
-            state.tools.remove(tool_name)
-        _print_state(state)
         return True
     if command == "/cap" and len(parts) >= 2:
         state.capability = parts[1]
@@ -251,7 +237,6 @@ def _print_state(state: ChatState) -> None:
     _print_literal(
         f"session={state.session_id or '(new)'} "
         f"capability={state.capability} "
-        f"tools={_format_list(state.tools)} "
         f"history={_format_list(state.history_references)} "
         f"language={state.language} "
         f"config={_format_config(state.config)}",
@@ -264,7 +249,6 @@ def _print_refs(state: ChatState) -> None:
     fields = (
         ("session", state.session_id or "(new)"),
         ("capability", state.capability),
-        ("tools", _format_list(state.tools)),
         ("history", _format_list(state.history_references)),
         ("language", state.language),
         ("config", _format_config(state.config)),

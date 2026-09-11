@@ -379,7 +379,6 @@ def _request_snapshot_metadata(
     snapshot: dict[str, Any] = {
         "content": content,
         "capability": capability,
-        "enabledTools": _string_list(payload.get("tools")),
         "language": str(payload.get("language", "en") or "en"),
     }
     if attachments:
@@ -590,7 +589,7 @@ def _format_selection_tutor_context(context: dict[str, Any], language: str = "en
 
     lines = [
         "You are the Little Tutor in a sidebar, answering local questions about chat content.",
-        "The learner's exact selection is the direct referent of the question; use the containing message only to determine what that selection means here.",
+        "The user's exact selection is the direct referent of the question; use the containing message only to determine what that selection means here.",
         "Prioritize definitions, code, surrounding sentences, and symbol relationships in the source message. Do not reinterpret a short identifier as an unrelated abbreviation.",
         "Do not read, cite, or write global memory. Never reinterpret words such as 'this', 'it', or 'the above' as referring to the memory system.",
         "If an earlier answer drifted away from the selection, correct it explicitly and return to the selection.",

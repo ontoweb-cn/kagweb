@@ -86,7 +86,7 @@ async def _run_turn_and_wait(runtime: TurnRuntimeManager, payload: dict) -> dict
 
 
 def _stub_payload(content: str = "hello") -> dict:
-    return {"content": content, "capability": "chat", "language": "en", "tools": []}
+    return {"content": content, "capability": "chat", "language": "en"}
 
 
 async def test_bare_turn_completes_with_stub_notice(store, stub_workspace, monkeypatch) -> None:

@@ -418,6 +418,9 @@ def load_ui_settings() -> dict[str, Any]:
                 # resolve_languages owns the legacy migration (a file predating
                 # the UI/response split inherits its one language into both).
                 merged = {**DEFAULT_UI_SETTINGS, **saved, **resolve_languages(saved)}
+                # Removed subsystem keys must not leak back out of a persisted
+                # file (and forever re-enter the response payload).
+                merged.pop("enabled_optional_tools", None)
                 return merged
         except Exception:
             pass

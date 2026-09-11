@@ -3249,11 +3249,6 @@ export interface components {
       readonly timed_media_viewport:
         components["schemas"]["TimedMediaViewport"] | null;
       /**
-       * Tools
-       * @default null
-       */
-      readonly tools: readonly string[] | null;
-      /**
        * Workspace Mode
        * @default null
        */

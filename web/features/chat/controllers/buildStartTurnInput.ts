@@ -69,7 +69,6 @@ export function buildStartTurnInput(input: StartTurnInput): StartTurnCommand {
     content: input.content,
     capability: input.capability === undefined ? "chat" : input.capability,
     session_id: input.sessionId ?? null,
-    tools: input.tools ?? null,
     language: input.language ?? null,
     config: capabilityConfig(input),
     attachments: input.attachments ?? [],

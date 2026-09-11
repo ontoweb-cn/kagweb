@@ -4,7 +4,7 @@ Per-user MCP API
 
 The servers an individual configures for themselves, mounted at
 ``/api/space/mcp``. Auth-gated, **not** admin-gated: this is the whole point
-of the surface — a learner adds the hosted services they use without an
+of the surface — a user adds the hosted services they use without an
 administrator in the loop.
 
 What keeps that safe is narrow rather than trusting:

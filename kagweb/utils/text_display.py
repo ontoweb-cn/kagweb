@@ -1,4 +1,4 @@
-"""Helpers for learner-facing text that models sometimes double-encode."""
+"""Helpers for user-facing text that models sometimes double-encode."""
 
 from __future__ import annotations
 

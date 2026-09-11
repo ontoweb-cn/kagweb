@@ -66,7 +66,6 @@ class UnifiedContext:
         session_id: Persistent conversation identifier.
         user_message: The current user input.
         conversation_history: Previous messages in OpenAI format.
-        enabled_tools: Tool names the user has toggled on (Level 1).
             ``None`` means "not specified", while ``[]`` means
             "explicitly disable all optional tools".
         allowed_builtin_tools: Whitelist gating the built-in auto-mounted tools.
@@ -95,7 +94,6 @@ class UnifiedContext:
     session_id: str = ""
     user_message: str = ""
     conversation_history: list[dict[str, Any]] = field(default_factory=list)
-    enabled_tools: list[str] | None = None
     allowed_builtin_tools: list[str] | None = None
     active_capability: str | None = None
     attachments: list[Attachment] = field(default_factory=list)

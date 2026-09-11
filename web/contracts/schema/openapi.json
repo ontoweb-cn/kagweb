@@ -2356,21 +2356,6 @@
             ],
             "default": null
           },
-          "tools": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Tools"
-          },
           "workspace_mode": {
             "anyOf": [
               {

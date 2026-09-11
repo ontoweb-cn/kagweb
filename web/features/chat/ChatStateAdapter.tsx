@@ -2081,7 +2081,6 @@ export function ChatStateAdapterProvider({
         key,
         buildStartTurnInput({
         content,
-        tools: effectiveTools,
         capability: effectiveCapability,
         workspaceMode: effectiveWorkspaceMode ?? "",
         sessionId: session.sessionId,

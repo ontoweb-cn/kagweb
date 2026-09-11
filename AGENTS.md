@@ -29,7 +29,8 @@ Entry Points:  CLI (Typer)  |  WebSocket /ws  |  Python SDK
                          │              │
               ┌──────────▼──┐  ┌────────▼──────────┐
               │ ToolRegistry │  │ CapabilityRegistry │
-              │  (Level 1)   │  │   (Level 2)        │
+              │ (provider    │  │   (Level 2)        │
+              │  tools only) │  │                    │
               └──────────────┘  └────────┬──────────┘
                                           │ chat delegates to
                               ┌───────────▼───────────┐

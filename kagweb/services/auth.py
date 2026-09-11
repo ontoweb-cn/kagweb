@@ -297,6 +297,12 @@ def decode_token(token: str) -> TokenPayload | None:
         username = payload.get("sub")
         if not username:
             return None
+        if payload.get("dcid") or payload.get("dcs"):
+            # Legacy device-credential claim: the device subsystem (and with
+            # it server-side device revocation) is removed, so such a token
+            # must not silently degrade into a normal session. Rejecting it
+            # here expires every outstanding device token immediately.
+            return None
         user_id = str(payload.get("uid") or "")
         if not user_id:
             record = _load_users().get(str(username)) or {}

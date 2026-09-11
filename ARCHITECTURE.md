@@ -275,7 +275,11 @@ removed — the agent-loop backend carries its own tooling.
   `"standard"` on load.
 - **Builtin tool package**: `tools/` (brainstorm/web_search/paper_search/
   reason, question bank, prompt-hint YAMLs) and the `enabled_tools` grant
-  dimension. MCP/CLI-app tool access stays grant-gated.
+  dimension. MCP/CLI-app tool access stays grant-gated. The turn contract
+  lost its inert `tools` field, and legacy device-credential JWTs (carrying
+  the removed `dcid`/`dcs` claims) are rejected at decode time, so any
+  outstanding device session dies immediately instead of outliving the
+  revocation path.
 - **Satellites**: memory, skills/EduHub, cron, sandbox execution, subagent
   (external CLI agent) harness, books, co-writer, notebooks, reading,
   video learning, visualizers, courses, CLI apps, videogen.

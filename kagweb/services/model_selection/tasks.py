@@ -3,7 +3,7 @@
 Two calls happen without anyone requesting them: naming a conversation once it
 has its first exchange, and writing the three starting points under the home
 composer. Both are short, frequent and latency-visible, and neither benefits
-from the model a learner picked for their actual reasoning — a small fast model
+from the model the user picked for their actual reasoning — a small fast model
 writes a four-word title just as well and costs a fraction as much.
 
 So the catalog carries a ``task`` service, shaped exactly like ``llm``:

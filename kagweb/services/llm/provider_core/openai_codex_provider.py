@@ -204,7 +204,7 @@ async def _request_codex(
         async with client.stream("POST", url, headers=headers, json=body) as response:
             if response.status_code != 200:
                 raw = await response.aread()
-                # Kept out of the reply the learner sees, but an operator cannot
+                # Kept out of the reply the user sees, but an operator cannot
                 # diagnose an upstream rejection without the body.
                 logger.debug(
                     "Codex API returned HTTP {}: {}",

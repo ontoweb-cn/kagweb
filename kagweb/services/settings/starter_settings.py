@@ -4,7 +4,7 @@ One knob, stored per user in ``data/user/settings/starters.json``: how many
 recent activities the model is shown when it proposes what to explore next.
 
 Per user rather than deployment-wide because it tunes a reading of *this*
-learner's own memory, and because it costs nothing on the server — it changes
+user's own memory, and because it costs nothing on the server — it changes
 the size of one prompt, not the resources anyone else can claim.
 """
 

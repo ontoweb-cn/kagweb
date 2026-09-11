@@ -1108,21 +1108,6 @@
           ],
           "default": null
         },
-        "tools": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Tools"
-        },
         "type": {
           "default": "start_turn",
           "enum": [

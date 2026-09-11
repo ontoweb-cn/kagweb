@@ -118,7 +118,7 @@ class TurnLifecycle:
         Managed application updates use this coarse process-level signal before
         stopping the server. Placeholders without a task still count as live:
         they represent turns paused between setup and execution or awaiting a
-        resume path, and interrupting either would lose learner-visible work.
+        resume path, and interrupting either would lose user-visible work.
         """
         async with self._lock:
             return any(

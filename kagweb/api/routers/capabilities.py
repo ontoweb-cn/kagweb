@@ -6,7 +6,7 @@ repository. Capabilities also arrive from plugins, and the Whisper practice
 room is one of those: its pages live here while ``whisper_visitor`` /
 ``whisper_trainee`` are served by an out-of-tree capability. A page had no way
 to ask whether the backend could honour the name it was about to send, so a
-stock install offered the entry, sent the turn anyway, and the learner got
+stock install offered the entry, sent the turn anyway, and the user got
 ``Unknown capability: whisper_visitor. Available: [...]`` (#963).
 
 This endpoint exposes the backend-owned identity, manifest, and validated
