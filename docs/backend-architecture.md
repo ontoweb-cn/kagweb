@@ -2,7 +2,8 @@
 
 > 适用版本：KAGWeb 0.2.1（`kagweb/__version__.py`）· Python 3.11+
 > 代码根目录：`kagweb/`；本文所有路径均相对仓库根目录。
-> 核对基准：`main` 分支 `c3ffe57`（2026-09-10 实测）
+> 核对基准：`main` 分支 `c3ffe57`（2026-09-10 实测）；§1 规模表已按批次四/五移除后的 `ef8bbf5`（2026-09-11）更新
+> **批次四/五移除已落地**（IM 通道合伙人、人格、学习者+监护人、内置工具包）。文中引用被删文件/端点的行号与示例（如 `partners/*`、`services/persona/*`、`tools/*`、`/ws/partners*`）自该项起为**历史评审记录**，现状以 [`../ARCHITECTURE.md`](../ARCHITECTURE.md) 为准。
 > 关联文档：[`backend-llm-deployment.md`](./backend-llm-deployment.md)（LLM 部署机制与 8 条产品决策）、[`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 >
 > **注意**：本文描述的是**现状**。`backend-llm-deployment.md` §五已就 Skills、人格、合伙人、LLM 设置、Intellect 对接等做出 8 条移除/改造决策，落地后本文若干章节（尤其 §1 的模块规模表、§7 的多用户授权）将随之变化。
@@ -49,23 +50,23 @@ KAGWeb 后端是**框架外壳（framework shell）**，不是「带 LLM 调用�
 
 | 模块 | 文件 | 行数 | 职责 |
 |---|---:|---:|---|
-| `services/` | 228 | 56,270 | 会话、LLM、配置、解析、codex_auth 等 |
-| `partners/` | 31 | 12,749 | IM 通道实现（16 平台 / 17 模块） |
-| `api/` | 31 | 10,775 | HTTP/WS API，214 HTTP + 3 WS 端点 |
-| `runtime/` | 39 | 6,680 | 编排、注册表、协调、leader 选举 |
-| `utils/` | 12 | 3,256 | 文档抽取、文件类型等 |
-| `multi_user/` | 11 | 1,666 | 鉴权、授权、审计 |
-| `tools/` | 10 | 1,800 | 内置工具（4 个） |
-| `core/` | 9 | 946 | 协议定义（context / stream / tool / capability） |
-| `capabilities/` | 5 | 851 | 轮次能力层（含 `chat` 唯一内置实现） |
-| `app/` | 6 | 782 | `ApplicationContainer`、`KAGWebApp` 门面 |
+| `services/` | 206 | 49,566 | 会话、LLM、配置、解析、codex_auth 等 |
+| `api/` | 25 | 7,011 | HTTP/WS API（合伙人/人格/学习者/设备端点已随子系统移除） |
+| `runtime/` | 39 | 6,583 | 编排、注册表、协调、leader 选举 |
+| `utils/` | 13 | 3,272 | 文档抽取、文件类型等 |
+| `multi_user/` | 11 | 1,642 | 鉴权、授权、审计 |
+| `core/` | 9 | 895 | 协议定义（context / stream / tool / capability） |
+| `capabilities/` | 5 | 1,190 | 轮次能力层（含 `chat` 唯一内置实现） |
+| `app/` | 6 | 781 | `ApplicationContainer`、`KAGWebApp` 门面 |
 | `logging/` | 10 | 605 | 结构化日志 |
 | `events/` | 2 | 220 | 遗留 `EventBus`（不在流式热路径） |
-| `i18n/` | 3 | 175 | 国际化词条 |
+| `i18n/` | 3 | 110 | 国际化词条 |
 | `plugins/` | 2 | 174 | 插件加载 |
 | `config/` | 6 | 151 | 顶层配置常量 |
 | `kagweb/*.py`（顶层） | 3 | 17 | `__init__` / `__main__` / `__version__` |
-| **合计** | **412** | **98,169** | 测试另计：221 个 `test_*.py` |
+| **合计** | **340** | **72,217** | 测试另计：194 个 `test_*.py` |
+
+> `partners/`（IM 通道）与 `tools/`（内置工具包）已整目录移除，不再计入。
 
 > `kagweb/knowledge/` 与 `kagweb/skills/` 为 0 个 `.py` 文件的幽灵目录，见 §9 第 4 项，未计入本表。
 
@@ -74,12 +75,11 @@ KAGWeb 后端是**框架外壳（framework shell）**，不是「带 LLM 调用�
 | 职责 | 位置 | 行数 |
 |---|---|---:|
 | 对话编排 | `runtime/orchestrator.py`、`runtime/turn_engine.py` | 见 `runtime/` 总 6,680 |
-| Agent loop 适配 | `services/agent_loop/` | 1,765 |
-| 会话与轮次存储 | `services/session/` | 10,052 |
-| LLM 供应商层 | `services/llm/` | 9,476 |
-| 配置与模型目录 | `services/config/` | 6,032 |
+| Agent loop 适配 | `services/agent_loop/` | 3,219 |
+| 会话与轮次存储 | `services/session/` | 9,965 |
+| LLM 供应商层 | `services/llm/` | 9,479 |
+| 配置与模型目录 | `services/config/` | 6,098 |
 | 文档解析 | `services/parsing/` | 4,812 |
-| IM 通道 | `partners/` + `services/partners/` + `services/partner_groups/` | 20,454 |
 
 ## 2. 主干调用链
 
@@ -111,7 +111,7 @@ CLI(kagweb_cli)   WebSocket /ws        Python SDK(KAGWebApp)
 
 **两个结构性事实：**
 
-1. **单一漏斗**。`ChatOrchestrator` 在全仓库**仅在** `runtime/turn_engine.py:23-25` 被实例化。CLI、Web、SDK、Partner 四条入口全部经由同一个 `TurnApplicationService` → `TurnEngine` → `ChatOrchestrator`，不存在两套对话实现。Partner 是复用而非旁路——`services/partners/runtime.py:468` 调用的就是同一个 `get_turn_engine().execute(context)`，只是外层套了合成用户作用域。
+1. **单一漏斗**。`ChatOrchestrator` 在全仓库**仅在** `runtime/turn_engine.py:23-25` 被实例化。CLI、Web、SDK 三条入口全部经由同一个 `TurnApplicationService` → `TurnEngine` → `ChatOrchestrator`，不存在两套对话实现。（批次四移除了第四条入口 Partner/IM 通道。）
 
 2. **延迟导入是有意为之**。`turn_engine.py:20-22` 的注释说明：lazy import 避免进程启动时的 provider/plugin 导入副作用，同时留下唯一的稳定 patch 点供测试与嵌入方使用。
 
@@ -134,7 +134,7 @@ def test_websocket_routes_share_one_canonical_namespace() -> None:
 
 即：代码是**有意**把所有 WS 端点收在 `/ws` 下的（三个端点均属一个 canonical 命名空间）。`ARCHITECTURE.md` 的 `/api/unified/ws` 因此是明确的文档缺陷，而非设计歧义。该测试还断言 WS 路由**不得**携带 `require_learning_surface`（HTTP 专用鉴权依赖），与 §6 所述「WS 鉴权在 handler 内自理」互为印证。
 
-三个 WS 端点的实际路径：`/ws`（统一轮次协议）、`/ws/partners`（`main.py:493`）、`/ws/partner-groups`（`main.py:494`）。
+WS 端点现状：仅剩 `/ws`（统一轮次协议）；`/ws/partners` 与 `/ws/partner-groups` 已随批次四移除。
 
 > 附带说明：`AGENTS.md:107` 写的 `kagweb/api/routers/unified_ws.py` 是**模块路径**（确实存在），不涉及 URL，无需修正。
 
@@ -242,10 +242,9 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 | `/api/settings` | UI 偏好、模型目录、网络、agent-loop、解析、OAuth |
 | `/api/multi-user` | 授权（模型/工具/MCP/执行/Agent 后端） |
 | `/api/capabilities` | 能力清单与可调项 |
-| `/api/tools`、`/api/personas`、`/api/system`、`/api/voice` | 工具、人格、系统、语音 |
+| `/api/system`、`/api/voice` | 系统、语音（`/api/tools`、`/api/personas` 已随批次四/五移除） |
 | `/files/outputs`、`/files/attachments` | 产物与附件 |
 | **`/ws`** | **统一轮次协议（start_turn / subscribe / cancel / reply / regenerate）** |
-| `/ws/partners`、`/ws/partner-groups` | 伙伴与其群组的 socket |
 
 **三个入口**：
 

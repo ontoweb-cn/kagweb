@@ -3,9 +3,9 @@
 ## Overview
 
 KAGWeb is an **agent-native** framework organized around a two-layer plugin
-model — single-shot **Tools** invoked by the LLM, and multi-stage
-**Capabilities** that take over a turn — exposed through three entry points:
-CLI, WebSocket API, and Python SDK.
+model — provider **Tools** (MCP servers, CLI apps) registered into the
+dispatch registry, and multi-stage **Capabilities** that take over a turn —
+exposed through three entry points: CLI, WebSocket API, and Python SDK.
 
 This fork ships a **framework shell**: the runtime, provider, storage, and web
 layers are complete. The conversation backend is an external **agent loop** —
@@ -44,17 +44,10 @@ project-root `.env` files are intentionally ignored.
 
 ### Level 1 — Tools
 
-Single-function tools the user can toggle in `/settings/tools`:
-
-| Tool           | Description                                   |
-| -------------- | --------------------------------------------- |
-| `brainstorm`   | Breadth-first idea exploration with rationale |
-| `web_search`   | Web search with citations                     |
-| `paper_search` | arXiv preprint search                         |
-| `reason`       | Dedicated deep-reasoning LLM call             |
-
-`CONFIGURABLE_BUILTIN_TOOL_NAMES` (`kagweb/tools/builtin/__init__.py`) is the
-mount point for future context-gated tools.
+Built-in prompt-time tools are removed. `ToolRegistry`
+(`kagweb/runtime/registry/tool_registry.py`) holds **provider** tools only —
+MCP server tools and installed CLI apps — which stay grant-gated per user
+(`mcp_tools` / `cli_apps` grant dimensions, deny-by-default for non-admins).
 
 ### Level 2 — Capabilities
 
@@ -78,9 +71,6 @@ kagweb run chat "Explain Fourier transform"
 # Interactive REPL
 kagweb chat
 
-# Partners (IM-connected companions)
-kagweb partner list
-
 # Server
 kagweb serve --port 8082       # API server only
 kagweb start                   # backend + frontend together
@@ -99,7 +89,6 @@ kagweb start                   # backend + frontend together
 | `kagweb/core/tool_protocol.py`             | `BaseTool` + `ToolDefinition`        |
 | `kagweb/core/capability_protocol.py`       | `TurnCapability` + `CapabilityManifest` |
 | `kagweb/core/context.py`                   | `UnifiedContext` dataclass           |
-| `kagweb/tools/builtin/__init__.py`         | Built-in tool wrappers               |
 | `kagweb/capabilities/`                     | Built-in capability implementations  |
 | `kagweb/services/agent_loop/`              | Agent-loop backends (CLI/HTTP) + presets |
 | `kagweb/app.py`                            | `KAGWebApp` — Python SDK facade      |
@@ -127,9 +116,10 @@ pip install -e .        — Source install for development
 Source extras (.[extra]):
 .[cli]            — CLI-only dependency set
 .[server]         — Web/API server dependencies
-.[partners]       — Partner channel SDKs
-.[matrix]         — Matrix channel (matrix-nio; needs libolm)
-.[matrix-e2e]     — Matrix with end-to-end encryption
+.[codebuddy]      — CodeBuddy agent SDK
+.[video-learning]  — YouTube transcript ingestion
+.[math-animator]  — Manim animations
+.[parse-*]        — Alternative document parsing engines
 .[dev]            — Test / lint tooling
 .[all]            — Everything above
 ```

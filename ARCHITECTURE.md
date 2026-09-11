@@ -224,9 +224,9 @@ trace note — the turn still completes.
 3. **Add a backend preset** — extend `kagweb/services/agent_loop/builtin.py`
    (+ a translator for CLI shapes). No capability change needed.
 
-Tools mount through `ToolRegistry` (`kagweb/runtime/registry/tool_registry.py`);
-the four user-toggleable tools (`brainstorm`, `web_search`, `paper_search`,
-`reason`) live in `kagweb/tools/builtin/`.
+Provider tools (MCP servers, CLI apps) mount through `ToolRegistry`
+(`kagweb/runtime/registry/tool_registry.py`). Built-in prompt-time tools are
+removed — the agent-loop backend carries its own tooling.
 
 ## Known boundaries
 
@@ -246,11 +246,10 @@ the four user-toggleable tools (`brainstorm`, `web_search`, `paper_search`,
 | --- | --- | --- |
 | LLM providers | `kagweb/services/llm/` | OpenAI Chat Completions **and** Responses API wire protocols (`WireAPI = auto/responses/chat_completions`), Anthropic, Azure, Codex OAuth, Copilot, CodeBuddy, embedding-free |
 | Sessions | `kagweb/services/session/` | SQLite + PocketBase stores, turn runtime (prepare/execute/lifecycle/title), request snapshots, regenerate |
-| Turn coordination | `kagweb/runtime/` | multi-worker leader election, background commands (partners), memory reclaim |
+| Turn coordination | `kagweb/runtime/` | multi-worker leader election, memory reclaim |
 | Multi-user | `kagweb/multi_user/` | grants, model/tool/MCP access, audit |
 | Settings | `kagweb/services/config/` | model catalog (llm/task/search/tts/stt/imagegen), runtime settings, connection tests |
-| Partners | `kagweb/partners/` + `kagweb/services/partners/` | IM channels (Telegram/Discord/Slack/Feishu/WeCom/Napcat/MS Teams/...), per-partner workspace & soul |
-| Web | `web/` | Next.js, subpath-deployable (`NEXT_PUBLIC_BASE_PATH`), settings/multi-user/partners/space UIs |
+| Web | `web/` | Next.js, subpath-deployable (`NEXT_PUBLIC_BASE_PATH`), settings/multi-user/space UIs |
 | Document parsing | `kagweb/services/parsing/` + `kagweb/utils/document_extractor.py` | chat attachments (PDF/Office/EPUB/text) — independent of the removed RAG layer |
 
 ## Removed subsystems (vs upstream DeepMentor 1.6.4)
@@ -264,6 +263,19 @@ the four user-toggleable tools (`brainstorm`, `web_search`, `paper_search`,
   service, GitHub/web source sync, the 66-endpoint knowledge router, and all
   KB UI. (`FileTypeRouter` survives as `kagweb/utils/file_types.py` because
   the attachment parser shares its extension tables.)
+- **Partners / IM channels**: `partners/`, `services/partners/`,
+  `services/partner_groups/`, the partner routers + WS endpoints, IM SDK
+  extras, and all partner UI.
+- **Persona**: `services/persona/` (presets + service), the `/api/personas`
+  router, the turn `persona` field / `persona_context` injection, and the
+  composer persona picker.
+- **Learner + guardian**: `multi_user/{learner_profile,guardians,device_credentials}.py`,
+  the learning-policy grant dimension, device-credential login, and the
+  learner/guardian UI. Stored `preset: "learner"` rows degrade to
+  `"standard"` on load.
+- **Builtin tool package**: `tools/` (brainstorm/web_search/paper_search/
+  reason, question bank, prompt-hint YAMLs) and the `enabled_tools` grant
+  dimension. MCP/CLI-app tool access stays grant-gated.
 - **Satellites**: memory, skills/EduHub, cron, sandbox execution, subagent
   (external CLI agent) harness, books, co-writer, notebooks, reading,
   video learning, visualizers, courses, CLI apps, videogen.
