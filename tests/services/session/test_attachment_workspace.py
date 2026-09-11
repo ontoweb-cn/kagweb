@@ -144,12 +144,27 @@ async def test_empty_records_short_circuit(store, ws_dir) -> None:
 class _RootTolerantStore:
     """Trust boundary identical to ``LocalDiskAttachmentStore._safe_join``:
     containment is checked against the store *root*, so an id that leaves
-    the session dir but stays inside the root still resolves."""
+    the session dir but stays inside the root still resolves.
 
-    def __init__(self, root: Path) -> None:
+    ``aliases`` maps a record whose hostile *id* cannot exist as a filename
+    on every filesystem (NTFS rejects control characters outright) to a
+    safely-named planted file — the real store on POSIX would happily hold
+    the hostile name, and the test only needs the hostile id to resolve to
+    *some* file so the copy-name coercion stays the thing under test.
+    """
+
+    def __init__(
+        self,
+        root: Path,
+        aliases: dict[tuple[str, str, str], Path] | None = None,
+    ) -> None:
         self.root = root
+        self.aliases = aliases or {}
 
     def resolve_path(self, *, session_id: str, attachment_id: str, filename: str):
+        alias = self.aliases.get((session_id, attachment_id, filename))
+        if alias is not None and alias.is_file():
+            return alias
         candidate = (self.root / session_id / f"{attachment_id}_{filename}").resolve()
         try:
             candidate.relative_to(self.root.resolve())
@@ -180,13 +195,22 @@ async def test_hostile_id_cannot_escape_the_copy_dir(tmp_path: Path, ws_dir) -> 
 
 
 async def test_control_characters_in_id_never_reach_the_copy_name(tmp_path: Path, ws_dir) -> None:
-    store = _RootTolerantStore(tmp_path / "store")
-    planted = store.root / "s1" / "li\nne_f.txt"
+    # NTFS refuses to even create a control-character filename, so the hostile
+    # source is simulated with an alias to a safely-named planted file (the
+    # real POSIX store would hold `li\nne_f.txt` on disk). What is under test
+    # is the copy side: the raw hostile id must never reach the copy name.
+    planted = tmp_path / "store" / "s1" / "source_f.txt"
     planted.parent.mkdir(parents=True, exist_ok=True)
     planted.write_bytes(b"x")
+    store = _RootTolerantStore(
+        tmp_path / "store",
+        aliases={("s1", "li\nne", "f.txt"): planted},
+    )
 
     paths = await materialize_attachments(
-        "s1", [{"id": "li\nne", "filename": "f.txt"}], store=store
+        "s1",
+        [{"id": "li\nne", "filename": "f.txt"}],
+        store=store,
     )
 
     assert list(paths.values()) == [str(ws_dir / "line_f.txt")]

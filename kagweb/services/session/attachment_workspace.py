@@ -19,13 +19,34 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from pathlib import Path
 import shutil
+import time
 from typing import Any
 import uuid
 
 from kagweb.utils.filenames import coerce_filename
 
 logger = logging.getLogger(__name__)
+
+
+def _publish_copy(tmp: Path, dst: Path) -> None:
+    """Atomically move the finished tmp copy onto ``dst``.
+
+    ``os.replace`` transiently fails on Windows (access denied / sharing
+    violation) while a concurrent publisher of the same attachment — or an
+    antivirus/indexer scan — holds the destination for a few milliseconds.
+    The retry is a no-op cost on POSIX, where the first attempt always
+    succeeds; exhausting it re-raises into the caller's fail-soft path.
+    """
+    for attempt in range(5):
+        try:
+            os.replace(tmp, dst)
+            return
+        except OSError:
+            if attempt == 4:
+                raise
+            time.sleep(0.01 * (attempt + 1))
 
 
 def _workspace_attachments_dir(session_id: str):
@@ -61,7 +82,7 @@ def _copy_one(store, session_id: str, rec: dict[str, Any]) -> str | None:  # noq
         # a shared tmp path and publish a corrupt copy.
         tmp = dst.with_name(f"{dst.name}.tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}")
         shutil.copyfile(src, tmp)
-        os.replace(tmp, dst)
+        _publish_copy(tmp, dst)
         return str(dst)
     except OSError as exc:
         logger.warning(
