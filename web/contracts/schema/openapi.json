@@ -1149,27 +1149,6 @@
         "title": "NetworkSettingsUpdate",
         "type": "object"
       },
-      "NotebookReference": {
-        "additionalProperties": false,
-        "properties": {
-          "notebook_id": {
-            "title": "Notebook Id",
-            "type": "string"
-          },
-          "record_ids": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Record Ids",
-            "type": "array"
-          }
-        },
-        "required": [
-          "notebook_id"
-        ],
-        "title": "NotebookReference",
-        "type": "object"
-      },
       "OutgoingAttachment": {
         "additionalProperties": false,
         "properties": {
@@ -1254,101 +1233,6 @@
           "type"
         ],
         "title": "OutgoingAttachment",
-        "type": "object"
-      },
-      "QuizResultItem": {
-        "properties": {
-          "correct_answer": {
-            "default": "",
-            "title": "Correct Answer",
-            "type": "string"
-          },
-          "difficulty": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": "",
-            "title": "Difficulty"
-          },
-          "explanation": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": "",
-            "title": "Explanation"
-          },
-          "is_correct": {
-            "title": "Is Correct",
-            "type": "boolean"
-          },
-          "options": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Options"
-          },
-          "question": {
-            "minLength": 1,
-            "title": "Question",
-            "type": "string"
-          },
-          "question_id": {
-            "default": "",
-            "title": "Question Id",
-            "type": "string"
-          },
-          "question_type": {
-            "default": "",
-            "title": "Question Type",
-            "type": "string"
-          },
-          "user_answer": {
-            "default": "",
-            "title": "User Answer",
-            "type": "string"
-          }
-        },
-        "required": [
-          "question",
-          "is_correct"
-        ],
-        "title": "QuizResultItem",
-        "type": "object"
-      },
-      "QuizResultsRequest": {
-        "properties": {
-          "answers": {
-            "items": {
-              "$ref": "#/components/schemas/QuizResultItem"
-            },
-            "title": "Answers",
-            "type": "array"
-          },
-          "turn_id": {
-            "default": "",
-            "title": "Turn Id",
-            "type": "string"
-          }
-        },
-        "title": "QuizResultsRequest",
         "type": "object"
       },
       "ReadingReference": {
@@ -2185,13 +2069,6 @@
             "title": "Memory References",
             "type": "array"
           },
-          "notebook_references": {
-            "items": {
-              "$ref": "#/components/schemas/NotebookReference"
-            },
-            "title": "Notebook References",
-            "type": "array"
-          },
           "parent_message_id": {
             "anyOf": [
               {
@@ -2208,13 +2085,6 @@
             "default": true,
             "title": "Persist User Message",
             "type": "boolean"
-          },
-          "question_notebook_references": {
-            "items": {
-              "type": "integer"
-            },
-            "title": "Question Notebook References",
-            "type": "array"
           },
           "reading_material_id": {
             "anyOf": [
@@ -4093,7 +3963,7 @@
     },
     "/api/multi-user/admin/resources": {
       "get": {
-        "description": "Everything an admin can assign to a user: their model catalog.",
+        "description": "Everything an admin can assign to a user: model catalog + MCP tools.",
         "operationId": "admin_resources_api_multi_user_admin_resources_get",
         "parameters": [
           {
@@ -4934,88 +4804,6 @@
           }
         },
         "summary": "Update Session Organization",
-        "tags": [
-          "sessions"
-        ]
-      }
-    },
-    "/api/sessions/{session_id}/quiz-results": {
-      "post": {
-        "operationId": "record_quiz_results_api_sessions__session_id__quiz_results_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "session_id",
-            "required": true,
-            "schema": {
-              "title": "Session Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/QuizResultsRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Record Quiz Results",
         "tags": [
           "sessions"
         ]

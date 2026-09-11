@@ -42,7 +42,6 @@ class TurnApplicationService:
             session["id"],
             {
                 "language": str(payload.get("language") or "en"),
-                "notebook_references": list(payload.get("notebook_references") or []),
                 "history_references": list(payload.get("history_references") or []),
             },
         )

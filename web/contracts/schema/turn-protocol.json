@@ -235,27 +235,6 @@
       "title": "LLMSelection",
       "type": "object"
     },
-    "NotebookReference": {
-      "additionalProperties": false,
-      "properties": {
-        "notebook_id": {
-          "title": "Notebook Id",
-          "type": "string"
-        },
-        "record_ids": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Record Ids",
-          "type": "array"
-        }
-      },
-      "required": [
-        "notebook_id"
-      ],
-      "title": "NotebookReference",
-      "type": "object"
-    },
     "OutgoingAttachment": {
       "additionalProperties": false,
       "properties": {
@@ -927,13 +906,6 @@
           "title": "Memory References",
           "type": "array"
         },
-        "notebook_references": {
-          "items": {
-            "$ref": "#/$defs/NotebookReference"
-          },
-          "title": "Notebook References",
-          "type": "array"
-        },
         "parent_message_id": {
           "anyOf": [
             {
@@ -955,13 +927,6 @@
           "const": "2.0",
           "title": "Protocol Version",
           "type": "string"
-        },
-        "question_notebook_references": {
-          "items": {
-            "type": "integer"
-          },
-          "title": "Question Notebook References",
-          "type": "array"
         },
         "reading_material_id": {
           "anyOf": [

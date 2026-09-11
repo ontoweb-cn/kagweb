@@ -2,7 +2,6 @@ import type {
   BookReference,
   LLMSelection,
   MemoryReferences,
-  NotebookReference,
   OutgoingAttachment,
   ReadingReference,
   ReadingViewport,
@@ -17,10 +16,8 @@ export interface StartTurnInput {
   capabilityConfig?: Record<string, unknown>;
   allowedCapabilityConfigKeys?: readonly string[];
   attachments?: OutgoingAttachment[];
-  notebookReferences?: NotebookReference[];
   historyReferences?: string[];
   partnerGroupReferences?: Array<Record<string, unknown>>;
-  questionNotebookReferences?: number[];
   bookReferences?: BookReference[];
   readingReferences?: ReadingReference[];
   memoryReferences?: MemoryReferences;
@@ -50,8 +47,6 @@ export interface LegacySendMessageArguments {
   content: string;
   attachments?: OutgoingAttachment[];
   config?: Record<string, unknown>;
-  notebookReferences?: NotebookReference[];
   historyReferences?: string[];
-  questionNotebookReferences?: number[];
   memoryReferences?: MemoryReferences;
 }

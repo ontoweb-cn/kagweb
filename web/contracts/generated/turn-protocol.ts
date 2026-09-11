@@ -45,13 +45,9 @@ export type MasteryPathLeaseManaged = boolean;
 export type MemoryReferences = (
   "recent" | "profile" | "scope" | "preferences" | "summary"
 )[];
-export type NotebookId = string;
-export type RecordIds = string[];
-export type NotebookReferences = NotebookReference[];
 export type ParentMessageId = number | null;
 export type PersistUserMessage = boolean;
 export type ProtocolVersion = "2.0";
-export type QuestionNotebookReferences = number[];
 export type ReadingMaterialId = string | null;
 export type ReadingMaterialRevision = number | null;
 export type Locators = number[];
@@ -273,11 +269,9 @@ export interface StartTurnCommand {
   mastery_path_id?: MasteryPathId;
   mastery_path_lease_managed?: MasteryPathLeaseManaged;
   memory_references?: MemoryReferences;
-  notebook_references?: NotebookReferences;
   parent_message_id?: ParentMessageId;
   persist_user_message?: PersistUserMessage;
   protocol_version: ProtocolVersion;
-  question_notebook_references?: QuestionNotebookReferences;
   reading_material_id?: ReadingMaterialId;
   reading_material_revision?: ReadingMaterialRevision;
   reading_references?: ReadingReferences;
@@ -325,14 +319,6 @@ export interface Config {
 export interface LLMSelection {
   model_id: ModelId;
   profile_id: ProfileId;
-}
-/**
- * This interface was referenced by `TurnProtocolDocument`'s JSON-Schema
- * via the `definition` "NotebookReference".
- */
-export interface NotebookReference {
-  notebook_id: NotebookId;
-  record_ids?: RecordIds;
 }
 /**
  * This interface was referenced by `TurnProtocolDocument`'s JSON-Schema

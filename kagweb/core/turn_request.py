@@ -26,13 +26,6 @@ class LLMSelection(BaseModel):
     model_id: str
 
 
-class NotebookReference(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    notebook_id: str
-    record_ids: list[str] = Field(default_factory=list)
-
-
 class BookReference(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -76,9 +69,7 @@ class TurnRequest(BaseModel):
     language: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
 
-    notebook_references: list[NotebookReference] = Field(default_factory=list)
     history_references: list[str] = Field(default_factory=list)
-    question_notebook_references: list[int] = Field(default_factory=list)
     book_references: list[BookReference] = Field(default_factory=list)
     reading_references: list[ReadingReference] = Field(default_factory=list)
     memory_references: list[MemoryReference] = Field(default_factory=list)

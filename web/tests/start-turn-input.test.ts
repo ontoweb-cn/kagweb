@@ -53,7 +53,6 @@ test("course, Reading, Watching, Mastery, references, edit, and budget are expli
     timedMediaViewport: { time_seconds: 12.5 },
     parentMessageId: 9,
     subagentConsultBudget: 3,
-    notebookReferences: [{ notebook_id: "nb", record_ids: ["r1"] }],
     bookReferences: [{ book_id: "book", page_ids: ["p1"] }],
     readingReferences: [
       { material_id: "material-1", revision: 2, locators: [4] },

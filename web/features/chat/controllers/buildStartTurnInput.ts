@@ -72,9 +72,7 @@ export function buildStartTurnInput(input: StartTurnInput): StartTurnCommand {
     language: input.language ?? null,
     config: capabilityConfig(input),
     attachments: input.attachments ?? [],
-    notebook_references: input.notebookReferences ?? [],
     history_references: input.historyReferences ?? [],
-    question_notebook_references: input.questionNotebookReferences ?? [],
     book_references: input.bookReferences ?? [],
     reading_references: input.readingReferences ?? [],
     memory_references: input.memoryReferences ?? [],
@@ -116,9 +114,7 @@ export function legacySendMessageInput(
     content: legacy.content,
     attachments: legacy.attachments,
     capabilityConfig: legacy.config,
-    notebookReferences: legacy.notebookReferences,
     historyReferences: legacy.historyReferences,
-    questionNotebookReferences: legacy.questionNotebookReferences,
     memoryReferences: legacy.memoryReferences,
   };
 }

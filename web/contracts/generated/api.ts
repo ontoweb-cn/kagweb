@@ -356,7 +356,7 @@ export interface paths {
     };
     /**
      * Admin Resources
-     * @description Everything an admin can assign to a user: their model catalog.
+     * @description Everything an admin can assign to a user: model catalog + MCP tools.
      */
     readonly get: operations["admin_resources_api_multi_user_admin_resources_get"];
     readonly put?: never;
@@ -487,23 +487,6 @@ export interface paths {
     readonly head?: never;
     /** Update Session Organization */
     readonly patch: operations["update_session_organization_api_sessions__session_id__organization_patch"];
-    readonly trace?: never;
-  };
-  readonly "/api/sessions/{session_id}/quiz-results": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /** Record Quiz Results */
-    readonly post: operations["record_quiz_results_api_sessions__session_id__quiz_results_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
     readonly trace?: never;
   };
   readonly "/api/sessions/{session_id}/trace": {
@@ -2733,13 +2716,6 @@ export interface components {
        */
       readonly public_api_base: string;
     };
-    /** NotebookReference */
-    readonly NotebookReference: {
-      /** Notebook Id */
-      readonly notebook_id: string;
-      /** Record Ids */
-      readonly record_ids?: readonly string[];
-    };
     /** OutgoingAttachment */
     readonly OutgoingAttachment: {
       /**
@@ -2774,57 +2750,6 @@ export interface components {
        * @default null
        */
       readonly url: string | null;
-    };
-    /** QuizResultItem */
-    readonly QuizResultItem: {
-      /**
-       * Correct Answer
-       * @default
-       */
-      readonly correct_answer: string;
-      /**
-       * Difficulty
-       * @default
-       */
-      readonly difficulty: string | null;
-      /**
-       * Explanation
-       * @default
-       */
-      readonly explanation: string | null;
-      /** Is Correct */
-      readonly is_correct: boolean;
-      /** Options */
-      readonly options?: {
-        readonly [key: string]: string;
-      } | null;
-      /** Question */
-      readonly question: string;
-      /**
-       * Question Id
-       * @default
-       */
-      readonly question_id: string;
-      /**
-       * Question Type
-       * @default
-       */
-      readonly question_type: string;
-      /**
-       * User Answer
-       * @default
-       */
-      readonly user_answer: string;
-    };
-    /** QuizResultsRequest */
-    readonly QuizResultsRequest: {
-      /** Answers */
-      readonly answers?: readonly components["schemas"]["QuizResultItem"][];
-      /**
-       * Turn Id
-       * @default
-       */
-      readonly turn_id: string;
     };
     /** ReadingReference */
     readonly ReadingReference: {
@@ -3179,8 +3104,6 @@ export interface components {
       readonly memory_references?: readonly (
         "recent" | "profile" | "scope" | "preferences" | "summary"
       )[];
-      /** Notebook References */
-      readonly notebook_references?: readonly components["schemas"]["NotebookReference"][];
       /**
        * Parent Message Id
        * @default null
@@ -3191,8 +3114,6 @@ export interface components {
        * @default true
        */
       readonly persist_user_message: boolean;
-      /** Question Notebook References */
-      readonly question_notebook_references?: readonly number[];
       /**
        * Reading Material Id
        * @default null
@@ -3477,13 +3398,8 @@ export type SchemaModelCapabilitiesQuery =
   components["schemas"]["ModelCapabilitiesQuery"];
 export type SchemaNetworkSettingsUpdate =
   components["schemas"]["NetworkSettingsUpdate"];
-export type SchemaNotebookReference =
-  components["schemas"]["NotebookReference"];
 export type SchemaOutgoingAttachment =
   components["schemas"]["OutgoingAttachment"];
-export type SchemaQuizResultItem = components["schemas"]["QuizResultItem"];
-export type SchemaQuizResultsRequest =
-  components["schemas"]["QuizResultsRequest"];
 export type SchemaReadingReference = components["schemas"]["ReadingReference"];
 export type SchemaReadingViewport = components["schemas"]["ReadingViewport"];
 export type SchemaRegisterRequest = components["schemas"]["RegisterRequest"];
@@ -4632,45 +4548,6 @@ export interface operations {
     readonly requestBody: {
       readonly content: {
         readonly "application/json": components["schemas"]["SessionOrganizationRequest"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly record_quiz_results_api_sessions__session_id__quiz_results_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly session_id: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["QuizResultsRequest"];
       };
     };
     readonly responses: {

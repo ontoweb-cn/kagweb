@@ -92,14 +92,7 @@ interface OutgoingAttachment {
   mime_type?: string;
 }
 
-interface NotebookReferencePayload {
-  notebook_id: string;
-  record_ids: string[];
-}
-
 type HistoryReferencePayload = string[];
-
-type QuestionNotebookReferencePayload = number[];
 
 type MemoryReferencePayload = Array<"summary" | "profile">;
 
@@ -173,6 +166,10 @@ export interface MessageAttachment {
 }
 
 export interface MessageRequestSnapshot {
+  /** Legacy snapshots may carry removed-subsystem reference lists; kept
+   *  optional so historical sessions still hydrate their activity stats. */
+  notebookReferences?: Array<{ notebook_id: string; record_ids: string[] }>;
+  questionNotebookReferences?: number[];
   content: string;
   capability?: string | null;
   workspaceMode?: WorkspaceMode | null;
@@ -180,9 +177,7 @@ export interface MessageRequestSnapshot {
   language: string;
   attachments?: MessageAttachment[];
   config?: Record<string, unknown>;
-  notebookReferences?: NotebookReferencePayload[];
   historyReferences?: HistoryReferencePayload;
-  questionNotebookReferences?: QuestionNotebookReferencePayload;
   bookReferences?: BookReferencePayload[];
   readingReferences?: ReadingReferencePayload[];
   masteryPathId?: string;
@@ -1013,10 +1008,8 @@ interface ChatContextValue {
     content: string,
     attachments?: OutgoingAttachment[],
     config?: Record<string, unknown>,
-    notebookReferences?: NotebookReferencePayload[],
     historyReferences?: HistoryReferencePayload,
     options?: SendMessageOptions,
-    questionNotebookReferences?: QuestionNotebookReferencePayload,
     memoryReferences?: MemoryReferencePayload,
   ) => void;
   cancelStreamingTurn: () => void;
@@ -1133,28 +1126,6 @@ function asMemoryReferences(value: unknown): MemoryReferencePayload {
   );
 }
 
-function asNotebookReferences(value: unknown): NotebookReferencePayload[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item) => {
-    const ref = asRecord(item);
-    const notebookId =
-      typeof ref?.notebook_id === "string" ? ref.notebook_id : "";
-    const recordIds = asStringArray(ref?.record_ids);
-    return notebookId && recordIds.length
-      ? [{ notebook_id: notebookId, record_ids: recordIds }]
-      : [];
-  });
-}
-
-function asQuestionReferences(
-  value: unknown,
-): QuestionNotebookReferencePayload {
-  return Array.isArray(value)
-    ? value
-        .map((item) => (typeof item === "number" ? item : Number(item)))
-        .filter((item) => Number.isInteger(item))
-    : [];
-}
 
 /** Defensive hydration of the turn-level insight badge the post-turn judge
  *  writes into the assistant message metadata. */
@@ -1194,11 +1165,7 @@ function hydrateRequestSnapshot(
   };
 
   const config = asRecord(stored.config);
-  const notebookReferences = asNotebookReferences(stored.notebookReferences);
   const historyReferences = asStringArray(stored.historyReferences);
-  const questionNotebookReferences = asQuestionReferences(
-    stored.questionNotebookReferences,
-  );
   const memoryReferences = asMemoryReferences(stored.memoryReferences);
   const bookReferences = normalizeBookReferences(stored.bookReferences);
   const readingReferences = normalizeReadingReferences(
@@ -1221,12 +1188,7 @@ function hydrateRequestSnapshot(
       : "";
 
   if (config && Object.keys(config).length) snapshot.config = config;
-  if (notebookReferences.length)
-    snapshot.notebookReferences = notebookReferences;
   if (historyReferences.length) snapshot.historyReferences = historyReferences;
-  if (questionNotebookReferences.length) {
-    snapshot.questionNotebookReferences = questionNotebookReferences;
-  }
   if (bookReferences.length) snapshot.bookReferences = bookReferences;
   if (readingReferences.length) {
     snapshot.readingReferences = readingReferences;
@@ -1901,10 +1863,8 @@ export function ChatStateAdapterProvider({
       content: string,
       attachments?: OutgoingAttachment[],
       config?: Record<string, unknown>,
-      notebookReferences?: NotebookReferencePayload[],
       historyReferences?: HistoryReferencePayload,
       options?: SendMessageOptions,
-      questionNotebookReferences?: QuestionNotebookReferencePayload,
       memoryReferences?: MemoryReferencePayload,
     ) => {
       const msgAttachments = attachments?.map((a) => ({
@@ -1951,13 +1911,8 @@ export function ChatStateAdapterProvider({
           mime_type: a.mime_type,
         })) ?? msgAttachments;
       const effectiveConfig = config ?? replaySnapshot?.config;
-      const effectiveNotebookReferences =
-        replaySnapshot?.notebookReferences ?? notebookReferences;
       const effectiveHistoryReferences =
         replaySnapshot?.historyReferences ?? historyReferences;
-      const effectiveQuestionNotebookReferences =
-        replaySnapshot?.questionNotebookReferences ??
-        questionNotebookReferences;
       const liveReadingFields = readingTurnFields(effectiveWorkspaceMode);
       const effectiveReadingTurnFields = replaySnapshot?.readingMaterialId
         ? {
@@ -1992,18 +1947,8 @@ export function ChatStateAdapterProvider({
         ...(effectiveConfig && Object.keys(effectiveConfig).length > 0
           ? { config: effectiveConfig }
           : {}),
-        ...(effectiveNotebookReferences?.length
-          ? { notebookReferences: effectiveNotebookReferences }
-          : {}),
         ...(effectiveHistoryReferences?.length
           ? { historyReferences: [...effectiveHistoryReferences] }
-          : {}),
-        ...(effectiveQuestionNotebookReferences?.length
-          ? {
-              questionNotebookReferences: [
-                ...effectiveQuestionNotebookReferences,
-              ],
-            }
           : {}),
         ...(effectiveBookReferences?.length
           ? { bookReferences: effectiveBookReferences }
@@ -2101,9 +2046,7 @@ export function ChatStateAdapterProvider({
         autoRoute: typeof autoRoute === "boolean" ? autoRoute : null,
         attachments: effectiveAttachments,
         language: effectiveLanguage,
-        notebookReferences: effectiveNotebookReferences,
         historyReferences: effectiveHistoryReferences,
-        questionNotebookReferences: effectiveQuestionNotebookReferences,
         bookReferences: effectiveBookReferences,
         readingReferences: effectiveReadingReferences,
         masteryPathId: effectiveMasteryPathId || null,
@@ -2352,7 +2295,6 @@ export function ChatStateAdapterProvider({
       const parentId = original.parentMessageId ?? null;
       sendMessage(
         trimmed,
-        undefined,
         undefined,
         undefined,
         undefined,
