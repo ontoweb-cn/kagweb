@@ -20,15 +20,11 @@ def empty_grant(user_id: str) -> dict[str, Any]:
         "models": {"llm": []},
         # MCP tools can proxy host-side capabilities, so non-admin runtime
         # access treats ``mcp_tools=None`` as deny-by-default until an admin
-        # grants explicit names. ``cli_apps`` is the same posture for
-        # installed CLI apps, keyed by app id: each one is third-party code
-        # executing in the sandbox, so an absent grant is no access rather
-        # than all of them. ``exec_enabled`` is a tri-state override on top
-        # of the deployment exec policy: ``None`` follows the policy,
+        # grants explicit names. ``exec_enabled`` is a tri-state override on
+        # top of the deployment exec policy: ``None`` follows the policy,
         # ``False`` always denies, ``True`` is only honored where the sandbox
         # can actually isolate users (SYSTEM isolation).
         "mcp_tools": None,
-        "cli_apps": None,
         "exec_enabled": None,
         # Whether the user may drive turns through the configured agent
         # backend. Same tri-state as ``exec_enabled``: ``None`` follows the
@@ -80,7 +76,7 @@ def normalize_grant(user_id: str, payload: dict[str, Any] | None) -> dict[str, A
     if not isinstance(items, list):
         items = []
     base["models"]["llm"] = [dict(item) for item in items if isinstance(item, dict)]
-    for key in ("mcp_tools", "cli_apps"):
+    for key in ("mcp_tools",):
         base[key] = _normalize_tool_list(payload.get(key))
     exec_enabled = payload.get("exec_enabled")
     base["exec_enabled"] = bool(exec_enabled) if isinstance(exec_enabled, bool) else None

@@ -167,7 +167,7 @@ def test_manifest_caps_a_long_description() -> None:
     assert len(entry) < 300
 
 
-def test_cli_apps_share_one_header_and_carry_their_provider_id() -> None:
+def test_cli_kind_tools_share_one_header_and_carry_their_provider_id() -> None:
     """Each CLI app is its own provider with one tool.
 
     Per-provider headers would cost one header per installed app, so they are

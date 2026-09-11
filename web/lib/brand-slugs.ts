@@ -48,7 +48,7 @@ export const MCP_BRAND_SLUGS: Readonly<Record<string, string>> = {
   zapier: "zapier",
 };
 
-/** CLI app ids (`kagweb/services/cli_apps/vendor/catalog.json`). */
+/** CLI-kind deferred tool ids (manifest rendering; no such tools exist today). */
 export const CLI_BRAND_SLUGS: Readonly<Record<string, string>> = {
   "1password-cli": "1password",
   adguardhome: "adguard",
