@@ -159,6 +159,7 @@ class TurnRequestPreparer:
         # gets the context window too — budgeting is every operator's problem.
         from kagweb.services.agent_loop.settings import (
             get_agent_loop_settings,
+            profile_family,
             resolve_primary_profile,
         )
 
@@ -209,6 +210,10 @@ class TurnRequestPreparer:
         # budget planner.) ``0`` means "not configured"; the executor treats it
         # as no override.
         payload["agent_loop_context_window"] = context_window
+        # Same block, same single read: the executor's materialization gate
+        # needs the primary profile's family, so it rides on the payload too
+        # instead of costing a second settings read per turn.
+        payload["agent_loop_profile_family"] = profile_family(primary_profile)
 
         if llm_selection:
             try:

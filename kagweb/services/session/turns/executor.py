@@ -54,25 +54,40 @@ def _payload_context_window(payload: dict[str, Any]) -> int | None:
     return value if value > 0 else None
 
 
+def _turn_profile_family(payload: dict[str, Any]) -> str:
+    """Family of the primary agent-loop profile for this turn: ``cli`` | ``http`` | ``""``.
+
+    The preparer reads the agent-loop settings once per turn and stamps the
+    family on the payload (same trust model as ``agent_loop_context_window``);
+    a payload without the key means this execution never passed the preparer,
+    and only then does this fall back to a direct settings read.
+    """
+    if "agent_loop_profile_family" in payload:
+        return str(payload.get("agent_loop_profile_family") or "")
+    return _primary_profile_family()
+
+
 def _primary_profile_family() -> str:
     """Family of the primary agent-loop profile: ``cli`` | ``http`` | ``""``.
 
-    Same read the chat capability does; lazy imports keep the agent-loop
-    settings stack out of this module's import surface. Empty means no
-    backend is configured (shell stub) or the settings could not be read —
-    either way there is no workspace-consuming agent to materialize for.
+    Fallback for executions that never passed the request preparer (which
+    stamps ``agent_loop_profile_family`` on the payload from its own single
+    settings read). Lazy imports keep the agent-loop settings stack out of
+    this module's import surface. Empty means no backend is configured
+    (shell stub) or the settings could not be read — either way there is no
+    workspace-consuming agent to materialize for.
     """
     try:
         from kagweb.services.agent_loop.settings import (
             get_agent_loop_settings,
+            profile_family,
             resolve_primary_profile,
         )
 
-        profile = resolve_primary_profile(get_agent_loop_settings())
+        return profile_family(resolve_primary_profile(get_agent_loop_settings()))
     except Exception:
         logger.debug("agent-loop settings unavailable for family probe", exc_info=True)
         return ""
-    return str((profile or {}).get("family") or "")
 
 
 def _count_llm_rounds(events: list[dict[str, Any]]) -> int:
@@ -418,7 +433,7 @@ class TurnExecutor:
             # could read; for the HTTP family (and while no backend is
             # configured) copies would be pure disk churn, so the manifest
             # renders without path rows.
-            if _primary_profile_family() == "cli":
+            if _turn_profile_family(payload) == "cli":
 
                 async def _materialize(records: list[dict[str, Any]]) -> dict[str, str]:
                     return await materialize_attachments(session_id, records)

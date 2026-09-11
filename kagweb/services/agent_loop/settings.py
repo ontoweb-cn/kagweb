@@ -61,6 +61,20 @@ def agent_loop_backend_name() -> str:
     return str(primary.get("preset") or "") if primary else ""
 
 
+def profile_family(profile: dict[str, Any] | None) -> str:
+    """Transport family of a resolved profile: ``cli`` | ``http`` | ``""``.
+
+    Family lives on the *preset*, not on the stored profile dict — resolve
+    through the preset registry here so every caller shares one derivation
+    (a raw ``profile.get("family")`` is always empty).
+    """
+    if not profile:
+        return ""
+    from kagweb.services.agent_loop.builtin import preset_family
+
+    return preset_family(str(profile.get("preset") or ""))
+
+
 def _as_profile_list(block: dict[str, Any]) -> list[dict[str, Any]]:
     profiles = block.get("profiles")
     if isinstance(profiles, list):

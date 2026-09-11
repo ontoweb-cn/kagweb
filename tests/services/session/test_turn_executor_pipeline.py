@@ -317,9 +317,19 @@ async def test_attachment_paths_reach_the_prompt_only_for_cli_backends(
             ),
         )
         monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
+        # The family reaches the executor on the payload (stamped by the
+        # request preparer from the profile's *preset* — the real registry
+        # derivation runs). The direct probe is pinned to the OPPOSITE
+        # family: if the executor ever consulted it again, both legs below
+        # would flip and fail.
+        preset_for_family = {"cli": "claude-code", "http": "intellect-team"}
+        monkeypatch.setattr(
+            "kagweb.services.agent_loop.settings.resolve_primary_profile",
+            lambda block: {"preset": preset_for_family[family]},
+        )
         monkeypatch.setattr(
             "kagweb.services.session.turns.executor._primary_profile_family",
-            lambda: family,
+            lambda: "http" if family == "cli" else "cli",
         )
         runtime = TurnRuntimeManager(store=store)
         session, turn = await runtime.start_turn(payload)
