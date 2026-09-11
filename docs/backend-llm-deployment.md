@@ -622,7 +622,7 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 
 | # | 位置 | 建议 |
 |---|---|---|
-| 25 | `api/routers/auth.py:402` `require_learning_surface` | 它是**通用鉴权门**——`api/main.py:425-428` 的 `_auth` 依赖，施加于**全部受保护路由**。其自身 docstring 已说明「学习界面随能力层移除，该依赖保留为唯一鉴权接缝」。**改名 `require_authenticated`，不要移除** |
+| 25 | `api/routers/auth.py:402` `require_signed_in`（原名 `require_learning_surface`） | 它是**通用鉴权门**——`api/main.py:425-428` 的 `_auth` 依赖，施加于**全部受保护路由**。其自身 docstring 已说明「学习界面随能力层移除，该依赖保留为唯一鉴权接缝」。**改名（2026-09-11 已改为 `require_signed_in`），不要移除** |
 | 26 | `web/lib/trace-mode.ts:13-30` | `TraceMode = "learner" \| "expert"`——追踪信息的详略开关，与学习无关 |
 | 27 | `services/llm/types.py:11-51` | `TutorResponse` / `TutorStreamChunk`（`LLMResponse = TutorResponse`）——通用 LLM 类型用了 TutorBot 的命名 |
 | 28 | `web/lib/skill-slug.ts` | 被 `PersonasSection.tsx` 用于人格名校验。**随决策 6 一并删除**（本文初稿曾建议「改名保留」，该建议已被决策 6 推翻） |

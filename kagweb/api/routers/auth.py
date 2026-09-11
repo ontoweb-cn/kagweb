@@ -374,16 +374,17 @@ async def require_admin(
     return payload
 
 
-async def require_learning_surface(
+async def require_signed_in(
     request: Request,
     _: TokenPayload | None = Depends(require_auth),
 ) -> None:
     """Default auth dependency for API routers.
 
-    Learning surfaces were removed with the capability layer, so the former
-    per-surface learner gate has nothing left to enforce. The dependency stays
-    as the single auth seam for routers (it still validates the session token
-    through ``require_auth``).
+    The single auth seam for HTTP routers: it validates the session token
+    through ``require_auth`` (installing the request's user contextvar) and
+    otherwise contributes nothing. Formerly ``require_learning_surface`` —
+    the per-surface learner gate it once enforced went away with the
+    capability layer.
     """
     return None
 

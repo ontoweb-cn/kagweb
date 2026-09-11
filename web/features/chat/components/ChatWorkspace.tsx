@@ -1132,7 +1132,7 @@ export default function ChatWorkspace() {
         (attachments.some(a => a.type === 'image')
           ? t('Please analyze the attached image(s).')
           : '')
-      sendMessage(messageContent, extraAttachments, undefined, [], historyReferencesPayload)
+      sendMessage(messageContent, extraAttachments, undefined, historyReferencesPayload)
       shouldAutoScrollRef.current = true
       setAttachments([])
       setSelectedHistorySessions([])

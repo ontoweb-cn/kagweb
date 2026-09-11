@@ -3,7 +3,7 @@
 from fastapi.routing import APIWebSocketRoute
 
 from kagweb.api.routers import unified_ws
-from kagweb.api.routers.auth import require_learning_surface
+from kagweb.api.routers.auth import require_signed_in
 
 
 def test_websocket_routes_share_one_canonical_namespace() -> None:
@@ -18,6 +18,5 @@ def test_websocket_routes_share_one_canonical_namespace() -> None:
     assert set(websocket_routes) == expected_paths
     for route in websocket_routes.values():
         assert all(
-            dependency.call is not require_learning_surface
-            for dependency in route.dependant.dependencies
+            dependency.call is not require_signed_in for dependency in route.dependant.dependencies
         )

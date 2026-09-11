@@ -343,10 +343,10 @@ app.include_router(outputs.router, prefix="/files/outputs", tags=["outputs"])
 # All other routers require a valid session when AUTH_ENABLED=true.
 # require_auth is a no-op when AUTH_ENABLED=false, so this is safe for local use.
 from kagweb.api.routers.auth import (  # noqa: E402
-    require_learning_surface,
+    require_signed_in,
 )
 
-_auth = [Depends(require_learning_surface)]
+_auth = [Depends(require_signed_in)]
 
 app.include_router(
     multi_user_router,

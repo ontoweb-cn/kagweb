@@ -57,10 +57,36 @@ async def test_document_wrapper_restores_public_error_type(tmp_path: Path) -> No
     assert raised.value.filename == "empty.txt"
 
 
-def test_child_allocation_does_not_raise_parent_rss_plateau() -> None:
+def test_child_allocation_does_not_raise_parent_memory_plateau() -> None:
     psutil = pytest.importorskip("psutil")
     process = psutil.Process()
-    before = process.memory_info().rss
+
+    try:
+        process.memory_full_info().uss
+        uss_supported = True
+    except AttributeError:  # platform without USS support
+        uss_supported = False
+
+    def private_bytes() -> int:
+        # USS (unique set size) ignores shared pages, so allocator noise from
+        # unrelated tests moves the number far less than RSS does.
+        if uss_supported:
+            return process.memory_full_info().uss
+        return process.memory_info().rss
+
+    # One warmup round: the first spawn pays fork/COW page-table and pool
+    # setup costs in the parent, which are startup overhead — not retained
+    # payload — and would otherwise flake the baseline.
+    assert (
+        run_in_isolated_process_sync(
+            "kagweb.runtime.worker_tasks:test_allocate_bytes",
+            64 * 1024 * 1024,
+            timeout=10,
+        )
+        == 64 * 1024 * 1024
+    )
+    gc.collect()
+    before = private_bytes()
     for _ in range(3):
         assert (
             run_in_isolated_process_sync(
@@ -72,8 +98,10 @@ def test_child_allocation_does_not_raise_parent_rss_plateau() -> None:
         )
     gc.collect()
     # Allocations happen only in children. Allow normal allocator/test noise in
-    # the parent, but reject retaining anything close to one 64 MB payload.
-    assert process.memory_info().rss - before < 20 * 1024 * 1024
+    # the parent, but reject retaining anything close to one 64 MB payload
+    # (RSS fallback gets the wider band because it counts shared pages too).
+    threshold = 20 * 1024 * 1024 if uss_supported else 48 * 1024 * 1024
+    assert private_bytes() - before < threshold
 
 
 def test_text_only_parser_writes_result_from_worker(tmp_path: Path) -> None:

@@ -132,7 +132,7 @@ def test_websocket_routes_share_one_canonical_namespace() -> None:
     prefixes = {id(unified_ws.router): "", ...}   # ← 显式断言统一 WS 无前缀
 ```
 
-即：代码是**有意**把所有 WS 端点收在 `/ws` 下的（三个端点均属一个 canonical 命名空间）。`ARCHITECTURE.md` 的 `/api/unified/ws` 因此是明确的文档缺陷，而非设计歧义。该测试还断言 WS 路由**不得**携带 `require_learning_surface`（HTTP 专用鉴权依赖），与 §6 所述「WS 鉴权在 handler 内自理」互为印证。
+即：代码是**有意**把所有 WS 端点收在 `/ws` 下的（三个端点均属一个 canonical 命名空间）。`ARCHITECTURE.md` 的 `/api/unified/ws` 因此是明确的文档缺陷，而非设计歧义。该测试还断言 WS 路由**不得**携带 `require_signed_in`（HTTP 专用鉴权依赖），与 §6 所述「WS 鉴权在 handler 内自理」互为印证。
 
 WS 端点现状：仅剩 `/ws`（统一轮次协议）；`/ws/partners` 与 `/ws/partner-groups` 已随批次四移除。
 
@@ -231,7 +231,7 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 
 ## 6. API 与入口点
 
-**FastAPI 应用**在 `api/main.py` 组装。中间件：JSON 错误边界、选择性访问日志、CORS。鉴权由共享依赖 `_auth = [Depends(require_learning_surface)]` 施加，`AUTH_ENABLED=false` 时是 no-op。
+**FastAPI 应用**在 `api/main.py` 组装。中间件：JSON 错误边界、选择性访问日志、CORS。鉴权由共享依赖 `_auth = [Depends(require_signed_in)]` 施加，`AUTH_ENABLED=false` 时是 no-op。
 
 主要路由组（214 HTTP + 3 WS 端点）：
 

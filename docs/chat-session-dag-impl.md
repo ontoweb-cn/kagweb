@@ -529,7 +529,7 @@ web：test:node **1051/1051** ✔（Node 22）· typecheck ✔ · eslint ✔ · 
 
 - **滚动/闪光锚点已存在**：`ChatMessageList.tsx` L1183-1246 为每 turn 渲染 `data-turn-key={turnAnchorKey(msg, index)}`（`m{id}`/`i{index}`，`web/lib/chat-outline.ts` L57）与 `data-turn-bubble`；`PartnerGroupChat.tsx` L95-116 `jumpToRound` 已实现 scroll+`turn-flash` class 闪烁模式，可直接移植。
 - **持久化模式已存在**：`ChatWorkspace.tsx` L373-389 面板开关用 `browserStorage.readRaw/writeRaw("local", "dt:chat:xxx")` + post-mount effect（SSR 首渲染恒 false 防 hydration mismatch）。
-- **API 模式已存在**：`kagweb/api/routers/sessions.py` L157-165 `GET /api/sessions/{id}` 走 `store.get_session_with_messages`；`main.py` L526-593 各 router 经 `_auth=[Depends(require_learning_surface)]` 注册。
+- **API 模式已存在**：`kagweb/api/routers/sessions.py` L157-165 `GET /api/sessions/{id}` 走 `store.get_session_with_messages`；`main.py` L526-593 各 router 经 `_auth=[Depends(require_signed_in)]` 注册。
 - **护栏缺口已确认**：`dsl-import.ts` materializeCallNodes 递归无深度限制（深嵌套 calls 数组可栈溢出，#75 校验只查形状不查深度）；computeSessionDag/dslToDag 无节点数上限；applyToCanvas 全量 remove+add，1000+ 节点 dagre 布局明显卡顿。
 
 ## 模块 16：DAG → 聊天消息定位联动
@@ -553,7 +553,7 @@ web：test:node **1051/1051** ✔（Node 22）· typecheck ✔ · eslint ✔ · 
 `GET /api/sessions/{session_id}/trace?format=dsl|mermaid&stable=true&normalize_ids=true&include_text=true`
 - **实现**：`kagweb/api/routers/sessions.py` 新增端点，`_auth` 随 router 注册已有；服务层复用 `build_session_dsl`/`dsl_to_mermaid`（模块 14），消息来源 `get_session_with_messages`。响应：dsl → `application/json`（JSONResponse）；mermaid → `text/plain; charset=utf-8`（非 text/html，防 mermaid 文本注入渲染）。404 语义与既有端点一致。
 - **facade**：`KAGWebApp` 增加 `export_session_trace(session_id, fmt, **opts)`（SDK 用户直取；CLI 未来可切换到同一路径）。
-- **评审 #78**：`include_text` 经 GET query 暴露——默认 true 与面板导出一致（面板导出本身就是用户自己的数据），不视为隐私放大；但端点必须过 `require_learning_surface`（同会话详情端点的授权边界，未授权用户不得读取他人 trace）。mermaid 输出用 `PlainTextResponse` 且禁用 `media_type=text/html`。query 参数用 FastAPI `Query` 校验枚举（dsl|mermaid），非法值 422。测试：TestClient + fixture 会话，断言 DSL JSON 结构、mermaid 首行 `flowchart TD`、404、422。
+- **评审 #78**：`include_text` 经 GET query 暴露——默认 true 与面板导出一致（面板导出本身就是用户自己的数据），不视为隐私放大；但端点必须过 `require_signed_in`（同会话详情端点的授权边界，未授权用户不得读取他人 trace）。mermaid 输出用 `PlainTextResponse` 且禁用 `media_type=text/html`。query 参数用 FastAPI `Query` 校验枚举（dsl|mermaid），非法值 422。测试：TestClient + fixture 会话，断言 DSL JSON 结构、mermaid 首行 `flowchart TD`、404、422。
 
 ## 模块 19：DAG 面板搜索过滤
 
