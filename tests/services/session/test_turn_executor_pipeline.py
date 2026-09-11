@@ -265,3 +265,76 @@ async def test_cancelled_turn_persists_partial_content(store, stub_workspace, mo
     messages = await store.get_messages(session["id"])
     assistant = [m for m in messages if m["role"] == "assistant"]
     assert assistant and assistant[-1]["content"].strip() == "partial"
+
+
+async def test_attachment_paths_reach_the_prompt_only_for_cli_backends(
+    store, stub_workspace, monkeypatch
+) -> None:
+    """Materialized copies surface as manifest path rows — but only when the
+    configured backend actually runs in a filesystem workspace (CLI/ACP);
+    the HTTP family and bare deployments get the pathless manifest."""
+    from kagweb.services.agent_loop.protocol import AgentLoopEvent
+
+    async def _fake_materialize(session_id, records, *, store=None):
+        return {r["id"]: f"/tmp/fake-ws/attachments/{r['id']}_{r['filename']}" for r in records}
+
+    monkeypatch.setattr(
+        "kagweb.services.session.attachment_workspace.materialize_attachments",
+        _fake_materialize,
+    )
+
+    payload = {
+        **_stub_payload("read this"),
+        # url pre-set: the regenerate shortcut — no store round-trip needed.
+        "attachments": [
+            {
+                "type": "file",
+                "url": "/files/attachments/s1/a1_notes.txt",
+                "base64": "",
+                "filename": "notes.txt",
+                "mime_type": "text/plain",
+                "id": "a1",
+                "extracted_text": "shared body text",
+            }
+        ],
+    }
+
+    async def _run_with_family(family: str):
+        local_backend = _FakeAgentBackend(AgentLoopEvent("content", text="ok"))
+        monkeypatch.setattr(
+            "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+            lambda: {"backend": "fake", "session_workspace": False},
+        )
+        monkeypatch.setattr(
+            "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+            lambda settings: local_backend,
+        )
+        monkeypatch.setattr(
+            "kagweb.services.model_selection.runtime.activate_llm_selection",
+            lambda selection: (
+                SimpleNamespace(model="agent-loop", context_window=None, max_tokens=None),
+                None,
+            ),
+        )
+        monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
+        monkeypatch.setattr(
+            "kagweb.services.session.turns.executor._primary_profile_family",
+            lambda: family,
+        )
+        runtime = TurnRuntimeManager(store=store)
+        session, turn = await runtime.start_turn(payload)
+        execution = runtime._executions.get(turn["id"])
+        assert execution is not None and execution.task is not None
+        await execution.task
+        final = await store.get_turn(turn["id"])
+        assert final is not None and final["status"] == "completed", final
+        return local_backend.requests[0]
+
+    cli_request = await _run_with_family("cli")
+    assert "path: /tmp/fake-ws/attachments/a1_notes.txt" in cli_request.prompt
+    assert "read it when the preview is not enough" in cli_request.prompt
+
+    http_request = await _run_with_family("http")
+    assert "path:" not in http_request.prompt
+    assert "notes.txt" in http_request.prompt  # preview row, just no copy
+    assert "shared body text" in http_request.prompt

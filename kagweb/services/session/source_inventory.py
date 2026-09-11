@@ -22,8 +22,10 @@ The output is decoupled from the rest of ``turn_runtime``:
     inventory = await build_inventory(store, ..., fresh_*=...)
     manifest_text = render_manifest(inventory)
 
-The manifest is the only way sources reach the agent backend: the turn
-contract has no attachment field, so the preview text *is* the delivery.
+The manifest is the primary way sources reach the agent backend: the turn
+contract has no attachment field. Rows whose attachment was materialized
+into the session workspace (see ``attachment_workspace``) also carry the
+file's absolute path, so the agent can read the full contents itself.
 """
 
 from __future__ import annotations
@@ -41,7 +43,8 @@ logger = logging.getLogger(__name__)
 # the model can answer simple "is this the right one?" questions from the
 # manifest alone. Historical sources surface only their identity.
 MANIFEST_PREVIEW_CHARS_FRESH = 2000
-# Image attachments flow through the multimodal block path; never list them.
+# Image attachments have no extracted text; they surface in the manifest
+# only as a path row (when a workspace copy was materialized).
 _IMAGE_MIME_PREFIX = "image/"
 
 
@@ -58,6 +61,11 @@ class SourceEntry:
     # within the active branch's lineage. Fresh sources use the **current**
     # turn's ordinal so the manifest can label them consistently.
     first_seen_turn: int
+    # Stable store id + workspace copy path. Empty for sources with no file
+    # behind them (history-session transcripts) and for copies that could
+    # not be materialized.
+    attachment_id: str = ""
+    path: str = ""
 
     @property
     def char_count(self) -> int:
@@ -80,7 +88,7 @@ class SourceInventory:
     def add(self, entry: SourceEntry) -> None:
         if not entry.sid:
             return
-        if not entry.full_text.strip():
+        if not entry.full_text.strip() and not entry.path:
             return
         existing_pos = self._index.get(entry.sid)
         if existing_pos is None:
@@ -113,18 +121,29 @@ async def build_inventory(
     fresh_attachment_records: Sequence[dict[str, Any]],
     fresh_history_session_ids: Sequence[Any],
     language: str = "en",
+    attachment_paths: dict[str, str] | None = None,
+    materialize: Any = None,
 ) -> SourceInventory:
     """Compose the session-cumulative inventory for one chat turn.
 
     Fresh refs are added first (so they shadow historical entries on the
     same sid); historical refs are then collected from the active branch's
     ancestor messages.
+
+    ``attachment_paths`` maps attachment id → workspace copy path for the
+    fresh records (the executor materializes them before building). For
+    historical attachments — which only become known while walking the
+    lineage — ``materialize`` is an optional async callback invoked once
+    with the collected records; it keeps this module free of filesystem
+    work while still letting the caller put copies on disk.
     """
+    paths = attachment_paths or {}
     inv = SourceInventory()
     _add_fresh(
         inv,
         current_turn_ordinal=current_turn_ordinal,
         attachment_records=fresh_attachment_records,
+        attachment_paths=paths,
     )
     # History sessions are async (per-id store fetches), keep them in a
     # separate phase so the sync fresh additions don't block.
@@ -141,6 +160,8 @@ async def build_inventory(
         session_id=session_id,
         leaf_message_id=leaf_message_id,
         language=language,
+        attachment_paths=paths,
+        materialize=materialize,
     )
     return inv
 
@@ -154,8 +175,13 @@ def render_manifest(inv: SourceInventory) -> str:
     for entry in inv.entries:
         rendered_rows.append(_render_row(entry))
 
-    header = (
-        "[Attached Sources]\n"
+    header = "[Attached Sources]\n"
+    if any(entry.path for entry in inv.entries):
+        header += (
+            "Rows with a `path` field point at the full file on disk — read it "
+            "when the preview is not enough. "
+        )
+    header += (
         "An index of the sources the user has attached in this conversation. "
         "Rows with a `preview` field were attached **this turn**; rows marked "
         "`previously attached (turn N)` were uploaded in earlier turns and show "
@@ -184,13 +210,18 @@ def _format_size(char_count: int) -> str:
 
 
 def _render_row(entry: SourceEntry) -> str:
+    path_line = f"\n  path: {entry.path}" if entry.path else ""
     if entry.fresh:
         preview = _clip_preview(entry.full_text)
-        return f"- id={entry.sid}  type={entry.kind}  name={entry.name!r}\n  preview: {preview!r}"
+        return (
+            f"- id={entry.sid}  type={entry.kind}  name={entry.name!r}"
+            f"{path_line}\n  preview: {preview!r}"
+        )
+    size = f"  size={_format_size(entry.char_count)}  " if entry.char_count else "  "
     return (
         f"- id={entry.sid}  type={entry.kind}  name={entry.name!r}"
-        f"  size={_format_size(entry.char_count)}  "
-        f"source: previously attached (turn {entry.first_seen_turn})"
+        f"{size}source: previously attached (turn {entry.first_seen_turn})"
+        f"{path_line}"
     )
 
 
@@ -202,11 +233,19 @@ def _add_fresh(
     *,
     current_turn_ordinal: int,
     attachment_records: Sequence[dict[str, Any]],
+    attachment_paths: dict[str, str] | None = None,
 ) -> None:
-    """Add the synchronously-available fresh sources (attachments)."""
+    """Add the synchronously-available fresh sources (attachments).
+
+    Records whose materialized copy is in ``attachment_paths`` (keyed by
+    attachment id) render with a ``path`` row. Image records carry no
+    extracted text, so they only surface when a copy exists — the agent
+    reads the file instead of a preview.
+    """
     for rec in attachment_records:
         filename = str(rec.get("filename") or "file")
         extracted = str(rec.get("extracted_text") or "")
+        att_id = str(rec.get("id") or "").strip()
         inv.add(
             SourceEntry(
                 # A stable short id for a filename, not a security digest — the
@@ -221,6 +260,8 @@ def _add_fresh(
                 full_text=extracted,
                 fresh=True,
                 first_seen_turn=current_turn_ordinal,
+                attachment_id=att_id,
+                path=(attachment_paths or {}).get(att_id, "") if att_id else "",
             )
         )
 
@@ -262,19 +303,80 @@ async def _add_historical(
     session_id: str,
     leaf_message_id: int | None,
     language: str = "en",
+    attachment_paths: dict[str, str],
+    materialize: Any = None,
 ) -> None:
     """Walk the active branch's ancestor user messages and pull in
     references they carried. Sources already in ``inv`` (i.e. fresh
-    duplicates) are skipped — fresh entries always win."""
+    duplicates) are skipped — fresh entries always win.
+
+    Historical attachments are collected first and added afterwards so the
+    (optional, async) ``materialize`` callback can run once for the whole
+    batch before entries are constructed.
+    """
     lineage = await _load_lineage(store, session_id, leaf_message_id)
+    pending: list[tuple[int, dict[str, Any]]] = []
     user_turn_ordinal = 0
     for msg in lineage:
         if msg.get("role") != "user":
             continue
         user_turn_ordinal += 1
         await _collect_from_user_message(
-            inv, store=store, msg=msg, turn_ordinal=user_turn_ordinal, language=language
+            inv,
+            store=store,
+            msg=msg,
+            turn_ordinal=user_turn_ordinal,
+            language=language,
+            pending_attachments=pending,
         )
+    paths = dict(attachment_paths)
+    if pending and materialize is not None:
+        try:
+            paths.update(await materialize([att for _, att in pending]))
+        except Exception:
+            logger.warning(
+                "historical attachment materialization failed; manifest rows will carry no path",
+                exc_info=True,
+            )
+    for turn_ordinal, att in pending:
+        _add_historical_attachment(inv, att, turn_ordinal, paths)
+
+
+def _add_historical_attachment(
+    inv: SourceInventory,
+    att: dict[str, Any],
+    turn_ordinal: int,
+    paths: dict[str, str],
+) -> None:
+    """Add one prior-turn attachment as a historical manifest row."""
+    att_id = str(att.get("id", "") or "").strip()
+    if not att_id:
+        return
+    sid = f"at-{att_id}"
+    if sid in inv:
+        return
+    mime = str(att.get("mime_type", "")).lower()
+    text = str(att.get("extracted_text") or "")
+    path = paths.get(att_id, "")
+    if not path:
+        # Without a workspace copy the row is only worth rendering when it
+        # carries a meaningful preview — the pre-materialization behavior.
+        if mime.startswith(_IMAGE_MIME_PREFIX):
+            return
+        if not text.strip():
+            return
+    inv.add(
+        SourceEntry(
+            sid=sid,
+            kind="attachment",
+            name=str(att.get("filename") or "Untitled file"),
+            full_text=text,
+            fresh=False,
+            first_seen_turn=turn_ordinal,
+            attachment_id=att_id,
+            path=path,
+        )
+    )
 
 
 async def _collect_from_user_message(
@@ -284,38 +386,22 @@ async def _collect_from_user_message(
     msg: dict[str, Any],
     turn_ordinal: int,
     language: str = "en",
+    pending_attachments: list[tuple[int, dict[str, Any]]],
 ) -> None:
     """Drain one prior user message into the inventory as historical
     entries. Attachments are pulled from the persisted ``attachments``
-    JSON; space refs are pulled from ``metadata.request_snapshot`` and
-    re-resolved through their respective services so the historical
-    full text always reflects the current state of the referenced object.
+    JSON and queued on ``pending_attachments`` (deferred so the caller
+    can materialize the whole batch); history refs are pulled from
+    ``metadata.request_snapshot`` and re-resolved through their service
+    so the historical full text always reflects the current state of the
+    referenced object.
     """
     # Attachments — extracted_text was persisted at upload time, no
     # external lookup needed.
     for att in msg.get("attachments") or []:
-        att_id = str(att.get("id", "") or "").strip()
-        if not att_id:
+        if not str(att.get("id", "") or "").strip():
             continue
-        sid = f"at-{att_id}"
-        if sid in inv:
-            continue
-        mime = str(att.get("mime_type", "")).lower()
-        if mime.startswith(_IMAGE_MIME_PREFIX):
-            continue
-        text = str(att.get("extracted_text") or "")
-        if not text.strip():
-            continue
-        inv.add(
-            SourceEntry(
-                sid=sid,
-                kind="attachment",
-                name=str(att.get("filename") or "Untitled file"),
-                full_text=text,
-                fresh=False,
-                first_seen_turn=turn_ordinal,
-            )
-        )
+        pending_attachments.append((turn_ordinal, att))
 
     snap = (msg.get("metadata") or {}).get("request_snapshot") or {}
     if not isinstance(snap, dict):

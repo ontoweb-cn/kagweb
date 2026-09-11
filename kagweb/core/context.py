@@ -80,9 +80,10 @@ class UnifiedContext:
         sidebar_context: High-priority grounding for an isolated sidebar tutor
             (for example, the exact passage selected in another chat).
         source_manifest: Plain-text manifest of attached sources (one line per
-            source: id/name/type/preview). Empty when no sources are attached.
-            Consumed by the chat capability to render an "Attached Sources"
-            section in the system prompt and to enable the ``read_source`` tool.
+            source: id/name/type/preview, plus the workspace copy path when
+            the file was materialized for the agent backend). Empty when no
+            sources are attached. Consumed by the chat capability to render
+            an "Attached Sources" section in the prompt.
         runtime: Private, non-serializable callbacks and provider state.
         interaction: Mutable user/loop interaction state.
         capability_output: Structured terminal capability output.

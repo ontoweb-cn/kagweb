@@ -54,6 +54,27 @@ def _payload_context_window(payload: dict[str, Any]) -> int | None:
     return value if value > 0 else None
 
 
+def _primary_profile_family() -> str:
+    """Family of the primary agent-loop profile: ``cli`` | ``http`` | ``""``.
+
+    Same read the chat capability does; lazy imports keep the agent-loop
+    settings stack out of this module's import surface. Empty means no
+    backend is configured (shell stub) or the settings could not be read —
+    either way there is no workspace-consuming agent to materialize for.
+    """
+    try:
+        from kagweb.services.agent_loop.settings import (
+            get_agent_loop_settings,
+            resolve_primary_profile,
+        )
+
+        profile = resolve_primary_profile(get_agent_loop_settings())
+    except Exception:
+        logger.debug("agent-loop settings unavailable for family probe", exc_info=True)
+        return ""
+    return str((profile or {}).get("family") or "")
+
+
 def _count_llm_rounds(events: list[dict[str, Any]]) -> int:
     """Distinct exploration steps in this turn's assistant events.
 
@@ -275,6 +296,10 @@ class TurnExecutor:
                     "filename": item.get("filename", ""),
                     "mime_type": item.get("mime_type", ""),
                     "id": item.get("id", "") or _uuid.uuid4().hex[:12],
+                    # Persisted previews ride along on regenerate (the
+                    # request preparer replays the stored attachment JSON);
+                    # dropping the key here silently lost them.
+                    "extracted_text": item.get("extracted_text", ""),
                 }
                 attachment_records.append(record)
 
@@ -382,6 +407,25 @@ class TurnExecutor:
             )
 
             source_manifest_text = ""
+            attachment_paths: dict[str, str] = {}
+            materialize = None
+
+            from kagweb.services.session.attachment_workspace import (
+                materialize_attachments,
+            )
+
+            # Only CLI/ACP backends run in a filesystem workspace an agent
+            # could read; for the HTTP family (and while no backend is
+            # configured) copies would be pure disk churn, so the manifest
+            # renders without path rows.
+            if _primary_profile_family() == "cli":
+
+                async def _materialize(records: list[dict[str, Any]]) -> dict[str, str]:
+                    return await materialize_attachments(session_id, records)
+
+                materialize = _materialize
+                if attachment_records:
+                    attachment_paths = await _materialize(attachment_records)
 
             from kagweb.services.session.source_inventory import (
                 build_inventory,
@@ -403,6 +447,8 @@ class TurnExecutor:
                 fresh_attachment_records=attachment_records,
                 fresh_history_session_ids=history_references,
                 language=str(payload.get("language", "en") or "en"),
+                attachment_paths=attachment_paths,
+                materialize=materialize,
             )
             source_manifest_text = render_manifest(inventory)
             effective_user_message = raw_user_content

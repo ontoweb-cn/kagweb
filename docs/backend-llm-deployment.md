@@ -386,7 +386,7 @@ KAGWeb 不再持有工具实现，改为**桥接**：
 - `ToolRegistry` 保留为「向 MCP 暴露的定义源」，`AgentLoopRequest` 增加 MCP 端点信息而非工具 schema 列表。
 
 这比「把 4 个工具塞进 prompt」更符合 agent-native 的架构方向，也复用了 KAGWeb 已有的 `services/mcp/`。
-> **✅ 决策记录（2026-09-11）**：MCP 重定位采纳**撤退**——整块移除（`services/mcp/` ~3.4k 行、两个路由、Space MCP 页 + admin registry UI、`runtime/providers/`、`ToolRegistry`/`ScopedToolRegistry`/`deferred_tools`、`core/tool_protocol.py`、`mcp_tools` grant 维度、`mcp` 依赖与 brand-icons 管线）。理由：工具投递一环自 in-process loop 移除后即断裂（`build_tool_view` 零生产调用者），且无「用户自有 MCP server 参与对话」的真实需求；配置面虽活跃但不支撑任何端到端价值。附件可达性缺口改走「附件落盘 session workspace」路线。
+> **✅ 决策记录（2026-09-11）**：MCP 重定位采纳**撤退**——整块移除（`services/mcp/` ~3.4k 行、两个路由、Space MCP 页 + admin registry UI、`runtime/providers/`、`ToolRegistry`/`ScopedToolRegistry`/`deferred_tools`、`core/tool_protocol.py`、`mcp_tools` grant 维度、`mcp` 依赖与 brand-icons 管线）。理由：工具投递一环自 in-process loop 移除后即断裂（`build_tool_view` 零生产调用者），且无「用户自有 MCP server 参与对话」的真实需求；配置面虽活跃但不支撑任何端到端价值。附件可达性缺口已按「附件落盘 session workspace + manifest 带路径」落地（同日，`attachment_workspace.py`）。
 
 **7. 清理模型目录残留**（P2-2）
 

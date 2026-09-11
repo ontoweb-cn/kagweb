@@ -97,3 +97,172 @@ async def test_build_inventory_accepts_a_fresh_attachment_end_to_end() -> None:
     manifest = render_manifest(inv)
     assert "spec.md" in manifest
     assert "# Spec" in manifest
+
+
+# ----- Path rows: materialized workspace copies ---------------------------
+
+
+async def test_fresh_path_row_renders_and_turns_on_the_header_sentence() -> None:
+    inv = await build_inventory(
+        _EmptyStore(),
+        session_id="s1",
+        leaf_message_id=None,
+        current_turn_ordinal=1,
+        fresh_attachment_records=[
+            {
+                "id": "a1",
+                "filename": "notes.txt",
+                "extracted_text": "first slide",
+            }
+        ],
+        fresh_history_session_ids=[],
+        attachment_paths={"a1": "/ws/attachments/a1_notes.txt"},
+    )
+    manifest = render_manifest(inv)
+
+    assert "path: /ws/attachments/a1_notes.txt" in manifest
+    assert "read it when the preview is not enough" in manifest
+
+
+async def test_without_paths_there_is_no_path_nor_header_sentence() -> None:
+    inv = await build_inventory(
+        _EmptyStore(),
+        session_id="s1",
+        leaf_message_id=None,
+        current_turn_ordinal=1,
+        fresh_attachment_records=[{"id": "a1", "filename": "notes.txt", "extracted_text": "body"}],
+        fresh_history_session_ids=[],
+    )
+    manifest = render_manifest(inv)
+
+    assert "path:" not in manifest
+    assert "read it when the preview is not enough" not in manifest
+
+
+async def test_image_record_surfaces_only_through_its_copy() -> None:
+    inv = SourceInventory()
+    _add_fresh(
+        inv,
+        current_turn_ordinal=1,
+        attachment_records=[
+            {"id": "img1", "filename": "chart.png", "mime_type": "image/png"},
+            {"id": "img2", "filename": "kept.png", "mime_type": "image/png"},
+        ],
+        attachment_paths={"img2": "/ws/attachments/img2_kept.png"},
+    )
+    manifest = render_manifest(inv)
+
+    # No extracted text and no copy → invisible (pre-materialization behavior).
+    assert "chart.png" not in manifest
+    # With a copy: a path row even though there is no preview to show.
+    assert "kept.png" in manifest
+    assert "path: /ws/attachments/img2_kept.png" in manifest
+    assert "preview:" not in manifest.split("kept.png", 1)[1].split("\n", 2)[1]
+
+
+class _RecordingStore:
+    """Minimal store: returns one prior user message carrying attachments."""
+
+    def __init__(self, messages: list[dict]) -> None:
+        self._messages = messages
+
+    async def get_messages(self, session_id: str) -> list[dict]:
+        return self._messages
+
+
+async def test_historical_attachments_materialize_through_the_callback() -> None:
+    prior = {
+        "role": "user",
+        "content": "earlier turn",
+        "attachments": [
+            {
+                "id": "h1",
+                "filename": "old.txt",
+                "mime_type": "text/plain",
+                "extracted_text": "old body",
+            }
+        ],
+    }
+    seen: list[list[dict]] = []
+
+    async def _materialize(records):
+        seen.append(list(records))
+        return {"h1": "/ws/attachments/h1_old.txt"}
+
+    inv = await build_inventory(
+        _RecordingStore([prior]),
+        session_id="s1",
+        leaf_message_id=None,
+        current_turn_ordinal=2,
+        fresh_attachment_records=[],
+        fresh_history_session_ids=[],
+        materialize=_materialize,
+    )
+    manifest = render_manifest(inv)
+
+    assert [rec["id"] for rec in seen[0]] == ["h1"]
+    assert "path: /ws/attachments/h1_old.txt" in manifest
+    assert "previously attached (turn 1)" in manifest
+
+
+async def test_historical_without_materialization_keeps_the_text_only_filter() -> None:
+    prior = {
+        "role": "user",
+        "content": "earlier turn",
+        "attachments": [
+            {"id": "h1", "filename": "pic.png", "mime_type": "image/png"},
+            {"id": "h2", "filename": "blob.bin", "mime_type": "application/octet-stream"},
+            {
+                "id": "h3",
+                "filename": "doc.txt",
+                "mime_type": "text/plain",
+                "extracted_text": "real text",
+            },
+        ],
+    }
+
+    inv = await build_inventory(
+        _RecordingStore([prior]),
+        session_id="s1",
+        leaf_message_id=None,
+        current_turn_ordinal=2,
+        fresh_attachment_records=[],
+        fresh_history_session_ids=[],
+    )
+    manifest = render_manifest(inv)
+
+    assert "pic.png" not in manifest
+    assert "blob.bin" not in manifest
+    assert "doc.txt" in manifest
+
+
+async def test_materialize_failure_degrades_to_pathless_rows() -> None:
+    prior = {
+        "role": "user",
+        "content": "earlier turn",
+        "attachments": [
+            {
+                "id": "h1",
+                "filename": "old.txt",
+                "mime_type": "text/plain",
+                "extracted_text": "old body",
+            }
+        ],
+    }
+
+    async def _boom(records):
+        raise OSError("disk gone")
+
+    inv = await build_inventory(
+        _RecordingStore([prior]),
+        session_id="s1",
+        leaf_message_id=None,
+        current_turn_ordinal=2,
+        fresh_attachment_records=[],
+        fresh_history_session_ids=[],
+        materialize=_boom,
+    )
+    manifest = render_manifest(inv)
+
+    assert "old.txt" in manifest
+    assert "path:" not in manifest
