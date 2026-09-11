@@ -22,7 +22,7 @@ const fontSerif = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "学研助手",
+  title: "KAG WebUI",
   description: "Agent-native intelligent learning companion",
   icons: {
     // Metadata icon URLs are emitted verbatim — Next does NOT apply the

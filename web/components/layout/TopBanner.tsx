@@ -349,15 +349,15 @@ export default function TopBanner({
         </button>
         <Link href="/" className="flex items-center gap-1.5">
           <Image
-            src="/logo.png?v=naval-20260904"
-            alt="学研助手"
+            src="/logo.png?v=ontoweb-20260912"
+            alt="KAG WebUI"
             width={26}
             height={26}
             unoptimized
             className="h-[26px] w-[26px] rounded-md"
           />
           <span className="hidden whitespace-nowrap font-serif text-[18px] font-semibold leading-none text-[var(--foreground)] min-[420px]:inline">
-            学研助手
+            KAG WebUI
           </span>
         </Link>
       </div>

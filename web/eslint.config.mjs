@@ -11,9 +11,9 @@ const config = [
     rules: {
       // During migration keep as warning; change to "error" once phase2/3 complete.
       //
-      // ``学研助手`` is the product name: the same string in every locale, so
+      // ``KAG WebUI`` is the product name: the same string in every locale, so
       // translating it would be wrong rather than missing.
-      "i18n/no-literal-ui-text": ["warn", { allow: ["学研助手"] }],
+      "i18n/no-literal-ui-text": ["warn", { allow: ["KAG WebUI"] }],
     },
   },
   {
