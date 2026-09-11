@@ -4,15 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useCapabilityFilter } from "@/features/capabilities/useCapabilityCatalog";
-import {
-  ArrowUpRight,
-  Github,
-  History,
-  Plug,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowUpRight, Github, History, type LucideIcon } from "lucide-react";
 
-import { SPACE_MCP_SURFACE, loadMcpSurface } from "@/components/mcp/surface";
 import { listSessions } from "@/lib/session-api";
 
 /**
@@ -26,7 +19,7 @@ import { listSessions } from "@/lib/session-api";
 
 type Lang = { zh: string; en: string };
 
-type DashKey = "chat_history" | "mcp";
+type DashKey = "chat_history";
 
 interface DashboardItem {
   key: DashKey;
@@ -79,27 +72,6 @@ const GROUPS: DashboardGroup[] = [
         unit: { zh: "段对话", en: "conversations" },
         tile: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
         load: async () => (await listSessions(200, 0, { force: true })).length,
-      },
-    ],
-  },
-  {
-    label: { zh: "个性化", en: "Personalization" },
-    items: [
-      {
-        key: "mcp",
-        href: "/space/mcp",
-        icon: Plug,
-        title: { zh: "MCP 服务", en: "MCP Services" },
-        blurb: {
-          zh: "连接托管 MCP 服务，把它们的工具带进对话。",
-          en: "Connect hosted MCP services and bring their tools into chat.",
-        },
-        unit: { zh: "个服务", en: "services" },
-        tile: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-        // The account's own servers only: the deployment's are shown on the page
-        // but are not this reader's to count.
-        load: async () =>
-          Object.keys((await loadMcpSurface(SPACE_MCP_SURFACE)).servers).length,
       },
     ],
   },

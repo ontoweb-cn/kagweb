@@ -61,27 +61,6 @@ def test_typer_dependency_does_not_request_removed_all_extra(metadata_path: Path
     assert typer_requirements == ["typer>=0.9.0"]
 
 
-@pytest.mark.parametrize(
-    "metadata_path",
-    [
-        REPOSITORY_ROOT / "pyproject.toml",
-        REPOSITORY_ROOT / "packaging" / "kagweb-cli" / "pyproject.toml",
-    ],
-)
-def test_mcp_client_is_a_core_dependency(metadata_path: Path) -> None:
-    """`mcp` must install by default, not only via an extra (issue #792).
-
-    Both distributions ship the configurable MCP tool surface. An extra-gated
-    client would leave ordinary configured servers failing with
-    ``ModuleNotFoundError`` on a plain install.
-    """
-    with metadata_path.open("rb") as file:
-        dependencies = tomllib.load(file)["project"]["dependencies"]
-
-    mcp_requirements = [item for item in dependencies if item.split(">")[0].strip() == "mcp"]
-    assert mcp_requirements == ["mcp>=1.26.0,<2.0.0"]
-
-
 def test_full_app_cron_dependency_matches_every_server_install_surface() -> None:
     expected = "croniter>=6.0.0,<7.0.0"
     with (REPOSITORY_ROOT / "pyproject.toml").open("rb") as file:

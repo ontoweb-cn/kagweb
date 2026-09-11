@@ -18,7 +18,6 @@ from kagweb.core.context import UnifiedContext
 from kagweb.core.stream import StreamEvent, StreamEventType
 from kagweb.events.event_bus import Event, EventType, get_event_bus
 from kagweb.runtime.registry.capability_registry import get_capability_registry
-from kagweb.runtime.registry.tool_registry import get_tool_registry
 from kagweb.runtime.stream_bus import StreamBus, register_bus, unregister_bus
 
 logger = logging.getLogger(__name__)
@@ -55,7 +54,6 @@ class ChatOrchestrator:
 
     def __init__(self, capability_registry=None) -> None:  # noqa: ANN001
         self._cap_registry = capability_registry or get_capability_registry()
-        self._tool_registry = get_tool_registry()
 
     async def handle(self, context: UnifiedContext) -> AsyncIterator[StreamEvent]:
         """
@@ -167,23 +165,8 @@ class ChatOrchestrator:
         except Exception:
             logger.debug("EventBus publish failed (may not be running)", exc_info=True)
 
-    def list_tools(self) -> list[str]:
-        """Diagnostics-only registry listing.
-
-        This is the raw process registry — it has **no grant view**. Never
-        expose it (or :meth:`get_tool_schemas`) through a user-facing
-        endpoint; per-user visibility goes through ``ScopedToolRegistry``
-        (`runtime/providers/view.py`), which enforces the MCP/CLI allowlists.
-        """
-        return self._tool_registry.list_tools()
-
     def list_capabilities(self) -> list[str]:
         return self._cap_registry.list_capabilities()
 
     def get_capability_manifests(self) -> list[dict[str, Any]]:
         return self._cap_registry.get_manifests()
-
-    def get_tool_schemas(self, names: list[str] | None = None) -> list[dict[str, Any]]:
-        """Diagnostics-only schema dump — see :meth:`list_tools` for why this
-        must never back a user-facing endpoint (no grant filtering here)."""
-        return self._tool_registry.build_openai_schemas(names)

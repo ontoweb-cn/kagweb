@@ -32,45 +32,6 @@ class GrantPayload(BaseModel):
     grant: dict[str, Any]
 
 
-#: First MCP connect can be slow; the admin page must not hang on it.
-_MCP_CATALOG_START_TIMEOUT = 10.0
-
-
-async def _admin_mcp_tool_options() -> list[dict[str, Any]]:
-    """The assignable MCP tool catalog for the grants editor.
-
-    Listed from the same process registry the runtime allowlist filters
-    (``view.py``), so a name shown here is exactly a name the grant can
-    whitelist. Starting the manager is best-effort: on failure the catalog is
-    simply empty — the grants editor renders "nothing configured" instead of
-    erroring, and a later save keeps the existing whitelist untouched.
-    """
-    import asyncio
-
-    from kagweb.runtime.registry.tool_registry import get_tool_registry
-    from kagweb.services.mcp import get_mcp_manager
-
-    try:
-        await asyncio.wait_for(
-            get_mcp_manager().ensure_started(), timeout=_MCP_CATALOG_START_TIMEOUT
-        )
-    except Exception:
-        return []
-    tools: list[dict[str, Any]] = []
-    for tool in get_tool_registry().deferred_tools():
-        definition = tool.get_definition()
-        tools.append(
-            {
-                "name": definition.name,
-                "description": definition.description,
-                # Grouping key for the editor (the MCP server's name).
-                "provider_id": getattr(tool, "provider_id", ""),
-                "kind": "mcp",
-            }
-        )
-    return sorted(tools, key=lambda item: str(item["name"]))
-
-
 def _admin_catalog_summary() -> dict[str, list[dict[str, Any]]]:
     catalog = ModelCatalogService(
         path=get_admin_path_service().get_settings_file("model_catalog")
@@ -119,8 +80,8 @@ def _require_assignable_user(user_id: str) -> tuple[str, dict[str, Any]]:
 
 @router.get("/admin/resources")
 async def admin_resources(_: object = Depends(require_admin)) -> dict[str, Any]:
-    """Everything an admin can assign to a user: model catalog + MCP tools."""
-    return {"models": _admin_catalog_summary(), "mcp_tools": await _admin_mcp_tool_options()}
+    """Everything an admin can assign to a user: the model catalog."""
+    return {"models": _admin_catalog_summary()}
 
 
 @router.get("/users/{user_id}/grants")
@@ -147,9 +108,6 @@ async def put_user_grants(
         target_user_id=user_id,
         summary={
             "model_count": len(grant.get("models", {}).get("llm", []) or []),
-            "mcp_tool_count": (
-                None if grant.get("mcp_tools") is None else len(grant.get("mcp_tools") or [])
-            ),
             "exec_enabled": grant.get("exec_enabled"),
         },
     )

@@ -27,8 +27,7 @@
     "audit:ui": "playwright test --ui --project=ui-audit",
     "audit:report": "playwright show-report",
     "test:e2e:critical": "playwright test --project=critical-turns",
-    "test:e2e:multi-worker": "playwright test --project=multi-worker-turns-desktop --project=multi-worker-turns-mobile",
-    "build:brand-icons": "tsx ./scripts/build-brand-icons.mts"
+    "test:e2e:multi-worker": "playwright test --project=multi-worker-turns-desktop --project=multi-worker-turns-mobile"
   },
   "dependencies": {
     "@recogito/text-annotator": "4.2.5",

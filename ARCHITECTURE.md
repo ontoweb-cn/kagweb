@@ -242,9 +242,10 @@ trace note — the turn still completes.
 3. **Add a backend preset** — extend `kagweb/services/agent_loop/builtin.py`
    (+ a translator for CLI shapes). No capability change needed.
 
-Provider tools (MCP servers, CLI apps) mount through `ToolRegistry`
-(`kagweb/runtime/registry/tool_registry.py`). Built-in prompt-time tools are
-removed — the agent-loop backend carries its own tooling.
+There is no tool layer: built-in prompt-time tools and the MCP client stack
+(`services/mcp/`, the `space_mcp`/`mcp_settings` routers, the
+registry/provider plumbing, and the `mcp_tools` grant dimension) is removed —
+the agent-loop backend carries its own tooling.
 
 ## Known boundaries
 
@@ -265,7 +266,7 @@ removed — the agent-loop backend carries its own tooling.
 | LLM providers | `kagweb/services/llm/` | OpenAI Chat Completions **and** Responses API wire protocols (`WireAPI = auto/responses/chat_completions`), Anthropic, Azure, Codex OAuth, Copilot, CodeBuddy, embedding-free |
 | Sessions | `kagweb/services/session/` | SQLite + PocketBase stores, turn runtime (prepare/execute/lifecycle/title), request snapshots, regenerate |
 | Turn coordination | `kagweb/runtime/` | multi-worker leader election, memory reclaim |
-| Multi-user | `kagweb/multi_user/` | grants, model/tool/MCP access, audit |
+| Multi-user | `kagweb/multi_user/` | grants (models/exec/agent-loop), audit |
 | Settings | `kagweb/services/config/` | model catalog (llm/task/search/tts/stt/imagegen), runtime settings, connection tests |
 | Web | `web/` | Next.js, subpath-deployable (`NEXT_PUBLIC_BASE_PATH`), settings/multi-user/space UIs |
 | Document parsing | `kagweb/services/parsing/` + `kagweb/utils/document_extractor.py` | chat attachments (PDF/Office/EPUB/text) — independent of the removed RAG layer |
@@ -293,11 +294,17 @@ removed — the agent-loop backend carries its own tooling.
   `"standard"` on load.
 - **Builtin tool package**: `tools/` (brainstorm/web_search/paper_search/
   reason, question bank, prompt-hint YAMLs) and the `enabled_tools` grant
-  dimension. MCP/CLI-app tool access stays grant-gated. The turn contract
-  lost its inert `tools` field, and legacy device-credential JWTs (carrying
-  the removed `dcid`/`dcs` claims) are rejected at decode time, so any
-  outstanding device session dies immediately instead of outliving the
-  revocation path.
+  dimension. The turn contract lost its inert `tools` field, and legacy
+  device-credential JWTs (carrying the removed `dcid`/`dcs` claims) are
+  rejected at decode time, so any outstanding device session dies immediately
+  instead of outliving the revocation path.
+- **MCP client stack**: `services/mcp/` (manager, OAuth, catalog, secrets),
+  the `space_mcp`/`mcp_settings` routers, the Space MCP page and admin
+  registry UI, `runtime/providers/` + `ToolRegistry`/`ScopedToolRegistry`
+  plumbing, `core/tool_protocol.py`, and the `mcp_tools` grant dimension.
+  Registered tools had no delivery path to agent-loop backends (the turn
+  contract carries no tool surface), so the stack was dormant behind a live
+  configuration UI; removed whole on 2026-09-11.
 - **Satellites**: memory, skills/EduHub, cron, sandbox execution, subagent
   (external CLI agent) harness, books, co-writer, notebooks, reading,
   video learning, visualizers, courses, CLI apps, videogen.

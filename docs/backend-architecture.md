@@ -240,7 +240,7 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 | `/api/auth` | 登录/登出/注册、档案、Codex OAuth 回调（公开） |
 | `/api/sessions` | 会话 CRUD、trace 导出、组织、测验结果 |
 | `/api/settings` | UI 偏好、模型目录、网络、agent-loop、解析、OAuth |
-| `/api/multi-user` | 授权（模型/工具/MCP/执行/Agent 后端） |
+| `/api/multi-user` | 授权（模型/执行/Agent 后端；MCP/工具维度已移除） |
 | `/api/capabilities` | 能力清单与可调项 |
 | `/api/system`、`/api/voice` | 系统、语音（`/api/tools`、`/api/personas` 已随批次四/五移除） |
 | `/files/outputs`、`/files/attachments` | 产物与附件 |
@@ -269,7 +269,9 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 | 模型访问 | `model_access.py` | 归属者绑定的凭据（`openai_codex`、`codebuddy`）**永不可授予** |
 | Agent 后端（HTTP 族） | `model_access.py` `agent_loop` | 部署级：管理员配了后端即视为允许用户使用，`False` 可暂停单个用户 |
 | Agent 后端（CLI/ACP 族） | `model_access.py` `agent_loop_cli` | **默认拒绝**：该族以服务器 uid spawn 本地进程，授权它等同于授予本机代码执行 |
-| 工具/执行 | `tool_access.py` | MCP 工具对非管理员**默认拒绝** |
+| 执行 | `tool_access.py` `exec_override` | 三态覆盖部署级 exec 策略（`None` 跟随部署 / `False` 恒拒） |
+
+> 2026-09-11：MCP 客户端栈整体移除（`services/mcp/`、`space_mcp`/`mcp_settings` 路由、Space MCP 页、`runtime/providers/`、`ToolRegistry`/`ScopedToolRegistry`、`core/tool_protocol.py`、grant 的 `mcp_tools` 维度）。移除前 MCP 工具已无投递通路（`build_tool_view` 零生产调用者），仅配置面活跃。
 
 **轮次门禁**（`services/session/turns/request_preparer.py`）对**每个非管理员回合**无条件执行，判定"这一轮需要的资源"是否已授权：`CapabilityManifest.required_service` 给出静态答案，`_effective_required_service()` 修正 `chat` 的部署相关情形——配了 agent 后端时它委派给后端、不碰 KAGWeb 自己的 LLM 层，因此按 family 落到 `agent_loop` 或 `agent_loop_cli`；没有后端时（壳 stub）仍是 `llm`。
 
@@ -300,7 +302,7 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 | 2 | 中 | **死引用**：`allowed_builtin_tools` 的文档与注释以 `rag` / `read_memory` / `web_fetch` 举例，但工具层从未注册这些名字（`tools/builtin_specs.py:45` 仅 4 个） | `core/context.py:72`、`api/utils/tool_options.py:35`、`services/partners/manager.py:209`、`api/routers/partners.py:692` | 更新示例名或删注释；确认 `exclude_builtin={"read_memory","write_memory"}` 是无害的空操作 |
 | 3 | 中 | **技能资产与技能运行时不一致**：运行时已移除，但 5 个 `SKILL.md` 仍在 git 中并被 package-data 打进 wheel（`pyproject.toml:259` 的 `"**/*.md"`）。**注**：该文件 253-254 行的注释显式点名「builtin SKILL.md files」，属有意打包而非疏漏——问题在于运行时已不存在，这些资产是否还有消费方 | `kagweb/skills/builtin/{docx,pdf,pptx,xlsx,skill-creator}/` | 明确取舍：要么确认还有消费方（如作为能力作者素材），要么连同 package-data 注释一并清理 |
 | 4 | 低 | **幽灵空目录**：0 文件且未被 git 跟踪，只因 `.gitignore` 未覆盖而残留于工作树 | `kagweb/knowledge/`、`services/rag/`、`services/embedding/`、`services/web_source/`、`services/github_source/` | 本地清理即可（不影响仓库，但会误导 `find` 类统计，本次核算已排除） |
-| 5 | 低 | **~~残留字段~~（2026-09-11 复核：本条结论已过时）**：`memory_context` 与 `skills_manifest` 已随批次一/小清理删除；`source_manifest` 是**活链路**而非残留——executor 每回合由 `build_inventory`/`render_manifest` 生成、chat capability 注入 `Attached sources:` 块发给 agent backend，是附件到达后端的唯一通路。其原配的 `source_index`（全文 map，消费方 `ReadSourceTool` 已随工具层删除）曾零读方落库，已删（`render_manifest` 收窄为只返回文本） | `core/context.py:103`、`services/session/source_inventory.py`、`services/session/turns/executor.py` | 已处理；遗留的功能缺口是「附件全文到不了后端」（fresh 行仅 2000 字符 preview），修复路径随 MCP 重定位决策走 |
+| 5 | 低 | **~~残留字段~~（2026-09-11 复核：本条结论已过时）**：`memory_context` 与 `skills_manifest` 已随批次一/小清理删除；`source_manifest` 是**活链路**而非残留——executor 每回合由 `build_inventory`/`render_manifest` 生成、chat capability 注入 `Attached sources:` 块发给 agent backend，是附件到达后端的唯一通路。其原配的 `source_index`（全文 map，消费方 `ReadSourceTool` 已随工具层删除）曾零读方落库，已删（`render_manifest` 收窄为只返回文本） | `core/context.py:103`、`services/session/source_inventory.py`、`services/session/turns/executor.py` | 已处理；遗留的功能缺口是「附件全文到不了后端」（fresh 行仅 2000 字符 preview），修复路径随 MCP 撤退决策定为附件落盘 session workspace（待实施） |
 
 ### 与上游的差异
 

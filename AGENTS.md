@@ -2,10 +2,9 @@
 
 ## Overview
 
-KAGWeb is an **agent-native** framework organized around a two-layer plugin
-model — provider **Tools** (MCP servers, CLI apps) registered into the
-dispatch registry, and multi-stage **Capabilities** that take over a turn —
-exposed through three entry points: CLI, WebSocket API, and Python SDK.
+KAGWeb is an **agent-native** framework organized around multi-stage
+**Capabilities** that take over a turn, exposed through three entry points:
+CLI, WebSocket API, and Python SDK.
 
 This fork ships a **framework shell**: the runtime, provider, storage, and web
 layers are complete. The conversation backend is an external **agent loop** —
@@ -27,28 +26,26 @@ Entry Points:  CLI (Typer)  |  WebSocket /ws  |  Python SDK
               │   (defaults to `chat`)                          │
               └──────────┬──────────────┬───────────────────────┘
                          │              │
-              ┌──────────▼──┐  ┌────────▼──────────┐
-              │ ToolRegistry │  │ CapabilityRegistry │
-              │ (provider    │  │   (Level 2)        │
-              │  tools only) │  │                    │
-              └──────────────┘  └────────┬──────────┘
-                                          │ chat delegates to
-                              ┌───────────▼───────────┐
-                              │  AgentLoopBackend     │
-                              │  CLI subprocess | HTTP │
-                              └───────────────────────┘
+              ┌─────────▼─────────┐
+              │ CapabilityRegistry │
+              │   (Level 2)        │
+              └────────┬──────────┘
+                       │ chat delegates to
+            ┌──────────▼──────────┐
+            │  AgentLoopBackend   │
+            │  CLI subprocess | HTTP │
+            └─────────────────────┘
 ```
 
 All capabilities emit on a shared `StreamBus`; the orchestrator fans events out
 to consumers. Runtime settings live in `data/user/settings/*.json` —
 project-root `.env` files are intentionally ignored.
 
-### Level 1 — Tools
+### Tools — none
 
-Built-in prompt-time tools are removed. `ToolRegistry`
-(`kagweb/runtime/registry/tool_registry.py`) holds **provider** tools only —
-MCP server tools and installed CLI apps — which stay grant-gated per user
-(`mcp_tools` / `cli_apps` grant dimensions, deny-by-default for non-admins).
+There is no tool layer: built-in prompt-time tools and the MCP client stack
+(`services/mcp/`, its routers, and the `mcp_tools` grant dimension) are both
+removed. The agent-loop backend carries its own tooling.
 
 ### Level 2 — Capabilities
 
@@ -83,11 +80,10 @@ kagweb start                   # backend + frontend together
 | ------------------------------------------ | ------------------------------------ |
 | `kagweb/runtime/orchestrator.py`           | `ChatOrchestrator` — unified entry   |
 | `kagweb/runtime/launcher.py`               | Backend + frontend lifecycle / port discovery |
-| `kagweb/runtime/registry/`                 | Tool + Capability registries         |
+| `kagweb/runtime/registry/`                 | Capability registry                  |
 | `kagweb/runtime/bootstrap/builtin_capabilities.py` | Built-in capability class paths |
 | `kagweb/services/config/runtime_settings.py` | JSON settings + process-env overrides |
 | `kagweb/core/stream.py`, `stream_bus.py`   | StreamEvent protocol + async fan-out |
-| `kagweb/core/tool_protocol.py`             | `BaseTool` + `ToolDefinition`        |
 | `kagweb/core/capability_protocol.py`       | `TurnCapability` + `CapabilityManifest` |
 | `kagweb/core/context.py`                   | `UnifiedContext` dataclass           |
 | `kagweb/capabilities/`                     | Built-in capability implementations  |

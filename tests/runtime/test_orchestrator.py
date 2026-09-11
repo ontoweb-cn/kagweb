@@ -62,13 +62,8 @@ def _make_orchestrator(
     cap_reg.get = lambda name: cap_map.get(name)
     cap_reg.list_capabilities = lambda: list(cap_map.keys())
 
-    tool_reg = MagicMock()
-    tool_reg.list_tools = MagicMock(return_value=[])
-    tool_reg.build_openai_schemas = MagicMock(return_value=[])
-
     orch = ChatOrchestrator.__new__(ChatOrchestrator)
     orch._cap_registry = cap_reg
-    orch._tool_registry = tool_reg
     return orch
 
 
@@ -241,19 +236,10 @@ class TestOrchestratorSessionId:
 
 
 class TestOrchestratorHelpers:
-    def test_list_tools(self) -> None:
-        orch = _make_orchestrator()
-        assert orch.list_tools() == []
-
     def test_list_capabilities(self) -> None:
         echo = _EchoCapability()
         orch = _make_orchestrator({"echo": echo})
         assert orch.list_capabilities() == ["echo"]
-
-    def test_get_tool_schemas(self) -> None:
-        orch = _make_orchestrator()
-        schemas = orch.get_tool_schemas()
-        assert isinstance(schemas, list)
 
 
 class TestCompletionEventFields:

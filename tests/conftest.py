@@ -33,7 +33,6 @@ try:  # pragma: no cover - import-time wiring
 
     _REAL_OWNER_SECRET_TREES = (
         _REAL_SYSTEM_ROOT / "user-secrets",
-        _REAL_SYSTEM_ROOT / "user-mcp",
         _REAL_SYSTEM_ROOT / "user-cli-apps",
         # Not per-owner, but the same failure: a test that forgets to redirect
         # the roots would record installs the developer's running instance then
@@ -48,7 +47,7 @@ except Exception:  # pragma: no cover
 def _guard_real_owner_secrets():
     """A test must never write into the real per-account state trees.
 
-    These hold OAuth refresh tokens, MCP credentials, and which CLI apps are
+    These hold OAuth refresh tokens and which CLI apps are
     installed. A test that redirects ``ADMIN_WORKSPACE_ROOT`` but forgets
     ``SYSTEM_ROOT`` — or that calls ``monkeypatch.undo()`` and so reverts a
     fixture's redirection — lands here, and without this guard the failure is

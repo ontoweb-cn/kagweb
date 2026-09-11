@@ -18,13 +18,10 @@ def empty_grant(user_id: str) -> dict[str, Any]:
         "version": 2,
         "user_id": user_id,
         "models": {"llm": []},
-        # MCP tools can proxy host-side capabilities, so non-admin runtime
-        # access treats ``mcp_tools=None`` as deny-by-default until an admin
-        # grants explicit names. ``exec_enabled`` is a tri-state override on
-        # top of the deployment exec policy: ``None`` follows the policy,
-        # ``False`` always denies, ``True`` is only honored where the sandbox
-        # can actually isolate users (SYSTEM isolation).
-        "mcp_tools": None,
+        # ``exec_enabled`` is a tri-state override on top of the deployment
+        # exec policy: ``None`` follows the policy, ``False`` always denies,
+        # ``True`` is only honored where the sandbox can actually isolate
+        # users (SYSTEM isolation).
         "exec_enabled": None,
         # Whether the user may drive turns through the configured agent
         # backend. Same tri-state as ``exec_enabled``: ``None`` follows the
@@ -45,14 +42,6 @@ def empty_grant(user_id: str) -> dict[str, Any]:
         # nothing locally and stays covered by ``agent_loop``.
         "agent_loop_cli": None,
     }
-
-
-def _normalize_tool_list(value: Any) -> list[str] | None:
-    if value is None:
-        return None
-    if not isinstance(value, list):
-        return None
-    return [str(item).strip() for item in value if str(item).strip()]
 
 
 def grant_path(user_id: str) -> Path:
@@ -76,8 +65,6 @@ def normalize_grant(user_id: str, payload: dict[str, Any] | None) -> dict[str, A
     if not isinstance(items, list):
         items = []
     base["models"]["llm"] = [dict(item) for item in items if isinstance(item, dict)]
-    for key in ("mcp_tools",):
-        base[key] = _normalize_tool_list(payload.get(key))
     exec_enabled = payload.get("exec_enabled")
     base["exec_enabled"] = bool(exec_enabled) if isinstance(exec_enabled, bool) else None
     agent_loop = payload.get("agent_loop")

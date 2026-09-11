@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, Save } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import McpToolGroups from "@/components/common/McpToolGroups";
 import { fetchAdminResources, fetchUserGrant, saveUserGrant } from "../api";
 import type { GrantPayload, MultiUserResources } from "../types";
 
@@ -14,7 +13,6 @@ function emptyGrant(userId: string): GrantPayload {
     version: 2,
     user_id: userId,
     models: { llm: [] },
-    mcp_tools: null,
     exec_enabled: null,
     agent_loop_cli: null,
   };
@@ -71,57 +69,6 @@ function CheckRow({
         ) : null}
       </span>
     </label>
-  );
-}
-
-/**
- * Default-vs-custom switch for a whitelist field. ``null`` selects the
- * "default" mode; what that resolves to server-side depends on the field —
- * built-in tools default to *all*, MCP tools default to *none* (deny until
- * explicitly granted) — so the default-mode label is caller-supplied.
- */
-function ModeSwitch({
-  isCustom,
-  disabled,
-  onDefault,
-  onCustom,
-  defaultLabel = "Default · all",
-}: {
-  isCustom: boolean;
-  disabled: boolean;
-  onDefault: () => void;
-  onCustom: () => void;
-  defaultLabel?: string;
-}) {
-  const base =
-    "rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45";
-  return (
-    <div className="mb-2 inline-flex gap-1 rounded-lg bg-[var(--muted)]/50 p-0.5">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onDefault}
-        className={`${base} ${
-          !isCustom
-            ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm"
-            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-        }`}
-      >
-        {defaultLabel}
-      </button>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onCustom}
-        className={`${base} ${
-          isCustom
-            ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm"
-            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-        }`}
-      >
-        Custom
-      </button>
-    </div>
   );
 }
 
@@ -199,10 +146,6 @@ export function GrantEditor({ userId }: { userId: string }) {
     });
   }
 
-  function setToolList(key: "mcp_tools", value: string[] | null) {
-    setGrant((current) => ({ ...current, [key]: value }));
-  }
-
   async function save() {
     setSaveState("saving");
     setMessage("");
@@ -237,11 +180,6 @@ export function GrantEditor({ userId }: { userId: string }) {
         ? "text-emerald-700 dark:text-emerald-300"
         : "text-[var(--muted-foreground)]";
 
-  // MCP tools deny-by-default for non-admin users: ``null`` grants none until
-  // the admin switches to Custom and picks specific tool names.
-  const mcpSummary =
-    grant.mcp_tools === null ? "no MCP" : `${grant.mcp_tools.length} MCP`;
-
   if (loading && !resources) {
     return (
       <div className="border-t border-[var(--border)] bg-[var(--background)]/40 p-4">
@@ -270,9 +208,6 @@ export function GrantEditor({ userId }: { userId: string }) {
             <div className="flex flex-wrap gap-1.5 text-[11px] text-[var(--muted-foreground)]">
               <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
                 {selectedModelCount} models
-              </span>
-              <span className="rounded-full bg-[var(--muted)]/60 px-2 py-1">
-                {mcpSummary}
               </span>
             </div>
           </div>
@@ -321,77 +256,6 @@ export function GrantEditor({ userId }: { userId: string }) {
               </div>
             </section>
 
-            <section className="min-w-0">
-              <SectionTitle>MCP tools</SectionTitle>
-              <ModeSwitch
-                isCustom={grant.mcp_tools !== null}
-                disabled={controlsDisabled}
-                defaultLabel="Default · none"
-                onDefault={() => setToolList("mcp_tools", null)}
-                // Custom starts empty: the admin picks the services to assign,
-                // rather than un-picking hundreds of tools they never meant to
-                // grant by switching modes.
-                onCustom={() => setToolList("mcp_tools", [])}
-              />
-              {grant.mcp_tools === null ? (
-                <p className="px-1 text-[11px] leading-relaxed text-[var(--muted-foreground)]">
-                  MCP tools proxy host-side capabilities, so they stay denied by
-                  default. Switch to Custom to assign specific services.
-                </p>
-              ) : null}
-              {grant.mcp_tools !== null &&
-                (resources?.mcp_tools?.length ? (
-                  <div className="text-xs">
-                    {/* Bulk affordance: with ~40 curated services, granting
-                        everything must not mean forty clicks. */}
-                    <div className="mb-1.5 flex items-center gap-2 px-1">
-                      <button
-                        type="button"
-                        disabled={controlsDisabled}
-                        onClick={() =>
-                          setToolList(
-                            "mcp_tools",
-                            (resources.mcp_tools ?? []).map(
-                              (tool) => tool.name,
-                            ),
-                          )
-                        }
-                        className="rounded px-1.5 py-0.5 text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-50"
-                      >
-                        All
-                      </button>
-                      <button
-                        type="button"
-                        disabled={controlsDisabled}
-                        onClick={() => setToolList("mcp_tools", [])}
-                        className="rounded px-1.5 py-0.5 text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-50"
-                      >
-                        None
-                      </button>
-                    </div>
-                    <McpToolGroups
-                      tools={resources.mcp_tools}
-                      selected={grant.mcp_tools}
-                      onChange={(next) => setToolList("mcp_tools", next)}
-                      disabled={controlsDisabled}
-                      renderTool={({ tool, checked, onToggle }) => (
-                        <CheckRow
-                          key={tool.name}
-                          label={tool.name}
-                          description={tool.description}
-                          checked={checked}
-                          disabled={controlsDisabled}
-                          onToggle={onToggle}
-                        />
-                      )}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    No MCP servers configured.
-                  </p>
-                ))}
-            </section>
             <section className="min-w-0">
               <SectionTitle>Code execution</SectionTitle>
               <div className="space-y-1.5 text-xs">

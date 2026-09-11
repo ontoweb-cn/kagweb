@@ -198,10 +198,10 @@ def get_owner_path_service() -> PathService:
 def owner_secrets_dir(owner_id: str) -> Path:
     """Secrets directory of a *named* owner, independent of the request scope.
 
-    Needed because not every reader runs inside a request: an MCP connection
-    task resolves its own server's credentials long after the turn that created
-    it, and must address them by the owner it was opened for rather than by
-    whoever happens to be current.
+    Needed because not every reader runs inside a request: a background
+    credential task (codex token refresh) resolves secrets long after the
+    request that created them, and must address them by the owner they belong
+    to rather than by whoever happens to be current.
     """
     # SYSTEM_ROOT is read per call so a monkey-patched root (tests) is honored.
     secrets_root = SYSTEM_ROOT / USER_SECRETS_DIRNAME

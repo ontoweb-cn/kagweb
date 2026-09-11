@@ -26,23 +26,6 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "api.soul_library_not_found": "Soul '{name}' not found in library",
         "api.soul_not_found": "Soul not found",
         "api.tool_not_found": "Tool '{name}' not found",
-        "mcp.configure_command_or_url": "Server {name!r}: configure either a command (stdio) or a url.",
-        "mcp.configure_before_testing": "Configure either a command (stdio) or a url before testing.",
-        "mcp.server_error": "Server {name!r}: {error}",
-        "mcp.server_missing": "No server named {name!r} in your list.",
-        "mcp.not_oauth": "This server does not use OAuth; give it a credential instead.",
-        "mcp.oauth_callback_incomplete": "The authorization response was incomplete.",
-        "mcp.oauth_callback_unknown": "That authorization has expired or already completed. Start it again.",
-        "mcp.oauth_done": "Authorized. You can close this tab.",
-        "mcp.oauth_failed": "Authorization failed.",
-        "mcp.catalog_entry_missing": "No MCP service named {id!r} in the catalog.",
-        "mcp.entry_admin_only": (
-            "This service runs as a local command and can only be added by an administrator."
-        ),
-        "mcp.tool_not_available": (
-            "This tool is not available in this conversation. "
-            "Only the tools listed in the prompt can be called."
-        ),
         "chat.stub_notice": (
             "KAGWeb is running as a framework shell — the conversation backend is not "
             "connected yet. Model providers, sessions, settings and Partners are ready; "

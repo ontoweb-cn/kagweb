@@ -1,14 +1,8 @@
-"""Core contracts shared across runtime, tools, and capabilities."""
+"""Core contracts shared across runtime and capabilities."""
 
 from .capability_protocol import CapabilityManifest, StreamBusProtocol, TurnCapability
 from .context import Attachment, UnifiedContext
 from .stream import StreamEvent, StreamEventType
-from .tool_protocol import (
-    BaseTool,
-    ToolDefinition,
-    ToolParameter,
-    ToolResult,
-)
 from .trace import build_trace_metadata, merge_trace_metadata, new_call_id
 
 __all__ = [
@@ -18,10 +12,6 @@ __all__ = [
     "new_call_id",
     "build_trace_metadata",
     "merge_trace_metadata",
-    "BaseTool",
-    "ToolDefinition",
-    "ToolParameter",
-    "ToolResult",
     "TurnCapability",
     "CapabilityManifest",
     "UnifiedContext",
