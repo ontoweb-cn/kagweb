@@ -55,7 +55,7 @@ import { useMeasuredHeight } from '@/hooks/useMeasuredHeight'
 import { useSetupSync } from '@/hooks/useSetupSync'
 import { consumePendingPrompt } from '@/lib/pending-prompt'
 import { useLLMOptions } from '@/hooks/useLLMOptions'
-import { ALL_TOOLS, getChatCapability, type ToolName } from '@/features/capabilities/presentation'
+import { getChatCapability } from '@/features/capabilities/presentation'
 import { useCapabilityCatalog } from '@/features/capabilities/useCapabilityCatalog'
 import { browserStorage } from '@/shared/storage'
 import { downloadChatMarkdown } from '@/lib/chat-export'
@@ -266,7 +266,6 @@ export default function ChatWorkspace() {
 
   const {
     state,
-    setTools,
     setCapability,
     setLLMSelection,
     sendMessage,
@@ -859,10 +858,6 @@ export default function ChatWorkspace() {
     if (intent.capability !== null && isCapabilityCatalogLoading) return
     launchIntentAppliedRef.current = true
     if (intent.capability !== null) handleSelectCapability(intent.capability)
-    else if (intent.tools.length) {
-      const valid = intent.tools.filter((t): t is ToolName => ALL_TOOLS.some(d => d.name === t))
-      if (valid.length) setTools(Array.from(new Set(valid)))
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCapabilityCatalogLoading])
 
@@ -888,18 +883,6 @@ export default function ChatWorkspace() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Keep state.enabledTools = the active capability's allow-list. Re-runs when
-  // the active capability changes. There is no longer a user toggle layer: the
-  // backend owns the tools, so the capability's own list is authoritative.
-  useEffect(() => {
-    const next = [...activeCap.allowedTools]
-    const current = state.enabledTools
-    const same =
-      current.length === next.length &&
-      current.every((tool, idx) => tool === next[idx])
-    if (!same) setTools(next)
-  }, [activeCap.allowedTools, setTools, state.enabledTools])
-
   /* ---- handlers ---- */
 
   const handleSelectCapability = useCallback(
@@ -909,12 +892,9 @@ export default function ChatWorkspace() {
         capabilities[0] ??
         getChatCapability('')
       setCapability(cap.value || null)
-      // The capability owns the tool set; there is no user-toggle layer to
-      // intersect with any more.
-      setTools([...cap.allowedTools])
       setCapMenuOpen(false)
     },
-    [capabilities, setCapability, setTools]
+    [capabilities, setCapability]
   )
 
   const fileToAttachment = fileToPendingAttachment

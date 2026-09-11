@@ -26,7 +26,6 @@ function event(type: string, metadata: Record<string, unknown> = {}, content = '
 function snapshot(fields: Partial<MessageRequestSnapshot> = {}): MessageRequestSnapshot {
   return {
     content: '',
-    enabledTools: [],
     language: 'en',
     ...fields,
   }

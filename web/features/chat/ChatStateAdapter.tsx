@@ -111,7 +111,6 @@ export interface SendMessageOptions {
 export interface ChatState {
   sessionId: string | null;
   sessionTitle: string;
-  enabledTools: string[];
   activeCapability: string | null;
   /** Stable product surface; per-turn capability selection is orthogonal. */
   workspaceMode: WorkspaceMode | null;
@@ -136,7 +135,6 @@ export interface SessionConfiguration {
   workspaceMode?: WorkspaceMode | null;
   masteryPathId?: string | null;
   courseId?: string;
-  enabledTools?: string[];
 }
 
 interface SessionStatusSnapshot {
@@ -173,7 +171,6 @@ export interface MessageRequestSnapshot {
   content: string;
   capability?: string | null;
   workspaceMode?: WorkspaceMode | null;
-  enabledTools: string[];
   language: string;
   attachments?: MessageAttachment[];
   config?: Record<string, unknown>;
@@ -233,7 +230,6 @@ interface SessionSnapshot {
   messages: MessageItem[];
   activeTurnId?: string | null;
   status?: SessionRuntimeStatus;
-  tools?: string[];
   capability?: string | null;
   workspaceMode?: WorkspaceMode | null;
   llmSelection?: LLMSelection | null;
@@ -244,7 +240,6 @@ interface SessionSnapshot {
 }
 
 type Action =
-  | { type: "SET_TOOLS"; tools: string[] }
   | { type: "SET_CAPABILITY"; cap: string | null }
   | { type: "SET_LLM_SELECTION"; selection: LLMSelection | null }
   // ``key`` targets a specific conversation — a backend push belongs to the
@@ -330,7 +325,6 @@ function createSessionEntry(
     key,
     sessionId,
     sessionTitle: "",
-    enabledTools: [],
     activeCapability: null,
     workspaceMode: null,
     llmSelection: null,
@@ -396,10 +390,6 @@ function applySessionConfiguration(
       configuration.courseId !== undefined
         ? configuration.courseId
         : session.courseId,
-    enabledTools:
-      configuration.enabledTools !== undefined
-        ? [...configuration.enabledTools]
-        : session.enabledTools,
     updatedAt: Date.now(),
   };
 }
@@ -437,11 +427,6 @@ function isSameTurnEvent(a: StreamEvent, b: StreamEvent): boolean {
 
 function reducer(state: ProviderState, action: Action): ProviderState {
   switch (action.type) {
-    case "SET_TOOLS":
-      return updateSelectedSession(state, (session) => ({
-        ...session,
-        enabledTools: action.tools,
-      }));
     case "SET_CAPABILITY":
       return updateSelectedSession(state, (session) => ({
         ...session,
@@ -784,7 +769,6 @@ function reducer(state: ProviderState, action: Action): ProviderState {
             sessionId: action.sessionId,
             sessionTitle:
               action.title !== undefined ? action.title : existing.sessionTitle,
-            enabledTools: action.tools ?? existing.enabledTools,
             activeCapability:
               action.capability !== undefined
                 ? action.capability
@@ -998,7 +982,6 @@ const POST_DONE_TITLE_REFRESH_MS = 5_000;
 
 interface ChatContextValue {
   state: ChatState;
-  setTools: (tools: string[]) => void;
   setCapability: (cap: string | null) => void;
   setLLMSelection: (selection: LLMSelection | null) => void;
   setMasteryPathId: (masteryPathId: string | null) => void;
@@ -1159,7 +1142,6 @@ function hydrateRequestSnapshot(
       stored.workspaceMode ?? stored.workspace_mode,
       stored.capability ?? message.capability,
     ),
-    enabledTools: asStringArray(stored.enabledTools),
     language: typeof stored.language === "string" ? stored.language : "en",
     ...(attachments.length ? { attachments } : {}),
   };
@@ -1716,9 +1698,6 @@ export function ChatStateAdapterProvider({
         messages,
         activeTurnId: activeTurn?.turn_id || activeTurn?.id || null,
         status: loadedStatus,
-        tools: Array.isArray(session.preferences?.tools)
-          ? session.preferences.tools
-          : [],
         // Old sessions stored Reading/Mastery as the capability itself. Once
         // promoted to a workspace mode, that value means the default Chat
         // action rather than a hidden legacy entry in the action picker.
@@ -1886,8 +1865,6 @@ export function ChatStateAdapterProvider({
         replaySnapshot?.capability ?? session.activeCapability;
       const effectiveWorkspaceMode =
         replaySnapshot?.workspaceMode ?? session.workspaceMode;
-      const effectiveTools =
-        replaySnapshot?.enabledTools ?? session.enabledTools;
       const effectiveLLMSelection =
         replaySnapshot && "llmSelection" in replaySnapshot
           ? (replaySnapshot.llmSelection ?? null)
@@ -1939,7 +1916,6 @@ export function ChatStateAdapterProvider({
         content,
         capability: effectiveCapability,
         workspaceMode: effectiveWorkspaceMode,
-        enabledTools: [...effectiveTools],
         language: effectiveLanguage,
         ...(effectiveAttachments?.length
           ? { attachments: effectiveAttachments }
@@ -2176,7 +2152,6 @@ export function ChatStateAdapterProvider({
     return {
       sessionId: current.sessionId,
       sessionTitle: current.sessionTitle,
-      enabledTools: current.enabledTools,
       activeCapability: current.activeCapability,
       workspaceMode: current.workspaceMode,
       llmSelection: current.llmSelection,
@@ -2203,10 +2178,6 @@ export function ChatStateAdapterProvider({
     }
     return entries;
   }, [state.sessions]);
-
-  const setTools = useCallback((tools: string[]) => {
-    dispatch({ type: "SET_TOOLS", tools });
-  }, []);
 
   const setCapability = useCallback((cap: string | null) => {
     dispatch({ type: "SET_CAPABILITY", cap });
@@ -2382,7 +2353,6 @@ export function ChatStateAdapterProvider({
   const value = useMemo<ChatContextValue>(
     () => ({
       state: derivedState,
-      setTools,
       setCapability,
       setLLMSelection,
       setMasteryPathId,
@@ -2406,7 +2376,6 @@ export function ChatStateAdapterProvider({
     }),
     [
       derivedState,
-      setTools,
       setCapability,
       setLLMSelection,
       setMasteryPathId,

@@ -1197,6 +1197,7 @@ cd web && npm run build && npm run perf:check
 因此 `deep_research` 不会出现在能力列表中。它与 `course_study` / `mastery_path` / `immersive_reading` 同属前端遗留条目（后三者已被 `:168-179` 的过滤器显式排除）。
 
 **更广的残留**：该文件的能力目录还引用了 `code_execution` / `imagegen` / `videogen`（`:28-48`）等工具与 `allowedTools` 列表（`:105-107`、`:122-124`），对应子系统均已移除。这属于 §五决策 4 与 §P0-2 的交叉地带——**前端工具/能力目录的整块陈旧数据**，建议在批次一中一并处理。
+> **✅ 已处理（2026-09-11）**：能力目录收缩落地——`CHAT_CAPABILITIES` 砍到只剩 `chat`（含描述诚实化），`ALL_TOOLS`/`allowedTools`/`defaultTools` 与 `state.enabledTools` 写不读状态链整删，`readChatLaunchIntent` 的 `tool` 参数随之移除；`mergeCapabilityPresentations`/`visibleCapabilityPresentations` 保留（插件能力的展示通道，遗留 id 以 `HIDDEN_CAPABILITY_IDS` 硬排除）。
 
 **复核实为准确、无需修正的项**：`request_preparer.py:105-134` 门禁代码；`capabilities/chat/capability.py:112-122` 无 LLM 依赖；`get_tool_schemas()` 零调用者（`orchestrator.py:179`）；`codex_auth` 与 `agent_loop` 无关联；9 个 LLM 调用点行号；`ChatRequestConfig(EmptyConfig)` 零字段；`AGENT_LOOP_INTELLECT_PRESETS` 值；`question_bank` 读路径孤立 / 写路径活跃。
 

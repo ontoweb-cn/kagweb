@@ -382,7 +382,6 @@ class TurnExecutor:
             )
 
             source_manifest_text = ""
-            source_index: dict[str, str] = {}
 
             from kagweb.services.session.source_inventory import (
                 build_inventory,
@@ -405,7 +404,7 @@ class TurnExecutor:
                 fresh_history_session_ids=history_references,
                 language=str(payload.get("language", "en") or "en"),
             )
-            source_manifest_text, source_index = render_manifest(inventory)
+            source_manifest_text = render_manifest(inventory)
             effective_user_message = raw_user_content
             conversation_history = list(history_result.conversation_history)
             conversation_context_text = history_result.context_text
@@ -468,9 +467,6 @@ class TurnExecutor:
                     "llm_model": str(getattr(llm_config, "model", "") or ""),
                     "llm_provider": str(getattr(llm_config, "provider_name", "") or ""),
                     "llm_reasoning_effort": str(getattr(llm_config, "reasoning_effort", "") or ""),
-                    # Per-turn full-text payload for read_source-style
-                    # consumers. Empty when no sources are attached.
-                    "source_index": source_index,
                 },
             )
 

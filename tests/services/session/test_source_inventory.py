@@ -50,7 +50,7 @@ def test_a_fresh_attachment_becomes_a_rendered_manifest_row() -> None:
     assert row.fresh is True
     assert row.first_seen_turn == 3
 
-    manifest, _by_sid = render_manifest(inv)
+    manifest = render_manifest(inv)
     assert "notes.txt" in manifest
     assert "hello world" in manifest
 
@@ -94,6 +94,6 @@ async def test_build_inventory_accepts_a_fresh_attachment_end_to_end() -> None:
         fresh_history_session_ids=[],
     )
 
-    manifest, _by_sid = render_manifest(inv)
+    manifest = render_manifest(inv)
     assert "spec.md" in manifest
     assert "# Spec" in manifest

@@ -86,7 +86,7 @@ test("direct mastery capability is catalogued but not duplicated as a browser ac
   );
 });
 
-test("home capability menu uses the curated order and workspace boundaries", () => {
+test("curated chat entry leads; unknown extensions follow as secondary in source order", () => {
   const merged = mergeCapabilityPresentations(
     parseCapabilityCatalogPayload({
       capabilities: [
@@ -105,13 +105,18 @@ test("home capability menu uses the curated order and workspace boundaries", () 
     visible
       .filter((capability) => !capability.secondary)
       .map((capability) => capability.value),
-    ["", "ask_questions", "deep_question"],
+    [""],
   );
   assert.deepEqual(
     visible
       .filter((capability) => capability.secondary)
       .map((capability) => capability.value),
-    ["deep_solve", "immersive_watching"],
+    [
+      "ask_questions",
+      "immersive_watching",
+      "deep_question",
+      "deep_solve",
+    ],
   );
   assert.equal(
     visible.some((capability) => capability.value === "immersive_reading"),
@@ -119,13 +124,13 @@ test("home capability menu uses the curated order and workspace boundaries", () 
   );
 });
 
-test("catalog merging returns isolated turn presentation objects", () => {
+test("catalog merging returns isolated presentation objects", () => {
   const descriptors = parseCapabilityCatalogPayload({ capabilities: ["chat"] });
   const first = mergeCapabilityPresentations(descriptors);
   const second = mergeCapabilityPresentations(descriptors);
-  const secondLength = second[0].allowedTools.length;
-  first[0].allowedTools.length = 0;
-  assert.equal(second[0].allowedTools.length, secondLength);
+  assert.notEqual(first[0], second[0]);
+  first[0].label = "mutated";
+  assert.equal(second[0].label, "Chat");
 });
 
 test("safe schema fields are normalized and unknown fields are rejected", () => {
