@@ -1052,7 +1052,11 @@ def _agent_loop_payload() -> dict[str, Any]:
 
     effective_primary = str(effective.get("primary") or "")
     stored_primary = str(stored.get("primary") or "")
-    from kagweb.services.agent_loop.builtin import llm_settings_apply, preset_family
+    from kagweb.services.agent_loop.builtin import (
+        llm_settings_apply,
+        per_turn_model_apply,
+        preset_family,
+    )
     from kagweb.services.agent_loop.settings import resolve_primary_profile
     from kagweb.services.config.runtime_settings import _auto_primary_agent_loop
 
@@ -1074,6 +1078,9 @@ def _agent_loop_payload() -> dict[str, Any]:
             # Gates the LLM (models and connections) section: only a
             # self-hosted HTTP backend needs model credentials entered here.
             "llm_settings_enabled": llm_settings_apply(resolved_preset),
+            # Gates the composer's model selector: only backends that consume
+            # a per-turn model expose one (one-shot CLI family today).
+            "per_turn_model": per_turn_model_apply(resolved_preset),
         },
         # What the default rule (local Intellect first) would pick — shown
         # next to the "Automatic" primary option so the rule is visible.

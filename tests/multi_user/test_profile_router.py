@@ -269,3 +269,7 @@ def test_auth_status_exposes_avatar_marker(profile_client):
     anonymous = client.get("/api/auth/status").json()
     assert anonymous["authenticated"] is False
     assert anonymous["avatar"] == ""
+    # No agent backend configured in the isolated root → the per-turn model
+    # picker stays hidden (an offer that cannot affect the turn is noise).
+    assert body["model_selector_enabled"] is False
+    assert anonymous["model_selector_enabled"] is False

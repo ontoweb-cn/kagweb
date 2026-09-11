@@ -185,6 +185,24 @@ redacts it; `PUT` treats an omitted key as "keep the stored one"). Changes
 apply to the next turn — the chat capability re-reads the block and
 rebuilds the backend per turn.
 
+## Per-turn model selection
+
+The composer's model picker (`llm_selection`) now drives the **conversation**
+model, not just KAGWeb's own helper calls (titles/insights, which keep
+working off the same selection). The grant-validated selection resolves to a
+concrete model name on `AgentLoopRequest.model`; family support varies:
+
+| Family | Support | Mechanism |
+| --- | --- | --- |
+| CLI (one-shot) | ✅ | `{model}` substitution uses the turn override, else the profile's `model`, else the arg drops |
+| HTTP (turn / runs) | body carries `model` | honored where the service reads it (upstream: intellect-agent#126) |
+| ACP | ❌ | no per-turn model field in the protocol; picker hidden |
+
+`AgentLoopPreset.per_turn_model` declares support; `/api/auth/status` exposes
+it as `model_selector_enabled` so the composer hides the picker when the
+configured backend cannot honor it. Precedence: **turn selection >
+profile `model` > backend default**.
+
 ## Consultation (multi agent-loop)
 
 Enabled, `consult_enabled` profiles other than the primary are offered to

@@ -2237,6 +2237,11 @@ export interface components {
        * @default false
        */
       readonly is_admin: boolean;
+      /**
+       * Model Selector Enabled
+       * @default false
+       */
+      readonly model_selector_enabled: boolean;
       /** Preset */
       readonly preset?: ("standard" | "custom") | null;
       /** Role */

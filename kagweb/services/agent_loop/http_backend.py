@@ -136,10 +136,13 @@ class HttpAgentLoopBackend(AgentLoopBackend):
             "prompt": request.prompt,
             "history": request.history,
         }
-        if self.model:
+        turn_model = (request.model or self.model).strip()
+        if turn_model:
             # Omitted when unset, so an existing deployment's request body is
-            # byte-for-byte what it was before this field existed.
-            payload["model"] = self.model
+            # byte-for-byte what it was before this field existed. A per-turn
+            # override (llm_selection) wins over the profile's configured
+            # model; whether the service honors the key is up to the service.
+            payload["model"] = turn_model
         headers = {
             "Accept": "text/event-stream, application/x-ndjson, application/jsonl",
             **self.headers,
@@ -375,9 +378,14 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             payload["conversation_history"] = request.history
         if request.session_id:
             payload["session_id"] = request.session_id
-        if self.model:
+        turn_model = (request.model or self.model).strip()
+        if turn_model:
             # Omitted when unset: an existing deployment's body is unchanged.
-            payload["model"] = self.model
+            # Per-turn override wins over the profile model; the runs endpoint
+            # consuming ``model`` is upstream-dependent (see the presets'
+            # per_turn_model flag) — services that ignore it keep their own
+            # default silently.
+            payload["model"] = turn_model
         state: dict[str, Any] = {"buf": [], "terminal": False}
         # Seed from the request so a clarify can still be answered when the
         # stream never reports the server's own session id; an authoritative

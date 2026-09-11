@@ -571,29 +571,33 @@ class CliAgentLoopBackend(AgentLoopBackend):
         transcript = "\n\n".join(lines)
         return f"Conversation so far:\n\n{transcript}\n\n{request.prompt}"
 
-    def _render_extra_args(self, prompt: str) -> tuple[list[str], bool]:
+    def _render_extra_args(self, prompt: str, turn_model: str = "") -> tuple[list[str], bool]:
         """Resolve ``{model}`` / ``{prompt}`` in ``extra_args``.
 
         Returns the rendered list and whether the prompt was pinned inside it
         (in which case it must not also be appended).
 
-        ``{model}`` with no model configured drops the WHOLE element. That is
-        exact for the recommended ``--model={model}`` spelling, which vanishes
-        cleanly; the separated ``--model {model}`` would leave a bare flag, so
-        the settings UI steers operators to the joined form. Dropping rather
-        than passing a literal placeholder keeps the CLI on its own configured
-        default instead of failing on a value the operator never typed.
+        ``turn_model`` is the per-turn override resolved from the user's
+        ``llm_selection``; it wins over the profile's configured model.
+        ``{model}`` with neither a turn override nor a configured model drops
+        the WHOLE element. That is exact for the recommended ``--model={model}``
+        spelling, which vanishes cleanly; the separated ``--model {model}``
+        would leave a bare flag, so the settings UI steers operators to the
+        joined form. Dropping rather than passing a literal placeholder keeps
+        the CLI on its own configured default instead of failing on a value
+        the operator never typed.
 
         Both placeholders are resolved in a single pass through a sentinel, so
         the replacement values are never re-scanned: a model literally named
         ``{prompt}`` must reach the CLI as that literal, and user text
         containing ``{model}`` must not grow the model argument.
         """
+        effective_model = turn_model.strip() or self.model
         rendered: list[str] = []
         prompt_pinned = False
         sentinel = "\x00"  # NUL cannot appear in argv or in a sane chat turn
         for arg in self.extra_args:
-            if "{model}" in arg and not self.model:
+            if "{model}" in arg and not effective_model:
                 logger.debug(
                     "agent-loop %s: dropping arg %r — it references {model} "
                     "but this profile configures no model",
@@ -604,7 +608,7 @@ class CliAgentLoopBackend(AgentLoopBackend):
             pinned = "{prompt}" in arg
             rendered_arg = (
                 arg.replace("{prompt}", sentinel)
-                .replace("{model}", self.model or "")
+                .replace("{model}", effective_model)
                 .replace(sentinel, prompt)
             )
             if pinned:
@@ -614,7 +618,7 @@ class CliAgentLoopBackend(AgentLoopBackend):
 
     def build_argv(self, request: AgentLoopRequest) -> list[str]:
         prompt = self._prompt_with_history(request)
-        extra_args, prompt_pinned = self._render_extra_args(prompt)
+        extra_args, prompt_pinned = self._render_extra_args(prompt, turn_model=request.model)
         argv = [self.command, *self.base_args, *extra_args]
         if not prompt_pinned and prompt:
             argv.append(prompt)

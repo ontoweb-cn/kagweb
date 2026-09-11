@@ -880,6 +880,29 @@ def test_codex_token_count_without_counters_emits_nothing() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_per_turn_model_flag_is_true_exactly_for_one_shot_cli_presets() -> None:
+    """The picker's honesty gate: one-shot CLI presets substitute {model}
+    locally; ACP has no field and the HTTP presets wait for their services."""
+    from kagweb.services.agent_loop.builtin import PRESETS, per_turn_model_apply
+
+    expected = {
+        "claude-code": True,
+        "codex": True,
+        "opencode": True,
+        "custom-cli": True,
+        "intellect": False,  # ACP: no per-turn model field in the protocol
+        "intellect-team": False,
+        "intellect-runs": False,
+        "hermes": False,
+        "agentscope": False,
+        "custom-http": False,
+    }
+    assert {name: preset.per_turn_model for name, preset in PRESETS.items()} == expected
+    assert per_turn_model_apply("claude-code") is True
+    assert per_turn_model_apply("intellect-runs") is False
+    assert per_turn_model_apply("unknown") is False
+
+
 def test_factory_threads_the_model_onto_every_family() -> None:
     """The model is a profile field, so it must reach CLI, ACP and both HTTP
     families — not just the one that happens to use it most."""
@@ -945,6 +968,59 @@ def test_cli_keeps_other_args_when_the_model_is_unset() -> None:
     assert backend.build_argv(_request("Q")) == ["a", "--verbose", "--json", "Q"]
 
 
+def test_cli_turn_model_overrides_the_profile_model() -> None:
+    """A per-turn selection (AgentLoopRequest.model) wins over the profile's
+    configured model for this turn only."""
+    backend = build_agent_loop_backend(
+        {
+            "backend": "custom-cli",
+            "command": "a",
+            "model": "big-model",
+            "args": ["--model={model}", "{prompt}"],
+        }
+    )
+    assert backend.build_argv(_request("Q", model="turn-model")) == [
+        "a",
+        "--model=turn-model",
+        "Q",
+    ]
+
+
+def test_cli_turn_model_works_without_a_profile_model() -> None:
+    """The per-turn selection alone is enough: nothing is dropped, and the
+    profile stays unconfigured."""
+    backend = build_agent_loop_backend(
+        {
+            "backend": "custom-cli",
+            "command": "a",
+            "args": ["--model={model}", "{prompt}"],
+        }
+    )
+    assert backend.build_argv(_request("Q", model="turn-model")) == [
+        "a",
+        "--model=turn-model",
+        "Q",
+    ]
+
+
+def test_cli_turn_model_does_not_leak_into_other_turns() -> None:
+    """The override travels on the request; a model-less turn after an
+    overridden one still drops the arg (backend default, not the stale pick)."""
+    backend = build_agent_loop_backend(
+        {
+            "backend": "custom-cli",
+            "command": "a",
+            "args": ["--model={model}", "{prompt}"],
+        }
+    )
+    assert backend.build_argv(_request("Q", model="turn-model")) == [
+        "a",
+        "--model=turn-model",
+        "Q",
+    ]
+    assert backend.build_argv(_request("Q")) == ["a", "Q"]
+
+
 async def test_http_request_carries_the_model_only_when_configured() -> None:
     """The model key is omitted when unset, so a deployment that never sets one
     sends exactly the body it sent before the field existed."""
@@ -996,3 +1072,46 @@ def test_cli_user_text_containing_model_placeholder_survives() -> None:
     )
     argv = backend.build_argv(_request("please use {model} today"))
     assert argv == ["a", "--model=big-model", "please use {model} today"]
+
+
+async def test_http_turn_model_overrides_the_profile_model() -> None:
+    """Same precedence for the turn-protocol HTTP family: per-turn selection
+    first, profile model second, key omitted when neither is set."""
+    import httpx
+
+    from kagweb.services.agent_loop.http_backend import HttpAgentLoopBackend
+
+    bodies: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(httpx.Request if False else __import__("json").loads(request.content))
+        return httpx.Response(200, text="")  # empty stream = clean end
+
+    def build(**extra):
+        return HttpAgentLoopBackend(
+            name="custom-http",
+            url="http://gw.test",
+            turn_path="/agent/turn",
+            api_key="k",
+            headers={},
+            timeout_seconds=5,
+            transport=httpx.MockTransport(handler),
+            **extra,
+        )
+
+    [event async for event in build(model="profile-m").run(AgentLoopRequest(prompt="hi"))]
+    assert bodies[-1]["model"] == "profile-m"
+
+    [
+        event
+        async for event in build(model="profile-m").run(
+            AgentLoopRequest(prompt="hi", model="turn-m")
+        )
+    ]
+    assert bodies[-1]["model"] == "turn-m"
+
+    [event async for event in build().run(AgentLoopRequest(prompt="hi", model="turn-m"))]
+    assert bodies[-1]["model"] == "turn-m"
+
+    [event async for event in build().run(AgentLoopRequest(prompt="hi"))]
+    assert "model" not in bodies[-1]

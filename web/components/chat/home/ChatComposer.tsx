@@ -146,6 +146,7 @@ export default memo(function ChatComposer({
   attachmentError,
   activeCap,
   llmOptions,
+  modelSelectorEnabled = true,
   activeLLMDefault,
   llmSelection,
   llmOptionsLoading,
@@ -191,6 +192,7 @@ export default memo(function ChatComposer({
   attachmentError: string | null;
   activeCap: CapabilityDef;
   llmOptions: LLMOption[];
+  modelSelectorEnabled?: boolean;
   activeLLMDefault: LLMSelection | null;
   llmSelection: LLMSelection | null;
   llmOptionsLoading: boolean;
@@ -809,15 +811,17 @@ export default memo(function ChatComposer({
               </div>
 
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                <ModelSelector
-                  options={llmOptions}
-                  activeDefault={activeLLMDefault}
-                  value={llmSelection}
-                  loading={llmOptionsLoading}
-                  error={llmOptionsError}
-                  onChange={onSelectLLM}
-                  onRefresh={onRefreshLLMOptions}
-                />
+                {modelSelectorEnabled ? (
+                  <ModelSelector
+                    options={llmOptions}
+                    activeDefault={activeLLMDefault}
+                    value={llmSelection}
+                    loading={llmOptionsLoading}
+                    error={llmOptionsError}
+                    onChange={onSelectLLM}
+                    onRefresh={onRefreshLLMOptions}
+                  />
+                ) : null}
                 {contextBudget ? (
                   <ContextBudgetChip budget={contextBudget} />
                 ) : null}

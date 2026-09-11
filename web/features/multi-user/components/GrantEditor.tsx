@@ -282,6 +282,11 @@ export function GrantEditor({ userId }: { userId: string }) {
           <div className="grid gap-5 md:grid-cols-3">
             <section className="min-w-0">
               <SectionTitle>Models</SectionTitle>
+              <p className="mb-1.5 px-1 text-[11px] leading-relaxed text-[var(--muted-foreground)]">
+                The conversation models this user may pick per turn. Drives the
+                agent backend for one-shot CLI backends; other backends keep
+                their own configured model.
+              </p>
               <div className="space-y-1.5 text-xs">
                 {(resources?.models.llm || []).map((profile) => (
                   <div

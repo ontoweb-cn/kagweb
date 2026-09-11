@@ -316,3 +316,41 @@ async def test_runs_request_carries_the_model_only_when_configured() -> None:
 
     [event async for event in build().run(AgentLoopRequest(prompt="hi"))]
     assert "model" not in bodies[-1]
+
+
+async def test_runs_request_prefers_the_turn_model() -> None:
+    bodies: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/v1/runs") and request.method == "POST":
+            bodies.append(json.loads(request.content))
+            return httpx.Response(202, json={"run_id": "run_1"})
+        if request.url.path.endswith("/events"):
+            return httpx.Response(200, text="", headers={"content-type": "text/event-stream"})
+        return httpx.Response(
+            200, json={"status": "completed", "output": "x", "usage": {"total_tokens": 1}}
+        )
+
+    def build(**extra):
+        return RunsAgentLoopBackend(
+            name="intellect-runs",
+            url="http://gateway.test",
+            turn_path="/v1/runs",
+            api_key="k",
+            headers={},
+            timeout_seconds=5,
+            transport=httpx.MockTransport(handler),
+            **extra,
+        )
+
+    [
+        event
+        async for event in build(model="profile-m").run(
+            AgentLoopRequest(prompt="hi", model="turn-m")
+        )
+    ]
+    assert bodies[-1]["model"] == "turn-m"
+
+    # Without a profile model the per-turn pick still rides along.
+    [event async for event in build().run(AgentLoopRequest(prompt="hi", model="turn-m"))]
+    assert bodies[-1]["model"] == "turn-m"

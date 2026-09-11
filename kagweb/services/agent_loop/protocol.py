@@ -85,6 +85,13 @@ class AgentLoopRequest:
     session_id: str = ""
     language: str = "en"
     workdir: str = ""
+    #: Per-turn model override resolved from the user's ``llm_selection``.
+    #: Empty means "backend default" (the profile's configured model, or the
+    #: backend's own default). Family support varies — the CLI one-shot family
+    #: substitutes it into ``{model}``, the HTTP runs/turn body carries a
+    #: ``model`` key (consumed upstream where supported), and the ACP surface
+    #: has no per-turn model field at all, so ``acp`` ignores it.
+    model: str = ""
 
 
 class AgentLoopError(RuntimeError):

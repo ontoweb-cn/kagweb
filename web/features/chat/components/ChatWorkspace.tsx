@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useAuthStatus } from '@/hooks/useAuthStatus'
 import { useChatRouteSession } from '@/features/chat/controllers/useChatRouteSession'
 
 import { NotebookPen, PenLine, type LucideIcon } from 'lucide-react'
@@ -288,6 +289,10 @@ export default function ChatWorkspace() {
     error: llmOptionsError,
     refresh: refreshLLMOptions,
   } = useLLMOptions()
+  // The per-turn model picker only makes sense when the configured backend
+  // actually consumes a model (one-shot CLI family) — the backend decides,
+  // via /api/auth/status's model_selector_enabled.
+  const auth = useAuthStatus()
   // The tool set is the active capability's allow-list. There is no user-level
   // tool toggle any more: the chat capability delegates each turn to an
   // external agent backend, which owns its own tools, so a KAGWeb-side switch
@@ -1390,6 +1395,7 @@ export default function ChatWorkspace() {
             attachmentError={attachmentError}
             activeCap={activeCap}
             llmOptions={llmOptions}
+            modelSelectorEnabled={auth.modelSelectorEnabled}
             activeLLMDefault={activeLLMDefault}
             llmSelection={state.llmSelection}
             llmOptionsLoading={llmOptionsLoading}

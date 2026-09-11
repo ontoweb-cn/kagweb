@@ -90,6 +90,7 @@ def test_get_returns_presets_and_bounds(client: TestClient) -> None:
         "name": "",
         "preset": "",
         "family": "",
+        "per_turn_model": False,
         "llm_settings_enabled": False,
     }
 

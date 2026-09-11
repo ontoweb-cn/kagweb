@@ -470,7 +470,9 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         #: The profile's chosen model. The ACP surface has no argv placeholder
         #: to substitute it into (the handshake negotiates the agent's session),
         #: so it is recorded for diagnostics; a future ACP model-select request
-        #: would read it here.
+        #: would read it here. Per-turn overrides (``AgentLoopRequest.model``)
+        #: have no ACP transport either — ``per_turn_model`` presets never
+        #: include this family, so the picker stays hidden for ACP backends.
         self.model = str(model or "").strip()
         # Hash the config into the manager key: the operator env block may
         # carry credentials, and they must not sit in plaintext dict keys.

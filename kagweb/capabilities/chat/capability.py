@@ -673,12 +673,26 @@ def _build_request(
         and str(item.get("role") or "") in {"user", "assistant", "system"}
         and item.get("content")
     ]
+    # Per-turn model override: the turn's grant-validated llm_selection
+    # resolves to the concrete model name the backend should run (CLI {model}
+    # substitution / HTTP body key). An empty result keeps the backend on its
+    # configured/default model.
+    turn_model = ""
+    selection = context.metadata.get("llm_selection") or {}
+    if selection:
+        try:
+            from kagweb.services.model_selection import resolve_agent_model_for_selection
+
+            turn_model = resolve_agent_model_for_selection(selection)
+        except Exception:
+            turn_model = ""
     return AgentLoopRequest(
         prompt=prompt,
         history=history,
         session_id=context.session_id,
         language=context.language or "en",
         workdir=resolved_workdir,
+        model=turn_model,
     )
 
 

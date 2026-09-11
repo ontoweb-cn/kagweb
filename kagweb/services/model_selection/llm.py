@@ -177,3 +177,34 @@ __all__ = [
     "apply_llm_selection_to_catalog",
     "list_llm_options",
 ]
+
+
+def resolve_agent_model_for_selection(selection: Any) -> str:
+    """The concrete model name a user ``llm_selection`` refers to.
+
+    Looks the selection up in the effective catalog (personal owner-bound
+    profiles merged in, the same view the options endpoint offers), so the
+    string matches what the user actually picked. Returns ``""`` when the
+    selection is missing or dangling — callers treat that as "backend
+    default" rather than failing the turn; grant validation has already run
+    upstream, so this is pure name resolution, not authorization.
+    """
+    if not isinstance(selection, dict):
+        return ""
+    profile_id = str(selection.get("profile_id") or "").strip()
+    model_id = str(selection.get("model_id") or "").strip()
+    if not model_id:
+        return ""
+
+    from kagweb.multi_user.personal_models import merge_personal_llm_profiles
+    from kagweb.services.config.model_catalog import get_model_catalog_service
+
+    catalog = merge_personal_llm_profiles(get_model_catalog_service().load())
+    for profile in (catalog.get("services") or {}).get("llm", {}).get("profiles", []) or []:
+        if not isinstance(profile, dict) or str(profile.get("id") or "") != profile_id:
+            continue
+        for model in profile.get("models", []) or []:
+            if not isinstance(model, dict) or str(model.get("id") or "") != model_id:
+                continue
+            return str(model.get("model") or model.get("name") or "").strip()
+    return ""

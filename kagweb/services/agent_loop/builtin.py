@@ -45,6 +45,11 @@ class AgentLoopPreset:
     protocol: str = "turn"
     # Optional preset-level reachability probe target (local health URL).
     probe_url: str = ""
+    # Whether the user's per-turn model selection reaches this backend. True
+    # only for one-shot CLI presets ({model} substitution is local); ACP has
+    # no per-turn model field, and the HTTP presets stay False until their
+    # services consume the body's ``model`` key.
+    per_turn_model: bool = False
     # Operators may always override these through settings.
     configurable: tuple[str, ...] = field(default=())
 
@@ -54,6 +59,7 @@ PRESETS: dict[str, AgentLoopPreset] = {
     for preset in (
         AgentLoopPreset(
             name="claude-code",
+            per_turn_model=True,
             family="cli",
             description="Anthropic Claude Code CLI in stream-json print mode.",
             command="claude",
@@ -62,6 +68,7 @@ PRESETS: dict[str, AgentLoopPreset] = {
         ),
         AgentLoopPreset(
             name="codex",
+            per_turn_model=True,
             family="cli",
             description="OpenAI Codex CLI in non-interactive JSON mode.",
             command="codex",
@@ -70,6 +77,7 @@ PRESETS: dict[str, AgentLoopPreset] = {
         ),
         AgentLoopPreset(
             name="opencode",
+            per_turn_model=True,
             family="cli",
             description="OpenCode CLI agent in non-interactive JSON mode (generic mapping).",
             command="opencode",
@@ -126,6 +134,7 @@ PRESETS: dict[str, AgentLoopPreset] = {
         ),
         AgentLoopPreset(
             name="custom-cli",
+            per_turn_model=True,
             family="cli",
             description="Any CLI emitting NDJSON progress; command and args come from settings.",
         ),
@@ -160,6 +169,16 @@ def is_intellect_preset(preset: str) -> bool:
     return str(preset or "").strip().startswith(_INTELLECT_PRESET_PREFIX)
 
 
+def per_turn_model_apply(preset: str) -> bool:
+    """Whether the user's per-turn model selection reaches this backend.
+
+    Mirrors the preset's ``per_turn_model`` flag; an unknown preset never
+    claims support.
+    """
+    entry = PRESETS.get(str(preset or "").strip())
+    return bool(entry.per_turn_model) if entry is not None else False
+
+
 def llm_settings_apply(preset: str) -> bool:
     """Whether the LLM (models and connections) settings apply to this backend.
 
@@ -179,5 +198,6 @@ __all__ = [
     "PRESETS",
     "is_intellect_preset",
     "llm_settings_apply",
+    "per_turn_model_apply",
     "preset_family",
 ]

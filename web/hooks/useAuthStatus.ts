@@ -16,6 +16,9 @@ export interface AuthStatusState {
   statusAvailable: boolean;
   /** True until the first status fetch resolves. */
   loading: boolean;
+  /** Whether the composer may offer a per-turn model picker. Absent field on
+   *  older backends means "not reported" — keep the picker (back-compat). */
+  modelSelectorEnabled: boolean;
 }
 
 const INITIAL: AuthStatusState = {
@@ -25,6 +28,7 @@ const INITIAL: AuthStatusState = {
   userId: null,
   statusAvailable: false,
   loading: true,
+  modelSelectorEnabled: true,
 };
 
 /**
@@ -48,6 +52,9 @@ function loadAuthStatus(): Promise<AuthStatusState> {
         : null,
     statusAvailable: status !== null,
     loading: false,
+    // Hide only on an explicit false: an older backend that predates the
+    // field must not lose its picker on upgrade.
+    modelSelectorEnabled: status?.model_selector_enabled !== false,
   }));
 }
 

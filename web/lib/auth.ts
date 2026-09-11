@@ -18,6 +18,9 @@ export interface AuthStatus {
   preset?: "standard" | "custom" | null;
   /** Avatar marker: "", "icon:<name>:<color>", or "img:<version>". */
   avatar?: string;
+  /** Whether the configured agent backend consumes a per-turn model
+   *  (one-shot CLI family). Absent on older backends — treat as true. */
+  model_selector_enabled?: boolean;
 }
 
 const AUTH_STATUS_CACHE_MS = 5_000;

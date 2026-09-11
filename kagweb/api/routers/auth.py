@@ -154,6 +154,11 @@ class AuthStatusResponse(BaseModel):
     is_admin: bool = False
     avatar: str = ""
     preset: AccountPreset | None = None
+    # Whether the composer may offer a per-turn model picker: the configured
+    # agent backend actually consumes a per-turn model (one-shot CLI family).
+    # False when no backend is configured, so a picker that cannot affect the
+    # conversation is never shown.
+    model_selector_enabled: bool = False
 
 
 class UserInfo(BaseModel):
@@ -434,6 +439,25 @@ async def receive_codex_oauth_callback(
     )
 
 
+def _per_turn_model_enabled() -> bool:
+    """Whether the active agent backend consumes a per-turn model.
+
+    Reads the effective agent-loop block (env overrides included) through the
+    same resolver the turn path uses; any failure degrades to False so the
+    picker is hidden rather than shown uselessly.
+    """
+    try:
+        from kagweb.services.agent_loop.builtin import per_turn_model_apply
+        from kagweb.services.agent_loop.settings import resolve_primary_profile
+        from kagweb.services.config.runtime_settings import get_runtime_settings_service
+
+        block = get_runtime_settings_service().load().get("agent_loop") or {}
+        resolved = resolve_primary_profile(block)
+        return per_turn_model_apply(str((resolved or {}).get("preset") or ""))
+    except Exception:
+        return False
+
+
 @router.get("/status", response_model=AuthStatusResponse)
 async def auth_status(
     authorization: str | None = Header(default=None, alias="Authorization"),
@@ -449,6 +473,7 @@ async def auth_status(
             role="admin",
             is_admin=True,
             preset="standard",
+            model_selector_enabled=_per_turn_model_enabled(),
         )
 
     token = _extract_token(authorization, dt_token)
@@ -470,6 +495,7 @@ async def auth_status(
         is_admin=payload.role == "admin" if payload else False,
         avatar=avatar,
         preset=preset,
+        model_selector_enabled=_per_turn_model_enabled(),
     )
 
 

@@ -211,6 +211,11 @@
             "title": "Is Admin",
             "type": "boolean"
           },
+          "model_selector_enabled": {
+            "default": false,
+            "title": "Model Selector Enabled",
+            "type": "boolean"
+          },
           "preset": {
             "anyOf": [
               {

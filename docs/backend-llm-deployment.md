@@ -237,7 +237,7 @@ agent_loop 设置块 → request_preparer 提取 primary 的 context_window（�
 
 用户换一个模型，对话行为**毫无变化**，且没有任何提示说明这一点。
 
-> **部分缓解（2026-09-10）**：profile 现在有 `model` 字段（见 P1-3），因此"给后端指定模型"这件事有了正确的入口。选择器本身的误导性未动——它仍指向 KAGWeb 自己的 LLM 层，把 `llm_selection` 映射到 profile 覆盖（或按后端隐藏它）仍是未做的决策。
+> **✅ 已修复（2026-09-11，B 方案落地）**：`llm_selection` 现在解析为具体模型名随 `AgentLoopRequest.model` 下发到 backend——one-shot CLI 族经 `{model}` 占位符逐回合生效（选择 > profile.model > 后端默认）；HTTP 族请求体携带 `model` 键（上游消费前由 intellect-agent#126 跟踪）；ACP 无此协议字段。preset 以 `per_turn_model` 声明支持，`/api/auth/status` 的 `model_selector_enabled` 据此隐藏选择器——标题/洞察仍走同一选择（用户级控制保留）。
 
 ### P1-3 profile schema 没有 model 概念 —— ✅ 已修复
 
@@ -369,12 +369,12 @@ def _effective_context_window(self, llm_config, context_window_override=None) ->
 
 这直接修掉 P1-1，且让「历史预算」这个决策重新归属于**真正消费历史的那一方**。
 
-**5. 模型选择器要么生效，要么隐藏** —— ⬜ 未做
+**5. 模型选择器要么生效，要么隐藏** —— ✅ 完成（2026-09-11，两条都做了）
 
-- 若采纳 #3：把 `llm_selection` 映射到 profile 的 `model` 覆盖（`profile_id → agent_loop profile id`），使选择器真正生效；
-- 否则：agent loop 模式下在 UI 上隐藏模型选择器，避免误导。
+- **映射（B 方案）**：`llm_selection` → `AgentLoopRequest.model`，one-shot CLI 族 `{model}` 逐回合生效；HTTP 族 body `model` 键已随请求发送，上游消费由 intellect-agent#126 跟踪；
+- **隐藏（A 方案）**：preset 的 `per_turn_model` 标志 + `/api/auth/status` 的 `model_selector_enabled` 门控——不支持的后端（ACP/HTTP-待上游/未配置）选择器直接不渲染。
 
-> `model` 字段已就位，因此这两条现在都可执行；但仍需在「映射」与「隐藏」之间做产品决策（P1-2 的误导性尚未消除）。
+> 产品决策记录：存在"单 backend 多模型、按回合切换"的真实场景，故映射与隐藏同时落地；标题/洞察的模型选择保留用户级控制（同一选择继续驱动 KAGWeb 辅助 LLM 层）。
 
 ### 阶段三：收敛与清理
 
