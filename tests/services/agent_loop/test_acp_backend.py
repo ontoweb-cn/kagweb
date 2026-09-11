@@ -12,6 +12,12 @@ import pytest
 from kagweb.services.agent_loop.acp_backend import AcpAgentLoopBackend
 from kagweb.services.agent_loop.protocol import AgentLoopRequest
 
+# Every scenario here spawns the fake ACP agent, which speaks the wire
+# dialect through the SDK itself (`kagweb[acp]`). Skip the whole module when
+# the extra is not installed — same hygiene as the pty/termios gate in
+# test_chat_terminal.py; CI installs the extra and keeps the coverage.
+pytest.importorskip("acp")
+
 pytestmark = pytest.mark.asyncio
 
 _FAKE_AGENT = Path(__file__).parent / "fake_acp_agent.py"
