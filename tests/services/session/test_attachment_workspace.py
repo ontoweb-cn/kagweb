@@ -112,6 +112,8 @@ async def test_flat_directory_component_is_stripped(store, ws_dir) -> None:
     paths = await materialize_attachments(
         "s1", [{"id": "a1", "filename": "sub/dir/notes.txt"}], store=store
     )
+    # The copy name is coerced per component with the store's own rules, so
+    # separators in either the id or the filename flatten instead of nesting.
     assert paths == {"a1": str(ws_dir / "a1_notes.txt")}
 
 
@@ -134,3 +136,74 @@ async def test_incomplete_records_and_duplicate_ids_are_skipped(store, ws_dir) -
 async def test_empty_records_short_circuit(store, ws_dir) -> None:
     assert await materialize_attachments("s1", [], store=store) == {}
     assert not ws_dir.exists()
+
+
+# ----- Hostile ids: the payload-controlled id must not steer the copy -----
+
+
+class _RootTolerantStore:
+    """Trust boundary identical to ``LocalDiskAttachmentStore._safe_join``:
+    containment is checked against the store *root*, so an id that leaves
+    the session dir but stays inside the root still resolves."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+
+    def resolve_path(self, *, session_id: str, attachment_id: str, filename: str):
+        candidate = (self.root / session_id / f"{attachment_id}_{filename}").resolve()
+        try:
+            candidate.relative_to(self.root.resolve())
+        except ValueError:
+            return None
+        if not candidate.is_file():
+            return None
+        return candidate
+
+
+async def test_hostile_id_cannot_escape_the_copy_dir(tmp_path: Path, ws_dir) -> None:
+    """The store tolerates ids like ``../evil`` (root-relative containment),
+    so the copy side must coerce the name itself — otherwise the crafted id
+    writes outside the attachments directory."""
+    store = _RootTolerantStore(tmp_path / "store")
+    planted = store.root / "evil_f.txt"
+    planted.parent.mkdir(parents=True, exist_ok=True)
+    planted.write_bytes(b"payload")
+
+    paths = await materialize_attachments(
+        "s1", [{"id": "../evil", "filename": "f.txt"}], store=store
+    )
+
+    assert paths == {"../evil": str(ws_dir / "evil_f.txt")}
+    assert (ws_dir / "evil_f.txt").read_bytes() == b"payload"
+    # The pre-fix bug wrote one level up, next to the attachments dir.
+    assert not (ws_dir.parent / "evil_f.txt").exists()
+
+
+async def test_control_characters_in_id_never_reach_the_copy_name(tmp_path: Path, ws_dir) -> None:
+    store = _RootTolerantStore(tmp_path / "store")
+    planted = store.root / "s1" / "li\nne_f.txt"
+    planted.parent.mkdir(parents=True, exist_ok=True)
+    planted.write_bytes(b"x")
+
+    paths = await materialize_attachments(
+        "s1", [{"id": "li\nne", "filename": "f.txt"}], store=store
+    )
+
+    assert list(paths.values()) == [str(ws_dir / "line_f.txt")]
+    assert "\n" not in next(iter(paths.values()))
+
+
+async def test_concurrent_materialization_publishes_an_intact_copy(store, ws_dir) -> None:
+    """Parallel turns of one session materialize the same attachment: the
+    per-invocation tmp names must keep every published copy intact and leave
+    no debris behind."""
+    import asyncio
+
+    payload = bytes(range(256)) * 1024  # 256 KB widens the race window
+    store.files[("s1", "a1", "notes.txt")] = payload
+    record = {"id": "a1", "filename": "notes.txt"}
+
+    await asyncio.gather(*(materialize_attachments("s1", [record], store=store) for _ in range(8)))
+
+    assert (ws_dir / "a1_notes.txt").read_bytes() == payload
+    assert list(ws_dir.glob("*.tmp-*")) == []

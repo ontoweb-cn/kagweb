@@ -30,14 +30,19 @@ file's absolute path, so the agent can read the full contents itself.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 import hashlib
 import logging
-from typing import Any, Sequence
+from typing import Any
 
 from kagweb.services.session.protocol import SessionStoreProtocol
 
 logger = logging.getLogger(__name__)
+
+#: Async batch materializer the executor injects: given the attachment
+#: records collected from the lineage, return ``{attachment_id: path}``.
+MaterializeCallback = Callable[[list[dict[str, Any]]], Awaitable[dict[str, str]]]
 
 # Per-source text-preview caps. Fresh sources get a meaningful preview so
 # the model can answer simple "is this the right one?" questions from the
@@ -122,7 +127,7 @@ async def build_inventory(
     fresh_history_session_ids: Sequence[Any],
     language: str = "en",
     attachment_paths: dict[str, str] | None = None,
-    materialize: Any = None,
+    materialize: MaterializeCallback | None = None,
 ) -> SourceInventory:
     """Compose the session-cumulative inventory for one chat turn.
 
@@ -304,7 +309,7 @@ async def _add_historical(
     leaf_message_id: int | None,
     language: str = "en",
     attachment_paths: dict[str, str],
-    materialize: Any = None,
+    materialize: MaterializeCallback | None = None,
 ) -> None:
     """Walk the active branch's ancestor user messages and pull in
     references they carried. Sources already in ``inv`` (i.e. fresh

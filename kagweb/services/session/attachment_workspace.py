@@ -19,9 +19,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from pathlib import Path
 import shutil
 from typing import Any
+import uuid
+
+from kagweb.utils.filenames import coerce_filename
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +45,21 @@ def _copy_one(store, session_id: str, rec: dict[str, Any]) -> str | None:  # noq
         return None
     try:
         dst_dir = _workspace_attachments_dir(session_id)
-        # Name-only join: the id prefix is ours, the filename component must
-        # never be able to climb out of the attachments directory.
-        dst = dst_dir / f"{att_id}_{Path(filename).name}"
+        # The id comes from the turn payload (client-controllable) and the
+        # store's own containment check deliberately tolerates ids that stay
+        # inside the store root — so both components of the copy's name must
+        # be coerced with the store's rules, or a crafted id ("../x",
+        # newlines) escapes this directory or forges manifest lines. Coerce
+        # separately, not the joined string: basename-ing the join would let
+        # distinct ids collapse onto one copy name.
+        dst = dst_dir / f"{coerce_filename(att_id)}_{coerce_filename(filename)}"
         if dst.is_file() and dst.stat().st_size == src.stat().st_size:
             return str(dst)
         dst_dir.mkdir(parents=True, exist_ok=True)
-        tmp = dst.with_name(f"{dst.name}.tmp-{os.getpid()}")
+        # Unique per invocation: concurrent materializations of the same
+        # attachment (parallel turns of one session) must not interleave on
+        # a shared tmp path and publish a corrupt copy.
+        tmp = dst.with_name(f"{dst.name}.tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}")
         shutil.copyfile(src, tmp)
         os.replace(tmp, dst)
         return str(dst)

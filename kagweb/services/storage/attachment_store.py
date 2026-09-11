@@ -37,7 +37,7 @@ from urllib.parse import quote
 
 from kagweb.services.config import load_system_settings
 from kagweb.services.path_service import get_path_service
-from kagweb.utils.filenames import safe_filename
+from kagweb.utils.filenames import coerce_filename
 
 logger = logging.getLogger(__name__)
 
@@ -45,19 +45,6 @@ logger = logging.getLogger(__name__)
 _DEFAULT_SUBPATH = ("workspace", "chat", "attachments")
 # Public route prefix served by kagweb.api.routers.attachments
 _PUBLIC_URL_PREFIX = "/files/attachments"
-
-
-def _coerce_filename(filename: str) -> str:
-    """Reduce *filename* to a safe basename.
-
-    * Strips any directory components (defends against ``../`` traversal).
-    * Replaces filesystem-unsafe characters via the existing ``safe_filename``
-      helper (already used by the matrix tutorbot uploads).
-    * Falls back to ``"file"`` if the result is empty.
-    """
-    base = os.path.basename(filename or "")
-    cleaned = safe_filename(base)
-    return cleaned or "file"
 
 
 @runtime_checkable
@@ -118,10 +105,10 @@ class LocalDiskAttachmentStore:
         return self._root
 
     def _stored_filename(self, attachment_id: str, filename: str) -> str:
-        return f"{attachment_id}_{_coerce_filename(filename)}"
+        return f"{attachment_id}_{coerce_filename(filename)}"
 
     def _session_dir(self, session_id: str) -> Path:
-        sid = _coerce_filename(session_id)
+        sid = coerce_filename(session_id)
         return (self._root / sid).resolve()
 
     def _safe_join(self, session_id: str, name: str) -> Path | None:
@@ -160,9 +147,9 @@ class LocalDiskAttachmentStore:
         # so the public URL must use the sanitised pieces. Each path segment
         # is percent-encoded so spaces/Unicode/punctuation in filenames flow
         # through fetch / <iframe> consistently across browsers.
-        sid = quote(_coerce_filename(session_id), safe="")
+        sid = quote(coerce_filename(session_id), safe="")
         aid = quote(attachment_id, safe="")
-        name = quote(_coerce_filename(filename), safe="")
+        name = quote(coerce_filename(filename), safe="")
         return f"{_PUBLIC_URL_PREFIX}/{sid}/{aid}/{name}"
 
     @staticmethod
