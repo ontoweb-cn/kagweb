@@ -272,7 +272,14 @@ class TurnApplicationService:
             await self.cancel_turn(str(turn["id"]))
         if active:
             return False
-        return await store.delete_session(session_id)
+        list_turn_roots = getattr(store, "list_turn_workspace_roots", None)
+        turn_roots = await list_turn_roots(session_id) if callable(list_turn_roots) else []
+        deleted = await store.delete_session(session_id)
+        if deleted:
+            from kagweb.services.session.workspace_cleanup import purge_session_artifacts
+
+            await purge_session_artifacts(session_id, turn_roots=turn_roots)
+        return deleted
 
 
 __all__ = ["TurnApplicationService"]

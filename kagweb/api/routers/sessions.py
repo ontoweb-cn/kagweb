@@ -18,6 +18,7 @@ from kagweb.services.session.organization import (
 from kagweb.services.session.provider_response_state import (
     redact_private_message_metadata as _redact_provider_state_metadata,
 )
+from kagweb.services.session.workspace_cleanup import purge_session_artifacts
 from kagweb.services.storage.attachment_store import get_attachment_store
 
 logger = logging.getLogger(__name__)
@@ -227,13 +228,14 @@ async def delete_session(session_id: str):
         runtime = get_turn_runtime_manager()
         for turn in await list_active_turns(session_id):
             await runtime.cancel_turn(turn["id"])
+    # The per-turn workspace mirrors are keyed by turn id — take the mapping
+    # snapshot before delete_session cascades the turn rows away.
+    list_turn_roots = getattr(store, "list_turn_workspace_roots", None)
+    turn_roots = await list_turn_roots(session_id) if callable(list_turn_roots) else []
     deleted = await store.delete_session(session_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Session not found")
-    try:
-        await get_attachment_store().delete_session(session_id)
-    except Exception:
-        logger.exception("failed to clean up attachments for session %s", session_id)
+    await purge_session_artifacts(session_id, turn_roots=turn_roots)
     return {"deleted": True, "session_id": session_id}
 
 

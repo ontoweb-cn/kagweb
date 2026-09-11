@@ -687,6 +687,26 @@ class SQLiteSessionStore:
     async def list_active_turns(self, session_id: str) -> list[dict[str, Any]]:
         return await self._run(self._list_active_turns_sync, session_id)
 
+    def _list_turn_workspace_roots_sync(self, session_id: str) -> list[dict[str, Any]]:
+        """``{turn_id, capability}`` for every turn of a session, any status.
+
+        The per-turn ``events.jsonl`` workspace mirrors are keyed by turn id —
+        a mapping nothing else remembers once the turn rows are gone — so the
+        delete path must take this snapshot *before* ``delete_session``
+        cascades them away.
+        """
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, capability FROM turns WHERE session_id = ?",
+                (session_id,),
+            ).fetchall()
+        return [
+            {"turn_id": str(row["id"]), "capability": str(row["capability"] or "")} for row in rows
+        ]
+
+    async def list_turn_workspace_roots(self, session_id: str) -> list[dict[str, Any]]:
+        return await self._run(self._list_turn_workspace_roots_sync, session_id)
+
     def _list_nonterminal_turns_sync(self) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
