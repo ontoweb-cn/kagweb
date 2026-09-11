@@ -93,18 +93,11 @@ def _tour_cache_file():
     return get_path_service().get_settings_dir() / ".tour_cache.json"
 
 
-DEFAULT_SIDEBAR_NAV_ORDER = {
-    "start": ["/", "/history", "/knowledge-bases", "/notebooks"],
-    "learnResearch": ["/question", "/solver", "/research", "/co_writer"],
-}
-
 DEFAULT_UI_SETTINGS = {
     # theme / language / response_language come from the module that owns
     # interface.json, so the two readers of that file can't drift on what a
     # fresh install defaults to.
     **INTERFACE_DEFAULTS,
-    "sidebar_description": "✨ ONTOWEB@WUST",
-    "sidebar_nav_order": DEFAULT_SIDEBAR_NAV_ORDER,
     # When true, chat auto-plays each assistant reply via TTS. Per-user UI
     # preference (not catalog); the chat surface also keeps a per-session
     # override on top of this global default.
@@ -121,17 +114,10 @@ CHAT_RESPONSE_TIMEOUT_MIN = 30
 CHAT_RESPONSE_TIMEOUT_MAX = 1800
 
 
-class SidebarNavOrder(BaseModel):
-    start: List[str]
-    learnResearch: List[str]
-
-
 class UISettings(BaseModel):
     theme: Literal["light", "dark", "glass", "snow"] = "snow"
     language: Literal["zh", "en"] = "en"
     response_language: Literal["zh", "en"] = "en"
-    sidebar_description: Optional[str] = None
-    sidebar_nav_order: Optional[SidebarNavOrder] = None
     code_block_theme: Optional[str] = None
     code_block_show_line_numbers: Optional[bool] = None
     code_block_wrap_long_lines: Optional[bool] = None
@@ -153,8 +139,6 @@ class UISettingsUpdate(BaseModel):
     theme: Literal["light", "dark", "glass", "snow"] | None = None
     language: Literal["zh", "en"] | None = None
     response_language: Literal["zh", "en"] | None = None
-    sidebar_description: str | None = None
-    sidebar_nav_order: SidebarNavOrder | None = None
     code_block_theme: str | None = None
     code_block_show_line_numbers: bool | None = None
     code_block_wrap_long_lines: bool | None = None
@@ -182,10 +166,6 @@ class LanguageUpdate(BaseModel):
 
 class SidebarDescriptionUpdate(BaseModel):
     description: str
-
-
-class SidebarNavOrderUpdate(BaseModel):
-    nav_order: SidebarNavOrder
 
 
 class CatalogPayload(BaseModel):
@@ -420,7 +400,12 @@ def load_ui_settings() -> dict[str, Any]:
                 merged = {**DEFAULT_UI_SETTINGS, **saved, **resolve_languages(saved)}
                 # Removed subsystem keys must not leak back out of a persisted
                 # file (and forever re-enter the response payload).
-                merged.pop("enabled_optional_tools", None)
+                for dead in (
+                    "enabled_optional_tools",
+                    "sidebar_description",
+                    "sidebar_nav_order",
+                ):
+                    merged.pop(dead, None)
                 return merged
         except Exception:
             pass
@@ -1897,7 +1882,7 @@ async def get_ui_settings():
     during bootstrap. Theme rides along so those pages can paint in the right
     one instead of flashing.
 
-    Everything else under ``ui`` (sidebar_nav_order, chat_response_timeout,
+    Everything else under ``ui`` (chat_response_timeout,
     …) describes what the deployment has turned on, so
     it stays behind auth: read it from the ``ui`` key of GET /settings.
     """
@@ -1937,29 +1922,6 @@ async def get_themes():
             {"id": "glass", "name": "Glass"},
         ]
     }
-
-
-@router.get("/sidebar")
-async def get_sidebar_settings():
-    current_ui = load_ui_settings()
-    return {
-        "description": current_ui.get(
-            "sidebar_description", DEFAULT_UI_SETTINGS["sidebar_description"]
-        ),
-        "nav_order": current_ui.get("sidebar_nav_order", DEFAULT_UI_SETTINGS["sidebar_nav_order"]),
-    }
-
-
-@router.put("/sidebar/description")
-async def update_sidebar_description(update: SidebarDescriptionUpdate):
-    patch_ui_settings(sidebar_description=update.description)
-    return {"description": update.description}
-
-
-@router.put("/sidebar/nav-order")
-async def update_sidebar_nav_order(update: SidebarNavOrderUpdate):
-    patch_ui_settings(sidebar_nav_order=update.nav_order.model_dump())
-    return {"nav_order": update.nav_order.model_dump()}
 
 
 @router.post("/tests/{service}/start")

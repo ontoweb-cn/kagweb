@@ -1351,57 +1351,6 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
-  readonly "/api/settings/sidebar": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /** Get Sidebar Settings */
-    readonly get: operations["get_sidebar_settings_api_settings_sidebar_get"];
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/settings/sidebar/description": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    /** Update Sidebar Description */
-    readonly put: operations["update_sidebar_description_api_settings_sidebar_description_put"];
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/settings/sidebar/nav-order": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    /** Update Sidebar Nav Order */
-    readonly put: operations["update_sidebar_nav_order_api_settings_sidebar_nav_order_put"];
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
   readonly "/api/settings/tests/{service}/{run_id}/cancel": {
     readonly parameters: {
       readonly query?: never;
@@ -1555,7 +1504,7 @@ export interface paths {
      *     during bootstrap. Theme rides along so those pages can paint in the right
      *     one instead of flashing.
      *
-     *     Everything else under ``ui`` (sidebar_nav_order, chat_response_timeout,
+     *     Everything else under ``ui`` (chat_response_timeout,
      *     …) describes what the deployment has turned on, so
      *     it stays behind auth: read it from the ``ui`` key of GET /settings.
      */
@@ -2940,22 +2889,6 @@ export interface components {
         readonly [key: string]: unknown;
       };
     };
-    /** SidebarDescriptionUpdate */
-    readonly SidebarDescriptionUpdate: {
-      /** Description */
-      readonly description: string;
-    };
-    /** SidebarNavOrder */
-    readonly SidebarNavOrder: {
-      /** Learnresearch */
-      readonly learnResearch: readonly string[];
-      /** Start */
-      readonly start: readonly string[];
-    };
-    /** SidebarNavOrderUpdate */
-    readonly SidebarNavOrderUpdate: {
-      readonly nav_order: components["schemas"]["SidebarNavOrder"];
-    };
     /** TestResponse */
     readonly TestResponse: {
       /** Error */
@@ -3259,10 +3192,6 @@ export interface components {
       readonly language?: ("zh" | "en") | null;
       /** Response Language */
       readonly response_language?: ("zh" | "en") | null;
-      /** Sidebar Description */
-      readonly sidebar_description?: string | null;
-      readonly sidebar_nav_order?:
-        components["schemas"]["SidebarNavOrder"] | null;
       /** Theme */
       readonly theme?: ("light" | "dark" | "glass" | "snow") | null;
       /** Turn Insight Enabled */
@@ -3414,11 +3343,6 @@ export type SchemaSessionSummary = components["schemas"]["SessionSummary"];
 export type SchemaSetRoleRequest = components["schemas"]["SetRoleRequest"];
 export type SchemaSettingsDraftPayload =
   components["schemas"]["SettingsDraftPayload"];
-export type SchemaSidebarDescriptionUpdate =
-  components["schemas"]["SidebarDescriptionUpdate"];
-export type SchemaSidebarNavOrder = components["schemas"]["SidebarNavOrder"];
-export type SchemaSidebarNavOrderUpdate =
-  components["schemas"]["SidebarNavOrderUpdate"];
 export type SchemaTestResponse = components["schemas"]["TestResponse"];
 export type SchemaThemeUpdate = components["schemas"]["ThemeUpdate"];
 export type SchemaTikaRemoteTest = components["schemas"]["TikaRemoteTest"];
@@ -6482,113 +6406,6 @@ export interface operations {
       };
     };
     readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly get_sidebar_settings_api_settings_sidebar_get: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly update_sidebar_description_api_settings_sidebar_description_put: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["SidebarDescriptionUpdate"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly update_sidebar_nav_order_api_settings_sidebar_nav_order_put: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["SidebarNavOrderUpdate"];
-      };
-    };
     readonly responses: {
       /** @description Successful Response */
       readonly 200: {
