@@ -11,7 +11,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Menu } from "lucide-react";
+import { Github, Menu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AdminLink } from "@/components/auth/AdminLink";
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -25,6 +25,7 @@ import {
 } from "@/components/sidebar/nav-entries";
 import { UserAvatar } from "@/components/UserAvatar";
 import { fetchAuthStatus, type AuthStatus } from "@/lib/auth";
+import { PROJECT_GITHUB_URL } from "@/lib/project-links";
 import { readNavLayout, resolveNavLayout } from "@/lib/sidebar-layout";
 
 /** Within-group order follows the learner's saved arrangement: visible entries
@@ -372,6 +373,16 @@ export default function TopBanner({
       </nav>
 
       <div className="flex items-center gap-1">
+        <a
+          href={PROJECT_GITHUB_URL}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label={t("GitHub")}
+          title={t("GitHub")}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)]/55 hover:text-[var(--foreground)]"
+        >
+          <Github size={18} strokeWidth={1.7} aria-hidden />
+        </a>
         <AccountMenu />
       </div>
     </header>

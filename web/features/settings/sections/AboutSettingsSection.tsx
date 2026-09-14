@@ -33,6 +33,7 @@ import {
   type UpdateJob,
   type UpdateJobStatus,
 } from "@/lib/app-update";
+import { PROJECT_DOCS_URL, PROJECT_GITHUB_URL } from "@/lib/project-links";
 import { normalizeVersionTag } from "@/lib/version";
 
 const POLL_INTERVAL_MS = 800;
@@ -409,13 +410,13 @@ export default function AboutSettingsPage() {
         <ResourceRow
           title={t("GitHub")}
           description={t("Source code, issues, and contributions")}
-          href="https://github.com/ontoweb-cn/kagweb"
+          href={PROJECT_GITHUB_URL}
           icon={<Github className="h-4 w-4" />}
         />
         <ResourceRow
           title={t("Documentation")}
           description={t("Installation, configuration, and guides")}
-          href="https://docs.kagweb.info"
+          href={PROJECT_DOCS_URL}
           icon={<ArrowUpRight className="h-4 w-4" />}
         />
       </SettingSection>

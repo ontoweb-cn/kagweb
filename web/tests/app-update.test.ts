@@ -165,13 +165,20 @@ test("only non-terminal jobs remain active", () => {
   assert.equal(updateJobIsActive("failed"), false);
 });
 
-test("sidebar keeps update status and external brand links hidden", () => {
-  const shell = readFileSync(
-    path.join(process.cwd(), "components", "sidebar", "SidebarShell.tsx"),
-    "utf8",
-  );
+test("sidebar keeps update status hidden while the banner carries the GitHub mark", () => {
+  const read = (...segments: string[]) =>
+    readFileSync(path.join(process.cwd(), ...segments), "utf8");
 
+  // The sidebar owns neither the version chrome nor external brand links.
+  const shell = read("components", "sidebar", "SidebarShell.tsx");
   assert.doesNotMatch(shell, /VersionBadge/);
   assert.doesNotMatch(shell, /kagweb\.info/);
-  assert.doesNotMatch(shell, /github\.com\/OPENKG\/KAGWeb/);
+  assert.doesNotMatch(shell, /github\.com/);
+
+  // The banner is the one surface that links out to the project itself.
+  const banner = read("components", "layout", "TopBanner.tsx");
+  assert.match(banner, /PROJECT_GITHUB_URL/);
+
+  const links = read("lib", "project-links.ts");
+  assert.match(links, /PROJECT_GITHUB_URL = "https:\/\/github\.com\/ontoweb-cn\/kagweb"/);
 });
