@@ -22,7 +22,7 @@ def _release(**overrides: object) -> dict:
         "tag_name": "v1.7.0",
         "name": "KAGWeb 1.7",
         "published_at": "2026-08-30T00:00:00Z",
-        "html_url": "https://github.com/example/kagweb/releases/tag/v1.7.0",
+        "html_url": "https://github.com/ontoweb-cn/kagweb/releases/tag/v1.7.0",
         "body": "A stable release.",
         "draft": False,
         "prerelease": False,
@@ -67,7 +67,7 @@ async def test_version_check_falls_back_to_latest_redirect_when_api_is_rate_limi
             302,
             # Deliberately older than any shipped version so the assertion below
             # stays true across version bumps.
-            headers={"location": "https://github.com/example/kagweb/releases/tag/v0.1.0"},
+            headers={"location": "https://github.com/ontoweb-cn/kagweb/releases/tag/v0.1.0"},
         )
 
     service = VersionCheckService(
@@ -81,7 +81,7 @@ async def test_version_check_falls_back_to_latest_redirect_when_api_is_rate_limi
         ("HEAD", app_update.GITHUB_LATEST_RELEASE_WEB_URL),
     ]
     assert result.release.version == "0.1.0"
-    assert result.release.url == "https://github.com/example/kagweb/releases/tag/v0.1.0"
+    assert result.release.url == "https://github.com/ontoweb-cn/kagweb/releases/tag/v0.1.0"
     assert result.update_available is False
 
 

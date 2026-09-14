@@ -409,7 +409,7 @@ export default function AboutSettingsPage() {
         <ResourceRow
           title={t("GitHub")}
           description={t("Source code, issues, and contributions")}
-          href="https://github.com/example/kagweb"
+          href="https://github.com/ontoweb-cn/kagweb"
           icon={<Github className="h-4 w-4" />}
         />
         <ResourceRow
