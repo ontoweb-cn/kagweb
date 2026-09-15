@@ -31,6 +31,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+import logging
 from pathlib import Path
 import time
 from typing import Any
@@ -46,6 +47,8 @@ from .protocol import (
     AgentLoopEvent,
     AgentLoopRequest,
 )
+
+logger = logging.getLogger(__name__)
 
 #: Reap a child after this much idle time (no turn touched it). Lazy: the
 #: check runs whenever a handle is acquired, so no background task, no
@@ -86,6 +89,11 @@ class _AcpClientHandler:  # pragma: no cover - exercised through the backend
     def __init__(self) -> None:
         self.sink: asyncio.Queue[AgentLoopEvent | None] = asyncio.Queue()
         self._pending: dict[str, asyncio.Future[str]] = {}
+        #: What each parked request is waiting for, so the cancel sweep can
+        #: answer them in their own vocabulary: an approval denies, a clarify
+        #: is declined. Resolving a clarify with the approval word "deny"
+        #: would hand the agent a literal "deny" as the user's *answer*.
+        self._pending_kind: dict[str, str] = {}
         self._text_buf: list[str] = []
         self._counter = 0
 
@@ -185,6 +193,7 @@ class _AcpClientHandler:  # pragma: no cover - exercised through the backend
         loop = asyncio.get_running_loop()
         future: asyncio.Future[str] = loop.create_future()
         self._pending[request_id] = future
+        self._pending_kind[request_id] = "approval"
         self._emit(
             AgentLoopEvent(
                 "approval_request",
@@ -198,17 +207,71 @@ class _AcpClientHandler:  # pragma: no cover - exercised through the backend
         choice = await future
         return _permission_response(choice, session_id, tool_call, options)
 
+    async def create_elicitation(self, message: str, mode: Any, **kwargs: Any) -> Any:
+        """Ask the user a question mid-turn, via ACP's elicitation surface.
+
+        Intellect delivers its ``clarify`` tool this way rather than through
+        ``request_permission``: a permission is a bounded decision with a
+        policy fallback, while a clarify is an open question whose answer
+        feeds the next model call. Both park the turn the same way here, so
+        the existing ``clarify_request`` card path carries it unchanged.
+
+        Only the *form* modes carry something a card can render. A URL mode
+        (an out-of-band link, e.g. a sign-in page) has no answer to collect,
+        so it is declined rather than left hanging — a client that cannot
+        show the link must not stall the agent on it.
+        """
+        from acp import schema
+
+        requested_schema = getattr(mode, "requested_schema", None)
+        if requested_schema is None:
+            logger.debug(
+                "agent-loop: declining a non-form elicitation (%s)",
+                type(mode).__name__,
+            )
+            return schema.DeclineElicitationResponse(action="decline")
+
+        question, choices = _elicitation_question(message, requested_schema)
+        self._counter += 1
+        request_id = f"acp-clarify-{self._counter}"
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[str] = loop.create_future()
+        self._pending[request_id] = future
+        self._pending_kind[request_id] = "clarify"
+        self._emit(
+            AgentLoopEvent(
+                "clarify_request",
+                text=question,
+                data={"request_id": request_id, "choices": choices},
+            )
+        )
+        answer = await future
+        if not str(answer or "").strip():
+            # No answer (skipped, timed out, or cancelled with the turn):
+            # ``decline`` is how the agent learns not to act on one.
+            return schema.DeclineElicitationResponse(action="decline")
+        # Intellect reads ``content["answer"]`` and accepts either a string or
+        # a one-element list for a single-select property.
+        return schema.AcceptElicitationResponse(action="accept", content={"answer": answer})
+
     def resolve_pending(self, request_id: str, choice: str) -> bool:
-        """Resolve one parked permission request; ``False`` when unknown."""
+        """Resolve one parked request; ``False`` when unknown."""
         future = self._pending.pop(request_id, None)
+        self._pending_kind.pop(request_id, None)
         if future is None or future.done():
             return False
         future.set_result(choice)
         return True
 
     def deny_all_pending(self) -> None:
-        for request_id in list(self._pending):
-            self.resolve_pending(request_id, "deny")
+        """Sweep every parked request when the turn goes away.
+
+        Each kind is answered in its own vocabulary: an approval denies, a
+        clarify is left unanswered (empty), which the elicitation handler
+        turns into a decline.
+        """
+        for request_id, kind in list(self._pending_kind.items()):
+            self.resolve_pending(request_id, "deny" if kind == "approval" else "")
 
 
 def _tool_call_preview(tool_call: Any) -> str:
@@ -338,6 +401,36 @@ def _incomplete_stop_reason(stop_reason: str) -> str:
     }
     detail = explored.get(reason, f"stopped early: {reason}")
     return t("agent_loop.acp_turn_incomplete", reason=detail)
+
+
+def _elicitation_question(message: str, requested_schema: Any) -> tuple[str, list[str]]:
+    """``(question, choices)`` for a form-mode elicitation.
+
+    ACP describes the form as JSON-Schema-ish properties. Intellect asks a
+    single free-or-enumerated question under the key ``answer``
+    (``acp_adapter/clarify.py``), so that is what is read; a schema with
+    several properties cannot be shown faithfully on a one-question card, and
+    the question text is then the best available summary. Anything the agent
+    labels the field with is preferred over the raw key, and the ``message``
+    is the fallback so the card is never blank.
+    """
+    properties = getattr(requested_schema, "properties", None)
+    question = str(message or "").strip()
+    choices: list[str] = []
+    if isinstance(properties, dict):
+        # Intellect's key wins when present, else the first property — a
+        # single-question form has exactly one either way.
+        field = properties.get("answer")
+        if field is None and properties:
+            field = next(iter(properties.values()))
+        if field is not None:
+            title = str(getattr(field, "title", "") or "").strip()
+            if title:
+                question = title
+            raw_enum = getattr(field, "enum", None)
+            if isinstance(raw_enum, (list, tuple)):
+                choices = [str(choice) for choice in raw_enum if str(choice).strip()]
+    return question, choices
 
 
 def _permission_response(
@@ -673,9 +766,28 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         handle.process = process
         handle.client = _AcpClientHandler()
         try:
-            connection = acp.connect_to_agent(handle.client, writer, reader)
+            connection = acp.connect_to_agent(
+                handle.client,
+                writer,
+                reader,
+                # Intellect delivers its ``clarify`` tool through ACP
+                # elicitation, which the SDK still gates behind this flag: the
+                # route is registered but rejects calls as "method not found"
+                # until it is set, whatever the client implements. Declaring it
+                # here is what makes a question reach the user instead of
+                # failing the turn with a protocol error.
+                use_unstable_protocol=True,
+            )
             handle.init_response = await connection.initialize(
                 _ACP_PROTOCOL_VERSION,
+                # Answer the agent's capability question truthfully: we can
+                # present a form question, and we do not serve its file-system
+                # or terminal requests (the agent runs its own tooling).
+                client_capabilities=schema.ClientCapabilities(
+                    elicitation=schema.ElicitationCapabilities(
+                        form=schema.ElicitationFormCapabilities(),
+                    ),
+                ),
                 client_info=schema.Implementation(name="kagweb", title="KAGWeb", version=""),
             )
             if handle.acp_session_id:
@@ -856,7 +968,16 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         handle.client.resolve_pending(request_id, choice)
 
     async def respond_clarify(self, request_id: str, answer: str) -> None:
-        raise NotImplementedError("clarify is not exposed by the ACP surface yet")
+        """Deliver the user's answer to a question the agent asked mid-turn.
+
+        Same parked-future shape as an approval: the handler is still awaiting
+        inside ``create_elicitation``, and resolving it is what turns the
+        answer into the elicitation response the agent reads.
+        """
+        handle = self._manager._handles.get(self._current_key)
+        if handle is None or not handle.alive:
+            return
+        handle.client.resolve_pending(request_id, answer)
 
     async def cancel(self) -> None:
         handle = self._manager._handles.get(self._current_key)

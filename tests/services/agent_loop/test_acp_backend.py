@@ -486,3 +486,107 @@ async def test_probe_reports_a_missing_credential_only_for_a_setup_only_agent(
     assert "handshake ok" in detail
     assert "no provider credentials" not in detail
     assert "login" not in detail
+
+
+# ---------------------------------------------------------------------------
+# Clarify: ACP delivers it as a form elicitation, not a permission
+# ---------------------------------------------------------------------------
+
+
+async def _consume_until_clarify(backend, request, answer: str):
+    """Drive one turn, answering the first clarify with *answer*."""
+    events = []
+    async for event in backend.run(request):
+        events.append(event)
+        if event.kind == "clarify_request":
+            await backend.respond_clarify(event.data["request_id"], answer)
+    return events
+
+
+async def test_clarify_surfaces_as_a_card_and_the_answer_reaches_the_agent(tmp_path) -> None:
+    """The whole point of phase 2: a question must reach the user, and back.
+
+    Without a client-side ``create_elicitation`` the SDK rejects the request
+    outright (the route is not optional), so the agent's question would fail
+    the turn instead of being shown.
+    """
+    result_file = tmp_path / "result.json"
+    backend = _backend("plain-elicitation", result_file)
+
+    events = await _consume_until_clarify(backend, _request("acp-clarify", tmp_path), "sqlite")
+
+    clarify = next(event for event in events if event.kind == "clarify_request")
+    # The card carries the question and the suggested choices.
+    assert clarify.text == "Which database should I target?"
+    assert clarify.data["choices"] == ["postgres", "sqlite"]
+    assert clarify.data["request_id"].startswith("acp-clarify-")
+
+    # …and the answer comes back as an *accepted* elicitation carrying it.
+    recorded = json.loads(result_file.read_text())
+    assert recorded["elicitation_action"] == "accept"
+    assert recorded["elicitation_answer"] == "sqlite"
+
+    await backend._manager.close_all()
+
+
+async def test_a_skipped_clarify_is_declined_not_answered(tmp_path) -> None:
+    """An empty answer must be a decline.
+
+    The turn can be swept (cancel, timeout) while a question is parked; the
+    agent must learn "no answer" rather than receive an empty string as if it
+    were the user's reply.
+    """
+    result_file = tmp_path / "result.json"
+    backend = _backend("plain-elicitation", result_file)
+
+    events = await _consume_until_clarify(backend, _request("acp-clarify-skip", tmp_path), "")
+
+    assert any(event.kind == "clarify_request" for event in events)
+    recorded = json.loads(result_file.read_text())
+    assert recorded["elicitation_action"] == "decline"
+    assert recorded["elicitation_answer"] == ""
+
+    await backend._manager.close_all()
+
+
+def test_a_swept_turn_declines_a_parked_clarify() -> None:
+    """Cancelling must not answer a question with the approval word.
+
+    ``deny_all_pending`` is the cancel sweep, and it used to resolve every
+    parked future with ``"deny"`` — which for a clarify would be handed to the
+    agent as the user's literal answer.
+    """
+    import asyncio as _asyncio
+
+    from kagweb.services.agent_loop.acp_backend import _AcpClientHandler
+
+    handler = _AcpClientHandler()
+    approval = _asyncio.get_event_loop_policy().new_event_loop().create_future()
+    clarify = _asyncio.get_event_loop_policy().new_event_loop().create_future()
+    handler._pending = {"acp-approval-1": approval, "acp-clarify-1": clarify}
+    handler._pending_kind = {"acp-approval-1": "approval", "acp-clarify-1": "clarify"}
+
+    handler.deny_all_pending()
+
+    assert approval.result() == "deny"
+    assert clarify.result() == ""
+
+
+async def test_a_url_elicitation_is_declined_rather_than_left_hanging() -> None:
+    """A mode with nothing to render must not stall the agent.
+
+    URL mode is an out-of-band link; the card cannot present it, and leaving
+    the request unanswered would park the agent until its own timeout.
+    """
+    from acp import schema as _schema
+
+    from kagweb.services.agent_loop.acp_backend import _AcpClientHandler
+
+    handler = _AcpClientHandler()
+    url_mode = _schema.ElicitationUrlSessionMode(
+        session_id="s", elicitation_id="e1", url="https://example.test/login"
+    )
+
+    response = await handler.create_elicitation(message="Sign in", mode=url_mode)
+
+    assert getattr(response, "action", "") == "decline"
