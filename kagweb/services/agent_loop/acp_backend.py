@@ -50,6 +50,11 @@ from .protocol import (
 
 logger = logging.getLogger(__name__)
 
+#: The ACP config-option id that selects the model (Intellect's
+#: ``_MODEL_CONFIG_ID``). ACP has no per-request model field, so a per-turn
+#: selection is applied as a session config option before the prompt.
+_MODEL_CONFIG_ID = "model"
+
 #: Reap a child after this much idle time (no turn touched it). Lazy: the
 #: check runs whenever a handle is acquired, so no background task, no
 #: shutdown hook.
@@ -825,6 +830,39 @@ class AcpAgentLoopBackend(AgentLoopBackend):
             ) from exc
         handle.connection = connection
 
+    async def _apply_turn_model(self, handle: AcpSessionHandle, request: AgentLoopRequest) -> None:
+        """Point the agent at this turn's model, if the user picked one.
+
+        ACP carries no per-request model field — the model is a *session*
+        config option — so the selection is applied before the prompt rather
+        than sent with it. That is a different mechanism from the other
+        families, where the model rides on the request itself.
+
+        Fail-soft by design: an agent that does not advertise a model option
+        (or rejects the value) simply keeps its own default, which is exactly
+        the behaviour before this existed. The next turn retries, so a
+        selection made while the agent was unaware still lands.
+        """
+        model = str(request.model or self.model or "").strip()
+        if not model:
+            return
+        connection = getattr(handle, "connection", None)
+        if connection is None:
+            return
+        try:
+            await connection.set_config_option(
+                config_id=_MODEL_CONFIG_ID,
+                session_id=handle.acp_session_id,
+                value=model,
+            )
+        except Exception:  # noqa: BLE001 - the agent's own default is a valid outcome
+            logger.debug(
+                "agent-loop %s: could not select model %r; using the agent's default",
+                self.name,
+                model,
+                exc_info=True,
+            )
+
     # -- one turn ---------------------------------------------------------------
 
     async def run(self, request: AgentLoopRequest) -> AsyncIterator[AgentLoopEvent]:
@@ -833,6 +871,7 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         session_key = request.session_id or "default"
         self._current_key = session_key
         handle = await self._manager.ensure(session_key, request.workdir)
+        await self._apply_turn_model(handle, request)
         q: asyncio.Queue[AgentLoopEvent | None] = asyncio.Queue()
         handle.client.sink = q
         prompt_task = asyncio.create_task(
