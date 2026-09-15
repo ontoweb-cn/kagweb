@@ -108,7 +108,9 @@ def normalize_identity_mode(value: Any) -> str:
     if mode in IDENTITY_MODES:
         return mode
     if mode:
-        logger.warning("agent-loop: unknown identity_mode %r; treating as %r", mode, DEFAULT_IDENTITY_MODE)
+        logger.warning(
+            "agent-loop: unknown identity_mode %r; treating as %r", mode, DEFAULT_IDENTITY_MODE
+        )
     return DEFAULT_IDENTITY_MODE
 
 
@@ -128,9 +130,7 @@ def member_id_for(user_id: str) -> str:
     per-deployment, so an odd account cannot collide with a normal one either.
     """
     raw = str(user_id or "").strip()
-    body = "".join(
-        ch if (ch.isascii() and (ch.isalnum() or ch in "_-")) else "-" for ch in raw
-    )
+    body = "".join(ch if (ch.isascii() and (ch.isalnum() or ch in "_-")) else "-" for ch in raw)
     if not body:
         return ""
     if body != raw:
@@ -293,9 +293,7 @@ def _json_object(response: Any, *, language: str = "en") -> dict[str, Any]:
     return payload
 
 
-async def _member_identity(
-    url: str, token: str, *, user_id: str, language: str
-) -> LinkedIdentity:
+async def _member_identity(url: str, token: str, *, user_id: str, language: str) -> LinkedIdentity:
     """Confirm a token with the service and read back who it belongs to.
 
     Verifying here rather than trusting the caller means a bad or pasted-wrong
@@ -382,9 +380,7 @@ async def link_with_password(
     )
 
 
-async def link_with_token(
-    token: str, *, user_id: str, language: str = "en"
-) -> LinkedIdentity:
+async def link_with_token(token: str, *, user_id: str, language: str = "en") -> LinkedIdentity:
     """Link using a token handed out of band (admin-issued, or minted by the
     service's token endpoint). Verified with the service before being stored."""
     clean = str(token or "").strip()

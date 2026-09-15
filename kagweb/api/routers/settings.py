@@ -501,9 +501,7 @@ def _identity_public(user_id: str) -> dict[str, Any]:
     # has moved since then does not silently use it, so say so here rather than
     # letting the user discover it as a failed turn. Compared as origins (not
     # raw strings) and only as a boolean — the URL is admin-owned config.
-    current = service_origin(
-        (resolve_primary_profile(get_agent_loop_settings()) or {}).get("url")
-    )
+    current = service_origin((resolve_primary_profile(get_agent_loop_settings()) or {}).get("url"))
     moved = bool(current) and current != service_origin(record.service_origin)
     expired = record.is_expired()
     payload.update(
@@ -541,8 +539,6 @@ def _identity_service_available() -> bool:
         return bool(str(profile.get("url") or "").strip())
     except Exception:
         return False
-
-
 
 
 def _require_codex_oauth_actor() -> None:

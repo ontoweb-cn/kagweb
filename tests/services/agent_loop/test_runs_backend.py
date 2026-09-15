@@ -385,13 +385,10 @@ def _completed_body(*, deltas: str, output: str, interim: str = "") -> str:
     and then reports the same text as the run's ``output``; the caller joins
     content blocks with a blank line, so echoing both doubles the answer.
     """
-    parts = [
-        'data: {"event": "run.started", "session_id": "srv-session", "run_id": "run_1"}\n\n'
-    ]
+    parts = ['data: {"event": "run.started", "session_id": "srv-session", "run_id": "run_1"}\n\n']
     for chunk in deltas:
         parts.append(
-            f'data: {{"event": "message.delta", "type": "assistant.delta",'
-            f' "text": "{chunk}"}}\n\n'
+            f'data: {{"event": "message.delta", "type": "assistant.delta", "text": "{chunk}"}}\n\n'
         )
     if interim:
         parts.append(
@@ -513,6 +510,8 @@ async def test_a_completed_turn_does_not_stop_its_own_run() -> None:
     backend = _mock_backend(calls, sse_body=SSE_BODY)
     [event async for event in backend.run(AgentLoopRequest(prompt="hi", session_id="s1"))]
     assert not [call for call in calls if call.url.path.endswith("/stop")]
+
+
 # ---------------------------------------------------------------------------
 # A misconfigured endpoint must fail loudly, not quietly
 # ---------------------------------------------------------------------------

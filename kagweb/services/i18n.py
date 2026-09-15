@@ -126,18 +126,14 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.identity_no_service": (
             "This deployment has no agent service configured to link against."
         ),
-        "agent_loop.identity_unreachable": (
-            "Could not reach the agent service: {error}"
-        ),
+        "agent_loop.identity_unreachable": ("Could not reach the agent service: {error}"),
         "agent_loop.identity_bad_credentials": (
             "That Intellect login was not accepted. Check the login name and password."
         ),
         "agent_loop.identity_locked": (
             "That Intellect account is locked. Contact the service administrator."
         ),
-        "agent_loop.identity_token_rejected": (
-            "That token was not accepted by the agent service."
-        ),
+        "agent_loop.identity_token_rejected": ("That token was not accepted by the agent service."),
         "agent_loop.identity_empty_token": "Enter a token to connect.",
         "agent_loop.identity_not_the_service": (
             "That address answered, but it is not the agent service — check the "

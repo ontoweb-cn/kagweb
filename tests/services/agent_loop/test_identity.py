@@ -148,9 +148,7 @@ def _profile(**overrides) -> dict:
 
 def test_token_mode_presents_the_users_own_credential(user_root) -> None:
     identity_store_for("u_1").save(_link("u_1"))
-    identity = resolve_backend_identity(
-        _profile(), user_id="u_1"
-    )
+    identity = resolve_backend_identity(_profile(), user_id="u_1")
     assert identity is not None
     assert identity.tier == "member"
     assert identity.api_key == "imt_abc"
@@ -165,9 +163,7 @@ def test_token_mode_presents_the_users_own_credential(user_root) -> None:
 def test_an_unlinked_user_under_token_mode_falls_back_to_attribution(user_root) -> None:
     """Never linked is a genuine step up from sending nothing, and the
     deployment asked for delegation only where available."""
-    identity = resolve_backend_identity(
-        _profile(), user_id="u_new"
-    )
+    identity = resolve_backend_identity(_profile(), user_id="u_new")
     assert identity is not None
     assert identity.tier == "header"
     assert identity.degraded is True
@@ -197,9 +193,7 @@ def test_a_link_that_names_another_account_is_not_used(user_root) -> None:
     """A copied or restored file must not lend one account's identity to
     another."""
     identity_store_for("u_1").save(_link("u_someone_else"))
-    identity = resolve_backend_identity(
-        _profile(), user_id="u_1"
-    )
+    identity = resolve_backend_identity(_profile(), user_id="u_1")
     assert identity is not None
     assert identity.api_key == "svc"  # fell back, did not adopt the foreign link
     assert identity.degraded is True
@@ -259,9 +253,7 @@ async def test_the_resolved_identity_reaches_the_wire(user_root) -> None:
         }
     )
     backend._transport = httpx.MockTransport(handler)
-    identity = resolve_backend_identity(
-        _profile(), user_id="u_1"
-    )
+    identity = resolve_backend_identity(_profile(), user_id="u_1")
     backend.with_identity(identity)
 
     [event async for event in backend.run(AgentLoopRequest(prompt="hi", session_id="s1"))]
@@ -287,9 +279,7 @@ async def test_off_mode_leaves_the_session_id_untouched(user_root) -> None:
             )
         return httpx.Response(202, json={"run_id": "r1", "status": "started"})
 
-    backend = build_agent_loop_backend(
-        {"preset": "intellect-team", "url": _GW, "api_key": "svc"}
-    )
+    backend = build_agent_loop_backend({"preset": "intellect-team", "url": _GW, "api_key": "svc"})
     backend._transport = httpx.MockTransport(handler)
     [event async for event in backend.run(AgentLoopRequest(prompt="hi", session_id="s1"))]
 
@@ -371,7 +361,9 @@ def gateway(monkeypatch):
         "get_agent_loop_settings",
         lambda: {"profiles": [{"id": "p", "preset": "intellect-team", "url": _GW}]},
     )
-    monkeypatch.setattr(loop_settings, "resolve_primary_profile", lambda block=None: block["profiles"][0])
+    monkeypatch.setattr(
+        loop_settings, "resolve_primary_profile", lambda block=None: block["profiles"][0]
+    )
 
     holder: dict[str, _FakeClient] = {}
 

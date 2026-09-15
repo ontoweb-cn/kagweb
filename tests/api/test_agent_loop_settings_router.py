@@ -243,7 +243,9 @@ def test_detect_reports_cli_presets_and_http_profiles(client: TestClient) -> Non
     http = {r["key"]: r for r in results if r["family"] == "http"}
     # The unreachable loopback profile is probed and reported unavailable.
     assert any(
-        not r["available"] and r["local"] for key, r in http.items() if not r["key"].startswith("intellect")
+        not r["available"] and r["local"]
+        for key, r in http.items()
+        if not r["key"].startswith("intellect")
     )
     # Profiles without a URL are not probed at all. Both Intellect run presets
     # carry a preset-level probe, so the probe count is the agentscope profile

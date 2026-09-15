@@ -1076,9 +1076,7 @@ def _approval_timeout(
     value = max(_APPROVAL_TIMEOUT_RANGE[0], min(_APPROVAL_TIMEOUT_RANGE[1], value))
     if backend is None:
         return value
-    attribute = (
-        "clarify_timeout_limit" if kind == "clarify" else "approval_timeout_limit"
-    )
+    attribute = "clarify_timeout_limit" if kind == "clarify" else "approval_timeout_limit"
     limit = getattr(backend, attribute, None)
     if not isinstance(limit, int) or limit <= 0 or value <= limit:
         return value

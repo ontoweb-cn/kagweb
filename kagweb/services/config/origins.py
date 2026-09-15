@@ -123,9 +123,7 @@ def origin_is_trusted(
 
     request_host = str(host or "").strip().lower()
     candidate = origin_netloc(raw)
-    if candidate and request_host and candidate == origin_netloc(
-        f"//{request_host}"
-    ):
+    if candidate and request_host and candidate == origin_netloc(f"//{request_host}"):
         return True
 
     explicit = {
@@ -134,4 +132,3 @@ def origin_is_trusted(
         if normalize_origin(item) not in {"", "*"}
     }
     return raw.rstrip("/") in explicit
-
