@@ -65,6 +65,7 @@ import {
   selectOptionClass,
   stringifyExtraHeaders,
 } from "./shared";
+import { settingsHref } from "@/features/settings/navigation/settings-nav";
 
 // The protocol an endpoint speaks. Labels and hints are keyed by the backend
 // value so the select never invents a format the registry does not know.
@@ -1513,7 +1514,7 @@ function ProfileFields({
           </span>
           <span className="flex items-center gap-3">
             <Link
-              href="/settings#connections"
+              href={settingsHref("connections")}
               className="inline-flex items-center gap-1 text-[11.5px] text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
             >
               {t("Edit connection")}

@@ -18,7 +18,8 @@ import {
   isSettingsLeafVisible,
   SETTINGS_CATEGORIES,
   SETTINGS_HUB_HREF,
-  settingsAnchorHref,
+  settingsDomainForRoute,
+  settingsHref,
   type Lang,
   type SettingsLeaf,
 } from "@/features/settings/navigation/settings-nav";
@@ -34,8 +35,12 @@ import {
 } from "@/features/settings/store/SettingsStore";
 
 /**
- * Same-document settings navigation. When already on `/settings`, update the
- * fragment and scroll; otherwise navigate to the canonical document first.
+ * Settings navigation, routed per category.
+ *
+ * Clicking a section that lives in the current route (a leaf of the category
+ * already on screen) scrolls in place and keeps the URL's fragment in step;
+ * anything else is an ordinary route change. The route is what decides whether
+ * a page is mounted, so this never scrolls a document the user is not on.
  */
 function goToLeaf(
   href: string,
@@ -55,12 +60,36 @@ function goToLeaf(
     return false;
   }
   window.history.replaceState(null, "", href);
-  // This document can be tens of thousands of pixels tall. Jumping directly
-  // avoids tracking every intermediate section and overwriting the target hash.
+  // A category document (Models, Chat) still stacks several sections, so a
+  // jump goes straight there rather than tracking every section in between and
+  // overwriting the target hash on the way.
   scrollToSettingsSection(key, "auto");
   requestSettingsSection(key);
   setActiveSection(key);
   return true;
+}
+
+/**
+ * Whether a section key names something the current view is showing.
+ *
+ * A category key addresses a route and nothing else, so it is active exactly
+ * on that route. A leaf key addresses a route *and* an anchor, so it is active
+ * only once the scroll tracker inside that route has landed on it — otherwise
+ * every leaf of the category would light up at once.
+ */
+function useIsActiveSection(
+  pathname: string,
+  activeSection: string | null,
+): (key: string) => boolean {
+  return useCallback(
+    (key: string) => {
+      const href = settingsHref(key);
+      const hashIndex = href.indexOf("#");
+      if (hashIndex === -1) return pathname === href;
+      return pathname === href.slice(0, hashIndex) && activeSection === key;
+    },
+    [pathname, activeSection],
+  );
 }
 
 /**
@@ -83,7 +112,6 @@ type Row = { leaf: SettingsLeaf; category: Lang };
 type Group = {
   key: string;
   label: Lang;
-  href: string;
   icon: LucideIcon;
   rows: Row[];
   standalone: boolean;
@@ -102,13 +130,11 @@ function useGroups(access: SettingsAccess): Group[] {
       ).map((category) => ({
         key: category.key,
         label: category.label,
-        href: category.href,
         icon: category.icon,
         rows: (
           category.children ?? [
             {
               key: category.key,
-              href: category.href,
               label: category.label,
               blurb: category.blurb,
               icon: category.icon,
@@ -141,10 +167,17 @@ export function SettingsNavCompact() {
   const access = useSettingsAccess();
   const groups = useGroups(access);
   const { activeSection, setActiveSection } = useSettings();
-  const currentValue =
-    pathname === SETTINGS_HUB_HREF
-      ? settingsAnchorHref(activeSection ?? "overview")
-      : pathname;
+  const isActiveSection = useIsActiveSection(pathname, activeSection);
+  const currentValue = useMemo(() => {
+    const domain = settingsDomainForRoute(pathname);
+    if (!domain) return SETTINGS_HUB_HREF;
+    // Inside Models or Chat the route covers several sections, so the row the
+    // document has scrolled to is the one that names the current view.
+    if (activeSection && isActiveSection(activeSection)) {
+      return settingsHref(activeSection);
+    }
+    return settingsHref(domain);
+  }, [pathname, activeSection, isActiveSection]);
 
   return (
     <div className="relative md:hidden">
@@ -156,19 +189,19 @@ export function SettingsNavCompact() {
         }
         className="w-full appearance-none rounded-lg border border-[var(--border)] bg-[var(--background)] py-2 pl-3 pr-8 text-[13px] font-medium text-[var(--foreground)] outline-none"
       >
-        <option value={settingsAnchorHref("overview")}>{t("Overview")}</option>
+        <option value={settingsHref("overview")}>{t("Overview")}</option>
         {groups.map((group) =>
           group.standalone ? (
             <option
               key={group.key}
-              value={settingsAnchorHref(group.rows[0]?.leaf.key ?? group.key)}
+              value={settingsHref(group.rows[0]?.leaf.key ?? group.key)}
             >
               {tr(group.label)}
             </option>
           ) : (
             <optgroup key={group.key} label={tr(group.label)}>
               {group.rows.map(({ leaf }) => (
-                <option key={leaf.key} value={settingsAnchorHref(leaf.key)}>
+                <option key={leaf.key} value={settingsHref(leaf.key)}>
                   {tr(leaf.label)}
                 </option>
               ))}
@@ -229,16 +262,17 @@ export default function SettingsNav() {
     [catalog, catalogEditable, diagnosticsResults],
   );
 
-  // The active section opens its group. A search match also opens every
+  // The active category opens its group. A search match also opens every
   // matching group so the requested row is never hidden by a collapse.
   const [manualExpanded, setManualExpanded] = useState<Record<string, boolean>>(
     {},
   );
+  const isActiveSection = useIsActiveSection(pathname, activeSection);
   const groupIsActive = useCallback(
     (group: Group) =>
-      activeSection === group.key ||
-      group.rows.some(({ leaf }) => leaf.key === activeSection),
-    [activeSection],
+      settingsDomainForRoute(pathname) === group.key ||
+      group.rows.some(({ leaf }) => isActiveSection(leaf.key)),
+    [pathname, isActiveSection],
   );
   const isExpanded = useCallback(
     (group: Group) =>
@@ -249,9 +283,7 @@ export default function SettingsNav() {
 
   const navigateInDocument = useCallback(
     (key: string, event: React.MouseEvent<HTMLAnchorElement>) => {
-      if (
-        goToLeaf(settingsAnchorHref(key), pathname, router, setActiveSection)
-      ) {
+      if (goToLeaf(settingsHref(key), pathname, router, setActiveSection)) {
         event.preventDefault();
       }
     },
@@ -285,13 +317,10 @@ export default function SettingsNav() {
       </div>
 
       <Row
-        href={settingsAnchorHref("overview")}
+        href={settingsHref("overview")}
         label={t("Overview")}
         icon={LayoutGrid}
-        active={
-          pathname === SETTINGS_HUB_HREF &&
-          (activeSection === null || activeSection === "overview")
-        }
+        active={isActiveSection("overview")}
         tourId="tour-nav-overview"
         onClick={(event) => navigateInDocument("overview", event)}
       />
@@ -306,10 +335,10 @@ export default function SettingsNav() {
         group.standalone ? (
           <div key={group.key} className="mt-3.5 first:mt-3">
             <Row
-              href={settingsAnchorHref(group.rows[0]!.leaf.key)}
+              href={settingsHref(group.rows[0]!.leaf.key)}
               label={tr(group.rows[0]!.leaf.label)}
               icon={group.rows[0]!.leaf.icon}
-              active={activeSection === group.rows[0]!.leaf.key}
+              active={isActiveSection(group.rows[0]!.leaf.key)}
               failing={failing(group.rows[0]!.leaf)}
               hint={tr(group.rows[0]!.leaf.blurb)}
               tourId={`tour-nav-${group.key}`}
@@ -321,7 +350,7 @@ export default function SettingsNav() {
         ) : (
           <div key={group.key} className="mt-3.5 first:mt-3">
             <CategoryHeaderRow
-              href={settingsAnchorHref(group.key)}
+              href={settingsHref(group.key)}
               label={tr(group.label)}
               icon={group.icon}
               active={groupIsActive(group)}
@@ -340,10 +369,10 @@ export default function SettingsNav() {
                 {group.rows.map(({ leaf }) => (
                   <Row
                     key={leaf.key}
-                    href={settingsAnchorHref(leaf.key)}
+                    href={settingsHref(leaf.key)}
                     label={tr(leaf.label)}
                     icon={leaf.icon}
-                    active={activeSection === leaf.key}
+                    active={isActiveSection(leaf.key)}
                     failing={failing(leaf)}
                     hint={tr(leaf.blurb)}
                     onClick={(event) => navigateInDocument(leaf.key, event)}

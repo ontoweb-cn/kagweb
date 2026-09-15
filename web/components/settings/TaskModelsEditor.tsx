@@ -12,6 +12,7 @@ import {
   getActiveProfile,
   useSettings,
 } from "@/features/settings/store/SettingsStore";
+import { settingsHref } from "@/features/settings/navigation/settings-nav";
 import { selectClass, selectOptionClass } from "./shared";
 
 /**
@@ -140,7 +141,7 @@ export function TaskModelsEditor() {
               <span>{t("No language model is configured yet.")}</span>
             )}
             <Link
-              href="/settings#llm"
+              href={settingsHref("llm")}
               className="inline-flex items-center gap-0.5 underline-offset-2 hover:text-[var(--foreground)] hover:underline"
             >
               {t("LLM")}
