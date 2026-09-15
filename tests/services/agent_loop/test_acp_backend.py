@@ -412,3 +412,77 @@ def test_store_ignores_records_from_another_version(tmp_path) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
 
     assert acp_session_store.load_acp_session(session_key) is None
+
+
+# ---------------------------------------------------------------------------
+# Probe readiness: only an interactive setup method means "not set up"
+# ---------------------------------------------------------------------------
+
+
+def _auth_methods(*types: str):
+    """Build advertised auth methods by kind."""
+    from acp import schema
+
+    built = []
+    for index, kind in enumerate(types):
+        if kind == "terminal":
+            built.append(
+                schema.TerminalAuthMethod(
+                    id=f"setup-{index}", name="Configure Intellect provider", type="terminal"
+                )
+            )
+        elif kind == "agent":
+            built.append(schema.AuthMethodAgent(id=f"prov-{index}", name="runtime credentials"))
+        else:
+            built.append(
+                schema.EnvVarAuthMethod(id=f"var-{index}", name="API key", vars=[], type="env_var")
+            )
+    return built
+
+
+def test_a_ready_install_is_not_reported_as_missing_credentials() -> None:
+    """A configured agent advertises a usable method *alongside* the setup one.
+
+    The registry requires at least one method and Intellect always appends its
+    terminal setup errand, so "any method at all" is true even when everything
+    is configured — which is how a working install got told to run `login`
+    again.
+    """
+    from kagweb.services.agent_loop.acp_backend import _auth_needs_setup
+
+    assert _auth_needs_setup(_auth_methods("agent", "terminal")) is False
+    assert _auth_needs_setup(_auth_methods("env_var")) is False
+    assert _auth_needs_setup(_auth_methods("agent")) is False
+
+
+def test_only_a_setup_method_means_setup_is_needed() -> None:
+    from kagweb.services.agent_loop.acp_backend import _auth_needs_setup
+
+    assert _auth_needs_setup(_auth_methods("terminal")) is True
+    assert _auth_needs_setup(_auth_methods("terminal", "terminal")) is True
+
+
+def test_an_agent_asking_for_no_auth_is_not_treated_as_unconfigured() -> None:
+    """No methods at all is "nothing to do", not "credentials missing"."""
+    from kagweb.services.agent_loop.acp_backend import _auth_needs_setup
+
+    assert _auth_needs_setup([]) is False
+    assert _auth_needs_setup(None) is False
+
+
+async def test_probe_reports_a_missing_credential_only_for_a_setup_only_agent(
+    tmp_path,
+) -> None:
+    """End to end through ``probe()`` with the real handshake.
+
+    The fake agent advertises nothing, which is the "no auth wanted" case, so
+    the detail must be the plain handshake line with no login advice.
+    """
+    backend = _backend("plain", tmp_path / "result.json")
+
+    ok, detail = await backend.probe()
+
+    assert ok is True
+    assert "handshake ok" in detail
+    assert "no provider credentials" not in detail
+    assert "login" not in detail

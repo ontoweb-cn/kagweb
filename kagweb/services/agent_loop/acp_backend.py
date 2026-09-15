@@ -283,6 +283,42 @@ def _raw_input_text(tool_call: Any) -> str:
     return ""
 
 
+def _auth_method_names(auth_methods: Any) -> str:
+    """Human labels for the advertised auth methods, in order."""
+    return ", ".join(
+        str(getattr(method, "name", "") or getattr(method, "id", "") or "?")
+        for method in (auth_methods or [])
+    )
+
+
+#: The ACP auth-method kind that means "run an interactive setup yourself".
+#: Every other kind (``agent``, ``env_var``) is a credential the agent can
+#: already use, so seeing one means the install is ready.
+_TERMINAL_AUTH_TYPE = "terminal"
+
+
+def _auth_needs_setup(auth_methods: Any) -> bool:
+    """Whether the agent has **no** ready credential path.
+
+    ACP agents advertise every way a client may authenticate. A *terminal*
+    method is an out-of-band errand ("open the setup wizard"), not a usable
+    credential; anything else is one the agent can already spend.
+
+    This used to be checked as "any method at all", which is wrong in the
+    common case: the ACP registry requires an agent to advertise at least one
+    method, and Intellect always appends a terminal one — so a fully
+    configured install still got told "no provider credentials; run login",
+    sending the operator to redo a login that already worked.
+
+    An empty list is not a problem either: an agent that publishes no auth
+    methods is simply not asking for any.
+    """
+    methods = list(auth_methods or [])
+    if not methods:
+        return False
+    return all(str(getattr(method, "type", "") or "") == _TERMINAL_AUTH_TYPE for method in methods)
+
+
 def _incomplete_stop_reason(stop_reason: str) -> str:
     """A learner-facing note when the agent stopped short, else ``""``.
 
@@ -804,14 +840,11 @@ class AcpAgentLoopBackend(AgentLoopBackend):
             return False, t("agent_loop.acp_init_failed", backend=self.name, error=str(exc))
         auth_methods = getattr(getattr(handle, "init_response", None), "auth_methods", None)
         detail = f"handshake ok; agent session attached ({handle.acp_session_id})."
-        if auth_methods:
-            names = ", ".join(
-                str(getattr(method, "name", "") or getattr(method, "id", ""))
-                for method in auth_methods
-            )
+        if _auth_needs_setup(auth_methods):
             detail += (
-                " The agent reports no provider credentials; run `intellect` login "
-                f"first (methods: {names})."
+                " The agent offers no ready credentials — only an interactive "
+                "setup method. Run `intellect` login first "
+                f"(methods: {_auth_method_names(auth_methods)})."
             )
         await self._manager.discard(key)
         return True, detail
