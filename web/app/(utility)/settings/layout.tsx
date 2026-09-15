@@ -6,6 +6,7 @@ import {
   UiSettingsProvider,
 } from "@/features/settings/store";
 import { SettingsAccessProvider } from "@/features/settings/navigation/SettingsAccessProvider";
+import { SettingsLegacyAnchorRedirect } from "@/components/settings/SettingsLegacyAnchorRedirect";
 import { SettingsTourOverlay } from "@/components/settings/SettingsTourOverlay";
 
 export default function SettingsLayout({
@@ -19,7 +20,11 @@ export default function SettingsLayout({
         <UiSettingsProvider>
           <ModelCatalogProvider>
             <SettingsDraftProvider>
+              {/* The providers above sit on the layout, not on a page, so
+                  moving between category routes keeps unsaved edits and the
+                  loaded catalog instead of refetching them per route. */}
               <SettingsMain>{children}</SettingsMain>
+              <SettingsLegacyAnchorRedirect />
               {/* Mounted once at the layout level so the cross-route guided tour
                   survives navigation between the hub and its sub-pages. */}
               <SettingsTourOverlay />

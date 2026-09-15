@@ -11,7 +11,7 @@ import SettingsStatusPanel from "@/components/settings/SettingsStatusPanel";
 import { setPendingPrompt } from "@/lib/pending-prompt";
 import {
   SETTINGS_CATEGORIES,
-  settingsAnchorHref,
+  settingsHref,
   type Lang,
   type SettingsLeaf,
 } from "@/features/settings/navigation/settings-nav";
@@ -95,7 +95,7 @@ export default function SettingsOverview() {
         draftState === "saved"
           ? t("A saved draft is waiting to be applied.")
           : t("There are changes you have not saved anywhere yet."),
-      href: settingsAnchorHref("llm"),
+      href: settingsHref("llm"),
       label: t("Review"),
     });
   }
@@ -105,7 +105,7 @@ export default function SettingsOverview() {
       text: t("{{service}} failed its last connection test.", {
         service: tr(item.leaf.label),
       }),
-      href: settingsAnchorHref(item.leaf.key),
+      href: settingsHref(item.leaf.key),
       label: t("Open"),
     });
   }
@@ -226,7 +226,7 @@ export default function SettingsOverview() {
                 }`}
               >
                 <Link
-                  href={settingsAnchorHref(item.leaf.key)}
+                  href={settingsHref(item.leaf.key)}
                   className="text-[12.5px] text-[var(--foreground)] transition-opacity hover:opacity-70"
                 >
                   {tr(item.leaf.label)}
@@ -257,7 +257,7 @@ export default function SettingsOverview() {
         <p className="mt-5 text-[11.5px] text-[var(--muted-foreground)]">
           {t("Browser API base")}{" "}
           <Link
-            href={settingsAnchorHref("network")}
+            href={settingsHref("network")}
             className="font-mono text-[var(--foreground)]/70 underline-offset-2 hover:underline"
           >
             {apiBase}

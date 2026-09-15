@@ -24,6 +24,7 @@ import {
   type ServiceName,
   useSettings,
 } from "@/features/settings/store/SettingsStore";
+import { settingsHref } from "@/features/settings/navigation/settings-nav";
 import { inputClass, selectClass, selectOptionClass } from "./shared";
 
 /**
@@ -51,13 +52,13 @@ const SERVICE_LABEL: Record<ServiceName, { en: string; zh: string }> = {
 };
 
 const SERVICE_HREF: Record<ServiceName, string> = {
-  llm: "/settings#llm",
-  task: "/settings#task-models",
-  search: "/settings#search",
-  tts: "/settings#tts",
-  stt: "/settings#stt",
-  imagegen: "/settings#imagegen",
-  videogen: "/settings#videogen",
+  llm: settingsHref("llm"),
+  task: settingsHref("task-models"),
+  search: settingsHref("search"),
+  tts: settingsHref("tts"),
+  stt: settingsHref("stt"),
+  imagegen: settingsHref("imagegen"),
+  videogen: settingsHref("videogen"),
 };
 
 type ServiceLink = { service: ServiceName; profileId: string };

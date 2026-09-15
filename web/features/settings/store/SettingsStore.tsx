@@ -306,52 +306,56 @@ export type TourStep = {
   descKey: string;
 };
 
-// The walk now runs down the settings navigator, which is on screen for
-// every route, so each step points at the first row of a group rather than
-// at a hub block that no longer exists. The overlay resolves the
-// ``data-tour`` target after the page renders.
+// The walk runs down the settings navigator, which is on screen for every
+// route, so each step points at a row of the column rather than at a page the
+// tour would have to open first. Every step therefore shares one route and the
+// overlay resolves the ``data-tour`` target after that page renders.
+//
+// The final step used to spotlight ``tour-nav-memory``. Memory went with the
+// learner subsystem, and the target has not existed since, so the step spent
+// its ~640ms retry budget and then silently showed nothing. Removed rather
+// than left as a no-op.
+// The index route, spelled here rather than imported from
+// `navigation/settings-nav`: that module already imports this one for its
+// `ServiceName` type, and a value import back would close the cycle.
+const SETTINGS_INDEX_HREF = "/settings";
+
 export const TOUR_STEPS: TourStep[] = [
   {
     target: "tour-status",
-    route: "/settings",
+    route: SETTINGS_INDEX_HREF,
     titleKey: "settingsTour.status.title",
     descKey: "settingsTour.status.desc",
   },
   {
     target: "tour-nav-appearance",
-    route: "/settings",
+    route: SETTINGS_INDEX_HREF,
     titleKey: "settingsTour.appearance.title",
     descKey: "settingsTour.appearance.desc",
   },
   {
     target: "tour-nav-network",
-    route: "/settings",
+    route: SETTINGS_INDEX_HREF,
     titleKey: "settingsTour.network.title",
     descKey: "settingsTour.network.desc",
   },
   {
     target: "tour-nav-models",
-    route: "/settings",
+    route: SETTINGS_INDEX_HREF,
     titleKey: "settingsTour.models.title",
     descKey: "settingsTour.models.desc",
   },
   {
     target: "tour-nav-knowledge",
-    route: "/settings",
+    route: SETTINGS_INDEX_HREF,
     titleKey: "settingsTour.knowledge.title",
     descKey: "settingsTour.knowledge.desc",
   },
   {
     target: "tour-nav-chat",
-    route: "/settings",
+    route: SETTINGS_INDEX_HREF,
     titleKey: "settingsTour.chat.title",
     descKey: "settingsTour.chat.desc",
-  },
-  {
-    target: "tour-nav-memory",
-    route: "/settings",
-    titleKey: "settingsTour.memory.title",
-    descKey: "settingsTour.memory.desc",
   },
 ];
 

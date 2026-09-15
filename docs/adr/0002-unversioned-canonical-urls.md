@@ -4,6 +4,10 @@
 
 Accepted
 
+Amended by ADR-0004 for the settings surface: settings sections are addressed
+as anchors within their category route (`/settings/models#llm`), not as
+fragments of one global `/settings` document.
+
 ## Context
 
 KAGWeb is shipped as one repository whose browser and backend are upgraded

@@ -12,10 +12,25 @@ const NEXT_BIN = path.join(WEB_ROOT, "node_modules", "next", "dist", "bin", "nex
 // Only routes the shell actually serves: the KB, co-writer, reading and
 // mastery surfaces were removed with their layers, and a stale entry aborts
 // the measurement with a 404 before any budget is checked.
+//
+// Settings is one route per category now. Measuring the heavy ones separately
+// is a large part of why the split was worth doing: a breach names the page
+// that grew instead of landing on the whole settings surface at once. The
+// budgets below are per page and sum to more than the old single 840KB figure,
+// which is fine — a user only ever loads one of them.
+//
+// Measured 2026-09-15: index 270KB, and each category route 220KB. The
+// category figures are the shared settings shell, because every section is
+// behind `dynamic()` and so is not part of the route's initial chunk; these
+// budgets guard the shell and the eagerly-imported page code, not the lazily
+// loaded section bodies.
 const ROUTE_TARGETS = [
   { route: "/", requestPath: "/", budgetKb: 300 },
   { route: "/chat/[sessionId]", requestPath: "/chat/perf-budget", budgetKb: 1_020 },
-  { route: "/settings", requestPath: "/settings", budgetKb: 840 },
+  { route: "/settings", requestPath: "/settings", budgetKb: 400 },
+  { route: "/settings/models", requestPath: "/settings/models", budgetKb: 360 },
+  { route: "/settings/knowledge", requestPath: "/settings/knowledge", budgetKb: 360 },
+  { route: "/settings/agent-loop", requestPath: "/settings/agent-loop", budgetKb: 360 },
 ];
 
 const ROOT_SHELL_BUDGET_KB = 390;

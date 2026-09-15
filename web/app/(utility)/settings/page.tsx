@@ -1,96 +1,21 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useMemo } from "react";
-
-import { CategoryScroll } from "@/components/settings/CategoryScroll";
 import SettingsOverview from "@/components/settings/SettingsOverview";
-
-import {
-  isSettingsCategoryVisible,
-  SETTINGS_CATEGORIES,
-} from "@/features/settings/navigation/settings-nav";
 import { useSettingsAccess } from "@/features/settings/navigation/SettingsAccessProvider";
 
-const sectionLoading = () => <div className="min-h-80" aria-hidden="true" />;
-
-const AppearanceSettingsPage = dynamic(
-  () => import("@/features/settings/sections/AppearanceSettingsSection"),
-  { loading: sectionLoading },
-);
-const NetworkSettingsPage = dynamic(
-  () => import("@/features/settings/sections/NetworkSettingsSection"),
-  { loading: sectionLoading },
-);
-const ModelsSettingsPage = dynamic(
-  () => import("@/features/settings/sections/ModelsSettingsSection"),
-  { loading: sectionLoading },
-);
-const DocumentParsingSettingsPage = dynamic(
-  () => import("@/features/settings/sections/DocumentParsingSettingsSection"),
-  { loading: sectionLoading },
-);
-const ChatSettingsPage = dynamic(
-  () => import("@/features/settings/sections/ChatSettingsSection"),
-  { loading: sectionLoading },
-);
-// The agent backend reuses its existing section component; only the navigator
-// placement changed (top-level instead of nested under Chat).
-const AgentBackendSettingsPage = dynamic(
-  () => import("@/features/settings/sections/AgentLoopSettingsSection"),
-  { loading: sectionLoading },
-);
-const AboutSettingsPage = dynamic(
-  () => import("@/features/settings/sections/AboutSettingsSection"),
-  { loading: sectionLoading },
-);
-const childKeys = (key: string) =>
-  SETTINGS_CATEGORIES.find((category) => category.key === key)?.children?.map(
-    (child) => child.key,
-  ) ?? [];
-
-const SETTINGS_SECTIONS = [
-  { key: "overview", Component: SettingsOverview },
-  { key: "appearance", Component: AppearanceSettingsPage },
-  { key: "network", Component: NetworkSettingsPage },
-  {
-    key: "models",
-    Component: ModelsSettingsPage,
-    activationKeys: childKeys("models"),
-  },
-  { key: "knowledge", Component: DocumentParsingSettingsPage },
-  { key: "agent-loop", Component: AgentBackendSettingsPage },
-  {
-    key: "chat",
-    Component: ChatSettingsPage,
-    activationKeys: childKeys("chat"),
-  },
-  { key: "about", Component: AboutSettingsPage },
-] as const;
-
 /**
- * Settings is one document: users can read it from Overview to About with a
- * normal scroll, while the persistent navigator links to these same anchors.
- * Every navigator target is an anchor in this document; no duplicate leaf
- * routes or redirect aliases remain.
+ * The settings index.
+ *
+ * Every category is its own route now (see `settings-nav.ts`), so this page is
+ * only the landing view: what state the installation is in, and what is
+ * waiting to be applied. It no longer stacks the categories — the persistent
+ * navigator reaches them directly, and the route decides what is mounted.
+ *
+ * Waiting for access to resolve keeps a deep link from mounting a section and
+ * firing its API request before runtime auth has been determined.
  */
 export default function SettingsPage() {
   const access = useSettingsAccess();
-  const sections = useMemo(
-    () =>
-      SETTINGS_SECTIONS.filter(({ key }) => {
-        if (key === "overview") return true;
-        const category = SETTINGS_CATEGORIES.find((item) => item.key === key);
-        return category ? isSettingsCategoryVisible(category, access) : false;
-      }),
-    [access],
-  );
-
-  // Waiting prevents a protected deep link from mounting an unauthorized
-  // section and firing its API request before runtime auth has resolved.
-  if (!access.resolved) {
-    return <div className="h-48" aria-busy="true" />;
-  }
-
-  return <CategoryScroll sections={sections} deferSections />;
+  if (!access.resolved) return <div className="h-48" aria-busy="true" />;
+  return <SettingsOverview />;
 }

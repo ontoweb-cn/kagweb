@@ -86,14 +86,23 @@ export function SettingsTourOverlay() {
       attempt += 1;
       if (attempt < 8) {
         window.setTimeout(tryResolve, 80);
+        return;
       }
+      // Not every step has a target in every configuration: the navigator
+      // hides categories that do not apply (Models is hidden when the agent
+      // backend supplies its own models), and a step pointing into a hidden
+      // row would otherwise resolve to nothing and leave the tour painted
+      // nowhere at all — visible to the user as the tour simply vanishing,
+      // with no Next button and no explanation. Stepping over it is the
+      // honest behaviour: the tour describes what is on screen.
+      advanceTour();
     };
     const raf = window.requestAnimationFrame(tryResolve);
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(raf);
     };
-  }, [guideStep, pathname]);
+  }, [guideStep, pathname, advanceTour]);
 
   // Keep the highlight in sync as the user resizes the window.
   useEffect(() => {

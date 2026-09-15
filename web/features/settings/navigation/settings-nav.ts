@@ -5,7 +5,6 @@ import {
   Bot,
   Boxes,
   Brain,
-  FileScan,
   Image as ImageIcon,
   Info,
   KeyRound,
@@ -19,6 +18,7 @@ import {
   Search,
   SlidersHorizontal,
   Sparkles,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,16 +28,23 @@ import type { SettingsAccess } from "@/features/settings/navigation/settings-acc
 /**
  * Settings information architecture.
  *
- * One document at `/settings`: categories and leaves map to stable fragment
- * identifiers, while this module remains the source for labels, visibility,
- * search metadata, and persistence hints.
+ * Every first-level category is a real route (`/settings/models`), and the
+ * leaves inside a category are anchors within that route
+ * (`/settings/models#llm`). This module is the single source for those URLs,
+ * plus labels, visibility, search metadata, and the storage-path hint the
+ * toolbar shows.
+ *
+ * No `href` field is stored on a category or leaf: a hand-written href sitting
+ * next to a key is a second source of truth that drifts, and it did — the
+ * knowledge section shipped a `/settings#document-parsing` link while the
+ * section it pointed at rendered `id="knowledge"`. Every URL is derived from
+ * the key by `settingsHref` instead.
  */
 
 export type Lang = { zh: string; en: string };
 
 export interface SettingsLeaf {
   key: string;
-  href: string;
   label: Lang;
   blurb: Lang;
   icon: LucideIcon;
@@ -55,8 +62,6 @@ export interface SettingsCategory {
   /** One-line descriptor shown on the hub block. */
   blurb: Lang;
   icon: LucideIcon;
-  /** Canonical in-document category anchor. */
-  href: string;
   /** Nested anchors (omitted for direct-section categories). */
   children?: SettingsLeaf[];
   /** Admin-owned category, hidden from ordinary users like an adminOnly leaf. */
@@ -97,10 +102,43 @@ export function visibleSettingsChildren(
   ).filter((leaf) => isSettingsLeafVisible(leaf, access));
 }
 
+/**
+ * Why a category route may not render for this user, or `null` when it may.
+ *
+ * The single page used to enforce this by filtering the sections it stacked
+ * into the document. With one route per category that filter is gone, so every
+ * category route has to ask — otherwise an ordinary user could open
+ * `/settings/agent-loop` directly and see an admin-only page.
+ *
+ * The two reasons are kept apart because they are not the same sentence: one
+ * is "an administrator owns this", the other is "the agent backend you
+ * configured supplies this itself, so there is nothing to fill in here".
+ * Reporting the second as the first sends people looking for an administrator
+ * that a single-user install does not have.
+ */
+export type SettingsDomainBlock = "admin-only" | "llm-not-applicable";
+
+export function settingsDomainBlockReason(
+  domainKey: string,
+  access: SettingsAccess,
+): SettingsDomainBlock | null {
+  const category = SETTINGS_CATEGORIES.find((item) => item.key === domainKey);
+  // An unknown domain is not a page this build knows how to authorize.
+  if (!category) return "admin-only";
+  if (category.adminOnly && access.hideAdminOnly) return "admin-only";
+  if (category.llmOnly && !access.enableLlmSettings) return "llm-not-applicable";
+  if (
+    category.children &&
+    !category.children.some((leaf) => isSettingsLeafVisible(leaf, access))
+  ) {
+    return "admin-only";
+  }
+  return null;
+}
+
 const MODEL_CHILDREN: SettingsLeaf[] = [
   {
     key: "connections",
-    href: "/settings#connections",
     label: { zh: "连接", en: "Connections" },
     blurb: {
       zh: "一份凭据供给多个服务。",
@@ -111,7 +149,6 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
   },
   {
     key: "llm",
-    href: "/settings#llm",
     label: { zh: "LLM", en: "LLM" },
     blurb: {
       zh: "语言模型供应商与当前档位。",
@@ -123,7 +160,6 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
   },
   {
     key: "task-models",
-    href: "/settings#task-models",
     label: { zh: "任务模型", en: "Task models" },
     blurb: {
       zh: "KAGWeb 自己发起的调用使用的模型。",
@@ -134,7 +170,6 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
   },
   {
     key: "search",
-    href: "/settings#search",
     label: { zh: "搜索", en: "Search" },
     blurb: { zh: "联网搜索供应商。", en: "Web search providers." },
     icon: Search,
@@ -143,7 +178,6 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
   },
   {
     key: "tts",
-    href: "/settings#tts",
     label: { zh: "语音合成", en: "Text-to-Speech" },
     blurb: {
       zh: "朗读助手回复的 TTS 供应商。",
@@ -155,7 +189,6 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
   },
   {
     key: "stt",
-    href: "/settings#stt",
     label: { zh: "语音识别", en: "Speech-to-Text" },
     blurb: {
       zh: "转写麦克风录音的 STT 供应商。",
@@ -167,7 +200,6 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
   },
   {
     key: "imagegen",
-    href: "/settings#imagegen",
     label: { zh: "文生图", en: "Image Generation" },
     blurb: {
       zh: "chat imagegen 工具使用的文生图模型。",
@@ -177,12 +209,25 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
     tile: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
     service: "imagegen",
   },
+  {
+    // This leaf was missing while the section it belongs to kept rendering
+    // (ModelsSettingsSection stacks it), so the connection editor's videogen
+    // chip had nothing to link at and the navigator never listed the page.
+    key: "videogen",
+    label: { zh: "文生视频", en: "Video Generation" },
+    blurb: {
+      zh: "chat videogen 工具使用的文生视频模型。",
+      en: "Text-to-video model for the chat videogen tool.",
+    },
+    icon: Video,
+    tile: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+    service: "videogen",
+  },
 ];
 
 const CHAT_CHILDREN: SettingsLeaf[] = [
   {
     key: "capabilities",
-    href: "/settings#capabilities",
     label: { zh: "能力", en: "Capabilities" },
     blurb: {
       zh: "各能力的 LLM 参数与运行时旋钮。",
@@ -193,7 +238,6 @@ const CHAT_CHILDREN: SettingsLeaf[] = [
   },
   {
     key: "starters",
-    href: "/settings#starters",
     label: { zh: "起始建议", en: "Starting points" },
     blurb: {
       zh: "主页输入框下方那三行引导的素材范围。",
@@ -204,7 +248,6 @@ const CHAT_CHILDREN: SettingsLeaf[] = [
   },
   {
     key: "attachments",
-    href: "/settings#attachments",
     label: { zh: "附件", en: "Attachments" },
     blurb: {
       zh: "聊天附件的大小上限与文本提取预算。",
@@ -222,7 +265,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     label: { zh: "外观", en: "Appearance" },
     blurb: { zh: "视觉主题与界面语言", en: "Theme and interface language" },
     icon: Palette,
-    href: "/settings#appearance",
   },
   {
     key: "network",
@@ -232,13 +274,11 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
       en: "Ports, browser API base, and CORS",
     },
     icon: Network,
-    href: "/settings#network",
   },
   {
-    // The key doubles as the section anchor (`CategoryScroll` renders
-    // `id={section.key}`), so it stays `agent-loop` even though the category is
-    // now presented as "Agent Backend" — renaming it would break existing
-    // `#agent-loop` deep links and the storage-path mapping.
+    // The key doubles as the route segment, so it stays `agent-loop` even
+    // though the category is presented as "Agent Backend" — renaming it would
+    // break the stored storage-path mapping and the recorded deep links.
     key: "agent-loop",
     adminOnly: true,
     label: { zh: "智能体后端", en: "Agent Backend" },
@@ -247,7 +287,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
       en: "The agent backend that drives conversations.",
     },
     icon: Bot,
-    href: "/settings#agent-loop",
   },
   {
     key: "models",
@@ -258,7 +297,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
       en: "Language, search, voice, and generation models",
     },
     icon: Boxes,
-    href: "/settings#models",
     children: MODEL_CHILDREN,
   },
   {
@@ -266,7 +304,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     label: { zh: "知识库", en: "Knowledge Base" },
     blurb: { zh: "文档解析引擎", en: "Document parsing engine" },
     icon: Library,
-    href: "/settings#document-parsing",
   },
   {
     key: "chat",
@@ -276,7 +313,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
       en: "Agent Loop, tools, capabilities, and attachments",
     },
     icon: MessagesSquare,
-    href: "/settings#chat",
     children: CHAT_CHILDREN,
   },
   {
@@ -287,48 +323,86 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
       en: "Version, updates, and project resources",
     },
     icon: Info,
-    href: "/settings#about",
   },
 ];
 
+/** The settings index. */
 export const SETTINGS_HUB_HREF = "/settings";
 
-/** The canonical in-document URL used by the persistent settings navigator. */
-export function settingsAnchorHref(key: string): string {
-  return `${SETTINGS_HUB_HREF}#${key}`;
+/**
+ * Category key → route.
+ *
+ * A category missing from this map is a wiring error: `settingsHref` would
+ * silently fall back to the hub, so the node tests assert that every category
+ * key and every leaf key resolves to a real URL.
+ */
+export const SETTINGS_ROUTES: Record<string, string> = {
+  appearance: "/settings/appearance",
+  network: "/settings/network",
+  "agent-loop": "/settings/agent-loop",
+  models: "/settings/models",
+  knowledge: "/settings/knowledge",
+  chat: "/settings/chat",
+  about: "/settings/about",
+};
+
+/** Leaf key → the category route that contains it. */
+const LEAF_DOMAIN: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  for (const category of SETTINGS_CATEGORIES) {
+    for (const leaf of category.children ?? []) map[leaf.key] = category.key;
+  }
+  return map;
+})();
+
+/**
+ * Canonical URL for a settings section key.
+ *
+ * `overview` is the index; a category key is its own route; a leaf key is its
+ * category's route plus the leaf's in-document anchor.
+ */
+export function settingsHref(key: string): string {
+  if (key === "overview") return SETTINGS_HUB_HREF;
+  const domain = LEAF_DOMAIN[key];
+  if (domain) return `${SETTINGS_ROUTES[domain] ?? SETTINGS_HUB_HREF}#${key}`;
+  return SETTINGS_ROUTES[key] ?? SETTINGS_HUB_HREF;
 }
 
-// The on-disk file (under data/user/settings/) each leaf module persists to.
+/** The category key a route belongs to, or null when the path is not settings. */
+export function settingsDomainForRoute(pathname: string): string | null {
+  return (
+    Object.entries(SETTINGS_ROUTES).find(
+      ([, route]) => route === pathname,
+    )?.[0] ?? null
+  );
+}
+
+// The on-disk file (under data/user/settings/) each section persists to.
 // Surfaced in the toolbar status line so every page says where its parameters
-// live, without duplicating the string on each page. Singleton pages (no
-// merged category) are keyed by pathname; leaves inside a merged category
-// page share one pathname, so those are keyed by `leaf.key` instead and
-// looked up via the currently scrolled-to section (see `storagePathFor`).
+// live. Keyed by section key rather than by URL, which is what the navigator
+// and the scroll tracker already agree on, so a route change cannot leave a
+// page pointing at a stale path.
 const STORAGE_PATHS: Record<string, string> = {
-  "/settings#appearance": "data/user/settings/interface.json",
-  "/settings#network": "data/user/settings/system.json",
-  "/settings#llm": "data/user/settings/model_catalog.json",
-  "/settings#search": "data/user/settings/model_catalog.json",
-  "/settings#tts": "data/user/settings/model_catalog.json",
-  "/settings#stt": "data/user/settings/model_catalog.json",
-  "/settings#image": "data/user/settings/model_catalog.json",
-  "/settings#video": "data/user/settings/model_catalog.json",
-  "/settings#document-parsing": "data/user/settings/document_parsing.json",
   appearance: "data/user/settings/interface.json",
   network: "data/user/settings/system.json",
-  connections: "data/user/settings/model_catalog.json",
-  "task-models": "data/user/settings/model_catalog.json",
+  "agent-loop": "data/user/settings/system.json",
   knowledge: "data/user/settings/document_parsing.json",
-  starters: "data/user/settings/interface.json",
+  connections: "data/user/settings/model_catalog.json",
   llm: "data/user/settings/model_catalog.json",
+  "task-models": "data/user/settings/model_catalog.json",
   search: "data/user/settings/model_catalog.json",
   tts: "data/user/settings/model_catalog.json",
   stt: "data/user/settings/model_catalog.json",
   imagegen: "data/user/settings/model_catalog.json",
   videogen: "data/user/settings/model_catalog.json",
-  attachments: "data/user/settings/system.json",
+  // Only added where every leaf of the category shares one file. `chat` is
+  // deliberately absent: its leaves span main.yaml, interface.json and
+  // system.json, so a category-level guess would name the wrong file and a
+  // wrong path is worse than no path.
+  models: "data/user/settings/model_catalog.json",
   capabilities: "data/user/settings/main.yaml",
-  "agent-loop": "data/user/settings/system.json",
+  starters: "data/user/settings/interface.json",
+  attachments: "data/user/settings/system.json",
 };
 
 export function storagePathFor(
@@ -338,5 +412,7 @@ export function storagePathFor(
   if (pathname === SETTINGS_HUB_HREF) {
     return activeSection ? (STORAGE_PATHS[activeSection] ?? null) : null;
   }
-  return STORAGE_PATHS[pathname] ?? null;
+  const domain = settingsDomainForRoute(pathname);
+  if (!domain) return null;
+  return STORAGE_PATHS[activeSection ?? domain] ?? null;
 }
