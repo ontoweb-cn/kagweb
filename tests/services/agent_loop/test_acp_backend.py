@@ -590,3 +590,163 @@ async def test_a_url_elicitation_is_declined_rather_than_left_hanging() -> None:
     response = await handler.create_elicitation(message="Sign in", mode=url_mode)
 
     assert getattr(response, "action", "") == "decline"
+
+
+def test_a_future_registered_without_a_kind_is_still_swept() -> None:
+    """The sweep must key off ``_pending``, the parked-future set itself.
+
+    Kind is bookkeeping for *which word* answers a request, not the register
+    of what is parked. Iterating the kind map instead would silently skip a
+    future whose kind was never recorded, leaving it to hang until the agent's
+    own timeout.
+    """
+    import asyncio as _asyncio
+
+    from kagweb.services.agent_loop.acp_backend import _AcpClientHandler
+
+    handler = _AcpClientHandler()
+    loop = _asyncio.new_event_loop()
+    try:
+        orphan = loop.create_future()
+        # Registered as pending, but with no kind entry — the case a
+        # second map invites.
+        handler._pending = {"acp-approval-9": orphan}
+
+        handler.deny_all_pending()
+
+        # Swept, and swept as an approval (the original behaviour).
+        assert orphan.result() == "deny"
+        assert handler._pending == {}
+    finally:
+        loop.close()
+
+
+def test_a_clarify_registered_without_a_kind_is_left_unanswered() -> None:
+    """A kind-less future sweeps as an approval, so it must not be a clarify.
+
+    This pins the *default*: whatever is registered must reach a resolved
+    state. Which word it gets follows the recorded kind when there is one.
+    """
+    import asyncio as _asyncio
+
+    from kagweb.services.agent_loop.acp_backend import _AcpClientHandler
+
+    handler = _AcpClientHandler()
+    loop = _asyncio.new_event_loop()
+    try:
+        clarify = loop.create_future()
+        handler._pending = {"acp-clarify-9": clarify}
+        handler._pending_kind = {"acp-clarify-9": "clarify"}
+
+        handler.deny_all_pending()
+
+        # Empty, i.e. the handler turns it into a decline rather than handing
+        # the agent the word "deny" as the user's answer.
+        assert clarify.result() == ""
+    finally:
+        loop.close()
+
+
+def test_clarify_input_from_the_agent_is_bounded() -> None:
+    """The question and the choices come from the agent's schema and are
+    persisted with the turn, so a malformed form must not write megabytes."""
+    from acp import schema
+
+    from kagweb.services.agent_loop.acp_backend import (
+        _MAX_CLARIFY_CHOICE_CHARS,
+        _MAX_CLARIFY_CHOICES,
+        _MAX_CLARIFY_QUESTION_CHARS,
+        _elicitation_question,
+    )
+
+    form = schema.ElicitationSchema(
+        type="object",
+        properties={
+            "answer": schema.ElicitationStringPropertySchema(
+                type="string",
+                title="Q" * 9000,
+                enum=[f"choice-{i}-{'x' * 500}" for i in range(500)],
+            )
+        },
+        required=["answer"],
+    )
+
+    question, choices = _elicitation_question("m" * 9000, form)
+
+    assert len(question) == _MAX_CLARIFY_QUESTION_CHARS
+    assert len(choices) == _MAX_CLARIFY_CHOICES
+    assert max(len(choice) for choice in choices) == _MAX_CLARIFY_CHOICE_CHARS
+
+
+def test_a_real_elicitation_is_not_truncated_by_the_caps() -> None:
+    """The caps are a backstop, not a formatting choice — real input passes."""
+    from acp import schema
+
+    from kagweb.services.agent_loop.acp_backend import _elicitation_question
+
+    form = schema.ElicitationSchema(
+        type="object",
+        properties={
+            "answer": schema.ElicitationStringPropertySchema(
+                type="string",
+                title="Which database should I target?",
+                enum=["postgres", "sqlite"],
+            )
+        },
+        required=["answer"],
+    )
+
+    question, choices = _elicitation_question("The agent needs more information.", form)
+
+    assert question == "Which database should I target?"
+    assert choices == ["postgres", "sqlite"]
+
+
+async def test_a_request_left_parked_by_the_previous_turn_is_swept(tmp_path) -> None:
+    """A request that lands after a turn's sweep must not stay unresolved.
+
+    The sweep runs while the old sink is still attached, so there is a window
+    in which the agent's request is registered but nobody will answer it. The
+    next turn clears it; otherwise it sits in ``_pending`` — an unresolved
+    future the agent is blocked on — until the agent's own timeout.
+
+    Asserts the *ordering*, not just the end state: the turn's own tail sweep
+    would also resolve it eventually, so only "swept before the prompt is
+    issued" shows the leftover was cleared rather than merely outlived.
+    """
+    result_file = tmp_path / "result.json"
+    backend = _backend("plain", result_file)
+    request = _request("acp-leftover", tmp_path)
+    [event async for event in backend.run(request)]
+
+    handle = backend._manager._handles["acp-leftover"]
+    loop = asyncio.get_running_loop()
+    leftover = loop.create_future()
+    handle.client._pending["acp-clarify-stale"] = leftover
+    handle.client._pending_kind["acp-clarify-stale"] = "clarify"
+
+    order: list[str] = []
+    real_sweep = handle.client.deny_all_pending
+    real_prompt = handle.connection.prompt
+
+    def spy_sweep() -> None:
+        order.append("sweep")
+        real_sweep()
+
+    async def spy_prompt(*args, **kwargs):
+        order.append("prompt")
+        return await real_prompt(*args, **kwargs)
+
+    handle.client.deny_all_pending = spy_sweep
+    handle.connection.prompt = spy_prompt
+
+    [event async for event in backend.run(request)]
+
+    # Cleared before the agent was asked anything…
+    assert "prompt" in order and "sweep" in order
+    assert order.index("sweep") < order.index("prompt")
+    assert leftover.done()
+    assert leftover.result() == ""
+    assert "acp-clarify-stale" not in handle.client._pending
+
+    await backend._manager.close_all()

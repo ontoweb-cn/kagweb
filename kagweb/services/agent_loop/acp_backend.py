@@ -69,6 +69,21 @@ MAX_ACTIVE_CHILDREN = 8
 #: Bounded budget for the settings-page handshake probe.
 _PROBE_TIMEOUT_SECONDS = 10.0
 
+#: Caps on what an agent may put on a clarify card.
+#:
+#: The suggested choices come straight from the agent's form schema, and they
+#: are rendered on the card *and persisted with the turn's events*. Unbounded,
+#: a malformed or hostile form could write megabytes into the session's event
+#: JSON, so both the count and each label are capped. These are generous for
+#: real use: Intellect offers at most four choices (``clarify_tool.MAX_CHOICES``)
+#: and a label is a phrase, not a paragraph.
+_MAX_CLARIFY_CHOICES = 20
+_MAX_CLARIFY_CHOICE_CHARS = 200
+#: The question text shares that path, so it is bounded too. Well above a
+#: real question — this is a backstop against a malformed schema, not a
+#: formatting choice.
+_MAX_CLARIFY_QUESTION_CHARS = 2000
+
 #: ACP protocol version the SDK negotiates; ``initialize`` must offer one.
 try:  # pragma: no cover - trivial constant passthrough
     from acp import PROTOCOL_VERSION as _ACP_PROTOCOL_VERSION
@@ -274,8 +289,14 @@ class _AcpClientHandler:  # pragma: no cover - exercised through the backend
         Each kind is answered in its own vocabulary: an approval denies, a
         clarify is left unanswered (empty), which the elicitation handler
         turns into a decline.
+
+        Iterates ``_pending`` — the authoritative set of parked futures — and
+        reads the kind as a lookup, so a future registered without one is
+        still swept (as an approval, the original behaviour) instead of being
+        left to hang until the agent's own timeout.
         """
-        for request_id, kind in list(self._pending_kind.items()):
+        for request_id in list(self._pending):
+            kind = self._pending_kind.get(request_id, "approval")
             self.resolve_pending(request_id, "deny" if kind == "approval" else "")
 
 
@@ -420,7 +441,7 @@ def _elicitation_question(message: str, requested_schema: Any) -> tuple[str, lis
     is the fallback so the card is never blank.
     """
     properties = getattr(requested_schema, "properties", None)
-    question = str(message or "").strip()
+    question = str(message or "").strip()[:_MAX_CLARIFY_QUESTION_CHARS]
     choices: list[str] = []
     if isinstance(properties, dict):
         # Intellect's key wins when present, else the first property — a
@@ -431,10 +452,14 @@ def _elicitation_question(message: str, requested_schema: Any) -> tuple[str, lis
         if field is not None:
             title = str(getattr(field, "title", "") or "").strip()
             if title:
-                question = title
+                question = title[:_MAX_CLARIFY_QUESTION_CHARS]
             raw_enum = getattr(field, "enum", None)
             if isinstance(raw_enum, (list, tuple)):
-                choices = [str(choice) for choice in raw_enum if str(choice).strip()]
+                choices = [
+                    label
+                    for choice in raw_enum
+                    if (label := str(choice).strip()[:_MAX_CLARIFY_CHOICE_CHARS])
+                ][:_MAX_CLARIFY_CHOICES]
     return question, choices
 
 
@@ -781,6 +806,13 @@ class AcpAgentLoopBackend(AgentLoopBackend):
                 # until it is set, whatever the client implements. Declaring it
                 # here is what makes a question reach the user instead of
                 # failing the turn with a protocol error.
+                #
+                # Scope note: this is a *connection-wide* switch. As of SDK
+                # 0.12.1 exactly one client route is marked unstable
+                # (``client/router.py``: elicitation), so enabling it today
+                # turns on that feature and nothing else — but a future SDK
+                # that marks another route unstable would enable it silently
+                # here too. Re-check the route table when the SDK is bumped.
                 use_unstable_protocol=True,
             )
             handle.init_response = await connection.initialize(
@@ -872,6 +904,12 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         self._current_key = session_key
         handle = await self._manager.ensure(session_key, request.workdir)
         await self._apply_turn_model(handle, request)
+        # Sweep anything the previous turn left parked. The previous turn's
+        # own sweep runs before its sink is detached, so a request that lands
+        # in that gap is registered but never answered; without this it would
+        # sit in ``_pending`` (an unresolved future the agent is waiting on)
+        # until the agent's own timeout. Cheap: normally empty.
+        handle.client.deny_all_pending()
         q: asyncio.Queue[AgentLoopEvent | None] = asyncio.Queue()
         handle.client.sink = q
         prompt_task = asyncio.create_task(
