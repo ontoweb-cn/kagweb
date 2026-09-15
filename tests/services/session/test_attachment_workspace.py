@@ -8,7 +8,9 @@ failed turn).
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+import uuid
 
 import pytest
 
@@ -29,7 +31,16 @@ class _FakeStore:
             return None
         path = Path(self.root) / f"{attachment_id}_{filename}"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(raw)
+        # Publish atomically. A plain ``write_bytes`` truncates before it
+        # writes, so a concurrent materialization (one attachment across
+        # parallel turns) could ``copyfile`` the truncation window and publish
+        # a zero-byte copy — an intermittent CI failure. A real store hands
+        # out a file that is already on disk and complete, so this is also the
+        # more faithful double. Content changes still land, which the
+        # re-copy-on-change case depends on.
+        tmp = path.with_name(f"{path.name}.tmp-{uuid.uuid4().hex[:8]}")
+        tmp.write_bytes(raw)
+        os.replace(tmp, path)
         return path
 
 

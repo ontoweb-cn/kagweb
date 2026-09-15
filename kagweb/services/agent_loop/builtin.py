@@ -150,7 +150,14 @@ PRESETS: dict[str, AgentLoopPreset] = {
         AgentLoopPreset(
             name="custom-http",
             family="http",
-            description="Any service speaking the documented streaming turn contract.",
+            description=(
+                "Any service speaking KAGWeb's own streaming turn contract "
+                "(neutral {kind:…} frames, or a vendor shape the translator "
+                "understands). This is NOT an OpenAI chat-completions client: "
+                "pointing it at /v1/chat/completions fails, because that "
+                "endpoint carries no agent semantics. Use the service's agent "
+                "endpoint instead — for Intellect that is /v1/runs."
+            ),
         ),
     )
 }

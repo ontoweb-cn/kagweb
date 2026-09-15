@@ -82,6 +82,17 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.runs_no_run_id": (
             "Agent-loop backend {backend!r} started a run but returned no run_id."
         ),
+        "agent_loop.openai_chat_unsupported": (
+            "Agent-loop backend {backend!r} answered with an OpenAI chat-completions "
+            "stream, which carries no agent semantics: no reasoning channel, no tool "
+            "arguments or results, and no way to answer an approval, a clarification or "
+            "a stop. Point the profile at the agent service's run endpoints instead "
+            "(for Intellect, the 'intellect-runs' preset on /v1/runs)."
+        ),
+        "agent_loop.stream_not_understood": (
+            "Agent-loop backend {backend!r} streamed {frames} frame(s) but none could be "
+            "read as agent events; check that the profile points at the right endpoint."
+        ),
         "agent_loop.acp_too_many_sessions": (
             "Too many active agent sessions (max {max}); try again after one finishes."
         ),

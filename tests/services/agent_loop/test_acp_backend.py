@@ -412,3 +412,341 @@ def test_store_ignores_records_from_another_version(tmp_path) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
 
     assert acp_session_store.load_acp_session(session_key) is None
+
+
+# ---------------------------------------------------------------------------
+# Probe readiness: only an interactive setup method means "not set up"
+# ---------------------------------------------------------------------------
+
+
+def _auth_methods(*types: str):
+    """Build advertised auth methods by kind."""
+    from acp import schema
+
+    built = []
+    for index, kind in enumerate(types):
+        if kind == "terminal":
+            built.append(
+                schema.TerminalAuthMethod(
+                    id=f"setup-{index}", name="Configure Intellect provider", type="terminal"
+                )
+            )
+        elif kind == "agent":
+            built.append(schema.AuthMethodAgent(id=f"prov-{index}", name="runtime credentials"))
+        else:
+            built.append(
+                schema.EnvVarAuthMethod(id=f"var-{index}", name="API key", vars=[], type="env_var")
+            )
+    return built
+
+
+def test_a_ready_install_is_not_reported_as_missing_credentials() -> None:
+    """A configured agent advertises a usable method *alongside* the setup one.
+
+    The registry requires at least one method and Intellect always appends its
+    terminal setup errand, so "any method at all" is true even when everything
+    is configured — which is how a working install got told to run `login`
+    again.
+    """
+    from kagweb.services.agent_loop.acp_backend import _auth_needs_setup
+
+    assert _auth_needs_setup(_auth_methods("agent", "terminal")) is False
+    assert _auth_needs_setup(_auth_methods("env_var")) is False
+    assert _auth_needs_setup(_auth_methods("agent")) is False
+
+
+def test_only_a_setup_method_means_setup_is_needed() -> None:
+    from kagweb.services.agent_loop.acp_backend import _auth_needs_setup
+
+    assert _auth_needs_setup(_auth_methods("terminal")) is True
+    assert _auth_needs_setup(_auth_methods("terminal", "terminal")) is True
+
+
+def test_an_agent_asking_for_no_auth_is_not_treated_as_unconfigured() -> None:
+    """No methods at all is "nothing to do", not "credentials missing"."""
+    from kagweb.services.agent_loop.acp_backend import _auth_needs_setup
+
+    assert _auth_needs_setup([]) is False
+    assert _auth_needs_setup(None) is False
+
+
+async def test_probe_reports_a_missing_credential_only_for_a_setup_only_agent(
+    tmp_path,
+) -> None:
+    """End to end through ``probe()`` with the real handshake.
+
+    The fake agent advertises nothing, which is the "no auth wanted" case, so
+    the detail must be the plain handshake line with no login advice.
+    """
+    backend = _backend("plain", tmp_path / "result.json")
+
+    ok, detail = await backend.probe()
+
+    assert ok is True
+    assert "handshake ok" in detail
+    assert "no provider credentials" not in detail
+    assert "login" not in detail
+
+
+# ---------------------------------------------------------------------------
+# Clarify: ACP delivers it as a form elicitation, not a permission
+# ---------------------------------------------------------------------------
+
+
+async def _consume_until_clarify(backend, request, answer: str):
+    """Drive one turn, answering the first clarify with *answer*."""
+    events = []
+    async for event in backend.run(request):
+        events.append(event)
+        if event.kind == "clarify_request":
+            await backend.respond_clarify(event.data["request_id"], answer)
+    return events
+
+
+async def test_clarify_surfaces_as_a_card_and_the_answer_reaches_the_agent(tmp_path) -> None:
+    """The whole point of phase 2: a question must reach the user, and back.
+
+    Without a client-side ``create_elicitation`` the SDK rejects the request
+    outright (the route is not optional), so the agent's question would fail
+    the turn instead of being shown.
+    """
+    result_file = tmp_path / "result.json"
+    backend = _backend("plain-elicitation", result_file)
+
+    events = await _consume_until_clarify(backend, _request("acp-clarify", tmp_path), "sqlite")
+
+    clarify = next(event for event in events if event.kind == "clarify_request")
+    # The card carries the question and the suggested choices.
+    assert clarify.text == "Which database should I target?"
+    assert clarify.data["choices"] == ["postgres", "sqlite"]
+    assert clarify.data["request_id"].startswith("acp-clarify-")
+
+    # …and the answer comes back as an *accepted* elicitation carrying it.
+    recorded = json.loads(result_file.read_text())
+    assert recorded["elicitation_action"] == "accept"
+    assert recorded["elicitation_answer"] == "sqlite"
+
+    await backend._manager.close_all()
+
+
+async def test_a_skipped_clarify_is_declined_not_answered(tmp_path) -> None:
+    """An empty answer must be a decline.
+
+    The turn can be swept (cancel, timeout) while a question is parked; the
+    agent must learn "no answer" rather than receive an empty string as if it
+    were the user's reply.
+    """
+    result_file = tmp_path / "result.json"
+    backend = _backend("plain-elicitation", result_file)
+
+    events = await _consume_until_clarify(backend, _request("acp-clarify-skip", tmp_path), "")
+
+    assert any(event.kind == "clarify_request" for event in events)
+    recorded = json.loads(result_file.read_text())
+    assert recorded["elicitation_action"] == "decline"
+    assert recorded["elicitation_answer"] == ""
+
+    await backend._manager.close_all()
+
+
+def test_a_swept_turn_declines_a_parked_clarify() -> None:
+    """Cancelling must not answer a question with the approval word.
+
+    ``deny_all_pending`` is the cancel sweep, and it used to resolve every
+    parked future with ``"deny"`` — which for a clarify would be handed to the
+    agent as the user's literal answer.
+    """
+    import asyncio as _asyncio
+
+    from kagweb.services.agent_loop.acp_backend import _AcpClientHandler
+
+    handler = _AcpClientHandler()
+    approval = _asyncio.get_event_loop_policy().new_event_loop().create_future()
+    clarify = _asyncio.get_event_loop_policy().new_event_loop().create_future()
+    handler._pending = {"acp-approval-1": approval, "acp-clarify-1": clarify}
+    handler._pending_kind = {"acp-approval-1": "approval", "acp-clarify-1": "clarify"}
+
+    handler.deny_all_pending()
+
+    assert approval.result() == "deny"
+    assert clarify.result() == ""
+
+
+async def test_a_url_elicitation_is_declined_rather_than_left_hanging() -> None:
+    """A mode with nothing to render must not stall the agent.
+
+    URL mode is an out-of-band link; the card cannot present it, and leaving
+    the request unanswered would park the agent until its own timeout.
+    """
+    from acp import schema as _schema
+
+    from kagweb.services.agent_loop.acp_backend import _AcpClientHandler
+
+    handler = _AcpClientHandler()
+    url_mode = _schema.ElicitationUrlSessionMode(
+        session_id="s", elicitation_id="e1", url="https://example.test/login"
+    )
+
+    response = await handler.create_elicitation(message="Sign in", mode=url_mode)
+
+    assert getattr(response, "action", "") == "decline"
+
+
+def test_a_future_registered_without_a_kind_is_still_swept() -> None:
+    """The sweep must key off ``_pending``, the parked-future set itself.
+
+    Kind is bookkeeping for *which word* answers a request, not the register
+    of what is parked. Iterating the kind map instead would silently skip a
+    future whose kind was never recorded, leaving it to hang until the agent's
+    own timeout.
+    """
+    import asyncio as _asyncio
+
+    from kagweb.services.agent_loop.acp_backend import _AcpClientHandler
+
+    handler = _AcpClientHandler()
+    loop = _asyncio.new_event_loop()
+    try:
+        orphan = loop.create_future()
+        # Registered as pending, but with no kind entry — the case a
+        # second map invites.
+        handler._pending = {"acp-approval-9": orphan}
+
+        handler.deny_all_pending()
+
+        # Swept, and swept as an approval (the original behaviour).
+        assert orphan.result() == "deny"
+        assert handler._pending == {}
+    finally:
+        loop.close()
+
+
+def test_a_clarify_registered_without_a_kind_is_left_unanswered() -> None:
+    """A kind-less future sweeps as an approval, so it must not be a clarify.
+
+    This pins the *default*: whatever is registered must reach a resolved
+    state. Which word it gets follows the recorded kind when there is one.
+    """
+    import asyncio as _asyncio
+
+    from kagweb.services.agent_loop.acp_backend import _AcpClientHandler
+
+    handler = _AcpClientHandler()
+    loop = _asyncio.new_event_loop()
+    try:
+        clarify = loop.create_future()
+        handler._pending = {"acp-clarify-9": clarify}
+        handler._pending_kind = {"acp-clarify-9": "clarify"}
+
+        handler.deny_all_pending()
+
+        # Empty, i.e. the handler turns it into a decline rather than handing
+        # the agent the word "deny" as the user's answer.
+        assert clarify.result() == ""
+    finally:
+        loop.close()
+
+
+def test_clarify_input_from_the_agent_is_bounded() -> None:
+    """The question and the choices come from the agent's schema and are
+    persisted with the turn, so a malformed form must not write megabytes."""
+    from acp import schema
+
+    from kagweb.services.agent_loop.acp_backend import (
+        _MAX_CLARIFY_CHOICE_CHARS,
+        _MAX_CLARIFY_CHOICES,
+        _MAX_CLARIFY_QUESTION_CHARS,
+        _elicitation_question,
+    )
+
+    form = schema.ElicitationSchema(
+        type="object",
+        properties={
+            "answer": schema.ElicitationStringPropertySchema(
+                type="string",
+                title="Q" * 9000,
+                enum=[f"choice-{i}-{'x' * 500}" for i in range(500)],
+            )
+        },
+        required=["answer"],
+    )
+
+    question, choices = _elicitation_question("m" * 9000, form)
+
+    assert len(question) == _MAX_CLARIFY_QUESTION_CHARS
+    assert len(choices) == _MAX_CLARIFY_CHOICES
+    assert max(len(choice) for choice in choices) == _MAX_CLARIFY_CHOICE_CHARS
+
+
+def test_a_real_elicitation_is_not_truncated_by_the_caps() -> None:
+    """The caps are a backstop, not a formatting choice — real input passes."""
+    from acp import schema
+
+    from kagweb.services.agent_loop.acp_backend import _elicitation_question
+
+    form = schema.ElicitationSchema(
+        type="object",
+        properties={
+            "answer": schema.ElicitationStringPropertySchema(
+                type="string",
+                title="Which database should I target?",
+                enum=["postgres", "sqlite"],
+            )
+        },
+        required=["answer"],
+    )
+
+    question, choices = _elicitation_question("The agent needs more information.", form)
+
+    assert question == "Which database should I target?"
+    assert choices == ["postgres", "sqlite"]
+
+
+async def test_a_request_left_parked_by_the_previous_turn_is_swept(tmp_path) -> None:
+    """A request that lands after a turn's sweep must not stay unresolved.
+
+    The sweep runs while the old sink is still attached, so there is a window
+    in which the agent's request is registered but nobody will answer it. The
+    next turn clears it; otherwise it sits in ``_pending`` — an unresolved
+    future the agent is blocked on — until the agent's own timeout.
+
+    Asserts the *ordering*, not just the end state: the turn's own tail sweep
+    would also resolve it eventually, so only "swept before the prompt is
+    issued" shows the leftover was cleared rather than merely outlived.
+    """
+    result_file = tmp_path / "result.json"
+    backend = _backend("plain", result_file)
+    request = _request("acp-leftover", tmp_path)
+    [event async for event in backend.run(request)]
+
+    handle = backend._manager._handles["acp-leftover"]
+    loop = asyncio.get_running_loop()
+    leftover = loop.create_future()
+    handle.client._pending["acp-clarify-stale"] = leftover
+    handle.client._pending_kind["acp-clarify-stale"] = "clarify"
+
+    order: list[str] = []
+    real_sweep = handle.client.deny_all_pending
+    real_prompt = handle.connection.prompt
+
+    def spy_sweep() -> None:
+        order.append("sweep")
+        real_sweep()
+
+    async def spy_prompt(*args, **kwargs):
+        order.append("prompt")
+        return await real_prompt(*args, **kwargs)
+
+    handle.client.deny_all_pending = spy_sweep
+    handle.connection.prompt = spy_prompt
+
+    [event async for event in backend.run(request)]
+
+    # Cleared before the agent was asked anything…
+    assert "prompt" in order and "sweep" in order
+    assert order.index("sweep") < order.index("prompt")
+    assert leftover.done()
+    assert leftover.result() == ""
+    assert "acp-clarify-stale" not in handle.client._pending
+
+    await backend._manager.close_all()

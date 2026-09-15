@@ -1123,3 +1123,69 @@ async def test_http_turn_model_overrides_the_profile_model() -> None:
 
     [event async for event in build().run(AgentLoopRequest(prompt="hi"))]
     assert "model" not in bodies[-1]
+
+
+async def test_http_backend_rejects_an_openai_chat_stream() -> None:
+    """A custom-http profile aimed at ``/v1/chat/completions`` must say so.
+
+    The endpoint answers 200 and streams, so the only other symptom is an
+    empty turn — and the operator would be looking at the model, not at the
+    endpoint they pointed at.
+    """
+    from kagweb.services.agent_loop.protocol import AgentLoopError
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=(
+                b'data: {"object":"chat.completion.chunk","choices":'
+                b'[{"index":0,"delta":{"content":"hi"},"finish_reason":null}]}\n\n'
+                b'data: {"object":"chat.completion.chunk","choices":'
+                b'[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\n'
+            ),
+        )
+
+    backend = _http_backend(handler)
+
+    with pytest.raises(AgentLoopError) as excinfo:
+        async for _ in backend.run(AgentLoopRequest(prompt="hi")):
+            pass
+
+    assert "chat-completions" in str(excinfo.value)
+
+
+async def test_http_backend_rejects_a_stream_it_cannot_read_at_all() -> None:
+    """Frames we cannot map are a configuration error, not an empty answer."""
+    from kagweb.services.agent_loop.protocol import AgentLoopError
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "application/x-ndjson"},
+            content=b'{"nothing":"we recognise"}\n{"and":"nothing here"}\n',
+        )
+
+    backend = _http_backend(handler)
+
+    with pytest.raises(AgentLoopError) as excinfo:
+        async for _ in backend.run(AgentLoopRequest(prompt="hi")):
+            pass
+
+    assert "none could be read" in str(excinfo.value)
+
+
+async def test_http_backend_uses_the_sse_event_name_as_a_fallback() -> None:
+    """A vendor whose kind lives only on the ``event:`` line still maps."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=(b'event: content\ndata: {"text": "answer via the event line"}\n\n'),
+        )
+
+    backend = _http_backend(handler)
+    events = [event async for event in backend.run(AgentLoopRequest(prompt="hi"))]
+
+    assert any(e.kind == "content" and e.text == "answer via the event line" for e in events)

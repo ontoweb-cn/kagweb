@@ -134,6 +134,67 @@ def _neutral_event(obj: dict[str, Any], state: dict[str, Any]) -> AgentLoopEvent
     return events[0] if events else None
 
 
+#: Ledger keys kept on the per-turn ``state`` dict so the end of a stream can
+#: tell "the backend said nothing" from "the backend said things we could not
+#: read". The second is a configuration error worth failing on; the first is
+#: an empty answer, which the capability layer already reports.
+_FRAMES_SEEN = "frames_seen"
+_UNMAPPED_FRAMES = "unmapped_frames"
+
+
+def _short_finish_reason(obj: dict[str, Any]) -> str:
+    """Human reason a run stopped short, or ``""`` for a clean finish.
+
+    The runs channel reports ``completed`` / ``partial`` / ``error`` on
+    ``run.completed``. A run that is not complete is a *prefix* — the agent hit
+    its output ceiling — and saying so is the whole point: without it the text
+    above reads as the finished answer. Older services omit the fields
+    entirely, which is treated as a clean finish.
+    """
+    if bool(obj.get("completed", True)):
+        return ""
+    error = str(obj.get("error") or "").strip()
+    if error:
+        return error
+    return "the agent stopped before finishing"
+
+
+def _stop_reason_code(obj: dict[str, Any]) -> str:
+    """Machine-readable code for a short finish, matching the ACP vocabulary.
+
+    The UI keys its "stopped short" marker on this, so the two transports
+    should not invent separate vocabularies — ``max_tokens`` is what the ACP
+    family reports for the same condition.
+    """
+    error = str(obj.get("error") or "").lower()
+    if "truncat" in error or bool(obj.get("partial")):
+        return "max_tokens"
+    return "refusal"
+
+
+def _is_openai_chat_payload(obj: dict[str, Any]) -> bool:
+    """Whether ``obj`` is an OpenAI chat-completions payload, streamed or not.
+
+    Pointing an agent-loop profile at such an endpoint looks healthy from the
+    outside — HTTP 200 and a well-formed stream — while carrying none of what
+    an agent turn needs. There is no reasoning channel, tool arguments and
+    results are reduced to start/end markers, and nothing can answer an
+    approval, a clarification or a stop. The neutral schema maps none of it,
+    so the turn would otherwise finish empty with nothing to explain why.
+
+    Matched on the payload's own shape (the ``object`` marker, or a ``choices``
+    entry carrying ``delta``/``message``) rather than on an error string, so a
+    vendor that omits the marker is still caught.
+    """
+    if str(obj.get("object") or "").startswith("chat.completion"):
+        return True
+    choices = obj.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return False
+    first = choices[0]
+    return isinstance(first, dict) and ("delta" in first or "message" in first)
+
+
 class HttpAgentLoopBackend(AgentLoopBackend):
     """POST each turn to the configured agent service and stream events back."""
 
@@ -292,7 +353,9 @@ class HttpAgentLoopBackend(AgentLoopBackend):
                         else nullcontext()
                     ):
                         async for event in stream:
+                            state["mapped_events"] = state.get("mapped_events", 0) + 1
                             yield event
+                    self._assert_stream_was_understood(state)
         except TimeoutError as exc:
             raise AgentLoopError(
                 t("agent_loop.timeout", backend=self.name, seconds=int(self.timeout_seconds)),
@@ -325,7 +388,7 @@ class HttpAgentLoopBackend(AgentLoopBackend):
                 )
                 continue
             if isinstance(obj, dict):
-                event = _neutral_event(obj, state)
+                event = self._map_frame(obj, state)
                 if event is not None:
                     yield event
 
@@ -333,22 +396,80 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         self, response: httpx.Response, state: dict[str, Any]
     ) -> AsyncIterator[AgentLoopEvent]:
         data_lines: list[str] = []
+        event_name = ""
         async for line in _capped_lines(response, self.name):
             if line.startswith(":"):
                 continue  # SSE comment / keepalive
             if not line.strip():
                 # Blank line terminates the current event, if any data.
-                for event in self._sse_data_events(data_lines, state):
+                for event in self._sse_data_events(data_lines, state, event_name):
                     yield event
                 data_lines = []
+                event_name = ""
                 continue
             if line.startswith("data:"):
                 data_lines.append(line[len("data:") :].lstrip())
-        for event in self._sse_data_events(data_lines, state):
+            elif line.startswith("event:"):
+                # Carried into the payload: some vendors put the only type
+                # marker on the SSE line (``event: intellect.tool.progress``
+                # with a body that names no kind), and dropping it here is why
+                # those frames used to look unmappable.
+                event_name = line[len("event:") :].strip()
+        for event in self._sse_data_events(data_lines, state, event_name):
             yield event
 
+    def _map_frame(self, obj: dict[str, Any], state: dict[str, Any]) -> AgentLoopEvent | None:
+        """Translate one streamed frame, recording what the stream contained.
+
+        Both counters exist so the end of the stream can be judged: a backend
+        that sent frames we could not map even once is misconfigured, which is
+        not the same as one that simply had nothing to say.
+        """
+        state[_FRAMES_SEEN] = state.get(_FRAMES_SEEN, 0) + 1
+        event = _neutral_event(obj, state)
+        if event is None:
+            state[_UNMAPPED_FRAMES] = state.get(_UNMAPPED_FRAMES, 0) + 1
+            self._reject_unmappable_frame(obj)
+        return event
+
+    def _reject_unmappable_frame(self, obj: dict[str, Any]) -> None:
+        """Fail fast on a whole payload shape this backend cannot serve.
+
+        An OpenAI chat-completions endpoint is the case worth naming outright:
+        it answers 200 and streams, so the only symptom is an empty turn.
+        """
+        if _is_openai_chat_payload(obj):
+            raise AgentLoopError(
+                t("agent_loop.openai_chat_unsupported", backend=self.name),
+                backend=self.name,
+            )
+
+    def _assert_stream_was_understood(self, state: dict[str, Any]) -> None:
+        """Fail a turn whose stream carried frames we could read none of.
+
+        A turn with no events is otherwise indistinguishable from a backend
+        that had nothing to say, and the empty-answer note points the operator
+        at the model rather than at the contract they actually got wrong.
+
+        Keyed on *unmapped* frames, not merely "no events came out": a frame
+        this backend recognizes may legitimately yield nothing (a lifecycle
+        marker, a heartbeat), and failing those would be a false positive.
+        """
+        if state.get(_UNMAPPED_FRAMES) and not state.get("mapped_events"):
+            raise AgentLoopError(
+                t(
+                    "agent_loop.stream_not_understood",
+                    backend=self.name,
+                    frames=state.get(_FRAMES_SEEN, 0),
+                ),
+                backend=self.name,
+            )
+
     def _sse_data_events(
-        self, data_lines: list[str], state: dict[str, Any]
+        self,
+        data_lines: list[str],
+        state: dict[str, Any],
+        event_name: str = "",
     ) -> list[AgentLoopEvent]:
         if not data_lines:
             return []
@@ -367,7 +488,12 @@ class HttpAgentLoopBackend(AgentLoopBackend):
             except json.JSONDecodeError:
                 continue
             if isinstance(obj, dict):
-                event = _neutral_event(obj, state)
+                # The SSE line's own name is the last-resort type marker: only
+                # set when the payload carries none of its own, so a vendor
+                # that already names the kind keeps its own value.
+                if event_name and not obj.get("type") and not obj.get("event"):
+                    obj["event"] = event_name
+                event = self._map_frame(obj, state)
                 if event is not None:
                     events.append(event)
             break  # first parseable interpretation wins
@@ -474,14 +600,16 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         return f"{self.url}{self.turn_path}{'/' + path if path else ''}"
 
     def _clarify_url(self) -> str:
-        """The run-scoped clarify endpoint.
+        """The clarify endpoint: run-scoped, like the approval one.
 
-        Intellect registers a run's clarify question under the **run** id — the
-        owner recorded alongside the pending question is ``run_id``, and the
-        resolver refuses an id whose owner differs. The session-keyed
-        ``/v1/chat/completions/{session_id}/clarify`` route only serves the
-        streaming chat flows, where the owner really is the session, so an
-        answer posted there can never match a run's question.
+        Intellect resolves a pending question through
+        ``POST /v1/runs/{run_id}/clarify``. It used to be addressed as
+        ``/v1/chat/completions/{session_id}/clarify``, which only one build
+        exposes: the community ``api_server`` the ``intellect-runs`` preset
+        targets registers the run-scoped route and nothing under
+        ``chat/completions``, so every answer 404'd there. Clarify shares the
+        run's identity, so the run-scoped route is the one that works wherever
+        the run API does.
         """
         return self._runs_url(self._run_id, "clarify")
 
@@ -544,10 +672,17 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
                     async for event in self._stream_events(
                         client, run_id=self._run_id, state=state
                     ):
+                        state["mapped_events"] = state.get("mapped_events", 0) + 1
                         yield event
                     if not state["terminal"]:
+                        # Polling output is deliberately NOT counted as mapped
+                        # events: it comes from the status endpoint, not from
+                        # the event stream, so counting it would let an
+                        # unreadable stream pass the guard below — the poll
+                        # always synthesizes at least one frame.
                         async for event in self._poll_terminal(client, state=state):
                             yield event
+                    self._assert_stream_was_understood(state)
         except TimeoutError as exc:
             raise AgentLoopError(
                 t("agent_loop.timeout", backend=self.name, seconds=int(self.timeout_seconds)),
@@ -596,20 +731,24 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
                 if response.status_code != 200:
                     return  # degrade to polling (e.g. the subscribe race)
                 data_lines: list[str] = []
+                event_name = ""
                 async for line in _capped_lines(response, self.name):
                     if line.startswith(":"):
                         continue  # comment / keepalive
                     if not line.strip():
                         # Blank line terminates the current SSE event.
                         if data_lines:
-                            for event in self._run_event_from_lines(data_lines, state):
+                            for event in self._run_event_from_lines(data_lines, state, event_name):
                                 yield event
                             data_lines = []
+                            event_name = ""
                         continue
                     if line.startswith("data:"):
                         data_lines.append(line[len("data:") :].lstrip())
+                    elif line.startswith("event:"):
+                        event_name = line[len("event:") :].strip()
                 if data_lines:
-                    for event in self._run_event_from_lines(data_lines, state):
+                    for event in self._run_event_from_lines(data_lines, state, event_name):
                         yield event
         except httpx.HTTPError:
             # The queue is torn down server-side once the SSE drops — degrade
@@ -667,13 +806,17 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             )
 
     def _run_event_from_lines(
-        self, data_lines: list[str], state: dict[str, Any]
+        self, data_lines: list[str], state: dict[str, Any], event_name: str = ""
     ) -> list[AgentLoopEvent]:
         try:
             obj = json.loads("\n".join(data_lines))
         except json.JSONDecodeError:
             return []
         if isinstance(obj, dict):
+            # The SSE line's name is the last-resort type marker, used only
+            # when the payload carries none of its own.
+            if event_name and not obj.get("type") and not obj.get("event"):
+                obj["event"] = event_name
             return self._translate_run_event(obj, state)
         return []
 
@@ -698,6 +841,7 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         diagnostic to show it.
         """
         kind = str(obj.get("type") or "").strip() or str(obj.get("event") or "").strip()
+        state[_FRAMES_SEEN] = state.get(_FRAMES_SEEN, 0) + 1
 
         # -- assistant text --------------------------------------------------
         if kind in {"assistant.delta", "message.delta"}:
@@ -754,7 +898,11 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             return events
 
         # -- clarify (the agent asks the user a question mid-turn) -----------
-        if kind == "clarify":
+        # Intellect's community api_server emits ``clarify.request`` (matching
+        # the ``approval.request`` sibling); the bare ``clarify`` is kept for
+        # adapters that use it. Reading only the bare form dropped every
+        # clarify question before this card could ever be shown.
+        if kind in {"clarify", "clarify.request"}:
             # Buffered narration stays buffered, exactly as for an approval:
             # it belongs to the answer that resumes after the user replies.
             return [
@@ -793,6 +941,10 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         if kind == "run.started":
             return []
         if kind == "run.completed":
+            # Reconciles the buffered deltas with the run's ``output`` rather
+            # than flushing then appending: the two carry the same text, so
+            # appending both emits the answer twice. See
+            # `_terminal_content_events`.
             events = self._terminal_content_events(obj, state)
             state["terminal"] = True
             usage = obj.get("usage") if isinstance(obj.get("usage"), dict) else {}
@@ -803,6 +955,23 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             }
             if any(value is not None for value in usage_data.values()):
                 events.append(AgentLoopEvent("usage", data=usage_data))
+            # A run can complete *without finishing*: the agent stopped at a
+            # generation ceiling and the text above is a prefix. The service
+            # marks that with ``completed: false`` / ``partial: true``, which
+            # this channel used to drop entirely — so a truncated answer
+            # reached the user labelled as the finished one. Surfaced as the
+            # same machine-readable reason the ACP family emits, so the UI's
+            # "stopped short" marker works on both transports. Absent fields
+            # (older services) mean a clean finish, which is the default.
+            reason = _short_finish_reason(obj)
+            if reason:
+                events.append(
+                    AgentLoopEvent(
+                        "error",
+                        text=t("agent_loop.acp_turn_incomplete", reason=reason),
+                        data={"stop_reason": _stop_reason_code(obj)},
+                    )
+                )
             return events
         if kind == "run.failed":
             state["terminal"] = True
@@ -859,6 +1028,8 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             str(obj.get("type") or ""),
             str(obj.get("event") or ""),
         )
+        state[_UNMAPPED_FRAMES] = state.get(_UNMAPPED_FRAMES, 0) + 1
+        self._reject_unmappable_frame(obj)
         return []
 
     @staticmethod
@@ -939,10 +1110,17 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             )
 
     async def respond_clarify(self, request_id: str, answer: str) -> None:
-        """Deliver the user's answer to an in-flight ``clarify``."""
+        """Deliver the user's answer to an in-flight ``clarify``.
+
+        The server is blocked inside the run's clarify callback, so resolving
+        it lets the run continue. The body field is ``response`` — the name the
+        issue's proposed contract uses, and the preferred one; both Intellect
+        implementations accept ``answer`` as an alias on this route.
+        """
         if not self._run_id:
-            # The run is what the endpoint addresses, and without one the
-            # request would be a guaranteed 404.
+            # Nothing to address: the endpoint is keyed by the run, so without
+            # one the request is a guaranteed 404. Skip it rather than add
+            # noise to the log.
             logger.debug(
                 "agent-loop %s: cannot answer clarify %s without a run id",
                 self.name,
@@ -952,7 +1130,7 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         async with httpx.AsyncClient(transport=self._transport) as client:
             await client.post(
                 self._clarify_url(),
-                json={"clarify_id": request_id, "answer": answer},
+                json={"response": answer, "clarify_id": request_id},
                 headers=self._headers(),
             )
 

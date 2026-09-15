@@ -883,6 +883,45 @@ AgentLoopPreset(
 
 kagweb 的 `cancel()` 是**跨进程**的（`POST /v1/runs/{id}/stop`）。而 `AcpAgentLoopBackend` 的 docstring 提到「session-scoped backend keeps its connection alive across turns, so a mid-turn stop must reach the agent as a control message」。若用户的取消需在 Intellect 进程内也触发中止（而不只是 KAGWeb 侧停止消费），需确认 `/stop` 的语义是否足够——本次未核实。
 
+**D5（P0）通道选择错误会静默产出空回合 —— ✅ 已修复（2026-09-15）**
+
+「用 Intellect 的 `/v1/chat/completions` 当 agent loop」在当前版本下**不成立**，且失败方式是静默的：该端点返回 200 并正常流式，所以从外面看一切健康。实测把它的真实形状喂给 KAGWeb 的解析器：
+
+```
+{"choices":[{"delta":{"content":"Hello"}}]}         -> DROPPED
+{"choices":[{"delta":{"role":"assistant"}}]}        -> DROPPED
+{"tool":"…","label":"…","status":"running"}         -> DROPPED
+```
+
+两条原因叠加：(a) `http_backend` 不认识 OpenAI 的 `choices[].delta` 包裹（`choices` 只用于解析审批选项）；(b) SSE 解析器**只读 `data:` 行、丢弃 `event:` 名**，于是 `event: intellect.tool.progress` 的类型标识也没了。
+
+该端点在协议层确实给不了 agent 语义：**无推理通道**（`api_server/adapter.py` 全程未注册 `reasoning_callback`）、**工具只有 `running`/`completed` 标记**（payload 无 args、无 result）、**无审批/澄清/停止**（三者都挂在 `run` 资源下，因为只有 run 是有身份、可寻址、可恢复的执行单元）。这是契约错位，不是缺陷：OpenAI chat-completions 是无状态文本契约。
+
+修复（三处，均带测试）：
+
+1. `_is_openai_chat_payload` 按 payload 形状（`object` 标记，或 `choices[].delta|message`）识别并**立即报错**，文案直接指向 `/v1/runs` 与 `intellect-runs` 预设。按形状而非某个字段名匹配，漏掉标记的厂商同样被捕获。
+2. 整条流**一帧都读不出来**时 fail-fast（`agent_loop.stream_not_understood`），不再变成「空答案」——后者会让运维去查模型，而真正错的是端点。判据用**未映射帧数**而非"没产出事件"：已识别但合理地不产出内容的帧（心跳、生命周期标记）不算错。注意轮询产出的帧**不计入**，否则轮询会掩盖失败。
+3. SSE 解析器保留 `event:` 名并作为**兜底**塞进 payload（仅当 payload 自己没有 `type`/`event`），让「类型只在 `event:` 行上」的厂商也能映射。
+
+**D6（P0）`clarify` 事件名与端点双双错配 —— ✅ 已修复（2026-09-15）**
+
+D2 记录时以为只是「未实现」，实测是**三处错配**（社区版 Python `api_server`）：
+
+| 项 | kagweb 原实现 | Intellect 实际 |
+|---|---|---|
+| 事件名 | `kind == "clarify"` | `event: "clarify.request"`（与 `approval.request` 同族） |
+| 端点 | `POST /v1/chat/completions/{session_id}/clarify` | `POST /v1/runs/{run_id}/clarify` |
+| body 字段 | `{clarify_id, answer}` | `{response, clarify_id}` |
+
+后果：澄清卡**永远不会出现**（事件名不匹配，`_translate_run_event` 落到 unknown 分支）；即使出现了，答复也会 404（端点只存在于另一个构建）；即便端点在，字段名也会被判 `missing 'response' field`。
+
+修复：事件名接受 `clarify.request`（保留裸 `clarify` 兼容其它适配器）、端点改为 run-scoped（与审批同源，随 run API 一起可用）、body 改用 `response`。附带收益：`_session_id` / `_remember_session` 这两个只为旧端点而存在的字段成为死状态，一并移除。
+
+**D7（P2）文档与预设的纠偏 —— ✅ 已落地（2026-09-15）**
+
+- `custom-http` 预设描述原文「Any service speaking the documented streaming turn contract」易被读成 OpenAI 客户端。改为明确写出「这是 KAGWeb 自己的中性帧契约，**不是** OpenAI chat-completions 客户端，指向 `/v1/chat/completions` 会失败；应指向服务的 agent 端点（Intellect 即 `/v1/runs`）」。
+- 本文 D2 的「`RunsAgentLoopBackend` 未实现 `respond_clarify`」与「Python 版根本没有这个 HTTP 端点」两句**已过时**，见 D6 更正。§941 行的实现建议同理作废。
+
 ##### C. 实际线上格式（Rust `/v1/runs/{run_id}/events` 实测）
 
 > 上表列的是 `map_event_to_sse` 的**返回值**。实际落到 SSE 线上前还要经过 forwarder 一次包装（`api_server.rs:5129-5131`）：`None` 的返回值被改写为 `"message.delta"`。**这才是 BFF 真正收到的东西。**
@@ -916,6 +955,20 @@ kagweb 的 `cancel()` 是**跨进程**的（`POST /v1/runs/{id}/stop`）。而 `
 
 ##### D. kagweb 与 Rust 的差异清单（Rust-only 对齐目标）
 
+> **⚠️ 本节已全部作废（2026-09-15 实测）**：下表的差异是成文时的状态，此后已逐项修复。现按**权威 Rust 形状**逐条复测（`_translate_run_event` 已改为 `type` 优先分派）：
+
+| 语义 | 现状 | 说明 |
+|---|---|---|
+| 文本 | ✅ 通过 | `type=assistant.delta` 进缓冲，在 `assistant.completed`/`run.completed`/工具边界 flush 成 content（复测：两段 delta → `content="Hello world"`） |
+| 推理 | ✅ 通过 | `type=reasoning.delta` → `thinking` |
+| 工具 | ✅ 通过 | `event=tool.progress` + `type=tool.started` → `tool_call`（**args 保留**）；`type=tool.completed` → `tool_result`（result 保留） |
+| 审批 | ✅ 通过 | `tool_name` / `arguments` 均已读取 |
+| 澄清 | ✅ 通过 | `clarify.request` → `clarify_request`；见 D6 |
+| 完成/失败/取消 | ✅ 通过 | 无变化 |
+| 心跳 | ✅ 通过 | `thinking.progress` 显式识别为 no-op |
+
+保留原表以便对照当初的判断：
+
 | kagweb 分支（`http_backend.py`） | 读取 | Rust 实际 | 差异 |
 |---|---|---|---|
 | 文本 | `event=message.delta`, **`delta`** | `event=message.delta`, `type=assistant.delta`, **`text`** | ❌ 字段名不符 → **内容全丢** |
@@ -928,7 +981,43 @@ kagweb 的 `cancel()` 是**跨进程**的（`POST /v1/runs/{id}/stop`）。而 `
 | 澄清 | **无分支** | `event=clarify`, `type=clarify`, `question`, `choices`, `clarify_id` | ❌ 未实现 |
 | 心跳 | 无分支 | `event=message.delta`, `type=thinking.progress` | 可忽略（无文本） |
 
-**结论**：在 Rust（权威）下，**文本、推理、工具、审批四项全部失效**——只有终态与失败可用。这不是边缘差异，是**主功能不可用**。
+**当初的结论**：在 Rust（权威）下，**文本、推理、工具、审批四项全部失效**——只有终态与失败可用。这不是边缘差异，是**主功能不可用**。（现已修复，见上表。）
+
+##### E. 通道能力矩阵（选型必读）
+
+`agent_loop` profile 能做什么，取决于它连的是**哪一类端点**，而不是哪个服务。同一台 Intellect 上，三条通道的能力差一个数量级：
+
+| 能力 | ACP（`intellect` CLI 预设） | runs（`intellect-runs`，`/v1/runs`） | chat-completions（`/v1/chat/completions`） |
+|---|---|---|---|
+| 文本 | ✅ content 块 | ✅ assistant.delta | ✅ `choices[].delta.content` |
+| 推理 | ✅ `thinking` | ✅ `reasoning.delta` | ❌ **不存在**（未注册 reasoning 回调） |
+| 工具参数 | ✅ `raw_input` | ✅ `arguments` | ❌ 只有 `running` 标记 |
+| 工具结果 | ✅ content 块 | ✅ `result` | ❌ 只有 `completed` 标记 |
+| 审批 | ✅ `request_permission` | ✅ `approval.request` | ❌ **无** |
+| 澄清 | ❌ 未暴露（`respond_clarify` 抛 NotImplementedError） | ✅ `clarify.request` + `/v1/runs/{id}/clarify` | ❌ **无** |
+| 停止 | ✅ ACP `cancel` | ✅ `/v1/runs/{id}/stop` | ❌ **无** |
+| 截断/未完成信号 | ✅ `stop_reason` | ✅ `run.failed` / `status` | ⚠️ 仅在完整响应体（`intellect.completed`）与响应头，流式期间不可得 |
+| 多轮会话状态 | ✅ agent 侧 session id（可 `load_session` 续接） | ✅ `session_id` | ⚠️ 无状态语义 |
+| KAGWeb 侧 | `AcpAgentLoopBackend` | `RunsAgentLoopBackend` | **不支持——会 fail-fast 报错**（D5） |
+
+**选型规则**：agent 语义只存在于**有身份的执行单元**上——ACP 的 session 与 runs 的 run。chat-completions 是 OpenAI 的**无状态文本**契约，一问一答即止：它结构上放不下「暂停→等答复→恢复」，也放不下带身份的推理与工具。需要 agent 行为就用 ACP 或 runs；只需要文本补全才用 chat-completions，且不要把它配成 agent loop。
+
+##### F. 行为变更记录（升级注意事项）
+
+**`stream_not_understood`：读不懂的流从「空答案」改为「回合失败」**（2026-09-15）
+
+HTTP 族的通用 «turn» 协议（`custom-http`）现在会 **fail 掉回合**，条件是：整条流里
+**至少有一帧完全无法映射，且一帧都没成功映射出来**。此前这种情况会静默产出空答案，
+运维只能看到「空回复」并把注意力引向模型，而真正错的是端点。
+
+**对既有部署的影响**：只指向能正常解析的端点的部署**不受影响**（已识别的帧即使合理地不产出
+内容——心跳、生命周期标记——也不触发）。命中的是「端点选错/协议不符」这类**本来就没在工作**
+的配置：它从「静默空答案」变成「明确报错」，正是本次改动的目的。轮询产出的帧**不计入**成功
+映射，避免降级路径掩盖失败。
+
+**OpenAI chat-completions 端点**：新增按 payload 形状识别（`object` 标记或
+`choices[].delta|message`）并**立即报错**，文案指向 `/v1/runs` 与 `intellect-runs` 预设——
+见 D5。同样属于「本来就不成立」的配置。
 
 #### 落地建议
 
@@ -939,6 +1028,7 @@ kagweb 的 `cancel()` 是**跨进程**的（`POST /v1/runs/{id}/stop`）。而 `
 3. **工具分支改判 `type`**：`tool.started` / `tool.completed`（`event` 一律是 `tool.progress`），字段用 `name`/`result`/`duration_s`（现读 `tool`/`preview`）。
 4. **审批字段改读 `tool_name`**（现读 `tool`），预览改读 `arguments`（现读 `preview`）。
 5. **新增 `clarify` 分支**：映射为 `ask_user` 形状的卡片（复用 `_approval_question` 的构造方式），答复经 `respond_clarify` → `POST /v1/chat/completions/{session_id}/clarify`（body `{clarify_id, answer}`）。
+   > **⚠️ 已作废（2026-09-15）**：端点与 body 字段都不对，见 D6——实际是 `POST /v1/runs/{run_id}/clarify`（body `{response, clarify_id}`），事件名是 `clarify.request`。该条已按 D6 实现。
 6. **兜底与可观测性**：末尾 `return []` 前对未识别的 `type`/`event` 记 `log.debug`——当前静默丢弃使上述全部问题长期不可见。
 7. **`intellect-team` 预设补齐** `turn_path="/v1/runs"` + `protocol="runs"`（见 D1）。
 

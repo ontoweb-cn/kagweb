@@ -40,6 +40,8 @@ class FakeAgent:
                     "permission_option_id": self.permission_option_id,
                     "reused_session": self.reused_session,
                     "scenario": self.scenario,
+                    "elicitation_action": getattr(self, "elicitation_action", ""),
+                    "elicitation_answer": getattr(self, "elicitation_answer", ""),
                 },
                 fh,
             )
@@ -136,6 +138,39 @@ class FakeAgent:
             outcome = response.outcome
             self.permission_option_id = str(
                 getattr(outcome, "option_id", "") or f"outcome:{type(outcome).__name__}"
+            )
+        if "elicitation" in self.scenario:
+            # Reproduce Intellect's clarify: a *form* elicitation carrying a
+            # single ``answer`` property, whose title is the question and whose
+            # enum is the suggested choices (acp_adapter/clarify.py).
+            from acp.schema import (
+                ElicitationFormSessionMode,
+                ElicitationSchema,
+                ElicitationStringPropertySchema,
+            )
+
+            mode = ElicitationFormSessionMode(
+                session_id=session_id,
+                requested_schema=ElicitationSchema(
+                    type="object",
+                    properties={
+                        "answer": ElicitationStringPropertySchema(
+                            type="string",
+                            title="Which database should I target?",
+                            enum=["postgres", "sqlite"],
+                        )
+                    },
+                    required=["answer"],
+                ),
+            )
+            response = await self.conn.create_elicitation(
+                message="The agent needs more information to continue.",
+                mode=mode,
+            )
+            self.elicitation_action = str(getattr(response, "action", "") or "")
+            content = getattr(response, "content", None)
+            self.elicitation_answer = (
+                str(content.get("answer") or "") if isinstance(content, dict) else ""
             )
         self._record()
         # ``<name>-stop-<reason>`` scripts the PromptResponse stop_reason, so a
