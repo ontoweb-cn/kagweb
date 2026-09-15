@@ -7,10 +7,13 @@ import {
   SETTINGS_CATEGORIES,
   SETTINGS_HUB_HREF,
   SETTINGS_ROUTES,
+  isSettingsCategoryVisible,
+  isSettingsLeafVisible,
   settingsDomainForRoute,
   settingsHref,
   storagePathFor,
 } from "../features/settings/navigation/settings-nav";
+import type { SettingsAccess } from "../features/settings/navigation/settings-access";
 
 const readWebFile = (...parts: string[]) =>
   readFileSync(path.join(process.cwd(), ...parts), "utf8");
@@ -97,9 +100,56 @@ test("settings navigation: every category page is behind the domain gate", () =>
   const gate = readWebFile("components", "settings", "SettingsDomainGate.tsx");
   assert.match(gate, /settingsDomainBlockReason\(domain, access\)/);
   assert.match(gate, /if \(!access\.resolved\)/);
-  // "Not applicable to this backend" and "an admin owns this" are different
-  // facts and must not collapse into one message.
-  assert.match(gate, /llm-not-applicable/);
+  // Only admin ownership can block a category. Backend applicability is
+  // leaf-level (the llm leaf) and must not be a category-gate reason: hiding
+  // all of Models under a CLI backend used to bury the task settings the
+  // startup warning points at.
+  assert.doesNotMatch(gate, /llm-not-applicable/);
+  const navModule = readWebFile(
+    "features",
+    "settings",
+    "navigation",
+    "settings-nav.ts",
+  );
+  const categoryIface = navModule.slice(
+    navModule.indexOf("export interface SettingsCategory"),
+    navModule.indexOf("}", navModule.indexOf("export interface SettingsCategory")),
+  );
+  assert.doesNotMatch(
+    categoryIface,
+    /llmOnly/,
+    "llmOnly must be leaf-level, not a category field",
+  );
+});
+
+test("settings leaf gate: CLI backends hide the llm leaf, not the category", () => {
+  const admin: SettingsAccess = {
+    resolved: true,
+    hideAdminOnly: false,
+    enableLlmSettings: true,
+  };
+  const cliBackend: SettingsAccess = {
+    resolved: true,
+    hideAdminOnly: false,
+    enableLlmSettings: false,
+  };
+
+  const models = SETTINGS_CATEGORIES.find((c) => c.key === "models")!;
+  const llmLeaf = models.children!.find((l) => l.key === "llm")!;
+  const taskLeaf = models.children!.find((l) => l.key === "task-models")!;
+
+  // An HTTP backend shows everything; a CLI backend hides only the
+  // conversation-LLM leaf — task models feed KAGWeb's own in-process calls
+  // no matter which backend drives conversations.
+  assert.equal(isSettingsLeafVisible(llmLeaf, admin), true);
+  assert.equal(isSettingsLeafVisible(llmLeaf, cliBackend), false);
+  assert.equal(isSettingsLeafVisible(taskLeaf, cliBackend), true);
+  assert.equal(isSettingsCategoryVisible(models, cliBackend), true);
+
+  // The overview's service list follows the same visibility, so it can never
+  // advertise a row that links into a hidden leaf.
+  const overview = readWebFile("components", "settings", "SettingsOverview.tsx");
+  assert.match(overview, /isSettingsLeafVisible\(leaf, access\)/);
 });
 
 test("settings navigation: the domain for a route round-trips", () => {

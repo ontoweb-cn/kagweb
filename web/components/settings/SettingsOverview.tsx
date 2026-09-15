@@ -10,11 +10,13 @@ import { apiFetch, apiUrl } from "@/lib/api";
 import SettingsStatusPanel from "@/components/settings/SettingsStatusPanel";
 import { setPendingPrompt } from "@/lib/pending-prompt";
 import {
+  isSettingsLeafVisible,
   SETTINGS_CATEGORIES,
   settingsHref,
   type Lang,
   type SettingsLeaf,
 } from "@/features/settings/navigation/settings-nav";
+import { useSettingsAccess } from "@/features/settings/navigation/SettingsAccessProvider";
 import {
   getActiveModel,
   getActiveProfile,
@@ -36,6 +38,7 @@ export default function SettingsOverview() {
   const { t, i18n } = useTranslation();
   const zh = i18n.language?.toLowerCase().startsWith("zh");
   const tr = useCallback((value: Lang) => (zh ? value.zh : value.en), [zh]);
+  const access = useSettingsAccess();
   const {
     catalog,
     catalogEditable,
@@ -45,19 +48,25 @@ export default function SettingsOverview() {
     startTour,
   } = useSettings();
 
+  // Only leaves this user can actually open: under a CLI agent backend the
+  // conversation-LLM leaf is hidden, and listing it here would advertise a
+  // row that reports "not configured" for a setup working exactly as
+  // intended.
   const modelLeaves = useMemo(
     () =>
       (
         SETTINGS_CATEGORIES.find((category) => category.key === "models")
           ?.children ?? []
-      ).filter(
-        (
-          leaf,
-        ): leaf is SettingsLeaf & {
-          service: NonNullable<SettingsLeaf["service"]>;
-        } => Boolean(leaf.service),
-      ),
-    [],
+      )
+        .filter((leaf) => isSettingsLeafVisible(leaf, access))
+        .filter(
+          (
+            leaf,
+          ): leaf is SettingsLeaf & {
+            service: NonNullable<SettingsLeaf["service"]>;
+          } => Boolean(leaf.service),
+        ),
+    [access],
   );
 
   const states = useMemo(
@@ -88,6 +97,12 @@ export default function SettingsOverview() {
     href: string;
     label: string;
   }[] = [];
+  // The LLM profiles are the usual draft content, but under a CLI agent
+  // backend that leaf is hidden — review must never link into a page the
+  // user cannot see, so fall back to the category top.
+  const llmLeaf = SETTINGS_CATEGORIES.find(
+    (category) => category.key === "models",
+  )?.children?.find((leaf) => leaf.key === "llm");
   if (draftState !== "clean") {
     attention.push({
       key: "draft",
@@ -95,7 +110,9 @@ export default function SettingsOverview() {
         draftState === "saved"
           ? t("A saved draft is waiting to be applied.")
           : t("There are changes you have not saved anywhere yet."),
-      href: settingsHref("llm"),
+      href: llmLeaf && isSettingsLeafVisible(llmLeaf, access)
+        ? settingsHref("llm")
+        : settingsHref("models"),
       label: t("Review"),
     });
   }

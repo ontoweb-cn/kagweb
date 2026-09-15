@@ -54,6 +54,16 @@ export interface SettingsLeaf {
   service?: ServiceName;
   /** Hidden from non-admin users (the backend rejects them anyway). */
   adminOnly?: boolean;
+  /**
+   * Shown only when the conversation-facing LLM settings apply to the
+   * configured agent backend (see ``SettingsAccess.enableLlmSettings``).
+   * Leaf-level, not category-level: a CLI backend supplies its own
+   * conversation models but still relies on this category's task service for
+   * KAGWeb's own calls and its voice services for /api/voice, so hiding the
+   * whole category would bury the very settings the startup warning points
+   * at.
+   */
+  llmOnly?: boolean;
 }
 
 export interface SettingsCategory {
@@ -66,18 +76,15 @@ export interface SettingsCategory {
   children?: SettingsLeaf[];
   /** Admin-owned category, hidden from ordinary users like an adminOnly leaf. */
   adminOnly?: boolean;
-  /**
-   * Shown only when the LLM settings apply to the configured agent backend
-   * (see ``SettingsAccess.enableLlmSettings``).
-   */
-  llmOnly?: boolean;
 }
 
 export function isSettingsLeafVisible(
   leaf: SettingsLeaf,
   access: SettingsAccess,
 ): boolean {
-  return !(leaf.adminOnly && access.hideAdminOnly);
+  if (leaf.adminOnly && access.hideAdminOnly) return false;
+  if (leaf.llmOnly && !access.enableLlmSettings) return false;
+  return true;
 }
 
 export function isSettingsCategoryVisible(
@@ -85,7 +92,6 @@ export function isSettingsCategoryVisible(
   access: SettingsAccess,
 ): boolean {
   if (category.adminOnly && access.hideAdminOnly) return false;
-  if (category.llmOnly && !access.enableLlmSettings) return false;
   return (
     !category.children ||
     category.children.some((leaf) => isSettingsLeafVisible(leaf, access))
@@ -110,13 +116,12 @@ export function visibleSettingsChildren(
  * category route has to ask — otherwise an ordinary user could open
  * `/settings/agent-loop` directly and see an admin-only page.
  *
- * The two reasons are kept apart because they are not the same sentence: one
- * is "an administrator owns this", the other is "the agent backend you
- * configured supplies this itself, so there is nothing to fill in here".
- * Reporting the second as the first sends people looking for an administrator
- * that a single-user install does not have.
+ * Only admin ownership can block a category. Backend applicability is a
+ * leaf-level concern: a CLI backend hides the conversation-LLM leaf but keeps
+ * the category, because the task service (KAGWeb's own calls) and the voice
+ * services apply no matter which backend drives conversations.
  */
-export type SettingsDomainBlock = "admin-only" | "llm-not-applicable";
+export type SettingsDomainBlock = "admin-only";
 
 export function settingsDomainBlockReason(
   domainKey: string,
@@ -126,7 +131,6 @@ export function settingsDomainBlockReason(
   // An unknown domain is not a page this build knows how to authorize.
   if (!category) return "admin-only";
   if (category.adminOnly && access.hideAdminOnly) return "admin-only";
-  if (category.llmOnly && !access.enableLlmSettings) return "llm-not-applicable";
   if (
     category.children &&
     !category.children.some((leaf) => isSettingsLeafVisible(leaf, access))
@@ -148,7 +152,12 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
     tile: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
   },
   {
+    // The conversation-facing LLM profiles. Hidden when the configured agent
+    // backend supplies its own conversation models (the CLI family); the rest
+    // of this category stays visible because task/voice services apply
+    // regardless of backend.
     key: "llm",
+    llmOnly: true,
     label: { zh: "LLM", en: "LLM" },
     blurb: {
       zh: "语言模型供应商与当前档位。",
@@ -160,6 +169,11 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
   },
   {
     key: "task-models",
+    // The model behind KAGWeb's own calls — session titles, turn insights,
+    // history summaries. Resolved in-process from this catalog no matter
+    // which agent backend drives conversations, which is why this leaf — not
+    // the whole category — is what the startup warning's "Settings > Models"
+    // advice points at.
     label: { zh: "任务模型", en: "Task models" },
     blurb: {
       zh: "KAGWeb 自己发起的调用使用的模型。",
@@ -167,6 +181,7 @@ const MODEL_CHILDREN: SettingsLeaf[] = [
     },
     icon: ListChecks,
     tile: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+    service: "task",
   },
   {
     key: "search",
@@ -289,8 +304,10 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     icon: Bot,
   },
   {
+    // Always visible: which leaves render depends on the backend (the llm
+    // leaf hides under CLI backends), but the task and voice services here
+    // apply no matter which backend drives conversations.
     key: "models",
-    llmOnly: true,
     label: { zh: "模型", en: "Models" },
     blurb: {
       zh: "语言、搜索、语音与生成模型",

@@ -6,11 +6,13 @@ export interface SettingsAccess {
   /** Admin-owned settings stay hidden on auth failures and for ordinary users. */
   hideAdminOnly: boolean;
   /**
-   * Whether the LLM (models and connections) settings apply to the configured
-   * agent backend. Only a self-hosted HTTP backend needs model credentials
-   * entered here — the CLI family carries its own login state, and a generic
-   * HTTP service configures its own models. Defaults to ``true`` so a failed or
-   * pending lookup never hides a section that used to be visible.
+   * Whether the conversation-facing LLM settings (the `llm` leaf of the
+   * models category) apply to the configured agent backend. Only a
+   * self-hosted HTTP backend needs conversation credentials entered here —
+   * the CLI family carries its own login state. Other models-category
+   * settings (task models, voice) apply regardless of backend and are never
+   * hidden by this flag. Defaults to ``true`` so a failed or pending lookup
+   * never hides a section that used to be visible.
    */
   enableLlmSettings: boolean;
 }
@@ -29,9 +31,6 @@ export function settingsAccessFromAuthStatus(
     return { ...PENDING_SETTINGS_ACCESS, resolved: true };
   }
 
-  const ordinaryAuthenticatedUser = Boolean(
-    authStatus.enabled && authStatus.authenticated && !authStatus.is_admin,
-  );
   return {
     resolved: true,
     hideAdminOnly: Boolean(authStatus.enabled) && !authStatus.is_admin,

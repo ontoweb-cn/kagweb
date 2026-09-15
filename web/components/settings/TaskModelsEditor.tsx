@@ -12,7 +12,12 @@ import {
   getActiveProfile,
   useSettings,
 } from "@/features/settings/store/SettingsStore";
-import { settingsHref } from "@/features/settings/navigation/settings-nav";
+import {
+  SETTINGS_CATEGORIES,
+  isSettingsLeafVisible,
+  settingsHref,
+} from "@/features/settings/navigation/settings-nav";
+import { useSettingsAccess } from "@/features/settings/navigation/SettingsAccessProvider";
 import { selectClass, selectOptionClass } from "./shared";
 
 /**
@@ -37,12 +42,25 @@ export function TaskModelsEditor() {
   const zh = i18n.language?.toLowerCase().startsWith("zh");
   const { draft, catalogEditable, settingsError, mutateCatalog } =
     useSettings();
+  const access = useSettingsAccess();
 
   const [importing, setImporting] = useState(false);
   const [importFrom, setImportFrom] = useState("");
 
   const llmProfiles = draft.services.llm.profiles;
   const configured = draft.services.task.profiles.length > 0;
+  // The llm leaf is hidden under CLI agent backends; the "open LLM settings"
+  // link inside the fallback notice must go with it or it points at an
+  // anchor that renders nothing.
+  const llmLeaf = useMemo(
+    () =>
+      SETTINGS_CATEGORIES.find((category) => category.key === "models")
+        ?.children?.find((leaf) => leaf.key === "llm"),
+    [],
+  );
+  const showLlmLink = llmLeaf
+    ? isSettingsLeafVisible(llmLeaf, access)
+    : false;
 
   const inherited = useMemo(
     () => ({
@@ -140,13 +158,15 @@ export function TaskModelsEditor() {
             ) : (
               <span>{t("No language model is configured yet.")}</span>
             )}
-            <Link
-              href={settingsHref("llm")}
-              className="inline-flex items-center gap-0.5 underline-offset-2 hover:text-[var(--foreground)] hover:underline"
-            >
-              {t("LLM")}
-              <ArrowUpRight className="h-3 w-3" />
-            </Link>
+            {showLlmLink && (
+              <Link
+                href={settingsHref("llm")}
+                className="inline-flex items-center gap-0.5 underline-offset-2 hover:text-[var(--foreground)] hover:underline"
+              >
+                {t("LLM")}
+                <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            )}
           </div>
         </div>
       )}

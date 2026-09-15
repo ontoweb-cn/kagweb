@@ -196,14 +196,22 @@ def per_turn_model_apply(preset: str) -> bool:
 
 
 def llm_settings_apply(preset: str) -> bool:
-    """Whether the LLM (models and connections) settings apply to this backend.
+    """Whether the conversation-facing LLM settings apply to this backend.
 
-    Only a **self-hosted HTTP** service needs the operator to bring model
-    credentials through KAGWeb. The CLI family — Claude Code, Codex, Intellect's
+    Only a **self-hosted HTTP** service needs conversation model credentials
+    brought through KAGWeb. The CLI family — Claude Code, Codex, Intellect's
     own ACP transport — carries its own login state in the child's HOME, and a
-    generic HTTP service configures its own models; presenting the section for
-    those is the same misleading affordance as a model picker that has no
-    effect on the conversation.
+    generic HTTP service configures its own models; presenting conversation
+    profiles for those is the same misleading affordance as a model picker
+    that has no effect on the conversation.
+
+    Scoped to the conversation-LLM leaf only, deliberately: the rest of the
+    models category applies under every backend. The ``task`` service feeds
+    KAGWeb's own in-process calls (session titles, turn insights, history
+    summaries) and the voice services feed ``/api/voice`` — none of those can
+    borrow the CLI child's login, and the startup warning about a missing
+    model points at them. Hiding the whole category used to bury the only
+    page that warning's advice could act on.
     """
     name = str(preset or "").strip()
     return is_intellect_preset(name) and preset_family(name) == "http"

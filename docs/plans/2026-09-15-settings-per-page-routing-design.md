@@ -367,3 +367,40 @@ RSC payload。这可能把 §8.1 那点「按需加载」的好处吃掉一部�
   在本部署上不可得**：本机 CLI 后端使 Models 整域被 `llmOnly` 门控，页面不渲染。
   导航行与 section 的渲染路径与其余 7 个已浏览器验证过的叶子完全同一
   （`visibleSettingsChildren` 的 key 集合过滤），待任一 LLM 门控开放的部署自然验证。
+
+---
+
+## 11. Models 门控矛盾收敛（2026-09-15，用户选定：按叶子拆门控）
+
+### 11.1 裁决依据（实施前实测的数据流）
+
+- KAGWeb 自身调用（会话标题 `title_service.py:133,254`、轮次洞察、历史摘要）由后端
+  进程内解析 **task** 服务（`provider_runtime.py:597`，`task_llm_scope`），与 agent
+  后端家族无关——CLI 子进程的登录态帮不了进程内 HTTP 调用。
+- TTS/STT 走 KAGWeb 自有 `/api/voice/*`（前端 `ChatMessageList.tsx:526` 直调），读
+  **tts/stt** 服务，同样与后端无关。
+- 真正随后端家族变化的只有**对话模型**（llm 服务/连接凭据）：HTTP 族需要 KAGWeb 带凭据，
+  CLI 族自带。
+- 结论：`llm_settings_apply`（`builtin.py:189`）的意图（别显示不影响对话的模型配置）
+  只覆盖 llm 叶子；类目级隐藏把 task/tts/stt 一并连坐，使启动警告
+  （`llm/config.py:196`）在 CLI 后端 + 未配模型的触发场景下**永远无法被照办**。
+
+### 11.2 落地改动
+
+- `llmOnly` 从 `SettingsCategory` 下沉到 `SettingsLeaf`（仅 llm 叶子携带）；
+  Models 类目在任何后端下可见，可见性随叶子过滤（导航/section/概览同源）。
+- `settingsDomainBlockReason` 收敛为仅 admin-only；`SettingsDomainGate` 相应简化。
+- 概览服务列表按叶子可见性过滤，并补上 **任务模型** 的就绪行（`service: "task"`）；
+  草稿「去处理」链接在 llm 叶子隐藏时兜底到 Models 路由顶部。
+- `TaskModelsEditor` 未配置提示里的「LLM ↗」链接随叶子隐藏（否则指向渲染不出的锚点）。
+- 后端 `llm_settings_apply` 语义不变（对话 LLM 是否适用），docstring 更新并注明叶子
+  级作用域与理由；前端 `enableLlmSettings` 注释同步。
+- 顺带清理：`settings-access.ts` 死变量 `ordinaryAuthenticatedUser`（评审遗留项）。
+
+### 11.3 实测（CLI 后端，llm_settings_enabled=false）
+
+- `/settings/models` 可见：渲染 connections / task-models / search / tts / stt /
+  imagegen / videogen 七个叶子；导航无 LLM 行，页面无「不显示」拦截。
+- 概览「已配置 0/6」的构成为 任务模型+搜索+TTS+STT+文生图+文生视频——每一项都可点达。
+- 启动警告的「Settings > Models」指路恢复有效（任务模型就在该页首个区）。
+- llm 配置项未丢失：HTTP 后端部署上照常显示（`llm_settings_enabled=true` 路径不变）。
