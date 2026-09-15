@@ -63,27 +63,51 @@ def _coerce_bool(value: Any, default: bool) -> bool:
 def _resolve_turn_outcome(
     assistant_events: Sequence[dict[str, Any]],
     done_event: StreamEvent | None,
-) -> tuple[str, str]:
-    """Resolve the persisted turn status and error from the terminal protocol."""
+) -> tuple[str, str, str]:
+    """Resolve the persisted turn status, error and "stopped short" reason.
+
+    Returns ``(status, error, incomplete_reason)``. The third value is a short
+    machine-readable code (an ACP ``stop_reason``, say) when the turn finished
+    with a *prefix* of an answer rather than a whole one, and ``""`` when it
+    did not.
+
+    A backend can end a turn early and still return usable text — the model hit
+    its output ceiling, ran out of turn budget, and so on. That is not a
+    failure: the reply is worth showing and the turn really did finish. But it
+    is also not a clean finish, and reporting it as one is how a truncated
+    answer gets read as the final word. Keeping the status and the reason as
+    separate values lets the UI say "completed (truncated)" instead of picking
+    one of two lies.
+    """
     done_metadata = (done_event.metadata or {}) if done_event is not None else {}
     status = str(done_metadata.get("status") or "completed")
     if status not in _FINAL_TURN_STATUSES:
         status = "completed"
 
     error = ""
+    incomplete_reason = ""
     for event in reversed(assistant_events):
         metadata = event.get("metadata")
         metadata = metadata if isinstance(metadata, dict) else {}
-        if event.get("type") != StreamEventType.ERROR.value or not metadata.get("turn_terminal"):
+        if event.get("type") != StreamEventType.ERROR.value:
             continue
-        terminal_status = str(metadata.get("status") or "failed")
-        status = terminal_status if terminal_status in _FINAL_TURN_STATUSES else "failed"
-        if status == "completed":
-            status = "failed"
-        error = str(event.get("content") or "")
-        break
+        if metadata.get("turn_terminal"):
+            terminal_status = str(metadata.get("status") or "failed")
+            status = terminal_status if terminal_status in _FINAL_TURN_STATUSES else "failed"
+            if status == "completed":
+                status = "failed"
+            error = str(event.get("content") or "")
+            break
+        # A non-terminal error that names why the backend stopped. Once the
+        # turn is a failure the reason is redundant — the badge already says
+        # so — hence only recording it for a turn that still completes.
+        reason = str(metadata.get("stop_reason") or "").strip()
+        if reason and not incomplete_reason:
+            incomplete_reason = reason
 
-    return status, error
+    if status != "completed":
+        incomplete_reason = ""
+    return status, error, incomplete_reason
 
 
 _FENCED_CODE_BLOCK_RE = re.compile(r"```[\s\S]*?```")

@@ -348,3 +348,91 @@ async def test_attachment_paths_reach_the_prompt_only_for_cli_backends(
     assert "path:" not in http_request.prompt
     assert "notes.txt" in http_request.prompt  # preview row, just no copy
     assert "shared body text" in http_request.prompt
+
+
+async def test_truncated_turn_completes_but_marks_done_incomplete(
+    store, stub_workspace, monkeypatch
+) -> None:
+    """A turn that stopped at a ceiling completes, with the reason on DONE.
+
+    The backend still produced usable text and the turn really did end, so
+    failing it would be wrong — but reporting it as a plain "completed" is how
+    a truncated reply gets read as the final answer. The DONE metadata carries
+    the reason so the activity header can say "Done · truncated".
+    """
+    from kagweb.services.agent_loop.protocol import AgentLoopEvent
+
+    backend = _FakeAgentBackend(
+        AgentLoopEvent("content", text="partial answer"),
+        AgentLoopEvent(
+            "error",
+            text="The agent stopped before finishing",
+            data={"stop_reason": "max_tokens"},
+        ),
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "fake", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(
+        "kagweb.services.model_selection.runtime.activate_llm_selection",
+        lambda selection: (
+            SimpleNamespace(model="agent-loop", context_window=None, max_tokens=None),
+            None,
+        ),
+    )
+    monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
+
+    runtime = TurnRuntimeManager(store=store)
+    _session, turn = await runtime.start_turn(_stub_payload("write the report"))
+    execution = runtime._executions.get(turn["id"])
+    assert execution is not None and execution.task is not None
+    await execution.task
+
+    final = await store.get_turn(turn["id"])
+    # A ceiling is not a failure: the turn finished and its text is kept.
+    assert final is not None and final["status"] == "completed", final
+    messages = await store.get_messages(_session["id"])
+    assert next(m for m in messages if m["role"] == "assistant")["content"] == "partial answer"
+
+    done = [e for e in execution.events if e["type"] == "done"][-1]
+    assert done["metadata"].get("status") == "completed"
+    assert done["metadata"].get("incomplete") is True
+    assert done["metadata"].get("incomplete_reason") == "max_tokens"
+
+
+async def test_clean_turn_has_no_incomplete_marker(store, stub_workspace, monkeypatch) -> None:
+    """The marker must not appear on an ordinary finished turn."""
+    from kagweb.services.agent_loop.protocol import AgentLoopEvent
+
+    backend = _FakeAgentBackend(AgentLoopEvent("content", text="all done"))
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "fake", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(
+        "kagweb.services.model_selection.runtime.activate_llm_selection",
+        lambda selection: (
+            SimpleNamespace(model="agent-loop", context_window=None, max_tokens=None),
+            None,
+        ),
+    )
+    monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
+
+    runtime = TurnRuntimeManager(store=store)
+    _session, turn = await runtime.start_turn(_stub_payload("hi"))
+    execution = runtime._executions.get(turn["id"])
+    assert execution is not None and execution.task is not None
+    await execution.task
+
+    done = [e for e in execution.events if e["type"] == "done"][-1]
+    assert "incomplete" not in done["metadata"]
+    assert "incomplete_reason" not in done["metadata"]

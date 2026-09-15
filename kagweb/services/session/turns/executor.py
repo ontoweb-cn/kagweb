@@ -605,20 +605,27 @@ class TurnExecutor:
                     attachments=generated_attachments or None,
                     metadata=assistant_provider_metadata,
                 )
-            turn_status, turn_error = _resolve_turn_outcome(
+            turn_status, turn_error, incomplete_reason = _resolve_turn_outcome(
                 assistant_events,
                 pending_done_event,
             )
+            # A turn that ended on a prefix is still "completed", but the
+            # client must be able to say so instead of showing the truncated
+            # reply as the finished answer.
+            outcome_metadata: dict[str, Any] = {"status": turn_status}
+            if incomplete_reason:
+                outcome_metadata["incomplete"] = True
+                outcome_metadata["incomplete_reason"] = incomplete_reason
             if pending_done_event is None:
                 pending_done_event = StreamEvent(
                     type=StreamEventType.DONE,
                     source=capability_name,
-                    metadata={"status": turn_status},
+                    metadata=outcome_metadata,
                 )
             else:
                 pending_done_event.metadata = {
                     **pending_done_event.metadata,
-                    "status": turn_status,
+                    **outcome_metadata,
                 }
             # Attach the persisted row ids so the frontend can reconcile its
             # optimistic (negative) message ids with a targeted in-place swap

@@ -78,6 +78,7 @@
   "errorType.metacognitive": "Metacognitive Error",
   "Memory tooltip": "Long-term memory the tutor keeps across sessions.",
   "KAGWeb responded.": "Done",
+  "Stopped short": "truncated",
   "All addressed members receive the same public transcript and answer independently. Their tool traces and intermediate reasoning stay private.": "All addressed members receive the same public transcript and answer independently. You can inspect each trace, but peer Partners never receive it.",
   "LightRAG server URL placeholder": "http://localhost:9621",
   "codebuddy.auth.title": "CodeBuddy account",

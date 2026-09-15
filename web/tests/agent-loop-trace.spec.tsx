@@ -122,3 +122,49 @@ describe("agent-loop turn in the activity trace", () => {
     expect(chipLess?.textContent).toContain("3 candidate files under src");
   });
 });
+
+describe("a turn that stopped at a ceiling", () => {
+  /** The backend's non-terminal marker for an early finish. */
+  const stopMarker: StreamEvent = {
+    type: "error",
+    content: "The agent stopped before finishing",
+    source: "chat",
+    stage: "responding",
+    metadata: { stop_reason: "max_tokens" },
+    seq: 99,
+  } as unknown as StreamEvent;
+
+  it("shows the truncated badge beside the settled status", () => {
+    render(
+      <AssistantActivity
+        events={[...turn, stopMarker]}
+        isStreaming={false}
+        content={answer}
+      />,
+    );
+
+    // The turn still reads as done — it did finish, and the text is usable.
+    expect(screen.getByText("Done")).toBeVisible();
+    // …but not as a whole answer.
+    expect(screen.getByText("truncated")).toBeVisible();
+  });
+
+  it("stays quiet on an ordinary finished turn", () => {
+    render(<AssistantActivity events={turn} isStreaming={false} content={answer} />);
+
+    expect(screen.queryByText("truncated")).toBeNull();
+  });
+
+  it("stays quiet while the turn is still streaming", () => {
+    // Mid-stream the outcome is not known yet, so no verdict is shown.
+    render(
+      <AssistantActivity
+        events={[...turn, stopMarker]}
+        isStreaming
+        content={answer}
+      />,
+    );
+
+    expect(screen.queryByText("truncated")).toBeNull();
+  });
+});

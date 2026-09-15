@@ -1515,6 +1515,22 @@ export function StreamingStatus({
     getDeepResearchStatusLabel(events, t, Boolean(isStreaming)) ??
     modeLabel
 
+  // A turn that stopped at a ceiling is "Done" and still cut short; saying so
+  // beside the status keeps the reader from taking the reply as the whole
+  // answer, without the heavier claim that the turn failed. Only meaningful
+  // once the turn has settled — mid-stream the reason is not known yet.
+  const stopReason = isStreaming ? null : incompleteStopReason(events)
+  const statusLabel: ReactNode = stopReason ? (
+    <>
+      {label}
+      <span className="ml-1.5 rounded-full bg-[var(--accent)]/70 px-1.5 py-0.5 text-[11px] font-medium leading-none text-[var(--muted-foreground)]">
+        {t('Stopped short')}
+      </span>
+    </>
+  ) : (
+    label
+  )
+
   // Single turn-level clock. Ticks every second while the turn is in
   // flight and freezes on the final elapsed time once the answer ends —
   // replaces the per-sub-trace duration chips that used to live inside
@@ -1529,7 +1545,7 @@ export function StreamingStatus({
     <ActivityHeader
       orb={MODE_TO_ORB[mode]}
       orbSpeed={MODE_SPEED[mode] ?? 1}
-      label={label}
+      label={statusLabel}
       duration={durationLabel}
       settled={mode === 'responded'}
       expandable={expandable}
@@ -1551,6 +1567,30 @@ export function StreamingStatus({
  */
 function hasRenderableCallTrace(events: StreamEvent[]): boolean {
   return selectHasRenderableCallTrace(events)
+}
+
+/**
+ * The reason the backend stopped short, or ``null`` for a clean finish.
+ *
+ * The backend marks a turn that ended on a *prefix* of an answer — the agent
+ * hit its output ceiling or ran out of turn budget — with a non-terminal error
+ * carrying ``stop_reason``. The turn still completes and the text is still
+ * worth reading, so failing it would be wrong; showing it as plainly "Done"
+ * is also wrong. Reading it off the persisted events (rather than the DONE
+ * frame, which is not part of the stored message) means the label survives a
+ * reload.
+ */
+function incompleteStopReason(events: StreamEvent[] | undefined): string | null {
+  for (const event of events ?? []) {
+    if (event.type !== 'error') continue
+    const metadata = event.metadata as
+      | { turn_terminal?: boolean; stop_reason?: string }
+      | undefined
+    if (metadata?.turn_terminal) continue
+    const reason = String(metadata?.stop_reason || '').trim()
+    if (reason) return reason
+  }
+  return null
 }
 
 /**
