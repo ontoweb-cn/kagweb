@@ -5,6 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { decodeEscapedUnicodeForDisplay } from "@/lib/markdown-display";
+import ClampedText from "@/components/common/ClampedText";
 import {
   collectNarrationCallIds,
   shouldAppendEventContent,
@@ -853,7 +854,12 @@ const QuestionBody = memo(function QuestionBody({
   return (
     <>
       <div className="mt-3 text-[14px] font-medium leading-snug text-[var(--foreground)]">
-        {question.prompt}
+        <ClampedText
+          text={question.prompt}
+          className="whitespace-pre-wrap break-words"
+          clampLines={5}
+          label={question.header ?? undefined}
+        />
         {question.multi_select ? (
           <span className="ml-1.5 text-[11px] font-normal text-[var(--muted-foreground)]">
             {t("Select all that apply.")}
@@ -1034,9 +1040,12 @@ const ResolvedAskUserCard = memo(function ResolvedAskUserCard({
                   {index + 1}
                 </span>
                 <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="text-[12px] font-medium leading-snug text-[var(--foreground)]">
-                    {q.prompt}
-                  </div>
+                  <ClampedText
+                    text={q.prompt}
+                    className="text-[12px] font-medium leading-snug text-[var(--foreground)] whitespace-pre-wrap break-words"
+                    clampLines={4}
+                    label={q.header ?? undefined}
+                  />
                   <div className="text-[11px] leading-snug text-[var(--muted-foreground)]/70">
                     {value ? (
                       value

@@ -10,7 +10,7 @@ function approvalEvents(): StreamEvent[] {
     {
       id: 'approval',
       header: '需要授权',
-      prompt: "The agent wants to run 'shell'. Allow it to continue?",
+      prompt: 'The agent wants to run "shell". Allow it to continue?',
       options: [
         { value: 'once', label: 'Allow once', description: 'Approve this single request' },
         { value: 'session', label: 'Allow for this session', description: 'Approve similar requests' },

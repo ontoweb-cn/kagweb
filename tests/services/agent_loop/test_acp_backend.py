@@ -23,6 +23,26 @@ pytestmark = pytest.mark.asyncio
 _FAKE_AGENT = Path(__file__).parent / "fake_acp_agent.py"
 
 
+@pytest.fixture(autouse=True)
+def _isolated_session_store(tmp_path, monkeypatch) -> None:
+    """Keep durable agent-session records out of the developer's real tree.
+
+    The store resolves its directory through the process-global
+    ``PathService``, which in a source checkout points at the live
+    ``data/user``; without this, every test would leave records beside the
+    running instance's own.
+    """
+    from kagweb.services.agent_loop import acp_session_store
+    from kagweb.services.path_service import PathService
+
+    path_service = PathService(workspace_root=tmp_path)
+    monkeypatch.setattr(
+        acp_session_store,
+        "_store_dir",
+        lambda: path_service.get_user_root() / "runtime" / acp_session_store._STORE_DIRNAME,
+    )
+
+
 def _backend(scenario: str, result_file: Path) -> AcpAgentLoopBackend:
     return AcpAgentLoopBackend(
         name="fake-acp",
@@ -81,6 +101,77 @@ async def test_deny_maps_to_reject_option(tmp_path) -> None:
     outcome = json.loads(result_file.read_text())
     # deny maps to the ACP DeniedOutcome (no option id selected)
     assert outcome["permission_option_id"] == "outcome:DeniedOutcome"
+
+
+async def test_approval_label_stays_short_while_detail_keeps_full_text(tmp_path) -> None:
+    """A verbose ACP title must not become the approval card's "run X" label.
+
+    Intellect sends the whole scan report plus the command as ``title``
+    (``acp_adapter/permissions.py``), so reading ``title`` straight into
+    ``name`` produced a thousand-character "tool name" that the card printed
+    twice — once repr()-escaped, once raw.
+    """
+    result_file = tmp_path / "result.json"
+    backend = _backend("long-approval", result_file)
+
+    events = await _consume_until_approval(backend, _request("acp-long", tmp_path), "once")
+
+    approval = next(event for event in events if event.kind == "approval_request")
+    # The label is the command from raw_input, first line only, clamped short.
+    assert approval.name.startswith("cd /tmp && for q in a b;")
+    assert len(approval.name) <= 80
+    assert "\n" not in approval.name
+    # The detail still carries the report and the command for the reader.
+    assert "Security scan" in approval.text
+    assert "\n" in approval.text
+    # One rendering of the report, not the title's copy plus the content's.
+    assert approval.text.count("Security scan — [HIGH]") == 1
+
+
+async def test_tool_call_preview_prefers_content_over_title(tmp_path) -> None:
+    """Detail picks one source; the title's near-duplicate is not repeated.
+
+    ContentToolCallContent nests the text block under ``.content``; the
+    preview must reach it (reading ``.text`` off the wrapper yields nothing)
+    and must not then also append the title, which carries the same words.
+    """
+    from acp import schema
+
+    from kagweb.services.agent_loop.acp_backend import _tool_call_preview
+
+    tool_call = schema.ToolCallUpdate(
+        tool_call_id="t1",
+        title="scan: run the thing",
+        content=[
+            schema.ContentToolCallContent(
+                type="content",
+                content=schema.TextContentBlock(type="text", text="scan\n$ run the thing"),
+            )
+        ],
+        raw_input={"command": "run the thing"},
+    )
+    assert _tool_call_preview(tool_call) == "scan\n$ run the thing"
+
+
+async def test_tool_call_preview_falls_back_so_nothing_is_hidden(tmp_path) -> None:
+    """An approval must disclose what it will run, so detail is never empty.
+
+    A backend may send only ``raw_input``. The label above the body is
+    clamped, so without this fallback the user would approve a command whose
+    tail they never saw.
+    """
+    from acp import schema
+
+    from kagweb.services.agent_loop.acp_backend import _tool_call_preview
+
+    command = "echo padding padding padding padding padding && rm -rf /data"
+    only_input = schema.ToolCallUpdate(
+        tool_call_id="t1", kind="execute", raw_input={"command": command}
+    )
+    assert _tool_call_preview(only_input) == command
+
+    titled = schema.ToolCallUpdate(tool_call_id="t2", title="Shell", raw_input={})
+    assert _tool_call_preview(titled) == "Shell"
 
 
 async def test_cancelled_turn_preserves_child_for_next_turn(tmp_path) -> None:
@@ -158,3 +249,166 @@ async def test_shutdown_all_terminates_children(tmp_path) -> None:
     await shutdown_all_acp_sessions()
     await asyncio.wait_for(handle.process.wait(), timeout=5)
     assert handle.process.returncode is not None
+
+
+# ---------------------------------------------------------------------------
+# Stop reasons: an early stop must not read as a clean finish
+# ---------------------------------------------------------------------------
+
+
+async def test_truncated_stop_reason_surfaces_an_error(tmp_path) -> None:
+    """``max_tokens`` means the reply is a prefix, not an answer.
+
+    Intellect returns ``completed: False`` with an error when the model hits
+    the output ceiling; the wire only carries a stop_reason, so the backend
+    has to react to that or a half-finished reply reaches the reader labelled
+    "completed".
+    """
+    backend = _backend("full-stop-max_tokens", tmp_path / "result.json")
+
+    events = [event async for event in backend.run(_request("acp-max", tmp_path))]
+
+    assert [event.text for event in events if event.kind == "content"] == ["Hello world"]
+    error = next(event for event in events if event.kind == "error")
+    assert "output length limit" in error.text
+    assert error.data.get("stop_reason") == "max_tokens"
+
+
+async def test_clean_end_turn_surfaces_no_error(tmp_path) -> None:
+    backend = _backend("full-stop-end_turn", tmp_path / "result.json")
+
+    events = [event async for event in backend.run(_request("acp-ok", tmp_path))]
+
+    assert not [event for event in events if event.kind == "error"]
+
+
+def test_stop_reason_mapping_covers_the_protocol_vocabulary() -> None:
+    """Only ``end_turn`` is a clean finish; every other value reports.
+
+    The ACP SDK pins ``stop_reason`` to a literal set, so a vendor value
+    cannot reach the mapping today — the open-ended default is what keeps a
+    *future* vocabulary from silently reading as success, which is the exact
+    failure this guards. ``cancelled`` is handled by the caller before this
+    point, so it is not special-cased here.
+    """
+    from kagweb.services.agent_loop.acp_backend import _incomplete_stop_reason
+
+    assert _incomplete_stop_reason("end_turn") == ""
+    for reason in ("max_tokens", "max_turn_requests", "refusal"):
+        assert _incomplete_stop_reason(reason), reason
+    assert _incomplete_stop_reason("some_future_reason")
+
+
+# ---------------------------------------------------------------------------
+# Durable agent session: survives a KAGWeb restart
+# ---------------------------------------------------------------------------
+
+
+async def test_agent_session_is_recorded_and_reused_across_managers(tmp_path) -> None:
+    """A restarted process must re-attach, not start a fresh agent session.
+
+    The agent keeps the conversation; KAGWeb only holds an opaque id. It used
+    to live in memory alone, so every KAGWeb restart silently gave the agent
+    amnesia (``history=0`` on the next turn). The fake agent records whether
+    it was asked to ``load_session``, which is what proves the re-attach.
+
+    ``plain`` (no approval) keeps the turn single-shot: a scenario that parks
+    on a permission would hang here, since nothing answers it.
+    """
+    from kagweb.services.agent_loop import acp_session_store
+
+    result_file = tmp_path / "result.json"
+    session_key = "acp-durable"
+
+    backend = _backend("plain", result_file)
+    [event async for event in backend.run(_request(session_key, tmp_path))]
+    first_id = backend._manager._handles[session_key].acp_session_id
+    assert first_id
+    stored = acp_session_store.load_acp_session(session_key)
+    assert stored is not None and stored[0] == first_id
+    await backend._manager.close_all()
+
+    # Simulate a KAGWeb restart: a fresh backend, no in-memory handles.
+    result_file.unlink()
+    restarted = _backend("plain", result_file)
+    assert restarted._manager._handles == {}
+
+    [event async for event in restarted.run(_request(session_key, tmp_path))]
+
+    assert restarted._manager._handles[session_key].acp_session_id == first_id
+    assert json.loads(result_file.read_text())["reused_session"] is True
+
+    await restarted._manager.close_all()
+
+
+async def test_stale_session_record_falls_back_to_a_new_session(tmp_path) -> None:
+    """An id the agent no longer knows must not break the turn.
+
+    Agents drop sessions (idle expiry, a wiped state DB); the re-attach has to
+    degrade to ``new_session`` rather than failing every subsequent turn.
+    """
+    from kagweb.services.agent_loop import acp_session_store
+
+    session_key = "acp-stale"
+    acp_session_store.save_acp_session(session_key, session_id="does-not-exist-in-the-agent")
+
+    backend = _backend("plain-reject-load", tmp_path / "result.json")
+    events = [event async for event in backend.run(_request(session_key, tmp_path))]
+
+    assert [event.text for event in events if event.kind == "content"] == ["Hello world"]
+    # A fresh id replaced the stale one, and it was recorded for next time.
+    fresh_id = backend._manager._handles[session_key].acp_session_id
+    assert fresh_id and fresh_id != "does-not-exist-in-the-agent"
+    stored = acp_session_store.load_acp_session(session_key)
+    assert stored is not None and stored[0] == fresh_id
+
+    await backend._manager.close_all()
+
+
+async def test_vanished_workspace_cwd_does_not_wedge_the_session(tmp_path) -> None:
+    """A recorded cwd that no longer exists must not fail every later turn.
+
+    The record stores an absolute path from the session's own workspace.
+    That directory can be reclaimed or the workspace root moved while the
+    record survives; spawning into a missing directory raises before the
+    handshake, and because the record is only written after a *successful*
+    spawn it would never be replaced. The session would be permanently dead
+    (spawn accepted the path, then failed at ``__aenter__`` — so this has to
+    be caught at record-read time).
+    """
+    from kagweb.services.agent_loop import acp_session_store
+
+    session_key = "acp-vanished"
+    gone = tmp_path / "reclaimed-workspace"
+    acp_session_store.save_acp_session(session_key, session_id="agent-in-a-gone-dir", cwd=str(gone))
+    assert not gone.exists()
+
+    backend = _backend("plain", tmp_path / "result.json")
+    events = [event async for event in backend.run(_request(session_key, tmp_path))]
+    assert [event.text for event in events if event.kind == "content"] == ["Hello world"]
+
+    handle = backend._manager._handles[session_key]
+    # A fresh session in the caller's directory, not the vanished one.
+    assert handle.acp_session_id != "agent-in-a-gone-dir"
+    assert handle.cwd != str(gone)
+    await backend._manager.close_all()
+
+
+def test_store_ignores_records_from_another_version(tmp_path) -> None:
+    """A record shape this build cannot read is treated as absent.
+
+    ``_VERSION`` is only worth storing if reads honor it; otherwise a future
+    shape change would be read as if it were the current one.
+    """
+    import json
+
+    from kagweb.services.agent_loop import acp_session_store
+
+    session_key = "acp-other-version"
+    acp_session_store.save_acp_session(session_key, session_id="agent-v1")
+    path = acp_session_store._entry_path(session_key)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["version"] = 999
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert acp_session_store.load_acp_session(session_key) is None

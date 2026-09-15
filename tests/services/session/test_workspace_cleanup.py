@@ -155,3 +155,32 @@ def test_purge_session_artifacts_end_to_end(store: SQLiteSessionStore, chat_root
     assert not copies.exists()
     assert not events.exists()
     assert not (chat_root / sid).exists()
+
+
+def test_purge_session_artifacts_forgets_agent_session_records(
+    store: SQLiteSessionStore, chat_root: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Deleting a session must drop its agent-side ACP session ids.
+
+    They are keyed by KAGWeb session (plus one derived key per consult), and
+    a leftover would let a future session that recycled the id re-attach to a
+    deleted conversation.
+    """
+    from kagweb.services.agent_loop import acp_session_store
+
+    path_service = PathService(workspace_root=tmp_path)
+    monkeypatch.setattr(
+        acp_session_store,
+        "_store_dir",
+        lambda: path_service.get_user_root() / "runtime" / acp_session_store._STORE_DIRNAME,
+    )
+
+    session = asyncio.run(store.create_session())
+    sid = session["id"]
+    acp_session_store.save_acp_session(sid, session_id="agent-1", cwd="/w")
+    acp_session_store.save_acp_session(f"{sid}::consult::p1", session_id="agent-2")
+
+    asyncio.run(purge_session_artifacts(sid, turn_roots=[]))
+
+    assert acp_session_store.load_acp_session(sid) is None
+    assert acp_session_store.load_acp_session(f"{sid}::consult::p1") is None

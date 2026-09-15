@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import AssistantResponse from '@/components/common/AssistantResponse'
+import ClampedText from '@/components/common/ClampedText'
 import { InlineFileCardProvider, mergeGeneratedFiles } from '@/components/common/InlineFileCard'
 import Tooltip from '@/components/common/Tooltip'
 import type {
@@ -347,9 +348,12 @@ export const AssistantMessage = memo(function AssistantMessage({
                 {seg.payload.intro || t('Preparing the question…')}
               </div>
               {(seg.payload.questions || []).map(q => (
-                <div key={q.id} className="mt-1.5 text-[13px]">
-                  {q.prompt}
-                </div>
+                <ClampedText
+                  key={q.id}
+                  text={q.prompt}
+                  className="mt-1.5 text-[13px] whitespace-pre-wrap break-words"
+                  clampLines={3}
+                />
               ))}
             </div>
           ) : (

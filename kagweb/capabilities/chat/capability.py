@@ -54,6 +54,7 @@ from kagweb.services.agent_loop.settings import (
 from kagweb.services.i18n import t
 from kagweb.services.llm.usage_tracker import UsageTracker
 from kagweb.services.settings.interface_settings import get_response_language
+from kagweb.utils.text_display import first_line_label, untruncated_stem
 
 # Mechanical cap on the observation excerpt that rides beside each tool result:
 # the reader sees what the tool saw without expanding the row, and one verbose
@@ -362,14 +363,17 @@ class ChatCapability(TurnCapability):
         data = event.data if isinstance(event.data, dict) else {}
         request_id = str(data.get("request_id") or "")
         choices = [str(choice) for choice in (data.get("choices") or APPROVAL_CHOICES)]
-        tool = event.name or str(data.get("tool") or "tool")
-        preview = event.text or str(data.get("preview") or "")
+        name = event.name or str(data.get("tool") or "tool")
+        tool = first_line_label(name, limit=80) or "tool"
+        # The label above is clamped for the sentence; the body must still
+        # disclose what would actually run. A backend that names the action
+        # in ``name`` and sends no separate detail (the ACP raw_input-only
+        # case) would otherwise approve an action the user never saw.
+        detail = event.text or str(data.get("preview") or "") or name
         timeout = _approval_timeout(profile)
         default_choice = _approval_default_choice(profile, choices)
 
-        question = _approval_question(
-            tool=tool, preview=preview, choices=choices, language=language
-        )
+        question = _approval_question(tool=tool, detail=detail, choices=choices, language=language)
         # The same ask_user shape the native tool uses, on both channels the
         # clients already speak: the web renders its card from the tool_call
         # args (TracePresentation), the CLI intercepts the tool_result
@@ -865,8 +869,16 @@ class _AgentLoopRoundBridge:
         elif event.kind == "error":
             # Mid-stream problems are surfaced in the trace; the turn still
             # completes with whatever answer the loop produced (matches how
-            # native LLM error payloads stream as content).
-            await self.stream.error(event.text, source=self.source, stage=self.stage)
+            # native LLM error payloads stream as content). Any structured
+            # extras ride along in the metadata so a client can act on the
+            # machine-readable cause (an ACP ``stop_reason``, say) instead of
+            # pattern-matching the prose.
+            await self.stream.error(
+                event.text,
+                source=self.source,
+                stage=self.stage,
+                metadata=dict(event.data) if event.data else None,
+            )
 
     async def _thinking(self, event: AgentLoopEvent) -> None:
         # Empty thinking blocks are common in real streams and would open a
@@ -997,13 +1009,45 @@ def _approval_default_choice(profile: dict[str, Any], choices: list[str]) -> str
     return value if value in choices else "deny"
 
 
+def _detail_beyond_label(*, tool: str, detail: str) -> str:
+    """The part of ``detail`` worth printing under the label, if any.
+
+    Returns ``""`` only when the detail is a verbatim restatement of the
+    label — the degenerate case where a backend hands over one string as
+    both the name and the body, which would otherwise print twice.
+
+    The comparison is whole-line, never a bare prefix: labels are short
+    words (``read``, ``exec``, ``git``) that prefix unrelated text
+    (``readme.md``, ``execution policy``, ``github.com``), and slicing on
+    that overlap would silently cut the body's opening characters off.
+    """
+    text = str(detail or "").strip()
+    label = untruncated_stem(str(tool or "").strip())
+    if not text or not label:
+        return text
+    if text == label:
+        return ""
+    # The label is the body's own opening line (the clamped-title case).
+    first, separator, rest = text.partition("\n")
+    if first.strip() == label and separator:
+        return rest.strip()
+    return text
+
+
 def _approval_question(
-    *, tool: str, preview: str, choices: list[str], language: str
+    *, tool: str, detail: str, choices: list[str], language: str
 ) -> dict[str, Any]:
-    """One ``ask_user`` question shaped for the existing card renderers."""
+    """One ``ask_user`` question shaped for the existing card renderers.
+
+    ``tool`` names the action in the sentence and ``detail`` is the body
+    shown under it. An approval must disclose what it will run, so a
+    clamped ``tool`` is paired with the untruncated ``detail`` by the
+    caller — this function only decides whether the body is worth printing.
+    """
     prompt = t("agent_loop.approval_prompt", tool=tool, language=language)
-    if preview:
-        prompt = f"{prompt}\n{preview}"
+    remainder = _detail_beyond_label(tool=tool, detail=detail)
+    if remainder:
+        prompt = f"{prompt}\n{remainder}"
     return {
         "id": "approval",
         "header": t("agent_loop.approval_header", language=language),

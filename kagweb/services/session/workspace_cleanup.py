@@ -93,3 +93,14 @@ async def purge_session_artifacts(
         await asyncio.to_thread(_purge_workspace_sync, session_id, list(turn_roots or []))
     except Exception:
         logger.exception("failed to clean up workspace for session %s", session_id)
+    try:
+        # The agent-side ACP session id is keyed by this KAGWeb session (plus
+        # one derived key per consult). Leaving it behind would let a future
+        # session with a recycled id re-attach to a deleted conversation.
+        from kagweb.services.agent_loop.acp_session_store import (
+            forget_acp_sessions_for,
+        )
+
+        await asyncio.to_thread(forget_acp_sessions_for, session_id)
+    except Exception:
+        logger.exception("failed to clean up ACP session records for session %s", session_id)

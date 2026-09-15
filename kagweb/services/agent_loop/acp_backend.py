@@ -31,11 +31,14 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from pathlib import Path
 import time
 from typing import Any
 
 from kagweb.services.i18n import t
+from kagweb.utils.text_display import first_line_label
 
+from .acp_session_store import forget_acp_session, load_acp_session, save_acp_session
 from .protocol import (
     APPROVAL_CHOICES,
     AgentLoopBackend,
@@ -185,7 +188,9 @@ class _AcpClientHandler:  # pragma: no cover - exercised through the backend
         self._emit(
             AgentLoopEvent(
                 "approval_request",
-                name=str(getattr(tool_call, "title", "") or "tool"),
+                # ``name`` names the action in the "run X?" sentence and must
+                # stay short; ``text`` is the detail shown underneath it.
+                name=_tool_call_label(tool_call),
                 text=_tool_call_preview(tool_call),
                 data={"request_id": request_id, "choices": list(APPROVAL_CHOICES)},
             )
@@ -207,18 +212,96 @@ class _AcpClientHandler:  # pragma: no cover - exercised through the backend
 
 
 def _tool_call_preview(tool_call: Any) -> str:
-    """Human text for an approval request: title plus first text content."""
+    """The full human detail for a tool call, for the approval card body.
+
+    One source is chosen rather than concatenated: ACP agents send the same
+    content twice in different renderings (Intellect's ``title`` is
+    ``"<report>: <command>"`` and its ``content`` is
+    ``"<report>\\n$ <command>"``), so joining them would print the whole
+    report twice. ``content`` is the richest form, ``title`` is the
+    fallback, and the concrete input is the last resort — it matters that
+    the body is never empty, because the label above it is clamped and the
+    user is approving something they must be able to read.
+
+    ``content`` nests one level deeper than the block list itself —
+    ``ContentToolCallContent`` carries the real text blocks under
+    ``.content`` — so this reuses :func:`_block_text` rather than reading
+    ``.text`` off the wrapper and getting an empty string.
+    """
     if tool_call is None:
         return ""
-    parts: list[str] = []
-    title = str(getattr(tool_call, "title", "") or "")
+    content = _block_text(getattr(tool_call, "content", None)).strip()
+    if content:
+        return content
+    title = str(getattr(tool_call, "title", "") or "").strip()
     if title:
-        parts.append(title)
-    for block in getattr(tool_call, "content", None) or []:
-        text = str(getattr(block, "text", "") or "")
-        if text:
-            parts.append(text)
-    return "\n".join(parts)
+        return title
+    return _raw_input_text(tool_call)
+
+
+def _tool_call_label(tool_call: Any, *, limit: int = 80) -> str:
+    """A short, single-line label naming the action awaiting approval.
+
+    The card reads ``The agent wants to run "<label>". Allow it to
+    continue?``, so the label has to be a name, not a transcript. ACP's
+    ``title`` is meant to be the human-readable title, but agents put whole
+    command descriptions there — Intellect sends ``"<scan report>:
+    <command>"``, thousands of characters of multi-line text — so the
+    concrete input wins: its first line is the command the user is actually
+    being asked to allow. ``title`` is next and ``kind`` last, since a
+    descriptive title beats the protocol's terse category (``read``,
+    ``execute``) when there is no input to name.
+
+    The clamp is display-only; :func:`_tool_call_preview` still carries the
+    untruncated text.
+    """
+    for candidate in (
+        _raw_input_text(tool_call),
+        str(getattr(tool_call, "title", "") or ""),
+        str(getattr(tool_call, "kind", "") or ""),
+    ):
+        label = first_line_label(candidate, limit=limit)
+        if label:
+            return label
+    return "tool"
+
+
+def _raw_input_text(tool_call: Any) -> str:
+    """The concrete argument ACP agents send alongside a tool call.
+
+    A short allow-list of keys, most-actionable first: whatever names the
+    thing being run (the command, the file, the query). Anything else is
+    agent-shaped payload this card has no business interpreting.
+    """
+    raw_input = getattr(tool_call, "raw_input", None)
+    if not isinstance(raw_input, dict):
+        return ""
+    for key in ("command", "file_path", "path", "query", "pattern", "url"):
+        value = raw_input.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _incomplete_stop_reason(stop_reason: str) -> str:
+    """A learner-facing note when the agent stopped short, else ``""``.
+
+    ACP names why a prompt ended: ``end_turn`` is the only completion. The
+    others (``max_tokens``, ``refusal``, ``max_turn_requests``, or a vendor
+    value this build has never seen) all mean the agent was cut off, and the
+    streamed text is a prefix rather than an answer. Treating those as
+    success is how a truncated reply reaches the reader labelled "completed".
+    """
+    reason = str(stop_reason or "").strip()
+    if not reason or reason == "end_turn":
+        return ""
+    explored = {
+        "max_tokens": "output length limit reached",
+        "max_turn_requests": "turn request limit reached",
+        "refusal": "the agent refused to continue",
+    }
+    detail = explored.get(reason, f"stopped early: {reason}")
+    return t("agent_loop.acp_turn_incomplete", reason=detail)
 
 
 def _permission_response(
@@ -335,6 +418,31 @@ class AcpSessionManager:
             )
         else:
             handle = AcpSessionHandle(key=session_key, cwd=cwd)
+        # Did the id below come off disk? Only that source can outlive a
+        # failed spawn, so only that source needs the forget-and-retry below.
+        restored_from_disk = False
+        if not handle.acp_session_id:
+            # Nothing survives in memory across a KAGWeb restart, so the id
+            # has to come back off disk or the agent starts a fresh session
+            # and answers with no memory of the conversation.
+            stored = load_acp_session(session_key, config_key=self._config_key)
+            if stored is not None:
+                stored_id, stored_cwd = stored
+                # The stored cwd is an absolute path from this session's own
+                # workspace. That directory can be gone (its files were
+                # reclaimed, the workspace root moved) while the record
+                # survives, and spawning into a missing directory raises
+                # before the handshake — every turn would fail, and because
+                # the record is only written after a *successful* spawn it
+                # would never be replaced. Treat a vanished cwd as a stale
+                # record and start over in the caller's directory.
+                if not stored_cwd or Path(stored_cwd).is_dir():
+                    handle.acp_session_id = stored_id
+                    if stored_cwd:
+                        handle.cwd = stored_cwd
+                    restored_from_disk = True
+                else:
+                    forget_acp_session(session_key)
         if self._spawn is None:  # pragma: no cover - backend wires this first
             raise AgentLoopError("ACP session manager is not wired", backend="acp")
         live = sum(1 for item in self._handles.values() if item.alive)
@@ -345,7 +453,17 @@ class AcpSessionManager:
                 t("agent_loop.acp_too_many_sessions", max=self.max_children),
                 backend="acp",
             )
-        await self._spawn(handle)
+        try:
+            await self._spawn(handle)
+        except Exception:
+            if not restored_from_disk:
+                raise
+            # The agent rejected what we restored (an id it no longer holds,
+            # a cwd it cannot use). Drop the record and start clean once, so
+            # one unusable record cannot wedge this session for good.
+            forget_acp_session(session_key)
+            handle = AcpSessionHandle(key=session_key, cwd=cwd)
+            await self._spawn(handle)
         self._handles[session_key] = handle
         handle.touch()
         return handle
@@ -482,6 +600,10 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         config_key = hashlib.sha256(
             _json.dumps([command, sorted(self.env.items())]).encode()
         ).hexdigest()[:16]
+        #: Identifies this backend configuration; stored with each session
+        #: record so an id minted by one agent install is never reused
+        #: against a different one.
+        self._config_key = config_key
         self._manager = get_acp_session_manager(config_key)
         self._manager.set_spawner(self._spawn_session)
         self._current_key = ""
@@ -521,8 +643,9 @@ class AcpAgentLoopBackend(AgentLoopBackend):
                 client_info=schema.Implementation(name="kagweb", title="KAGWeb", version=""),
             )
             if handle.acp_session_id:
-                # Child died earlier: re-attach the persisted agent session so
-                # history and compression chains survive the crash.
+                # Child died earlier, or this is a fresh process after a
+                # KAGWeb restart: re-attach the recorded agent session so
+                # history and compression chains survive.
                 try:
                     await connection.load_session(
                         cwd=handle.cwd or "", session_id=handle.acp_session_id
@@ -533,6 +656,16 @@ class AcpAgentLoopBackend(AgentLoopBackend):
             else:
                 response = await connection.new_session(cwd=handle.cwd or "")
                 handle.acp_session_id = str(response.session_id)
+            # Record it so the next process can re-attach too. Probe children
+            # are throwaway readiness checks whose key dies with the request,
+            # so recording them would only litter the store.
+            if not handle.key.startswith("probe-"):
+                save_acp_session(
+                    handle.key,
+                    config_key=self._config_key,
+                    session_id=handle.acp_session_id,
+                    cwd=handle.cwd or "",
+                )
         except AgentLoopError:
             await _close_handle(handle)
             raise
@@ -629,6 +762,14 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         if stop_reason == "cancelled":
             # The agent stopped on request; whatever streamed already did.
             return
+        # Anything but ``end_turn`` means the agent gave up early — it hit the
+        # output ceiling, refused, or ran out of turns. The wire signal is
+        # easy to lose (an adapter that maps every finish to ``end_turn``
+        # looks identical to a clean answer), so surface it rather than let a
+        # half-finished reply read as complete.
+        incomplete = _incomplete_stop_reason(stop_reason)
+        if incomplete:
+            yield AgentLoopEvent("error", text=incomplete, data={"stop_reason": stop_reason})
 
     # -- control plane ----------------------------------------------------------
 

@@ -52,9 +52,16 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.empty_answer": (
             "The agent-loop backend {backend!r} finished without producing an answer."
         ),
+        "agent_loop.acp_turn_incomplete": (
+            "The agent stopped before finishing ({reason}); the reply above may be "
+            "incomplete. Check the answer, then ask again to continue."
+        ),
         "agent_loop.approval_header": "Approval needed",
-        "agent_loop.approval_prompt": ("The agent wants to run {tool!r}. Allow it to continue?"),
-        "agent_loop.approval_decision": ("Approval for {tool!r}: {choice}."),
+        # Plain interpolation, never ``!r``: a ``repr`` turns a multi-line
+        # command into visible ``\n``/``\'`` escapes and wraps the text in
+        # quotes of its own choosing. Callers pass a short label.
+        "agent_loop.approval_prompt": ('The agent wants to run "{tool}". Allow it to continue?'),
+        "agent_loop.approval_decision": ('Approval for "{tool}": {choice}.'),
         "agent_loop.approval_choice_once": "Allow once",
         "agent_loop.approval_choice_once_hint": "Approve this single request",
         "agent_loop.approval_choice_session": "Allow for this session",

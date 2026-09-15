@@ -714,6 +714,125 @@ async def test_approval_without_runtime_context_denies(monkeypatch) -> None:
     assert context_answer(events) == "ok"
 
 
+async def test_approval_card_does_not_repr_or_duplicate_a_long_label(monkeypatch) -> None:
+    """A long approval label stays short, unescaped, and printed once.
+
+    Regression for the Intellect approval card: the label arrived as a
+    multi-line scan report, ``{tool!r}`` showed it with visible ``\\n`` and
+    ``\\'`` escapes, and the detail was appended even though it was the same
+    string — so the reader got the transcript twice.
+    """
+    command = "curl -s https://example.test/feed | python3 -"
+    report = (
+        "Security scan — [HIGH] Pipe to interpreter: curl | python3\n  Safer: fetch the file first."
+    )
+    backend = _ControlledBackend(
+        [
+            AgentLoopEvent(
+                "approval_request",
+                name=f"{report}: {command}",
+                text=f"{report}: {command}",
+                data={"request_id": "req-long", "choices": ["once", "deny"]},
+            ),
+            AgentLoopEvent("content", text="ok"),
+        ]
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "controlled", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+
+    async def waiter():
+        return {"answers": [{"questionId": "approval", "text": "once"}]}
+
+    events = await _collect_full(_context_with_waiter(waiter), StreamBus())
+
+    card = events[0]
+    prompt = card.metadata["args"]["questions"][0]["prompt"]
+    # No repr escapes leaked into the sentence.
+    assert "\\n" not in prompt
+    assert "\\'" not in prompt
+    # The label is clamped and the sentence stays one line.
+    first_line = prompt.splitlines()[0]
+    assert first_line.startswith('The agent wants to run "Security scan')
+    assert len(first_line) < 200
+    # The detail is printed once, not twice.
+    assert prompt.count("Security scan — [HIGH] Pipe to interpreter") == 1
+
+
+async def test_approval_label_repeats_a_short_name_only_once(monkeypatch) -> None:
+    """A short name handed over as both name and body prints once.
+
+    The ACP family sends the same string for both when it has no
+    ``raw_input``; only a verbatim restatement is dropped.
+    """
+    backend = _ControlledBackend(
+        [
+            AgentLoopEvent(
+                "approval_request",
+                name="read",
+                text="read",
+                data={"request_id": "req-same", "choices": ["once", "deny"]},
+            ),
+            AgentLoopEvent("content", text="ok"),
+        ]
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "controlled", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+
+    async def waiter():
+        return {"answers": [{"questionId": "approval", "text": "once"}]}
+
+    events = await _collect_full(_context_with_waiter(waiter), StreamBus())
+    prompt = events[0].metadata["args"]["questions"][0]["prompt"]
+    assert prompt == 'The agent wants to run "read". Allow it to continue?'
+
+
+async def test_approval_detail_is_not_cut_when_label_is_a_prefix(monkeypatch) -> None:
+    """A label that happens to prefix the body must not slice it.
+
+    ``read``/``exec``/``git`` prefix unrelated words (``readme.md``,
+    ``execution``, ``github.com``); stripping on that overlap silently
+    corrupts the body's opening characters.
+    """
+    backend = _ControlledBackend(
+        [
+            AgentLoopEvent(
+                "approval_request",
+                name="read",
+                text="readme.md contents here",
+                data={"request_id": "req-prefix", "choices": ["once", "deny"]},
+            ),
+            AgentLoopEvent("content", text="ok"),
+        ]
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "controlled", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+
+    async def waiter():
+        return {"answers": [{"questionId": "approval", "text": "once"}]}
+
+    events = await _collect_full(_context_with_waiter(waiter), StreamBus())
+    prompt = events[0].metadata["args"]["questions"][0]["prompt"]
+    assert "readme.md contents here" in prompt
+
+
 async def test_approval_from_uncontrolled_backend_degrades_to_progress(monkeypatch) -> None:
     backend = _RecordingBackend([_approval_event(), AgentLoopEvent("content", text="ok")])
     monkeypatch.setattr(
@@ -894,3 +1013,30 @@ async def test_a_missing_counter_is_not_zero_filled(monkeypatch) -> None:
     assert marker.metadata["prompt_tokens"] == 3
     assert "completion_tokens" not in marker.metadata
     assert "total_tokens" not in marker.metadata
+
+
+async def test_backend_error_metadata_reaches_the_stream(monkeypatch) -> None:
+    """Structured extras on an agent-loop error must survive the bridge.
+
+    The ACP backend attaches ``stop_reason`` so a client can tell a truncated
+    turn from a refusal; the bridge used to forward only the prose, leaving
+    the frontend to pattern-match English error text.
+    """
+    backend = _RecordingBackend(
+        [
+            AgentLoopEvent(
+                "error",
+                text="The agent stopped before finishing",
+                data={"stop_reason": "max_tokens"},
+            ),
+            AgentLoopEvent("content", text="partial answer"),
+        ]
+    )
+    _configure(monkeypatch, backend)
+    context = UnifiedContext(session_id="s", user_message="go", language="en")
+
+    events = await _run_capability_events(context, StreamBus())
+
+    error = next(e for e in events if e.type.value == "error")
+    assert error.metadata.get("stop_reason") == "max_tokens"
+    assert "stopped before finishing" in error.content
