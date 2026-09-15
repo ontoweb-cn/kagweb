@@ -436,6 +436,24 @@ def _approval_default(value: Any) -> str:
     return choice if choice in _APPROVAL_DEFAULT_CHOICES else "deny"
 
 
+#: Legal ``identity_mode`` values — how a turn is attributed to (or delegated
+#: to) a remote agent service. Mirrors identity.IDENTITY_MODES; kept as a local
+#: literal because the settings layer must not import the backend layer (the
+#: backend imports settings).
+_IDENTITY_MODES = ("off", "header", "token", "token_required")
+
+
+def _identity_mode(value: Any) -> str:
+    """One profile's identity bridge, defaulting to sending nothing extra.
+
+    An unrecognized value must not become the most permissive option, so a typo
+    lands on ``off`` — the same direction the resolver takes if it is ever
+    handed something unexpected.
+    """
+    mode = _string(value).strip().lower()
+    return mode if mode in _IDENTITY_MODES else "off"
+
+
 def _agent_loop_context_window(value: Any) -> int:
     """One profile's declared context window, or ``0`` for "not configured".
 
@@ -1370,6 +1388,13 @@ class RuntimeSettingsService:
             # One-shot CLI profiles only: stdout is the final answer as plain
             # text (`intellect chat -Q`-style backends) — no progress events.
             "text_output": _coerce_bool(raw.get("text_output"), False),
+            # Who a turn runs as on an HTTP agent service: `off` sends nothing
+            # extra (the pre-existing behaviour), `header` attributes the turn
+            # to the calling account, `token` presents the account's own linked
+            # member token when there is one, `token_required` refuses to run
+            # without one. Unknown values fall back to `off`, which is also the
+            # safe direction — see services/agent_loop/identity.py.
+            "identity_mode": _identity_mode(raw.get("identity_mode")),
         }
 
     @staticmethod

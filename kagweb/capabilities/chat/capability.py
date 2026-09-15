@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
+import logging
 import math
 from pathlib import Path
 import time
@@ -30,12 +31,17 @@ from kagweb.core.capability_protocol import CapabilityManifest, TurnCapability
 from kagweb.core.context import UnifiedContext
 from kagweb.core.trace import build_trace_metadata, merge_trace_metadata, new_call_id
 from kagweb.services.agent_loop import build_agent_loop_backend
+from kagweb.services.agent_loop.builtin import preset_family
 from kagweb.services.agent_loop.consult import (
     consult_manifest,
     consult_session_id,
     followup_request,
     parse_consult_directive,
     strip_consult_directive,
+)
+from kagweb.services.agent_loop.identity import (
+    IdentityUnavailable,
+    resolve_backend_identity,
 )
 from kagweb.services.agent_loop.protocol import (
     APPROVAL_CHOICES,
@@ -55,6 +61,8 @@ from kagweb.services.i18n import t
 from kagweb.services.llm.usage_tracker import UsageTracker
 from kagweb.services.settings.interface_settings import get_response_language
 from kagweb.utils.text_display import first_line_label, untruncated_stem
+
+logger = logging.getLogger(__name__)
 
 # Mechanical cap on the observation excerpt that rides beside each tool result:
 # the reader sees what the tool saw without expanding the row, and one verbose
@@ -130,6 +138,50 @@ class ChatCapability(TurnCapability):
             return
         await self._run_agent_loop(context, stream, backend, primary, settings)
 
+    @staticmethod
+    def _apply_identity(
+        backend: AgentLoopBackend,
+        profile: dict[str, Any],
+        language: str,
+    ) -> None:
+        """Bind this turn to the calling account, when the profile asks.
+
+        The factory resolves the deployment-wide credential from the profile;
+        *who the turn belongs to* is per-user and only knowable here. A linked
+        account whose credential no longer works is a hard failure by design —
+        falling back to the service key would grant more reach than the token
+        that just failed — so it surfaces as the turn's error rather than
+        something to route around.
+
+        Resolved with the turn's language so a failure message reads in the
+        user's own language, which is why the capability does this rather than
+        leaving it entirely to the backend's own fallback.
+        """
+        try:
+            identity = resolve_backend_identity(
+                profile,
+                family=preset_family(str(profile.get("preset") or "")),
+                language=language,
+            )
+        except IdentityUnavailable as exc:
+            raise RuntimeError(str(exc)) from exc
+        if identity is None:
+            return
+        # getattr, not a direct call: a duck-typed backend that predates the
+        # hook (or the CLI/ACP family, which has no headers to carry) simply
+        # keeps its own credential.
+        apply = getattr(backend, "with_identity", None)
+        if callable(apply):
+            apply(identity)
+        if identity.degraded:
+            # Attribution worked but the account is not linked: the turn is
+            # fine, it just cannot be delegated yet. Leave a trace so the UI can
+            # offer connecting an account without failing the conversation.
+            logger.info(
+                "agent-loop: running without a linked Intellect account "
+                "(session scope only, no service-side isolation)"
+            )
+
     # ------------------------------------------------------------------
     # Framework-shell stub
     # ------------------------------------------------------------------
@@ -165,6 +217,7 @@ class ChatCapability(TurnCapability):
         budget = max(0, read_consult_budget(settings))
         consults = consult_profiles(settings) if budget > 0 else []
         language = context.language or "en"
+        self._apply_identity(backend, primary, language)
         # Only the CLI family runs in a working directory; the HTTP family
         # executes in the operator's own service, so resolving or creating one
         # on its behalf would be a pointless filesystem side effect.
@@ -370,7 +423,7 @@ class ChatCapability(TurnCapability):
         # in ``name`` and sends no separate detail (the ACP raw_input-only
         # case) would otherwise approve an action the user never saw.
         detail = event.text or str(data.get("preview") or "") or name
-        timeout = _approval_timeout(profile)
+        timeout = _approval_timeout(profile, backend, kind="approval", language=language)
         default_choice = _approval_default_choice(profile, choices)
 
         question = _approval_question(tool=tool, detail=detail, choices=choices, language=language)
@@ -453,7 +506,7 @@ class ChatCapability(TurnCapability):
         request_id = str(data.get("request_id") or "")
         prompt = event.text or str(data.get("question") or "")
         choices = [str(choice) for choice in (data.get("choices") or [])]
-        timeout = _approval_timeout(profile)
+        timeout = _approval_timeout(profile, backend, kind="clarify", language=language)
 
         question = _clarify_question(prompt=prompt, choices=choices, language=language)
         call_id = f"clarify-{request_id or id(event)}"
@@ -528,6 +581,14 @@ class ChatCapability(TurnCapability):
             return str(exc)
         if consult_backend is None:  # pragma: no cover - consult_profiles filters
             return ""
+        # A consult runs as the same account as the turn that asked for it, so
+        # it carries the same identity. A broken link fails the consult (which
+        # degrades to a note) rather than silently borrowing the service key.
+        try:
+            self._apply_identity(consult_backend, profile, language)
+        except RuntimeError as exc:
+            await stream.error(str(exc), source=self.name, stage="responding")
+            return str(exc)
         # A consult CLI profile runs in its own configured directory too; the
         # settings page offers the field for every CLI profile, so ignoring it
         # here would make the control a lie.
@@ -992,12 +1053,43 @@ _APPROVAL_TIMEOUT_RANGE = (5, 600)
 _APPROVAL_DEFAULTS = frozenset({"deny", "once", "session", "always"})
 
 
-def _approval_timeout(profile: dict[str, Any]) -> int:
+def _approval_timeout(
+    profile: dict[str, Any],
+    backend: AgentLoopBackend | None = None,
+    *,
+    kind: str = "approval",
+    language: str = "en",
+) -> int:
+    """How long to park the turn, clamped to what the backend can honour.
+
+    The operator sets one window for both cards, but the service on the other
+    end resolves each on its own timer — and it does not wait for us. A wait
+    longer than the service's means the user's answer is delivered after the
+    agent stopped listening, which reads as "I replied and nothing happened":
+    the worst kind of failure, because it looks like the user's fault. So the
+    declared ceiling wins and the difference is reported, not silently applied.
+    """
     try:
         value = int(profile.get("approval_timeout_seconds", 60))
     except (TypeError, ValueError):
-        return 60
-    return max(_APPROVAL_TIMEOUT_RANGE[0], min(_APPROVAL_TIMEOUT_RANGE[1], value))
+        value = 60
+    value = max(_APPROVAL_TIMEOUT_RANGE[0], min(_APPROVAL_TIMEOUT_RANGE[1], value))
+    if backend is None:
+        return value
+    attribute = (
+        "clarify_timeout_limit" if kind == "clarify" else "approval_timeout_limit"
+    )
+    limit = getattr(backend, attribute, None)
+    if not isinstance(limit, int) or limit <= 0 or value <= limit:
+        return value
+    logger.info(
+        "agent-loop: %s wait clamped from %ss to %ss by backend %r",
+        kind,
+        value,
+        limit,
+        getattr(backend, "name", ""),
+    )
+    return limit
 
 
 def _approval_default_choice(profile: dict[str, Any], choices: list[str]) -> str:

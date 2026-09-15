@@ -480,13 +480,46 @@ UID 1000 + fsGroup, initContainer for first-start data bootstrap) lives in
 at `replicas: 1` with `strategy: Recreate`; redis is only needed for
 `backend_workers > 1`).
 
-## Intellect community edition in containers
+## Intellect in containers
 
 A containerized KAGWeb cannot spawn a host-side `intellect acp` child
 (ACP is stdio). Use the `intellect-runs` preset instead: it speaks the
 api_server run endpoints that the gateway platform already exposes on
 `http://host.docker.internal:8642` (default port, `API_SERVER_KEY`
 auth). Configure the profile URL to `http://host.docker.internal:8642`
-and set the profile `api_key` to the gateway's `API_SERVER_KEY`. Event
-coverage is slightly narrower than the ACP transport (no thinking), and
-a dropped event stream degrades to run-status polling.
+and set the profile `api_key` to the gateway's `API_SERVER_KEY`.
+
+For the **enterprise (team)** deployment use `intellect-team`, which
+targets the same run endpoints with the team edition's event vocabulary.
+It requires the **Rust** `api_server`: the legacy Python adapter names its
+tool and reasoning events differently, and those frames are dropped — a
+turn against it produces no text, which looks like a silent failure. Both
+presets carry thinking, tool, approval and clarify events, support
+mid-turn cancellation, and honour a per-turn `model`. A dropped event
+stream degrades to run-status polling, which still recovers the turn's
+final answer.
+
+### Per-user identity against the gateway
+
+By default KAGWeb presents the profile's `api_key` for every turn, so the
+gateway cannot tell one KAGWeb account from another. To attribute turns to
+the signed-in account, set the profile's `identity_mode`:
+
+- `header` — send `X-Intellect-User: mem_<account>`. The gateway records
+  each run's owner, but the service key remains unrestricted, so this is
+  *attribution only*; KAGWeb's own session store stays the isolation
+  boundary.
+- `token` — present the account's own linked member token, so the
+  gateway's roles and per-owner isolation apply. Users connect their
+  account under Settings → Models. Requires the gateway to run with
+  PostgreSQL and `members.enabled`.
+- `token_required` — as `token`, but a user without a link cannot start a
+  turn. Use this when the gateway is expected to enforce separation.
+
+A linked credential that expires or is revoked fails the turn; it never
+falls back to the shared key, because that fallback is the more privileged
+of the two. A link is also bound to the service URL it was created against,
+so repointing this profile requires users to reconnect — the token is never
+carried over to the new host. The password sign-in path additionally
+requires HTTPS (or loopback), since a password is a reusable user
+credential rather than a revocable service key.

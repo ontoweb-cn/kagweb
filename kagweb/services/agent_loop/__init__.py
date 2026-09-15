@@ -86,6 +86,14 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
         raise AgentLoopError(t("agent_loop.url_required", backend=name), backend=name)
     turn_path = str(resolved.get("turn_path") or "").strip() or preset.turn_path
     headers = resolved.get("headers") if isinstance(resolved.get("headers"), dict) else {}
+    api_key = str(resolved.get("api_key") or "")
+    # `identity_mode` rides along unresolved: *who the turn runs as* is per-user
+    # and only knowable inside a request, so the capability applies it via
+    # `with_identity`. Resolving it here would make merely building a backend
+    # depend on the current account (and fail the settings Test action, which
+    # builds a profile precisely to probe it), and this function is deployment
+    # configuration, not turn configuration.
+    identity_mode = str(resolved.get("identity_mode") or "off")
     if getattr(preset, "protocol", "turn") == "runs":
         from .http_backend import RunsAgentLoopBackend
 
@@ -93,19 +101,21 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
             name=name,
             url=url,
             turn_path=turn_path,
-            api_key=str(resolved.get("api_key") or ""),
+            api_key=api_key,
             headers=headers,
             timeout_seconds=timeout,
             model=model,
+            identity_mode=identity_mode,
         )
     return HttpAgentLoopBackend(
         name=name,
         url=url,
         turn_path=turn_path,
-        api_key=str(resolved.get("api_key") or ""),
+        api_key=api_key,
         headers=headers,
         timeout_seconds=timeout,
         model=model,
+        identity_mode=identity_mode,
     )
 
 

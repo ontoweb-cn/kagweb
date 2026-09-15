@@ -26,6 +26,7 @@ import {
   reasoningEffortOptionsFromSupportedLevels,
 } from "@/lib/reasoning-effort";
 import { CodexOAuthCard } from "./CodexOAuthCard";
+import { IntellectLinkCard } from "./IntellectLinkCard";
 import { CodeBuddyAuthCard } from "./CodeBuddyAuthCard";
 import {
   isBoundManagedCodexProfile,
@@ -435,6 +436,10 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
             account has to sign in for itself (#781). The card talks only to
             the per-user OAuth endpoints and exposes no catalog. */}
         {service === "llm" && <CodexOAuthCard />}
+        {/* Likewise personal: the user's own Intellect account on the agent
+            backend, so a turn is attributed to them rather than to the
+            deployment. It hides itself when no agent service is configured. */}
+        {service === "llm" && <IntellectLinkCard />}
       </div>
     );
   }

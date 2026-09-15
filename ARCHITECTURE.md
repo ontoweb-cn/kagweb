@@ -84,8 +84,9 @@ single-operator / local-deployment shape.
 
 One streaming POST per turn for agent services — the multi-user shape, since
 the loop's code execution happens inside the operator's service, not the
-KAGWeb process. Presets `intellect`, `intellect-team`, `hermes`,
-`agentscope`, `custom-http` all speak one small contract:
+KAGWeb process. `hermes`, `agentscope` and `custom-http` speak one small
+contract; `intellect-team` and `intellect-runs` speak Intellect's run
+channel instead (see below):
 
 ```
 POST {url}{turn_path}                      # default path /agent/turn
@@ -104,6 +105,107 @@ service can adopt the contract gradually. Single lines (NDJSON and SSE data
 events alike) are capped at `MAX_LINE_BYTES`; a runaway line is discarded
 and the stream continues. HTTP errors and timeouts fail the turn with the
 real status/body.
+
+#### Intellect run channel (`protocol: "runs"`)
+
+The `intellect-team` and `intellect-runs` presets speak Intellect's run
+channel instead of the generic turn contract: `POST {url}/v1/runs` returns
+`202 {run_id}` and `GET /v1/runs/{run_id}/events` streams lifecycle events
+(SSE, each `data:` frame a `RunEvent`). Dispatch is on the payload's own
+`type` first and the frame's `event` second — text, reasoning and the
+completion frames all ride `event="message.delta"`, so reading `event`
+alone silently drops every kind but the terminal ones.
+
+Two properties of this channel shape the client:
+
+- **The run outlives the subscription.** Its event queue is torn down when
+  the SSE connection drops, and the server keeps working. A dropped stream
+  therefore degrades to polling `GET /v1/runs/{run_id}` — whose terminal
+  status carries the run's `output`, the only surviving copy of the answer
+  — and any non-terminal exit (user cancel, consumer close, transport
+  failure) must explicitly `POST /v1/runs/{run_id}/stop`, or the agent
+  keeps working and spending on a turn nobody is waiting for.
+- **The finished answer is reported twice** (as streamed deltas, then as
+  `output`). Terminal frames reconcile against the last emitted block
+  instead of appending, or a turn reads `"Hello world\n\nHello world"`; a
+  truncated stream is completed by appending only the missing tail.
+
+Control-plane windows are server-owned: the run channel resolves a pending
+approval after 5 minutes and lets a pending clarify lapse after 2. Backends
+declare this via `approval_timeout_limit` / `clarify_timeout_limit`, and the
+capability clamps the operator's `approval_timeout_seconds` to them — a
+longer client-side wait cannot extend the server's, it only guarantees the
+answer arrives after the agent stopped listening.
+
+### Identity: who a turn runs as
+
+`identity_mode` (per profile, HTTP family) decides what a turn presents to
+the agent service. The default `off` sends exactly what the profile
+configures — the pre-existing behaviour.
+
+| Mode | Sends | Effect |
+| --- | --- | --- |
+| `off` | profile `api_key` only | Nothing about the caller reaches the service |
+| `header` | profile key + `X-Intellect-User: mem_<account>` | **Attribution**: the service records which account owns each session/run |
+| `token` | the account's own linked member token | **Delegation**: service-side roles and per-owner isolation apply; unlinked users fall back to `header` |
+| `token_required` | as `token`, but mandatory | An unlinked user cannot start a turn |
+
+**`header` is attribution, not isolation.** The service key carries an
+unrestricted principal (`bypass_member_filter`), so every ownership check
+short-circuits: anything holding the key can reach any session or run by
+id. KAGWeb's session store remains the isolation boundary, and the
+per-account session-id namespace (`session_prefix`) keeps two accounts from
+colliding on one remote session — a security control, not cosmetics.
+Deployments that need the *service* to enforce separation must use
+`token` / `token_required`.
+
+**A broken link is a hard failure, never a downgrade.** If a linked
+account's credential is expired, revoked, or rejected, the turn fails with
+a message rather than silently falling back to the service key: that
+fallback is *more* privileged than the token which just failed, so
+downgrading would hand the user an escalation exactly when the restriction
+started to matter. (An unlinked `token`-mode user may still be attributed —
+a step up from sending nothing, which is a different situation.)
+
+**A token is bound to the service it was minted against.** The profile URL
+is admin-configurable, so a linked member token is only ever presented back
+to the origin (scheme + host + port) it was created on. Otherwise repointing
+the profile — a config edit, or selecting a different primary — would ship
+every linked account's credential to the new host on its next turn. A link
+whose origin no longer matches, or that predates the binding and records no
+origin at all, is reported as needing reconnection rather than used.
+
+Setting the password path aside from that: it is refused outright over
+plaintext to a non-loopback host. A password is the user's own *reusable*
+credential, unlike the revocable service key the operator chose to send, so
+it is not put on the wire in the clear even where the deployment's own
+requests are plaintext.
+
+Linked credentials live at
+`data/system/user-secrets/<owner>/private/intellect-agent/` (mode 0600,
+outside every workspace so the sandbox's `exec` cannot read them), beside
+the Codex OAuth store and in the same layout. The record names the KAGWeb
+account it belongs to and is re-checked on read, so a copied or restored
+file is ignored rather than lent to another account; deleting an account
+purges the directory, which nothing else would do.
+
+Per-user link management is deliberately **not** admin-gated (unlike
+`/api/settings/agent-loop`): it is a personal credential, like the Codex
+OAuth lifecycle. `GET/POST/DELETE /api/settings/agent-loop/identity` report
+and manage the caller's own link and never echo the token; the card appears
+under Settings → Models and hides itself when no agent service is
+configured.
+
+The two mutating routes — and the Codex OAuth start/cancel/logout — carry a
+**same-origin guard** (`origin_is_trusted`). CORS does not cover this class
+of attack: a cross-site JSON POST is *executed* by the server even when the
+browser then refuses to return the response, and the request that matters is
+the side effect. For a link endpoint the side effect is severe — binding a
+victim to the *attacker's* identity would run the victim's conversations as
+the attacker. The guard compares the request's own `Origin` against its
+`Host` (scheme-insensitive, since TLS is normally terminated in front) and
+against any explicitly configured CORS origin; `null` is never trusted, and
+a configured `*` is deliberately not an exemption.
 
 ## Configuration
 
@@ -132,6 +234,10 @@ profile when the file configures none):
       "turn_path": "/agent/turn",   // HTTP: turn endpoint path
       "headers": {},                // HTTP: extra headers
       "api_key": "",                // HTTP: Bearer token
+      "identity_mode": "off",       // HTTP: off | header | token | token_required
+                                    // (see "Identity: who a turn runs as")
+      "model": "",                  // model this backend should run
+      "context_window": 0,          // real window for history budgeting; 0 = guess
       "timeout_seconds": 900,       // per-turn wall clock (30..86400)
       "consult_enabled": true       // may the primary consult this profile
     }
@@ -195,7 +301,8 @@ concrete model name on `AgentLoopRequest.model`; family support varies:
 | Family | Support | Mechanism |
 | --- | --- | --- |
 | CLI (one-shot) | ✅ | `{model}` substitution uses the turn override, else the profile's `model`, else the arg drops |
-| HTTP (turn / runs) | body carries `model` | honored where the service reads it (upstream: intellect-agent#126) |
+| HTTP runs (`intellect-team` / `intellect-runs`) | ✅ | sent as `model` in the `POST /v1/runs` body, which both implementations read. The Python adapter validates it against its model catalog, so a name it does not know is rejected with `model_not_found` rather than ignored |
+| HTTP turn (`hermes` / `agentscope` / `custom-http`) | ⬜ body carries `model` | honored where the service reads it; unknown services claim nothing |
 | ACP | ❌ | no per-turn model field in the protocol; picker hidden |
 
 `AgentLoopPreset.per_turn_model` declares support; `/api/auth/status` exposes

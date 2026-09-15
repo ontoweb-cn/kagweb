@@ -880,9 +880,16 @@ def test_codex_token_count_without_counters_emits_nothing() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_per_turn_model_flag_is_true_exactly_for_one_shot_cli_presets() -> None:
-    """The picker's honesty gate: one-shot CLI presets substitute {model}
-    locally; ACP has no field and the HTTP presets wait for their services."""
+def test_per_turn_model_flag_is_true_exactly_for_backends_that_consume_it() -> None:
+    """The picker's honesty gate: a preset claims per-turn model support only
+    when its service actually reads the ``model`` field.
+
+    The one-shot CLI presets substitute ``{model}`` locally. The two Intellect
+    run presets send it in the POST /v1/runs body, which both implementations
+    read and honor. ACP has no per-turn model field in its protocol, and the
+    generic HTTP presets stay False — their services are unknown, so claiming
+    support would present a picker that changes nothing.
+    """
     from kagweb.services.agent_loop.builtin import PRESETS, per_turn_model_apply
 
     expected = {
@@ -891,15 +898,16 @@ def test_per_turn_model_flag_is_true_exactly_for_one_shot_cli_presets() -> None:
         "opencode": True,
         "custom-cli": True,
         "intellect": False,  # ACP: no per-turn model field in the protocol
-        "intellect-team": False,
-        "intellect-runs": False,
+        "intellect-team": True,
+        "intellect-runs": True,
         "hermes": False,
         "agentscope": False,
         "custom-http": False,
     }
     assert {name: preset.per_turn_model for name, preset in PRESETS.items()} == expected
     assert per_turn_model_apply("claude-code") is True
-    assert per_turn_model_apply("intellect-runs") is False
+    assert per_turn_model_apply("intellect-runs") is True
+    assert per_turn_model_apply("custom-http") is False
     assert per_turn_model_apply("unknown") is False
 
 

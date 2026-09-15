@@ -128,6 +128,18 @@ class AgentLoopBackend(ABC):
     #: subprocesses cannot.
     supports_control: bool = False
 
+    #: Upper bound on the approval wait this backend can actually honour, in
+    #: seconds. ``None`` means "no server-side constraint" — the operator's
+    #: setting is used as-is. A backend whose service resolves a pending
+    #: request on its own timer declares that timer: waiting longer does not
+    #: extend the window, it only guarantees the answer arrives after the agent
+    #: stopped listening, which reads to the user as "I replied and nothing
+    #: happened".
+    approval_timeout_limit: int | None = None
+
+    #: As :attr:`approval_timeout_limit`, for a pending ``clarify_request``.
+    clarify_timeout_limit: int | None = None
+
     @abstractmethod
     def run(self, request: AgentLoopRequest) -> Any:  # pragma: no cover - ABC
         """Yield :class:`AgentLoopEvent` objects for one turn."""
@@ -156,6 +168,21 @@ class AgentLoopBackend(ABC):
         message instead of killing the transport.
         """
         raise NotImplementedError(f"{type(self).__name__} does not support cancellation")
+
+    def with_identity(self, identity: Any) -> None:
+        """Apply a per-turn :class:`BackendIdentity` to this backend.
+
+        Called once per turn, before :meth:`run`, by the capability that owns
+        the turn. The default records nothing: a backend that addresses a
+        single deployment-wide credential has no per-user state to carry, and
+        silently ignoring the hook is correct there.
+
+        Backends that do carry caller identity override this to swap their
+        credential and headers. It is a method rather than constructor state
+        because the identity is resolved from the *current* user at turn time,
+        while the factory that builds the backend may run outside the request.
+        """
+        return None
 
 
 __all__ = [

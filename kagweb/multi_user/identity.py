@@ -350,7 +350,42 @@ def delete_user(username: str) -> bool:
         user_id = str(record.get("id") or "")
         users.pop(username, None)
         _write_users(users)
+    _purge_owner_secrets(user_id)
     return True
+
+
+def _purge_owner_secrets(user_id: str) -> None:
+    """Drop a deleted account's owner-private credentials.
+
+    The secrets root lives outside every workspace precisely so it survives a
+    workspace cleanup — which means nothing else removes it. Without this, a
+    deleted account's OAuth refresh tokens and any linked external-service
+    token would sit on disk until they expired on their own, readable by any
+    account later given the same id.
+    """
+    if not user_id:
+        return
+    import shutil
+
+    from .paths import LOCAL_ADMIN_ID, SYSTEM_ROOT, USER_SECRETS_DIRNAME
+
+    if user_id == LOCAL_ADMIN_ID:
+        # The admin scope is the deployment's own; it has no user record to
+        # delete and its secrets must outlive this call.
+        return
+    owner_dir = SYSTEM_ROOT / USER_SECRETS_DIRNAME / user_id
+    try:
+        shutil.rmtree(owner_dir)
+    except FileNotFoundError:
+        return
+    except OSError:
+        # Best effort: the account is already gone from the store, and failing
+        # the deletion now would leave the caller with a half-applied change.
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "could not remove secrets directory for deleted account"
+        )
 
 
 def set_password(username: str, hashed_password: str) -> dict[str, Any] | None:

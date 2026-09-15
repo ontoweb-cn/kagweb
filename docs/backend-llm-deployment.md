@@ -1206,3 +1206,92 @@ cd web && npm run build && npm run perf:check
 **复核实为准确、无需修正的项**：`request_preparer.py:105-134` 门禁代码；`capabilities/chat/capability.py:112-122` 无 LLM 依赖；`get_tool_schemas()` 零调用者（`orchestrator.py:179`）；`codex_auth` 与 `agent_loop` 无关联；9 个 LLM 调用点行号；`ChatRequestConfig(EmptyConfig)` 零字段；`AGENT_LOOP_INTELLECT_PRESETS` 值；`question_bank` 读路径孤立 / 写路径活跃。
 
 **本文件所有精度声明**：行号与计数均为 2026-09-10 于 `c3ffe57` 实测；会随代码漂移的计数（locale 键数、代码行数）已在原处标注实测口径。
+
+---
+
+## 七、多用户身份：KAGWeb 账号如何映射到 Intellect 账号
+
+**背景**：KAGWeb 与 Intellect 是两个各自持有账号体系的系统。此前的对接里，每一轮对话都以同一个部署级密钥（`API_SERVER_KEY`）发出，Intellect 无法区分是哪个 KAGWeb 用户发起的——所有会话与 run 都归属同一主体。
+
+**关键事实（已核实）**：Intellect Gateway 的 `sessions.member_id` **没有外键约束**（`intellect-storage/migrations/20260615000001_initial_schema.sql:39`），且 Profile 模式（部署密钥）会把 `X-Intellect-User` 头直接写入 `ctx.member_id`（`auth.rs:386-403`，且该判定**早于** members 开关）。所以"把 KAGWeb 用户映射成 Intellect 侧主体"**不需要预先在 Intellect 建账号**。
+
+### 两种桥接，性质不同
+
+profile 的 `identity_mode` 字段决定用哪种。默认 `off`，即与升级前完全一致。
+
+| 模式 | 发送内容 | 效果 |
+|---|---|---|
+| `off` | 仅 profile 的 `api_key` | 调用方信息完全不出现在服务端 |
+| `header` | 部署密钥 + `X-Intellect-User: mem_<账号>` | **归属**：服务端记录每轮 run/session 的 owner |
+| `token` | 该用户自己的成员令牌 | **委托**：服务端按角色与 owner 做隔离；未关联者回落 `header` |
+| `token_required` | 同 `token`，但强制 | 未关联用户无法发起对话 |
+
+**`header` 只是归属，不是隔离。** 部署密钥携带的是不受限主体（`bypass_member_filter=true`），所有归属校验都会短路：`RunEntry::allows()` 无条件返回 true（`run_state.rs:301-304`），`get_session_for_actor_ext` 也提前返回（`session_store.rs:645-646`）。也就是说，**持有该密钥者可按 id 读取任意会话与 run**。真正由服务端强制隔离的只有 `token` / `token_required`。
+
+由此，`session_prefix`（`<owner_id>:` 前缀）是**安全控制**而非整洁性：它是防止两个账号在远端撞同一个 session 的唯一屏障。同理，Profile 模式会设置 `cfg.user_id = auth.member_id`（`api_server.rs:601`），从而触发 `loop.rs:3251` 的访问校验——不加前缀反而可能出现误判拒绝。
+
+### 关联失效绝不降级
+
+这是本设计的硬规则：已关联用户的凭据若过期/被吊销/被拒绝，**该轮直接失败并给出提示，绝不回落部署密钥**。因为回落目标（部署密钥）比刚刚失效的令牌**权限更大**——"好心"降级等于在限制刚开始生效时给用户提权。只有"从未关联"才可回落（且由部署选择 `token` 的宽松回落或 `token_required` 的 fail-closed）。
+
+### 凭据存放与生命周期
+
+- 路径：`data/system/user-secrets/<owner>/private/intellect-agent/`，目录 0700、文件 0600，与 Codex OAuth 凭据同级同构。
+- **不放工作区**：沙箱的 `exec` 能读工作区，而 `data/system` 是唯一不挂载的树（`multi_user/paths.py:219-232` 的既有理由）。
+- 记录内含 `kagweb_user_id`，读取时与当前账号比对——备份恢复或复制到他人目录的文件会被忽略，而不是被借用。
+- **删除用户会清理该目录**：`delete_user` 原本只移除 `users.json` 记录，凭据会一直留到自然过期，并被下一个复用该 id 的账号读到；本次补上了清理。
+- 登出/解绑时 best-effort 调 `POST /api/members/logout` 吊销；服务端不可达时仍必须能解绑（否则离线用户被锁在链接里）。无 refresh 端点，续期即重新关联。
+
+### 界面与 API
+
+- 卡片位于 **Settings → 模型**（与 Codex OAuth 卡片并列），**不是** Agent Backend 分区——后者是 `adminOnly`，而这是个人凭据。无配置服务时卡片自行隐藏。
+- 接口：`GET/POST/DELETE /api/settings/agent-loop/identity`，**刻意不做管理员门禁**（沿用 Codex OAuth 生命周期的先例）。响应**永不回显令牌**。
+- 目标服务地址取自部署的 primary profile，**不接受用户指定**——否则这个表单就成了任意主机的外发请求入口。
+- 两种关联方式：Intellect 登录名+密码（换取令牌后立即丢弃明文，不落盘不记日志）或直接粘贴令牌；两者都会先向服务端校验再保存，使错误的凭据在此刻就报错，而不是在很久以后表现为一轮失败的对话。
+
+### 尚未覆盖
+
+- 不把 KAGWeb 登录改为 Intellect 登录：KAGWeb 仍是唯一 IdP，`imt_*` 只用于**出站**表达身份，绝不用于认证任何 KAGWeb 请求。合并登录只发生在用户主动关联的那一次。
+- 不自动预置 Intellect 用户；Tier 2 需 Intellect 侧存在成员（或用户自助注册，受 `members.enabled` 约束）。
+- `run.completed.usage` 只有 token 计数、无 `cost_usd`，故结果页仍不显示成本卡片。
+- 预算耗尽被 Gateway 归约为通用 `run.failed`（`api_server.rs:5397-5409` 有意不泄漏内部错误），无法映射为 KAGWeb 的 `incomplete_reason` 截断标记。
+
+### 令牌与服务的绑定（安全加固，评审后补）
+
+**问题**：profile 的 `url` 是管理员可改的部署配置。若用户令牌只按"当前 profile 的 URL"外发，则**改一次 profile URL（或改选另一个 primary）就会把所有已关联用户的令牌送到新主机**——这是一条真实的凭据外泄路径，评审中已用探针复现（`https://attacker.example` 会收到 `Bearer imt_SECRET`）。
+
+**修法**：令牌绑定签发它的服务 origin（scheme + host + port）：
+
+- 关联时记录 `service_origin`（规范化：忽略路径与默认端口，`https://a/x` 与 `https://a:443` 同源；scheme 降级与端口变化视为不同源）。
+- 解析时只回发给该 origin；不匹配则**报错要求重新关联**，既不发送也不回落部署密钥（与"失效不降级"同一条规则）。
+- 旧版本写入的、未记录 origin 的链接**一律不使用**（无法判断它属于哪个服务），用户重新关联一次即可。
+- 界面据此把 `stale_reason` 区分 `expired` / `service_changed`，两种都提示"重新连接"。
+
+**另外两处**：
+
+1. **密码路径禁止明文外发**：密码是用户**可复用**的凭据（不同于管理员可轮换的服务密钥），因此当服务 URL 是非 loopback 的 `http://` 时拒绝密码登录（提示改用 HTTPS 或令牌）；loopback 不受限。令牌路径不限制——令牌本身就是为轮换而生的。
+2. **异常响应不再 500**：URL 误指向登录门户/Ingress 页时服务端会以 200 返回 HTML，此前会抛 `JSONDecodeError`（表现为无信息的 500）。现在统一解析为"该地址不是智能体服务"，指向真正的配置错误。
+
+### 跨站请求防护（评审后补）
+
+**问题**：这些端点是 cookie 鉴权的、且**不要求管理员**（个人凭据，沿用 Codex OAuth 先例）。用探针核实：跨站 JSON POST **会在服务端执行并返回 200**——浏览器是否允许读取响应并不影响副作用。而 KAGWeb 的 CORS 在 auth 关闭（默认）时是宽松正则（`https?://.*`），预检直接放行。因此"关联"端点可被跨站触发，危害是**把受害者绑定到攻击者的 Intellect 身份**，此后受害者的对话都在攻击者名下运行。
+
+**澄清**：经典 HTML 表单 CSRF 不成立——FastAPI 对非 JSON content-type 返回 422，表单只能发 urlencoded/multipart/plain，够不到 `BaseModel` 体。真正的通路是跨站 `fetch` + JSON。
+
+**修法**：不依赖 CORS，改为校验请求自身的 `Origin`（`origin_is_trusted`）：
+
+| 情形 | 处置 |
+|---|---|
+| 无 `Origin`（curl / SDK / 测试） | 允许——非浏览器表单 |
+| `Origin: null`（沙箱 iframe / `file://`） | **拒绝**——洗白跨站请求的惯用手法 |
+| 与请求 `Host` 同源 | 允许（**忽略 scheme**：TLS 常在应用前终止，浏览器 `https://h` 与代理转发的 `Host` 可能只是 scheme 不同） |
+| 在显式配置的 CORS origin 列表内 | 允许——前端另域部署的运营者不受影响 |
+| 配置了 `*` | **不豁免**——`*` 即"任意站点"，正是所防的情形 |
+
+已加在：`POST/DELETE /api/settings/agent-loop/identity` 与 Codex OAuth 的 `start`/`cancel`/`logout`（同类暴露——建立或销毁凭据；`status` 是 GET，`models/refresh` 只改模型目录，未加）。
+
+### `member_id` 折叠碰撞（评审后修）
+
+`member_id_for` 原先只做字符折叠，**不是单射**：`a/b` 与 `a-b` 都折成 `a-b`，两个账号会被归因到同一服务端主体。而 `user_id` 在 `multi_user/context.py` 里可回退为**用户自选的用户名**，所以这条路径可达。现改为：仅当折叠**确实改变了** id 时，追加原值的 8 位摘要（并把可读部分截断以适配 64 字符上限）。普通 `u_<hex>` 与 `local-admin`/`env-admin` 输出**逐字节不变**，判定按 id 逐条进行，因此异常账号也不会与正常账号相撞。
+
+> 影响面说明：仅影响**归属标记**，不影响隔离——会话命名空间用的是原始 owner id，不是 member id。

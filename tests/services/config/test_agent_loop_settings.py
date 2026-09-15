@@ -316,3 +316,32 @@ def test_model_and_context_window_normalize() -> None:
     assert by_id["d"]["context_window"] == 1_024  # below floor → clamped up
     assert by_id["e"]["context_window"] == 1_000_000  # above ceiling → clamped down
     assert by_id["f"]["context_window"] == 0  # unparseable → unset, not floored
+
+
+def test_identity_mode_normalizes_and_never_widens() -> None:
+    """How a turn is attributed to a remote service.
+
+    The safe direction matters here: an unrecognized value must land on `off`
+    (send nothing extra), never on one of the modes that forwards identity — a
+    typo should not silently turn on credential delegation for every turn.
+    """
+    block = _normalize_agent_loop(
+        {
+            "profiles": [
+                {"id": "a", "preset": "intellect-team", "identity_mode": "token"},
+                {"id": "b", "preset": "intellect-team", "identity_mode": "  HEADER  "},
+                {"id": "c", "preset": "intellect-team", "identity_mode": "token_required"},
+                {"id": "d", "preset": "intellect-team", "identity_mode": "tokn"},
+                {"id": "e", "preset": "intellect-team"},
+                {"id": "f", "preset": "intellect-team", "identity_mode": ""},
+            ],
+        }
+    )
+    by_id = {profile["id"]: profile for profile in block["profiles"]}
+
+    assert by_id["a"]["identity_mode"] == "token"
+    assert by_id["b"]["identity_mode"] == "header"  # case and space folded
+    assert by_id["c"]["identity_mode"] == "token_required"
+    assert by_id["d"]["identity_mode"] == "off"  # a typo sends nothing
+    assert by_id["e"]["identity_mode"] == "off"  # absent keeps prior behaviour
+    assert by_id["f"]["identity_mode"] == "off"

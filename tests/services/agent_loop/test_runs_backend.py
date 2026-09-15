@@ -149,8 +149,14 @@ async def test_approval_reads_the_authoritative_tool_fields(tmp_path) -> None:
 
 async def test_clarify_is_surfaced_and_answered_on_its_own_endpoint(tmp_path) -> None:
     """A clarify is a question, not a decision: it must surface as a
-    ``clarify_request`` and its answer must go to the clarify endpoint, which
-    is keyed by the *server's* session id and lives outside the run path."""
+    ``clarify_request`` and its answer must go to the run-scoped clarify
+    endpoint.
+
+    Intellect registers a run's pending question under the **run** id and
+    refuses an id whose recorded owner differs, so the session-keyed
+    ``/v1/chat/completions/{session_id}/clarify`` route — which serves the
+    streaming chat flows, where the owner really is the session — can never
+    resolve one."""
     body = SSE_BODY.replace(
         'data: {"event": "approval.request", "tool_name": "shell",'
         ' "arguments": "rm -rf build", "choices": ["once", "deny"]}\n'
@@ -176,8 +182,8 @@ async def test_clarify_is_surfaced_and_answered_on_its_own_endpoint(tmp_path) ->
     assert events[-1].kind in {"usage", "content"}
 
     answer = next(call for call in calls if call.url.path.endswith("/clarify"))
-    # the server's session id from ``run.started``, not the KAGWeb one we sent
-    assert answer.url.path == "/v1/chat/completions/srv-session/clarify"
+    # keyed by the run the answer belongs to — not by the session id
+    assert answer.url.path == "/v1/runs/run_1/clarify"
     assert json.loads(answer.content) == {"clarify_id": "c-1", "answer": "postgres"}
 
 
@@ -217,6 +223,11 @@ async def test_stream_failure_degrades_to_status_polling() -> None:
     assert events[-1].data["total_tokens"] == 3
     # the run status was polled, no live events were available
     assert any(call.url.path.endswith("/runs/run_1") and call.method == "GET" for call in calls)
+    # The answer must survive the lost stream. The event queue is torn down
+    # with the subscription server-side, so the terminal status is the only
+    # remaining source of the run's output — a poll that reports usage but not
+    # the text turns one dropped connection into an empty turn.
+    assert "".join(event.text for event in events if event.kind == "content") == "polled answer"
 
 
 # ── the remote ids are attacker-influenced; they must stay in their segment ──
@@ -247,7 +258,7 @@ def test_hostile_run_id_cannot_escape_its_path_segment() -> None:
     assert url == "http://gateway.test/v1/runs/..%2F..%2Fadmin%2Fsecret/events"
 
 
-def test_hostile_session_id_cannot_escape_the_clarify_path() -> None:
+def test_hostile_run_id_cannot_escape_the_clarify_path() -> None:
     backend = RunsAgentLoopBackend(
         name="intellect-runs",
         url="http://gateway.test",
@@ -256,10 +267,10 @@ def test_hostile_session_id_cannot_escape_the_clarify_path() -> None:
         headers={},
         timeout_seconds=5,
     )
-    backend._session_id = "../../admin?x=1"
+    backend._run_id = "../../admin?x=1"
 
     url = backend._clarify_url()
-    assert url == ("http://gateway.test/v1/chat/completions/..%2F..%2Fadmin%3Fx%3D1/clarify")
+    assert url == "http://gateway.test/v1/runs/..%2F..%2Fadmin%3Fx%3D1/clarify"
     # No query or fragment was split off.
     assert "?" not in url and "#" not in url
 
@@ -354,3 +365,143 @@ async def test_runs_request_prefers_the_turn_model() -> None:
     # Without a profile model the per-turn pick still rides along.
     [event async for event in build().run(AgentLoopRequest(prompt="hi", model="turn-m"))]
     assert bodies[-1]["model"] == "turn-m"
+
+
+# ── the finished answer is reported twice; it must be emitted once ──────────
+
+
+def _completed_body(*, deltas: str, output: str, interim: str = "") -> str:
+    """A run stream whose text arrives as deltas and again as ``output``.
+
+    Intellect forwards the answer as ``TextDelta`` chunks while it is generated
+    and then reports the same text as the run's ``output``; the caller joins
+    content blocks with a blank line, so echoing both doubles the answer.
+    """
+    parts = [
+        'data: {"event": "run.started", "session_id": "srv-session", "run_id": "run_1"}\n\n'
+    ]
+    for chunk in deltas:
+        parts.append(
+            f'data: {{"event": "message.delta", "type": "assistant.delta",'
+            f' "text": "{chunk}"}}\n\n'
+        )
+    if interim:
+        parts.append(
+            f'data: {{"event": "message.delta", "type": "interim_assistant",'
+            f' "content": "{interim}"}}\n\n'
+        )
+    parts.append(
+        f'data: {{"event": "run.completed", "output": "{output}",'
+        ' "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}}\n\n'
+        ": stream closed\n"
+    )
+    return "".join(parts)
+
+
+async def _content_of(body: str) -> str:
+    calls: list[httpx.Request] = []
+    backend = _mock_backend(calls, sse_body=body)
+    events = [event async for event in backend.run(AgentLoopRequest(prompt="hi", session_id="s1"))]
+    # Mirrors how the capability joins blocks into the persisted answer.
+    return "\n\n".join(event.text for event in events if event.kind == "content")
+
+
+async def test_a_plain_turn_does_not_repeat_its_answer() -> None:
+    """No tool calls: the deltas already spell the whole answer, so the
+    ``output`` echo must not become a second paragraph."""
+    body = _completed_body(deltas=["Hello ", "world"], output="Hello world")
+    assert await _content_of(body) == "Hello world"
+
+
+async def test_a_tool_turn_keeps_its_narration_and_does_not_repeat_the_answer() -> None:
+    """An agentic turn emits a block per step: the narration before a tool call
+    is genuinely different text and must be kept. Only the *last* block is the
+    one the terminal ``output`` restates, so reconciliation must not discard
+    the earlier step's text along with the duplicate."""
+    body = (
+        'data: {"event": "run.started", "session_id": "srv-session", "run_id": "run_1"}\n\n'
+        'data: {"event": "message.delta", "type": "assistant.delta",'
+        ' "text": "Let me look."}\n\n'
+        'data: {"event": "message.delta", "type": "interim_assistant",'
+        ' "content": "Let me look."}\n\n'
+        'data: {"event": "tool.progress", "type": "tool.started",'
+        ' "name": "read", "arguments": {"path": "f"}, "tool_id": "t1"}\n\n'
+        'data: {"event": "tool.progress", "type": "tool.completed",'
+        ' "name": "read", "result": "", "duration_s": 0.1, "tool_id": "t1"}\n\n'
+        'data: {"event": "message.delta", "type": "assistant.delta",'
+        ' "text": "The file is empty."}\n\n'
+        'data: {"event": "run.completed", "output": "The file is empty.",'
+        ' "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}}\n\n'
+        ": stream closed\n"
+    )
+    assert await _content_of(body) == "Let me look.\n\nThe file is empty."
+
+
+async def test_a_truncated_stream_is_completed_by_the_terminal_output() -> None:
+    """The deltas can stop early (a dropped chunk, a lost event). What arrived
+    is a prefix of the answer, so only the missing tail is appended and the
+    joined text equals the answer instead of doubling its opening."""
+    body = _completed_body(deltas=["Hello "], output="Hello world")
+    assert await _content_of(body) == "Hello world"
+
+
+async def test_a_lagging_subscriber_is_told_its_trace_is_incomplete() -> None:
+    """The run's broadcast buffer overflowed and the server dropped events.
+    The turn can still finish, so this cannot be an error — but silence would
+    make "we stopped being told" indistinguishable from "nothing happened"."""
+    calls: list[httpx.Request] = []
+    body = (
+        'data: {"event": "lagged", "missed": 7}\n\n'
+        'data: {"event": "run.completed", "output": "done"}\n\n'
+        ": stream closed\n"
+    )
+    backend = _mock_backend(calls, sse_body=body)
+    events = [event async for event in backend.run(AgentLoopRequest(prompt="hi", session_id="s1"))]
+    notes = [event.text for event in events if event.kind == "progress"]
+    assert any("7" in note for note in notes)
+
+
+async def test_an_error_frame_surfaces_instead_of_being_dropped() -> None:
+    """The channel declares ``event: error`` with a ``message`` payload."""
+    calls: list[httpx.Request] = []
+    body = (
+        'data: {"event": "error", "message": "provider exploded"}\n\n'
+        'data: {"event": "run.failed", "error": "run failed"}\n\n'
+        ": stream closed\n"
+    )
+    backend = _mock_backend(calls, sse_body=body)
+    events = [event async for event in backend.run(AgentLoopRequest(prompt="hi", session_id="s1"))]
+    errors = [event.text for event in events if event.kind == "error"]
+    assert "provider exploded" in errors
+
+
+# ── stopping a turn must stop the remote run too ────────────────────────────
+
+
+async def test_closing_the_turn_stops_the_remote_run() -> None:
+    """The run lives on the server, not in this connection. Cancelling the turn
+    (the user pressing stop) tears down the subscription, which the Gateway
+    does *not* treat as a stop — without an explicit call the agent keeps
+    working and spending on a turn nobody is waiting for."""
+    calls: list[httpx.Request] = []
+    backend = _mock_backend(calls, sse_body=SSE_BODY)
+
+    stream = backend.run(AgentLoopRequest(prompt="hi", session_id="s1"))
+    # Consume the opening frame so the run is registered, then abandon it the
+    # way a cancelled turn does.
+    await stream.__anext__()
+    await stream.aclose()
+
+    stop = [call for call in calls if call.url.path.endswith("/stop")]
+    assert stop, "the remote run was left running"
+    assert stop[0].url.path == "/v1/runs/run_1/stop"
+    assert stop[0].method == "POST"
+
+
+async def test_a_completed_turn_does_not_stop_its_own_run() -> None:
+    """A terminal event means the server already finished; a stray /stop would
+    be noise against a closed run."""
+    calls: list[httpx.Request] = []
+    backend = _mock_backend(calls, sse_body=SSE_BODY)
+    [event async for event in backend.run(AgentLoopRequest(prompt="hi", session_id="s1"))]
+    assert not [call for call in calls if call.url.path.endswith("/stop")]

@@ -105,10 +105,18 @@ PRESETS: dict[str, AgentLoopPreset] = {
                 "endpoints (/v1/runs + SSE). The event vocabulary is aligned to "
                 "Intellect's Rust api_server (the authoritative implementation); "
                 "answering a clarify needs that server, which exposes the "
-                "response endpoint."
+                "response endpoint. **Requires the Rust api_server** — the "
+                "legacy Python adapter names its tool and reasoning events "
+                "differently, and those frames are dropped, so a turn against "
+                "it produces no text. Supports approvals, clarifications and "
+                "mid-turn cancellation."
             ),
+            # The team deployment serves the same /health probe as the
+            # community one; without it this preset had no probe target at all.
+            probe_url="http://127.0.0.1:8642/health",
             turn_path="/v1/runs",
             protocol="runs",
+            per_turn_model=True,
         ),
         AgentLoopPreset(
             name="intellect-runs",
@@ -121,6 +129,7 @@ PRESETS: dict[str, AgentLoopPreset] = {
             turn_path="/v1/runs",
             protocol="runs",
             probe_url="http://127.0.0.1:8642/health",
+            per_turn_model=True,
         ),
         AgentLoopPreset(
             name="hermes",

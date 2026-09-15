@@ -65,6 +65,7 @@ from kagweb.services.settings.interface_settings import (
 )
 from kagweb.services.settings.interface_settings import (
     atomic_update,
+    get_response_language,
     resolve_languages,
 )
 from kagweb.services.settings.starter_settings import (
@@ -276,6 +277,11 @@ class AgentLoopProfileUpdate(BaseModel):
     #: The backend's real context window, used for history budgeting. 0 = not
     #: configured (the budget planner falls back to its model-name heuristics).
     context_window: int = Field(default=0, ge=0, le=AGENT_LOOP_CONTEXT_WINDOW_RANGE[1])
+    #: HTTP family only. Who a turn runs as on the remote service: ``off``
+    #: sends nothing extra, ``header`` attributes the turn to the calling
+    #: account, ``token`` also presents that account's own linked member token,
+    #: ``token_required`` refuses to run without one.
+    identity_mode: str = "off"
 
 
 class AgentLoopSettingsUpdate(BaseModel):
@@ -441,6 +447,102 @@ def _require_settings_admin() -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Model configuration is managed by an administrator.",
         )
+
+
+def _require_same_origin(request: Request) -> None:
+    """Refuse a credential-mutating request driven by a cross-site page.
+
+    These endpoints store a credential that then authorizes this account's
+    turns against a remote service, so a forged request is worth more than a
+    nuisance: linking a victim to the *attacker's* account makes the victim's
+    conversations run under an identity the attacker can read. CORS does not
+    cover it — the request executes even when the browser refuses the response,
+    and the default (auth-off) configuration lets the preflight through — so
+    the check is made against the request's own origin. See
+    :func:`kagweb.services.config.origins.origin_is_trusted`.
+    """
+    from kagweb.services.config.origins import normalize_origins, origin_is_trusted
+    from kagweb.services.config.runtime_settings import load_system_settings
+
+    try:
+        system_settings = load_system_settings()
+        allowed = normalize_origins(
+            [system_settings.get("cors_origin"), system_settings.get("cors_origins")]
+        )
+    except Exception:
+        # A settings read must not become a lockout: fall back to the
+        # same-origin comparison alone, which is the check that matters.
+        allowed = []
+    if not origin_is_trusted(
+        request.headers.get("origin"),
+        request.headers.get("host"),
+        allowed,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cross-site request refused.",
+        )
+
+
+def _identity_public(user_id: str) -> dict[str, Any]:
+    """Describe the caller's link without ever revealing the token."""
+    from kagweb.services.agent_loop.identity import identity_store_for, service_origin
+    from kagweb.services.agent_loop.settings import (
+        get_agent_loop_settings,
+        resolve_primary_profile,
+    )
+
+    payload: dict[str, Any] = {"available": _identity_service_available()}
+    record = identity_store_for(user_id).load(user_id)
+    if record is None:
+        payload.update({"linked": False, "stale": False})
+        return payload
+    # The link is bound to the service it was minted against; a deployment that
+    # has moved since then does not silently use it, so say so here rather than
+    # letting the user discover it as a failed turn. Compared as origins (not
+    # raw strings) and only as a boolean — the URL is admin-owned config.
+    current = service_origin(
+        (resolve_primary_profile(get_agent_loop_settings()) or {}).get("url")
+    )
+    moved = bool(current) and current != service_origin(record.service_origin)
+    expired = record.is_expired()
+    payload.update(
+        {
+            "linked": True,
+            "member_id": record.member_id,
+            "team_id": record.team_id or None,
+            "project_id": record.project_id or None,
+            "expires_at": record.expires_at or None,
+            "linked_at": record.linked_at or None,
+            # A link that lapsed client-side — or that points at a service this
+            # deployment no longer uses — is reported so the UI can prompt. A
+            # link the *service* has since revoked cannot be told apart from a
+            # good one without a live call, so this is the honest subset.
+            "stale": expired or moved,
+            "stale_reason": "expired" if expired else ("service_changed" if moved else None),
+        }
+    )
+    return payload
+
+
+def _identity_service_available() -> bool:
+    """Whether this deployment has an agent service a user could link to.
+
+    Reported as a bare boolean: the service URL is admin-owned configuration,
+    and an ordinary user only needs to know whether the card applies to them.
+    """
+    try:
+        from kagweb.services.agent_loop.settings import (
+            get_agent_loop_settings,
+            resolve_primary_profile,
+        )
+
+        profile = resolve_primary_profile(get_agent_loop_settings()) or {}
+        return bool(str(profile.get("url") or "").strip())
+    except Exception:
+        return False
+
+
 
 
 def _require_codex_oauth_actor() -> None:
@@ -740,8 +842,9 @@ async def get_settings():
 
 
 @router.post("/providers/openai-codex/oauth/start")
-async def start_openai_codex_oauth() -> dict[str, Any]:
+async def start_openai_codex_oauth(request: Request) -> dict[str, Any]:
     _require_codex_oauth_actor()
+    _require_same_origin(request)
     try:
         return await get_codex_oauth_service().start_login()
     except CodexAuthError as exc:
@@ -758,8 +861,9 @@ async def get_openai_codex_oauth_status() -> dict[str, Any]:
 
 
 @router.post("/providers/openai-codex/oauth/cancel")
-async def cancel_openai_codex_oauth() -> dict[str, Any]:
+async def cancel_openai_codex_oauth(request: Request) -> dict[str, Any]:
     _require_codex_oauth_actor()
+    _require_same_origin(request)
     try:
         return await get_codex_oauth_service().cancel_login()
     except CodexAuthError as exc:
@@ -767,8 +871,11 @@ async def cancel_openai_codex_oauth() -> dict[str, Any]:
 
 
 @router.post("/providers/openai-codex/oauth/logout")
-async def logout_openai_codex_oauth() -> dict[str, Any]:
+async def logout_openai_codex_oauth(request: Request) -> dict[str, Any]:
     _require_codex_oauth_actor()
+    # Same-origin guard: a cross-site logout would silently disconnect the
+    # victim's credential, and the re-link that follows is the attacker's.
+    _require_same_origin(request)
     try:
         return await get_codex_oauth_service().logout()
     except CodexAuthError as exc:
@@ -782,6 +889,86 @@ async def refresh_openai_codex_models() -> dict[str, Any]:
         return await get_codex_oauth_service().refresh_models()
     except CodexAuthError as exc:
         raise _codex_http_exception(exc) from None
+
+
+# ── Linked Intellect account (per user, deliberately not admin-gated) ───────
+#
+# This is a *personal* credential, like the Codex OAuth lifecycle above: each
+# user connects their own account, and the agent-loop settings endpoints — all
+# admin-only — are the wrong place for it. The token never leaves the server:
+# every response below reports the link, never the credential.
+
+
+class IdentityLinkRequest(BaseModel):
+    """Either a password login, or a token the user was handed out of band."""
+
+    login_name: str = ""
+    password: str = ""
+    token: str = ""
+
+
+@router.get("/agent-loop/identity")
+async def get_agent_loop_identity() -> dict[str, Any]:
+    """The calling user's linked Intellect account, if any."""
+    from kagweb.multi_user.context import get_current_user
+
+    return _identity_public(get_current_user().id)
+
+
+@router.post("/agent-loop/identity")
+async def link_agent_loop_identity(
+    payload: IdentityLinkRequest, request: Request
+) -> dict[str, Any]:
+    """Connect the calling user's Intellect account.
+
+    Accepts either Intellect credentials (exchanged once for a member token) or
+    a token directly. Both are verified against the configured service before
+    anything is stored, so a mistake is reported here rather than becoming a
+    failed conversation later.
+    """
+    _require_same_origin(request)
+    from kagweb.multi_user.context import get_current_user
+    from kagweb.services.agent_loop.identity import (
+        IdentityLinkError,
+        identity_store_for,
+        link_with_password,
+        link_with_token,
+    )
+
+    user_id = str(get_current_user().id)
+    language = get_response_language()
+    try:
+        if payload.token.strip():
+            record = await link_with_token(payload.token, user_id=user_id, language=language)
+        elif payload.login_name.strip() and payload.password:
+            record = await link_with_password(
+                payload.login_name.strip(), payload.password, user_id=user_id, language=language
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Provide either a token, or a login name and password.",
+            )
+    except IdentityLinkError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from None
+
+    identity_store_for(user_id).save(record)
+    return _identity_public(user_id)
+
+
+@router.delete("/agent-loop/identity")
+async def unlink_agent_loop_identity(request: Request) -> dict[str, Any]:
+    """Disconnect the calling user's Intellect account, revoking the token.
+
+    Guarded like the link: a cross-site DELETE would not merely disconnect the
+    victim but let the attacker re-link them to an account of their choosing.
+    """
+    _require_same_origin(request)
+    from kagweb.multi_user.context import get_current_user
+    from kagweb.services.agent_loop.identity import unlink
+
+    await unlink(str(get_current_user().id))
+    return {"available": _identity_service_available(), "linked": False, "stale": False}
 
 
 @router.get("/providers/codebuddy/auth/status")
@@ -975,6 +1162,7 @@ def _agent_loop_profile_block(
         "approval_default": profile.approval_default,
         "model": profile.model.strip(),
         "context_window": profile.context_window,
+        "identity_mode": profile.identity_mode,
     }
 
 

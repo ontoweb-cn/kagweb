@@ -92,6 +92,53 @@ _MESSAGES: dict[str, dict[str, str]] = {
             "Agent-loop backend {backend!r} lost the event stream and the run status "
             "never reached a terminal state while polling."
         ),
+        "agent_loop.run_events_lagged": (
+            "Agent-loop backend {backend!r} fell behind its event stream and "
+            "{missed} events were dropped; this turn's trace is incomplete."
+        ),
+        "agent_loop.identity_required": (
+            "This agent backend runs as your linked Intellect account, and none "
+            "is linked yet. Connect one in settings to continue."
+        ),
+        "agent_loop.identity_expired": (
+            "Your link to Intellect account {member_id} has expired or been "
+            "revoked. Reconnect it in settings to continue."
+        ),
+        "agent_loop.identity_mismatch": (
+            "Your linked Intellect account is not permitted to run this turn."
+        ),
+        "agent_loop.identity_origin_changed": (
+            "Your link is to a different agent service than this deployment now "
+            "uses (Intellect account {member_id}). Reconnect it in settings to "
+            "continue."
+        ),
+        "agent_loop.identity_no_service": (
+            "This deployment has no agent service configured to link against."
+        ),
+        "agent_loop.identity_unreachable": (
+            "Could not reach the agent service: {error}"
+        ),
+        "agent_loop.identity_bad_credentials": (
+            "That Intellect login was not accepted. Check the login name and password."
+        ),
+        "agent_loop.identity_locked": (
+            "That Intellect account is locked. Contact the service administrator."
+        ),
+        "agent_loop.identity_token_rejected": (
+            "That token was not accepted by the agent service."
+        ),
+        "agent_loop.identity_empty_token": "Enter a token to connect.",
+        "agent_loop.identity_not_the_service": (
+            "That address answered, but it is not the agent service — check the "
+            "configured service URL."
+        ),
+        "agent_loop.identity_insecure_service": (
+            "This deployment's agent service URL is not HTTPS, so your login "
+            "would be sent in the clear. Use HTTPS, or a token instead."
+        ),
+        "agent_loop.identity_link_failed": (
+            "The agent service refused the connection (HTTP {status})."
+        ),
         "agent_loop.acp_sdk_missing": (
             "Backend {backend!r} uses the Agent Client Protocol transport; install "
             "the SDK with `pip install kagweb[acp]`."

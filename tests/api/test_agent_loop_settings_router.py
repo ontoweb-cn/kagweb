@@ -243,11 +243,15 @@ def test_detect_reports_cli_presets_and_http_profiles(client: TestClient) -> Non
     http = {r["key"]: r for r in results if r["family"] == "http"}
     # The unreachable loopback profile is probed and reported unavailable.
     assert any(
-        not r["available"] and r["local"] for key, r in http.items() if key != "intellect-runs"
+        not r["available"] and r["local"] for key, r in http.items() if not r["key"].startswith("intellect")
     )
-    # Profiles without a URL are not probed at all.
-    assert len(http) == 2  # the agentscope profile + the intellect-runs preset probe
+    # Profiles without a URL are not probed at all. Both Intellect run presets
+    # carry a preset-level probe, so the probe count is the agentscope profile
+    # plus those two — the team preset gaining a probe target is the fix for a
+    # preset that previously had none at all.
+    assert len(http) == 3
     assert http["intellect-runs"]["local"] is True  # preset-level local gateway probe
+    assert http["intellect-team"]["local"] is True
 
 
 def test_test_endpoint_reports_stub_and_unknown_backend(client: TestClient) -> None:
@@ -359,3 +363,106 @@ def test_workdir_outside_allowed_roots_is_rejected(client: TestClient) -> None:
     )
     assert response.status_code == 400
     assert "outside the allowed roots" in response.json()["detail"]
+
+
+def test_identity_mode_rides_the_profile_round_trip(client: TestClient) -> None:
+    """The bridge is a per-profile setting, so it must survive save and read
+    back — and an unknown value must land on `off`, never on a mode that
+    forwards identity."""
+    data = _put(
+        client,
+        [
+            _profile(preset="intellect-team", url="https://gw", identity_mode="token"),
+            _profile(preset="intellect-team", url="https://gw2", identity_mode="nonsense"),
+        ],
+    )
+    modes = sorted(p["identity_mode"] for p in data["settings"]["profiles"])
+    assert modes == ["off", "token"]
+
+
+def test_a_linked_credential_is_never_echoed_by_the_settings_api(
+    client: TestClient,
+) -> None:
+    """The link belongs to one user and its token is a credential: the API
+    reports the link and nothing about the secret."""
+    response = client.get("/api/settings/agent-loop/identity")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["linked"] is False
+    assert payload["stale"] is False
+    # Whether the deployment has a service to link against is reported as a
+    # bare boolean — the card self-hides on it, and the service URL is
+    # admin-owned configuration an ordinary user has no business reading.
+    assert isinstance(payload["available"], bool)
+    assert "url" not in payload
+
+    # No stored link → nothing to disconnect, and still no error.
+    deleted = client.delete("/api/settings/agent-loop/identity")
+    assert deleted.status_code == 200
+
+    # A link request with neither a token nor credentials is a client error,
+    # not a silent no-op that looks like it worked.
+    empty = client.post("/api/settings/agent-loop/identity", json={"token": "", "login_name": ""})
+    assert empty.status_code == 400
+
+
+# ── cross-site requests must not drive a credential change ─────────────────
+
+
+def test_a_cross_site_link_request_is_refused(client: TestClient) -> None:
+    """A forged cross-site POST would let an attacker bind the victim's account
+    to *their* Intellect identity, so the victim's turns would run as the
+    attacker. CORS does not stop it (the request executes regardless of whether
+    the browser is allowed to read the response), so the origin is checked
+    directly."""
+    response = client.post(
+        "/api/settings/agent-loop/identity",
+        json={"token": "imt_attacker"},
+        headers={"Origin": "https://evil.example"},
+    )
+    assert response.status_code == 403
+    # Nothing was stored, and the token never reached the service.
+    assert client.get("/api/settings/agent-loop/identity").json()["linked"] is False
+
+
+def test_a_cross_site_unlink_is_refused(client: TestClient) -> None:
+    response = client.delete(
+        "/api/settings/agent-loop/identity",
+        headers={"Origin": "https://evil.example"},
+    )
+    assert response.status_code == 403
+
+
+def test_an_opaque_origin_is_refused(client: TestClient) -> None:
+    """A sandboxed iframe or file:// page sends ``Origin: null`` — the standard
+    way to launder a cross-site request."""
+    response = client.post(
+        "/api/settings/agent-loop/identity",
+        json={"token": "imt_attacker"},
+        headers={"Origin": "null"},
+    )
+    assert response.status_code == 403
+
+
+def test_same_origin_and_non_browser_callers_are_allowed(client: TestClient) -> None:
+    """Same-origin is the normal app; no Origin at all is curl/SDK/tests."""
+    same = client.post(
+        "/api/settings/agent-loop/identity",
+        json={"token": ""},
+        headers={"Origin": "http://testserver"},
+    )
+    # Reached the handler (rejected for the empty payload, not for its origin).
+    assert same.status_code == 400
+
+    headless = client.delete("/api/settings/agent-loop/identity")
+    assert headless.status_code == 200
+
+
+def test_the_cross_site_guard_also_covers_the_codex_lifecycle(client: TestClient) -> None:
+    """Same class of exposure: these establish or tear down a credential."""
+    for path in (
+        "/api/settings/providers/openai-codex/oauth/start",
+        "/api/settings/providers/openai-codex/oauth/logout",
+    ):
+        response = client.post(path, headers={"Origin": "https://evil.example"})
+        assert response.status_code == 403, path

@@ -42,6 +42,7 @@ import httpx
 from kagweb.services.i18n import t
 
 from .cli_backend import translate_generic
+from .identity import resolve_backend_identity
 from .protocol import (
     APPROVAL_CHOICES,
     EVENT_KINDS,
@@ -70,6 +71,43 @@ def _path_segment(value: str) -> str:
     the literal "None" in the path.
     """
     return quote(str(value), safe="")
+
+
+def _pretty_arguments(raw: Any) -> str:
+    """Render tool arguments for the approval card body.
+
+    The run channel hands over an already-redacted JSON *string*, so printing
+    it verbatim puts a whole argument set on one long line. Pretty-printing
+    makes it readable; anything that is not a JSON object/array is passed
+    through unchanged — the value is still disclosed, just not reshaped.
+    """
+    text = str(raw or "")
+    if not text.strip():
+        return ""
+    try:
+        parsed = json.loads(text)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return text
+    if isinstance(parsed, (dict, list)):
+        return json.dumps(parsed, indent=2, ensure_ascii=False, sort_keys=True)
+    return text
+
+
+def _namespaced_session(prefix: str, session_id: str) -> str:
+    """Scope a session id to the account it belongs to, when a prefix is set.
+
+    The service keys its sessions by the id it is handed, and every run's
+    access check consults that id. Without a namespace, two KAGWeb accounts
+    resolve to the same remote session whenever their ids coincide — which ids
+    from a restored or imported store can. Empty prefix leaves the id untouched
+    so a deployment that never opted into identity sends exactly what it did
+    before.
+    """
+    session_id = str(session_id or "")
+    prefix = str(prefix or "")
+    if not session_id or not prefix:
+        return session_id
+    return f"{prefix}{session_id}"
 
 
 logger = logging.getLogger(__name__)
@@ -110,6 +148,7 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         timeout_seconds: float,
         transport: httpx.AsyncBaseTransport | None = None,
         model: str = "",
+        identity_mode: str = "off",
     ) -> None:
         self.name = name
         self.url = url.rstrip("/")
@@ -117,6 +156,23 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         self.api_key = str(api_key or "")
         self.headers = {str(k): str(v) for k, v in (headers or {}).items()}
         self.timeout_seconds = float(timeout_seconds) if timeout_seconds else 0.0
+        #: Base key/headers, kept so applying a turn's identity is idempotent:
+        #: the resolved values always derive from the profile, never from a
+        #: previous turn's identity.
+        self._base_api_key = self.api_key
+        self._base_headers = dict(self.headers)
+        #: How a turn is attributed to / delegated to the service. Applied per
+        #: turn by :meth:`with_identity`; ``off`` leaves the profile's own
+        #: credential in place.
+        self.identity_mode = str(identity_mode or "off")
+        #: Prepended to the KAGWeb session id before it reaches the service, so
+        #: two accounts can never collide on one remote session. Only set when a
+        #: per-account identity is in play; without it the id is sent verbatim.
+        self.session_prefix = ""
+        #: Set by :meth:`with_identity`. Guards the fallback below: an identity
+        #: the capability applied for this turn must not be re-resolved and
+        #: overwritten when ``run`` starts.
+        self._identity_applied = False
         #: The profile's chosen model, sent in the request body when set. Empty
         #: means the service picks its own, and the key is omitted entirely so a
         #: deployment that never sets a model sees the exact request it did
@@ -126,12 +182,66 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         # settings-driven factory).
         self._transport = transport
 
+    def with_identity(self, identity: Any) -> None:
+        """Adopt the per-turn identity resolved for the calling account.
+
+        The factory builds a backend from the profile, which is deployment
+        configuration; who the turn *runs as* is per-user and only known in the
+        request, so it arrives here instead. Applying it means replacing the
+        credential wholesale rather than merging: ``api_key`` may be the user's
+        own token in place of the service key, and a profile-configured header
+        of the same name must not survive next to the resolved one.
+
+        Always derived from the profile's base values, so calling this twice —
+        or once per turn on a reused instance — cannot compound.
+        """
+        if identity is None:
+            return
+        self._identity_applied = True
+        self.api_key = str(getattr(identity, "api_key", "") or "")
+        resolved_headers = getattr(identity, "headers", None)
+        if isinstance(resolved_headers, dict):
+            # Rebuilt, not updated: a header the profile sets and the identity
+            # also sets must resolve to the identity's value, and dict.update
+            # would let a differently-cased profile key linger.
+            self.headers = {str(key): str(value) for key, value in resolved_headers.items()}
+        else:
+            self.headers = dict(self._base_headers)
+        self.session_prefix = str(getattr(identity, "session_prefix", "") or "")
+
+    def _apply_profile_identity(self) -> None:
+        """Resolve this turn's identity from the profile, if any.
+
+        The capability normally applies identity before calling :meth:`run`
+        (it has the turn's language for the messages, and it must be able to
+        turn a broken link into the turn's error). This is the fallback for a
+        direct caller — a test harness, an embedding — so a backend built with
+        an identity mode never silently runs as the deployment by accident.
+        """
+        if self.identity_mode == "off" or self._identity_applied:
+            return
+        identity = resolve_backend_identity(
+            {
+                "api_key": self._base_api_key,
+                "headers": self._base_headers,
+                "identity_mode": self.identity_mode,
+                # The URL is part of the decision, not just the destination: a
+                # linked member token is bound to the origin it was minted
+                # against, so omitting it would refuse every token outright.
+                "url": self.url,
+            },
+            family="http",
+        )
+        if identity is not None:
+            self.with_identity(identity)
+
     def endpoint(self) -> str:
         return f"{self.url}{self.turn_path}"
 
     async def run(self, request: AgentLoopRequest) -> AsyncIterator[AgentLoopEvent]:
+        self._apply_profile_identity()
         payload: dict[str, Any] = {
-            "session_id": request.session_id,
+            "session_id": _namespaced_session(self.session_prefix, request.session_id),
             "language": request.language,
             "prompt": request.prompt,
             "history": request.history,
@@ -323,6 +433,14 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
 
     supports_control = True
 
+    #: Intellect's run control plane resolves a pending approval after five
+    #: minutes and lets a pending clarify lapse after two, whatever KAGWeb
+    #: waits for. Waiting longer can only produce "the user answered, but the
+    #: agent had already moved on", so the operator's setting is clamped to
+    #: these.
+    approval_timeout_limit = 300
+    clarify_timeout_limit = 120
+
     def __init__(
         self,
         *,
@@ -334,6 +452,7 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         timeout_seconds: float,
         transport: httpx.AsyncBaseTransport | None = None,
         model: str = "",
+        identity_mode: str = "off",
     ) -> None:
         super().__init__(
             name=name,
@@ -344,11 +463,9 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             timeout_seconds=timeout_seconds,
             transport=transport,
             model=model,
+            identity_mode=identity_mode,
         )
         self._run_id = ""
-        #: The server's own session id, captured from the event stream. The
-        #: clarify endpoint is keyed by it (not by the KAGWeb session id).
-        self._session_id = ""
 
     # -- URL helpers ---------------------------------------------------------
 
@@ -357,12 +474,16 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         return f"{self.url}{self.turn_path}{'/' + path if path else ''}"
 
     def _clarify_url(self) -> str:
-        """The clarify endpoint, which is NOT under ``turn_path``.
+        """The run-scoped clarify endpoint.
 
-        Intellect exposes it as ``POST /v1/chat/completions/{session_id}/clarify``
-        — a sibling of the runs API, keyed by session rather than by run.
+        Intellect registers a run's clarify question under the **run** id — the
+        owner recorded alongside the pending question is ``run_id``, and the
+        resolver refuses an id whose owner differs. The session-keyed
+        ``/v1/chat/completions/{session_id}/clarify`` route only serves the
+        streaming chat flows, where the owner really is the session, so an
+        answer posted there can never match a run's question.
         """
-        return f"{self.url}/v1/chat/completions/{_path_segment(self._session_id)}/clarify"
+        return self._runs_url(self._run_id, "clarify")
 
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/json, text/event-stream", **self.headers}
@@ -373,11 +494,13 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
     # -- one turn ------------------------------------------------------------
 
     async def run(self, request: AgentLoopRequest) -> AsyncIterator[AgentLoopEvent]:
+        self._apply_profile_identity()
         payload: dict[str, Any] = {"input": request.prompt}
         if request.history:
             payload["conversation_history"] = request.history
-        if request.session_id:
-            payload["session_id"] = request.session_id
+        session_id = _namespaced_session(self.session_prefix, request.session_id)
+        if session_id:
+            payload["session_id"] = session_id
         turn_model = (request.model or self.model).strip()
         if turn_model:
             # Omitted when unset: an existing deployment's body is unchanged.
@@ -387,10 +510,6 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             # default silently.
             payload["model"] = turn_model
         state: dict[str, Any] = {"buf": [], "terminal": False}
-        # Seed from the request so a clarify can still be answered when the
-        # stream never reports the server's own session id; an authoritative
-        # value from ``run.started`` / ``assistant.completed`` overrides it.
-        self._session_id = request.session_id or ""
         timeout = httpx.Timeout(
             connect=15.0,
             read=self.timeout_seconds or 300.0,
@@ -439,6 +558,32 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
                 t("agent_loop.http_failed", backend=self.name, error=str(exc)),
                 backend=self.name,
             ) from exc
+        finally:
+            # The run lives on the server, not in this connection: losing the
+            # subscription does not stop it. So any exit that is not a terminal
+            # event — the user cancelling the turn, the consumer closing this
+            # generator, or the stream failing — has to stop the remote run
+            # explicitly, or the agent keeps working (and spending) on a turn
+            # nobody is waiting for.
+            if not state["terminal"]:
+                await self._stop_remote_run()
+
+    async def _stop_remote_run(self) -> None:
+        """Best-effort ``POST /v1/runs/{id}/stop``; never raises.
+
+        This runs on the teardown path, including inside ``CancelledError``
+        unwinding, so a failure here must not replace the real outcome.
+        """
+        if not self._run_id:
+            return
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(connect=5.0, read=5.0, write=5.0, pool=5.0),
+                transport=self._transport,
+            ) as client:
+                await client.post(self._runs_url(self._run_id, "stop"), headers=self._headers())
+        except (httpx.HTTPError, asyncio.CancelledError):
+            logger.debug("agent-loop %s: could not stop remote run", self.name)
 
     async def _stream_events(
         self, client: httpx.AsyncClient, *, run_id: str, state: dict[str, Any]
@@ -494,6 +639,13 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             state_status = str(body.get("status") or "")
             if state_status == "completed":
                 state["terminal"] = True
+                # This is the only place the answer still exists: the event
+                # queue is torn down with the subscription, but the terminal
+                # status carries the run's own ``output``. Dropping it here is
+                # what made a single dropped connection look like an empty
+                # turn.
+                for event in self._terminal_content_events(body, state):
+                    yield event
                 yield AgentLoopEvent("progress", text="[runs] completed (status poll)")
                 usage = body.get("usage") if isinstance(body.get("usage"), dict) else {}
                 data = {
@@ -565,11 +717,8 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         # -- complete assistant blocks ---------------------------------------
         if kind in {"interim_assistant", "assistant.completed"}:
             events = self._flush_buffered_content(state)
-            self._remember_session(obj)
             body = str(obj.get("content") or obj.get("response") or "")
-            if body:
-                events.append(AgentLoopEvent("content", text=body))
-            return events
+            return self._append_block(events, body)
 
         # -- tools -----------------------------------------------------------
         if kind in {"tool.started", "tool.completed", "tool.failed"}:
@@ -629,7 +778,7 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
                     name=str(obj.get("tool_name") or obj.get("tool") or "tool"),
                     # ``arguments`` is the authoritative field; ``preview`` is
                     # the legacy one.
-                    text=str(obj.get("arguments") or obj.get("preview") or ""),
+                    text=_pretty_arguments(obj.get("arguments") or obj.get("preview")),
                     data={
                         # The runs API resolves approvals per run, not per request.
                         "request_id": str(obj.get("run_id") or self._run_id),
@@ -642,15 +791,10 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
 
         # -- run lifecycle ---------------------------------------------------
         if kind == "run.started":
-            self._remember_session(obj)
             return []
         if kind == "run.completed":
-            events = self._flush_buffered_content(state)
-            self._remember_session(obj)
+            events = self._terminal_content_events(obj, state)
             state["terminal"] = True
-            output = str(obj.get("output") or "")
-            if output:
-                events.append(AgentLoopEvent("content", text=output))
             usage = obj.get("usage") if isinstance(obj.get("usage"), dict) else {}
             usage_data = {
                 "input_tokens": usage.get("input_tokens"),
@@ -674,6 +818,31 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         # not look like unknown traffic in the debug log.
         if kind in {"thinking.progress", "run.stopping", "approval.responded"}:
             return []
+
+        # -- events the transport itself reports -----------------------------
+        # A lagging subscriber: the run's broadcast buffer overflowed and the
+        # server dropped *n* events. The turn can still finish, but the trace
+        # is now incomplete, and saying so is the only way a user can tell the
+        # difference between "nothing happened" and "we stopped being told".
+        if kind == "lagged":
+            missed = obj.get("missed")
+            return [
+                AgentLoopEvent(
+                    "progress",
+                    text=t(
+                        "agent_loop.run_events_lagged",
+                        backend=self.name,
+                        missed=missed if isinstance(missed, int) else 0,
+                    ),
+                )
+            ]
+
+        # ``error``: the run channel normally turns a provider failure into
+        # ``run.failed`` (the agent loop returns the error rather than
+        # forwarding it), so this is a defensive mapping for the frame as it is
+        # declared on the channel: ``event: error`` with ``{"message": …}``.
+        if kind == "error":
+            return [AgentLoopEvent("error", text=str(obj.get("message") or "stream error"))]
 
         # Unknown shapes are the one case that must leave a trace: silently
         # dropping them is what let the field-name mismatches above go
@@ -701,17 +870,61 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         state["buf"] = []
         return events
 
-    def _remember_session(self, obj: dict[str, Any]) -> None:
-        """Keep the server's session id, which the clarify endpoint addresses.
+    def _terminal_content_events(
+        self, obj: dict[str, Any], state: dict[str, Any]
+    ) -> list[AgentLoopEvent]:
+        """The content blocks for a terminal frame, without repeating text.
 
-        The run channel reports it on ``run.started`` / ``assistant.completed``;
-        it is the *Intellect* session, which is what ``/v1/chat/completions/
-        {session_id}/clarify`` is keyed by — not the KAGWeb session id we send
-        when starting the run.
+        Intellect reports the finished answer twice on this channel: as
+        ``StreamEvent::TextDelta`` chunks while it is generated, and again as
+        the run's ``output`` when it completes. Flushing the buffer *and*
+        appending ``output`` therefore emits the same paragraph twice, and the
+        caller joins content blocks with a blank line — so the answer reads
+        ``"Hello world\\n\\nHello world"``.
+
+        Both terminal paths route through here: the ``run.completed`` event and
+        the degraded status poll, which reads the same ``output`` out of the
+        status body.
         """
-        session_id = str(obj.get("session_id") or "")
-        if session_id:
-            self._session_id = session_id
+        events = self._flush_buffered_content(state)
+        return self._append_block(events, str(obj.get("output") or ""))
+
+    @staticmethod
+    def _append_block(events: list[AgentLoopEvent], text: str) -> list[AgentLoopEvent]:
+        """Append one content block unless the text is already accounted for.
+
+        Text reaches this client by more than one route — streamed deltas, the
+        terminal ``output``, and a completed-message body — and the routes
+        overlap: deltas spell out the same message that ``output`` later
+        restates. So a full message is reconciled against what has already been
+        emitted rather than appended blindly:
+
+        * equal to the last block → it is a restatement, drop it;
+        * an extension of the last block → a truncated stream, append only the
+          missing tail so the joined text equals the answer;
+        * unrelated → earlier narration for a different step, keep it.
+
+        The comparison is against the **last** block only. An agentic turn
+        emits one block per step (each tool transition flushes the narration
+        before it), and the message being restated is always the most recent
+        one — comparing against every block would discard legitimately
+        repeated text such as a recurring status line.
+        """
+        if not text:
+            return events
+        if not events:
+            events.append(AgentLoopEvent("content", text=text))
+            return events
+        last = events[-1].text
+        if last == text:
+            return events
+        if text.startswith(last):
+            remainder = text[len(last) :]
+            if remainder:
+                events[-1] = AgentLoopEvent("content", text=f"{last}{remainder}")
+            return events
+        events.append(AgentLoopEvent("content", text=text))
+        return events
 
     # -- control plane -------------------------------------------------------
 
@@ -726,15 +939,12 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             )
 
     async def respond_clarify(self, request_id: str, answer: str) -> None:
-        """Deliver the user's answer to an in-flight ``clarify``.
-
-        The clarify endpoint is NOT under the run path; see ``_clarify_url``.
-        """
-        if not self._session_id:
-            # Nothing to address: without a server session id the request would
-            # be a guaranteed 404, so skip it rather than add noise.
+        """Deliver the user's answer to an in-flight ``clarify``."""
+        if not self._run_id:
+            # The run is what the endpoint addresses, and without one the
+            # request would be a guaranteed 404.
             logger.debug(
-                "agent-loop %s: cannot answer clarify %s without a server session id",
+                "agent-loop %s: cannot answer clarify %s without a run id",
                 self.name,
                 request_id,
             )

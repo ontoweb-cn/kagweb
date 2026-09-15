@@ -686,7 +686,7 @@ async def test_approval_timeout_uses_policy_default(monkeypatch) -> None:
         "kagweb.capabilities.chat.capability.build_agent_loop_backend",
         lambda settings: backend,
     )
-    monkeypatch.setattr(cap, "_approval_timeout", lambda profile: 0.05)
+    monkeypatch.setattr(cap, "_approval_timeout", lambda *a, **k: 0.05)
 
     async def waiter():
         await asyncio.sleep(5)  # outlives the (shortened) park budget
@@ -915,7 +915,7 @@ async def test_clarify_timeout_is_reported_as_skipped_not_invented(monkeypatch) 
         "kagweb.capabilities.chat.capability.build_agent_loop_backend",
         lambda settings: backend,
     )
-    monkeypatch.setattr(cap, "_approval_timeout", lambda profile: 0.05)
+    monkeypatch.setattr(cap, "_approval_timeout", lambda *a, **k: 0.05)
 
     async def waiter():
         await asyncio.sleep(5)
