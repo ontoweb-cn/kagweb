@@ -248,7 +248,7 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 
 **三个入口**：
 
-1. **CLI**（`kagweb_cli/main.py`，Typer）——`run` / `start` / `stop` / `serve` / `init` / `doctor`，加 `chat`、`session`、`provider`、`partner`、`plugin`、`config` 六个子命令组。
+1. **CLI**（`kagweb_cli/main.py`，Typer）——`run` / `start` / `stop` / `serve` / `init` / `doctor`，加 `chat`、`session`、`provider`、`plugin`、`config` 五个子命令组。
 2. **Python SDK**（`kagweb/app/facade.py:23` 的 `KAGWebApp`）——`start_turn` / `stream_turn` / `cancel_turn` / `submit_user_reply` / `regenerate_last_turn` 等。
 3. **WebSocket**——统一轮次协议，带 `protocol_version` 与命令确认（见 ADR-0003）。
 

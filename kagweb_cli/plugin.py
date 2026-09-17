@@ -2,7 +2,12 @@
 CLI Plugin Command
 ==================
 
-List and inspect registered tools and capabilities.
+List and inspect registered capabilities.
+
+There is no tool registry: the tool layer was removed along with the MCP
+client stack, and an agent-loop backend carries its own tooling. These
+commands used to read one, which made both of them fail outright once it
+was gone.
 """
 
 from __future__ import annotations
@@ -19,11 +24,9 @@ console = Console()
 def register(app: typer.Typer) -> None:
     @app.command("list")
     def plugin_list() -> None:
-        """List all registered tools and capabilities."""
+        """List all registered capabilities."""
         from kagweb.runtime.registry.capability_registry import get_capability_registry
-        from kagweb.runtime.registry.tool_registry import get_tool_registry
 
-        tr = get_tool_registry()
         cr = get_capability_registry()
 
         table = Table(title="Registered Plugins")
@@ -31,30 +34,19 @@ def register(app: typer.Typer) -> None:
         table.add_column("Type")
         table.add_column("Description")
 
-        for defn in tr.get_definitions():
-            table.add_row(defn.name, "tool", defn.description[:80])
-
         for m in cr.get_manifests():
-            table.add_row(m["name"], "capability", m["description"][:80])
+            table.add_row(m["name"], m.get("kind", "capability"), m["description"][:80])
 
         console.print(table)
 
     @app.command("info")
-    def plugin_info(name: str = typer.Argument(..., help="Tool or capability name.")) -> None:
-        """Show details of a tool or capability."""
+    def plugin_info(name: str = typer.Argument(..., help="Capability name.")) -> None:
+        """Show details of a capability."""
         import json
 
         from kagweb.runtime.registry.capability_registry import get_capability_registry
-        from kagweb.runtime.registry.tool_registry import get_tool_registry
 
-        tr = get_tool_registry()
         cr = get_capability_registry()
-
-        tool = tr.get(name)
-        if tool:
-            defn = tool.get_definition()
-            console.print_json(json.dumps(defn.to_openai_schema(), indent=2))
-            return
 
         cap = cr.get(name)
         if cap:

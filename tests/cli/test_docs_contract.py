@@ -72,25 +72,31 @@ def test_internal_docs_links_point_to_existing_pages() -> None:
     assert missing == []
 
 
+def _registered_commands() -> dict[str, list[str]]:
+    """The CLI's real surface, read from the app rather than a copied list.
+
+    A hand-maintained allowlist is what let this file keep blessing commands
+    that no longer existed (`kb`, `memory`, `notebook`, `partner`, `skill`,
+    `book`): the docs and the list drifted together while the app moved on, so
+    the contract passed for a CLI that had been deleted. Introspection makes
+    that class of drift impossible.
+    """
+    import typer
+
+    from kagweb_cli.main import app
+
+    group = typer.main.get_command(app)
+    registered: dict[str, list[str]] = {}
+    for name, command in group.commands.items():
+        sub = getattr(command, "commands", None)
+        registered[name] = sorted(sub.keys()) if sub else []
+    return registered
+
+
 def test_documented_kagweb_subcommands_exist() -> None:
-    top_level = {
-        "book",
-        "chat",
-        "config",
-        "init",
-        "kb",
-        "memory",
-        "notebook",
-        "partner",
-        "plugin",
-        "provider",
-        "run",
-        "serve",
-        "session",
-        "skill",
-        "start",
-    }
-    provider_subcommands = {"login"}
+    registered = _registered_commands()
+    top_level = set(registered)
+    provider_subcommands = set(registered.get("provider", []))
 
     for command in _kagweb_commands():
         first_segment = command.split("|", 1)[0].split("#", 1)[0].strip()
@@ -104,14 +110,27 @@ def test_documented_kagweb_subcommands_exist() -> None:
             assert tokens[2] in provider_subcommands, command
 
 
-def test_deep_research_examples_include_required_config() -> None:
-    examples = [command for command in _kagweb_commands() if "kagweb run deep_research" in command]
+def test_single_capability_cli_keeps_its_run_examples_actionable() -> None:
+    """`run` examples must name a capability that exists.
 
-    assert examples, "docs should include at least one deep_research example"
+    `chat` is the only built-in capability, so the docs previously advertised
+    six that had been removed along with their subsystems. Any `run` example is
+    checked against the registry instead of against a remembered name.
+    """
+    from kagweb.runtime.registry.capability_registry import get_capability_registry
+
+    available = set(get_capability_registry().list_capabilities())
+    assert available, "the registry should expose at least one capability"
+
+    examples = [command for command in _kagweb_commands() if "kagweb run " in command]
+    assert examples, "docs should include at least one `run` example"
+
     for command in examples:
-        has_json_config = "--config-json" in command
-        has_pair_config = "--config mode=" in command and "--config depth=" in command
-        assert has_json_config or has_pair_config, command
+        tokens = shlex.split(command.split("|", 1)[0].split("#", 1)[0].strip())
+        # kagweb run <capability> "<message>"
+        if len(tokens) < 3 or tokens[1] != "run" or tokens[2].startswith(("<", "[")):
+            continue
+        assert tokens[2] in available, command
 
 
 def test_docs_do_not_advertise_removed_cli_forms() -> None:
@@ -120,3 +139,6 @@ def test_docs_do_not_advertise_removed_cli_forms() -> None:
     assert "kagweb provider logout" not in text
     assert "kagweb memory show summary" not in text
     assert "WS /api/turns" not in text
+    # Subsystems removed whole — the docs must not still promise them.
+    for removed in ("kagweb kb ", "kagweb notebook ", "kagweb memory ", "kagweb partner "):
+        assert removed not in text, removed

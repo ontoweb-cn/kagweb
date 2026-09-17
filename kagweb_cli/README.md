@@ -5,6 +5,22 @@ Agent-first 的命令行界面。两条核心路径：
 - **`run`** — 单次执行任意 capability（为 agent 调用设计）
 - **`chat`** — 交互式 REPL（为人类设计）
 
+## 命令一览
+
+| 命令 | 用途 |
+|------|------|
+| `run` | 单次执行任意 capability |
+| `chat` | 交互式 REPL |
+| `start` | 启动后端 + 前端（`--dev` / `--detach` / `--no-browser`） |
+| `serve` | 只启动 API 服务（`--host` / `--port` / `--reload`） |
+| `stop` | 停止 `start --detach` 起的进程 |
+| `init` | 创建或更新 `data/user/settings`（`--cli` 只初始化 CLI 所需配置） |
+| `doctor` | 环境与配置自检 |
+| `session` | 会话管理（`list`/`show`/`open`/`rename`/`delete`/`trace`/`diff`） |
+| `provider` | 提供方认证与校验（`login <provider>`） |
+| `plugin` | 列出已注册的 capability（`list`/`info`） |
+| `config` | 查看配置（`show`） |
+
 ## 安装
 
 ```bash
@@ -26,12 +42,12 @@ pip install -e .
 kagweb init
 
 # 可选附加组件
-pip install -e ".[partners]"       # Partners 渠道 SDK + MCP 客户端
 pip install -e ".[math-animator]"  # 数学动画（另需系统 LaTeX/ffmpeg）
+pip install -e ".[acp]"            # Intellect 社区版走 Agent Client Protocol
 pip install -e ".[all]"            # 全部依赖（含开发工具）
 ```
 
-`kagweb init --cli` 和普通 `kagweb init` 使用同一套 `data/user/settings/` 配置目录；区别是 `--cli` 不询问 Web 后端/前端端口，仍会创建 `system.json`、`auth.json`、`integrations.json`、`model_catalog.json`、`main.yaml` 和 `agents.yaml`，并继续询问 LLM 配置。Embedding 配置默认跳过；如果要使用 `kagweb kb ...` 或 RAG，请在向导里选择配置 embedding，或稍后编辑 `data/user/settings/model_catalog.json`。
+`kagweb init --cli` 和普通 `kagweb init` 使用同一套 `data/user/settings/` 配置目录；区别是 `--cli` 不询问 Web 后端/前端端口，仍会创建 `system.json`、`auth.json`、`integrations.json`、`model_catalog.json`、`main.yaml` 和 `agents.yaml`，并继续询问 LLM 配置。
 
 Windows PowerShell 可使用：
 
@@ -57,26 +73,17 @@ kagweb run <capability> <message> [options]
 
 | Capability | 说明 |
 |------------|------|
-| `chat` | 对话（默认，可挂载工具） |
-| `deep_solve` | 多阶段深度解题 |
-| `deep_question` | 智能出题 |
-| `deep_research` | 多 agent 深度研究 |
-| `visualize` | 生成图表、图解、Mermaid、HTML 或 Manim 可视化 |
-| `math_animator` | 数学动画生成 |
-| `mastery_path` | 掌握式学习路径与测评循环 |
+| `chat` | 对话（唯一内置 capability；配置 agent-loop 后端后由其后端驱动，否则返回框架外壳提示） |
 
 ### 选项
 
 | 选项 | 缩写 | 说明 |
 |------|------|------|
-| `--tool` | `-t` | 启用工具（可多次指定）：`rag`, `web_search`, `code_execution`, `reason`, `brainstorm`, `paper_search`, `geogebra_analysis`, `imagegen`, `videogen` |
-| `--kb` | | 挂载知识库 |
-| `--language` | `-l` | 回复语言（默认 `en`） |
 | `--session` | | 继续已有会话 |
+| `--history-ref` | | 引用历史会话（可多次指定） |
+| `--language` | `-l` | 回复语言（默认 `en`） |
 | `--config` | | capability 配置 `key=value`（可多次指定） |
 | `--config-json` | | capability 配置（JSON 字符串） |
-| `--notebook-ref` | | 笔记本引用 |
-| `--history-ref` | | 引用历史会话 |
 | `--format` | `-f` | 输出格式：`rich`（默认）\| `json` |
 
 ### 示例
@@ -85,33 +92,11 @@ kagweb run <capability> <message> [options]
 # 对话
 kagweb run chat "什么是傅里叶变换？" -l zh
 
-# 深度解题
-kagweb run deep_solve "证明 n^3-n 能被 6 整除" -t rag --kb math-textbook
-
-# 简要回答
-kagweb run deep_solve "求 sin(x) 的导数" --config detailed_answer=false
-
-# 智能出题
-kagweb run deep_question "线性代数" --config num_questions=5 --config difficulty=hard
-
-# 仿真出题
-kagweb run deep_question "模拟考试" --config mode=mimic --config paper_path=exam.json
-
-# 深度研究
-kagweb run deep_research "Transformer 最新进展" \
-  --config-json '{"mode":"report","depth":"deep","sources":["web","papers"]}'
-
-# 可视化
-kagweb run visualize "画出注意力机制的数据流图" --config render_mode=mermaid
-
-# 数学动画
-kagweb run math_animator "展示正弦函数变换" --config quality=high
-
-# 掌握式学习
-kagweb run mastery_path "带我系统掌握特征值和特征向量"
+# 引用历史会话
+kagweb run chat "继续上面的话题" --history-ref <session-id>
 
 # JSON 输出（适合 agent 解析）
-kagweb run deep_solve "求解 x^2=4" -f json
+kagweb run chat "用一句话解释熵" -f json
 ```
 
 ---
@@ -127,10 +112,11 @@ kagweb chat [options]
 | 选项 | 说明 |
 |------|------|
 | `--session` | 恢复已有会话 |
-| `--tool`, `-t` | 预启用工具 |
 | `--capability`, `-c` | 初始 capability（默认 `chat`） |
-| `--kb` | 预挂载知识库 |
+| `--history-ref` | 引用历史会话（可多次指定） |
 | `--language`, `-l` | 回复语言 |
+| `--config` | 初始 config `key=value` |
+| `--config-json` | 初始 config（JSON 字符串） |
 
 ### REPL 内置命令
 
@@ -139,11 +125,10 @@ kagweb chat [options]
 | `/quit` | 退出 |
 | `/session` | 显示当前 session ID |
 | `/new` | 新建会话 |
-| `/tool on\|off <name>` | 启用/关闭工具 |
 | `/cap <name>` | 切换 capability |
-| `/kb <name>\|none` | 切换知识库 |
+| `/clear` | 清屏 |
+| `/status` | 显示当前状态 |
 | `/history add <id>\|clear` | 管理历史引用 |
-| `/notebook add <ref>\|clear` | 管理笔记本引用 |
 | `/regenerate`（别名 `/retry`） | 重跑上一条用户消息 |
 | `/show last\|<n>` | 展开被截断的工具结果或折叠的思考过程 |
 | `/refs` | 查看当前设置 |
@@ -167,19 +152,6 @@ kagweb serve [--host 0.0.0.0] [--port 8082] [--reload]
 
 ## 资源管理命令
 
-### `kb` — 知识库
-
-```bash
-kagweb kb list                                # 列出所有知识库
-kagweb kb info <name>                         # 查看详情
-kagweb kb create <name> --doc file.pdf        # 创建并导入文档
-kagweb kb create <name> --docs-dir ./docs/    # 从目录批量导入
-kagweb kb add <name> --doc extra.pdf          # 追加文档
-kagweb kb set-default <name>                  # 设为默认
-kagweb kb search <name> "查询内容"             # 搜索
-kagweb kb delete <name> --force               # 删除
-```
-
 ### `session` — 会话
 
 ```bash
@@ -188,30 +160,14 @@ kagweb session show <id>
 kagweb session open <id>                      # 进入 REPL 继续对话
 kagweb session rename <id> --title "新标题"
 kagweb session delete <id>
-```
-
-### `notebook` — 笔记本
-
-```bash
-kagweb notebook list
-kagweb notebook create "笔记" --description "描述"
-kagweb notebook show <id>
-kagweb notebook add-md <id> ./notes.md
-kagweb notebook replace-md <id> <record_id> ./updated.md
-kagweb notebook remove-record <id> <record_id>
-```
-
-### `memory` — 长期记忆
-
-```bash
-kagweb memory show
-kagweb memory clear --force
+kagweb session trace <id> [--format dsl|mermaid]   # 导出推理链
+kagweb session diff <a.json> <b.json> [--json]     # 比较两份导出
 ```
 
 ### `plugin` — 插件信息
 
 ```bash
-kagweb plugin list                            # 查看所有工具和 capability
+kagweb plugin list                            # 查看所有已注册的 capability
 kagweb plugin info <name>                     # 查看详情
 ```
 
@@ -256,20 +212,20 @@ Codex 令牌授权的是**你本人**的 ChatGPT 套餐，因此凭据只归当�
 ## 典型工作流
 
 ```bash
-# 1. 创建知识库
-kagweb kb create calculus --doc 微积分教材.pdf
+# 1. 初始化配置
+kagweb init
 
-# 2. 用知识库解题
-kagweb run deep_solve "求 ∫sin(x)cos(x)dx" -t rag --kb calculus -l zh
+# 2. 单轮问答
+kagweb run chat "什么是傅里叶变换？" -l zh
 
-# 3. 基于知识库出题
-kagweb run deep_question "微积分" --kb calculus \
-  --config num_questions=5 --config difficulty=medium -l zh
+# 3. 进入交互式对话（多轮）
+kagweb chat --language zh
 
-# 4. 深度研究某课题
-kagweb run deep_research "注意力机制演进" \
-  --config-json '{"mode":"report","depth":"deep","sources":["papers","web"]}' -l zh
-
-# 5. 查看会话记录
+# 4. 查看会话记录
 kagweb session list
+
+# 5. 导出某次会话的推理链
+kagweb session trace <session-id> --format mermaid
 ```
+
+> 对话内容由 `agent_loop` 配置的后端产生；未配置后端时 `run`/`chat` 会返回框架外壳提示（见仓库根目录 `ARCHITECTURE.md`）。

@@ -1,4 +1,9 @@
-"""Runtime registries for capabilities and tools, exported lazily."""
+"""Runtime registry for capabilities, exported lazily.
+
+Only capabilities: the tool registry went with the tool layer, and leaving a
+lazy export behind for it turned a clear "this module is gone" into an
+import-time surprise at first attribute access.
+"""
 
 from __future__ import annotations
 
@@ -7,15 +12,11 @@ import importlib
 _EXPORTS = {
     "CapabilityRegistry": (".capability_registry", "CapabilityRegistry"),
     "get_capability_registry": (".capability_registry", "get_capability_registry"),
-    "ToolRegistry": (".tool_registry", "ToolRegistry"),
-    "get_tool_registry": (".tool_registry", "get_tool_registry"),
 }
 
 __all__ = [
     "CapabilityRegistry",
-    "ToolRegistry",
     "get_capability_registry",
-    "get_tool_registry",
 ]
 
 
