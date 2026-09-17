@@ -28,7 +28,7 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "api.tool_not_found": "Tool '{name}' not found",
         "chat.stub_notice": (
             "KAGWeb is running as a framework shell — the conversation backend is not "
-            "connected yet. Model providers, sessions, settings and Partners are ready; "
+            "connected yet. Sessions, settings and model providers are ready; "
             "conversation comes from the agent-loop integration "
             '("agent_loop" in system.json).'
         ),
@@ -199,6 +199,11 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "api.soul_library_not_found": "素材库中未找到 soul '{name}'",
         "api.soul_not_found": "未找到 soul",
         "api.tool_not_found": "未找到工具 '{name}'",
+        "chat.stub_notice": (
+            "KAGWeb 目前以框架外壳模式运行——对话后端尚未接入。"
+            "会话、设置与模型服务均已就绪；对话能力来自 agent-loop 集成"
+            '（system.json 中的 "agent_loop"）。'
+        ),
     },
 }
 
