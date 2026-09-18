@@ -703,12 +703,19 @@ def _build_request(
 
     # Agent loops carry their own system prompt; KAGWeb contributes its
     # per-turn grounding blocks, then the user message.
+    try:
+        from kagweb.services.kag import kag_grounding_block
+
+        kag_block = kag_grounding_block()
+    except Exception:
+        kag_block = ""  # 可选集成：KAG 服务异常不阻塞 turn
     blocks = [
         block.strip()
         for block in (
             context.sidebar_context,
             f"Attached sources:\n{context.source_manifest}" if context.source_manifest else "",
             consult_manifest or "",
+            kag_block,
         )
         if block.strip()
     ]
@@ -730,6 +737,15 @@ def _build_request(
             # A missing workspace must degrade to the server cwd, never
             # fail the turn.
             resolved_workdir = ""
+    if resolved_workdir:
+        # KAG 接线：CLI 后端经 session workdir 的 .mcp.json 发现 bridge
+        # （设计 §5.3）。可选集成——写入失败仅意味着本 turn 无 KAG 工具。
+        try:
+            from kagweb.services.kag import ensure_session_mcp_config
+
+            ensure_session_mcp_config(resolved_workdir, str(context.session_id or ""))
+        except Exception:
+            pass
 
     history = [
         item

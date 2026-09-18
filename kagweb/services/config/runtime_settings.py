@@ -77,6 +77,21 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
         # honoured — that is how an operator forbids per-profile workdirs.
         "allowed_workdir_roots": [DEFAULT_WORKDIR_ROOT],
     },
+    # KAG 集成（M1，设计 docs/kag-integration-design.md §6.3 T1 单租户子集）：
+    # Bridge 以 MCP 服务接入 agent loop（CLI 后端经 session workdir 的
+    # .mcp.json 发现）。kag_project_dir 指向含 kag_config.yaml 的项目目录
+    # ——Bridge 以该文件为唯一配置源（M0-1 实测：运行时覆盖会丢 llm 键）。
+    # 管理面 REST/UI、多项目路由、bridge_api_key 鉴权于 M2 提供。
+    "kag": {
+        "version": 1,
+        "bridge_command": "",
+        "bridge_args": ["-m", "kag_bridge"],
+        "kag_project_dir": "",
+        "namespace": "",
+        "project_id": "",
+        "spg_server_url": "",
+        "bridge_api_key": "",
+    },
 }
 
 # Clamp bounds for the chat attachment knobs. The MB ceilings are deliberately
@@ -1457,6 +1472,27 @@ class RuntimeSettingsService:
                 *CHAT_ATTACHMENT_CHARS_RANGE,
             ),
             "agent_loop": self._normalize_agent_loop(settings),
+            "kag": self._normalize_kag(settings),
+        }
+
+    def _normalize_kag(self, settings: dict[str, Any]) -> dict[str, Any]:
+        """归一化 ``kag`` 集成块（设计 §6.3 T1 子集，字段见 DEFAULT_SYSTEM_SETTINGS 注释）。"""
+        raw = settings.get("kag")
+        block = raw if isinstance(raw, dict) else {}
+        args = block.get("bridge_args")
+        return {
+            "version": 1,
+            "bridge_command": _string(block.get("bridge_command")),
+            "bridge_args": (
+                [str(a) for a in args if str(a).strip()]
+                if isinstance(args, list) and args
+                else ["-m", "kag_bridge"]
+            ),
+            "kag_project_dir": _string(block.get("kag_project_dir")),
+            "namespace": _string(block.get("namespace")),
+            "project_id": _string(block.get("project_id")),
+            "spg_server_url": _string(block.get("spg_server_url")),
+            "bridge_api_key": _string(block.get("bridge_api_key")),
         }
 
     def _normalize_auth(self, settings: dict[str, Any]) -> dict[str, Any]:
