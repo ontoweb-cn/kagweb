@@ -41,6 +41,12 @@ def empty_grant(user_id: str) -> dict[str, Any]:
         # tightens rather than loosens on upgrade. The HTTP family starts
         # nothing locally and stays covered by ``agent_loop``.
         "agent_loop_cli": None,
+        # Whether the user may read the KAG management plane (projects /
+        # schema / task list). Same tri-state as ``agent_loop``: ``None``
+        # follows the deployment (an admin who configured the kag domain
+        # means users may view it), ``False`` suspends that user, ``True``
+        # equals ``None`` here — writes stay admin-only until the T2 ACL.
+        "kag_projects": None,
     }
 
 
@@ -71,6 +77,8 @@ def normalize_grant(user_id: str, payload: dict[str, Any] | None) -> dict[str, A
     base["agent_loop"] = bool(agent_loop) if isinstance(agent_loop, bool) else None
     agent_loop_cli = payload.get("agent_loop_cli")
     base["agent_loop_cli"] = bool(agent_loop_cli) if isinstance(agent_loop_cli, bool) else None
+    kag_projects = payload.get("kag_projects")
+    base["kag_projects"] = bool(kag_projects) if isinstance(kag_projects, bool) else None
     return base
 
 

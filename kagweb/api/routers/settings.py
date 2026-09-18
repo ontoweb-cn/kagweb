@@ -2219,3 +2219,46 @@ async def reopen_tour():
         "message": "Run the terminal setup guide from the project root to re-open the guided setup.",
         "command": "kagweb init",
     }
+
+
+# ---------------------------------------------------------------------------
+# KAG integration domain（设计 docs/kag-integration-design.md §6.3 T1 子集）
+# ---------------------------------------------------------------------------
+
+
+def _kag_domain_payload(block: dict[str, Any]) -> dict[str, Any]:
+    """bridge_api_key 为 write-only：GET/PUT 响应均不回显（沿 agent-loop 先例）。"""
+    return {**block, "bridge_api_key": "", "bridge_api_key_set": bool(block.get("bridge_api_key"))}
+
+
+@router.get("/kag")
+async def get_kag_domain() -> dict[str, Any]:
+    _require_settings_admin()
+    from kagweb.services.kag import get_kag_settings
+
+    return _kag_domain_payload(get_kag_settings())
+
+
+@router.put("/kag")
+async def update_kag_domain(request: Request, payload: dict[str, Any]) -> dict[str, Any]:
+    _require_settings_admin()
+    # same-origin guard：变更类端点防跨站 JSON POST 副作用（沿 identity 端点模式）
+    from kagweb.services.config.origins import origin_is_trusted
+
+    system = load_system_settings()
+    allowed = [
+        str(system.get("cors_origin") or ""),
+        *(str(x) for x in (system.get("cors_origins") or [])),
+    ]
+    if not origin_is_trusted(request.headers.get("origin"), request.headers.get("host"), allowed):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cross-site request refused.")
+
+    from kagweb.services.kag import get_kag_settings
+
+    block = {k: v for k, v in payload.items() if k not in {"bridge_api_key_set"}}
+    # 空api_key = "保留已存值"（tri-state 写法，沿 agent-loop api_key 先例）
+    if not str(block.get("bridge_api_key") or "").strip():
+        block["bridge_api_key"] = str(get_kag_settings().get("bridge_api_key") or "")
+    service = get_runtime_settings_service()
+    saved = service.save_system({**system, "kag": block})
+    return _kag_domain_payload(saved.get("kag") or {})

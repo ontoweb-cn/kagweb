@@ -314,6 +314,7 @@ from kagweb.api.routers import (
     capabilities,
     capabilities_settings,
     imports,
+    kag,
     outputs,
     sessions,
     settings,
@@ -366,6 +367,10 @@ app.include_router(
     tags=["settings"],
 )
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"], dependencies=_auth)
+# KAG 管理面（设计 docs/kag-integration-design.md §5.2）：管理端点走会话鉴权；
+# bridge 任务上报子路由例外——服务间 api_key 鉴权（附录 A.3），不挂 _auth。
+app.include_router(kag.router, prefix="/api/kag", tags=["kag"], dependencies=_auth)
+app.include_router(kag.bridge_router, prefix="/api/kag/bridge", tags=["kag"])
 app.include_router(system.router, prefix="/api/system", tags=["system"], dependencies=_auth)
 app.include_router(voice.router, prefix="/api/voice", tags=["voice"], dependencies=_auth)
 app.include_router(

@@ -169,6 +169,24 @@ async def kag_solve(
         if ctx:
             await ctx.report_progress(1, 1)
 
+        # 任务摘要上报（A.3；异步放行，不阻塞工具返回）
+        loop.call_soon_threadsafe(
+            lambda: asyncio.ensure_future(
+                asyncio.to_thread(
+                    _report_task,
+                    {
+                        "task_id": task_id,
+                        "session_id": os.environ.get("KAG_SESSION_ID", ""),
+                        "project_id": info["project_id"],
+                        "namespace": info["namespace"],
+                        "question": question[:2000],
+                        "answer_digest": str(answer)[:2000],
+                        "cost_ms": cost_ms,
+                        "references": stream_data.get("reference", [])[:20],
+                    },
+                )
+            )
+        )
         return json.dumps(
             {
                 "answer": str(answer),
@@ -236,6 +254,27 @@ async def kag_status(ctx: Context = None) -> str:
         },
         ensure_ascii=False,
     )
+
+
+def _report_task(payload: dict) -> None:
+    """任务摘要上报（附录 A.3）：KAGWEB_API_URL + KAG_BRIDGE_API_KEY 均
+    配置时才启用；fire-and-forget，失败仅记 stderr（不影响答案返回）。"""
+    import urllib.error
+
+    url = os.environ.get("KAGWEB_API_URL", "").rstrip("/")
+    key = os.environ.get("KAG_BRIDGE_API_KEY", "")
+    if not url or not key:
+        return
+    try:
+        req = urllib.request.Request(
+            f"{url}/api/kag/bridge/tasks",
+            data=json.dumps(payload, ensure_ascii=False, default=str).encode(),
+            method="POST",
+            headers={"Content-Type": "application/json", "X-KAG-Bridge-Key": key},
+        )
+        urllib.request.urlopen(req, timeout=5).read()
+    except Exception as exc:  # noqa: BLE001 - 上报失败不阻塞工具结果
+        print(f"WARN: kag task report failed: {exc!r}", file=sys.stderr)
 
 
 def main() -> None:
