@@ -1162,6 +1162,40 @@ def stop(home: str | Path | None = None, *, timeout: float = 15) -> bool:
     raise SystemExit(_t("stop.timeout", pid=pid, log=paths.log))
 
 
+def restart(
+    home: str | Path | None = None,
+    *,
+    dev: bool | None = None,
+    open_browser: bool = True,
+    timeout: float = 15,
+) -> None:
+    """Restart the detached launcher: stop the running one, then start again.
+
+    ``dev`` defaults to the frontend mode the running launcher recorded in its
+    state file, so a plain ``kagweb restart`` keeps the instance as it was.
+    Restarts are always detached — the caller's console is not the launcher's.
+    """
+
+    runtime_home = get_runtime_home(home)
+    try:
+        validate_runtime_home(runtime_home)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    global _ACTIVE_LABELS
+    _ACTIVE_LABELS = labels_for(resolve_language())
+
+    state = _read_detached_state(_detached_launcher_paths(runtime_home))
+    pid = _coerce_pid(state.get("pid")) if state is not None else None
+    if dev is None:
+        dev = bool(state.get("dev")) if state is not None else False
+
+    if state is not None and _is_pid_alive(pid):
+        _log(_t("restart.stopping", pid=pid))
+    stop(home=runtime_home, timeout=timeout)
+    start(home=runtime_home, dev=dev, detach=True, open_browser=open_browser)
+
+
 def _handoff_pending_update(
     runtime_home: Path,
     *,
@@ -1514,4 +1548,4 @@ def start(
         raise SystemExit(exit_code)
 
 
-__all__ = ["start", "stop"]
+__all__ = ["restart", "start", "stop"]

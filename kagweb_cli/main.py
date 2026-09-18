@@ -119,6 +119,26 @@ def stop(
 
 
 @app.command()
+def restart(
+    home: Path | None = typer.Option(None, "--home", help="Runtime workspace root."),
+    dev: bool | None = typer.Option(
+        None,
+        "--dev/--prod",
+        help="Frontend mode; defaults to the mode the running launcher used.",
+    ),
+    open_browser: bool = typer.Option(
+        True,
+        "--open-browser/--no-browser",
+        help="Open the frontend automatically after startup.",
+    ),
+) -> None:
+    """Restart a detached KAGWeb launcher: stop it, then start a fresh one."""
+    from kagweb.runtime.launcher import restart as restart_web
+
+    restart_web(home=home, dev=dev, open_browser=open_browser)
+
+
+@app.command()
 def serve(
     host: str = typer.Option("0.0.0.0", help="Bind address."),
     port: int | None = typer.Option(None, help="Port number."),

@@ -700,3 +700,83 @@ def test_stop_requests_only_the_registered_detached_launcher(
     assert launcher.stop(tmp_path, timeout=0.5) is True
     assert not paths.state.exists()
     assert not paths.stop.exists()
+
+
+def _record_launcher_lifecycle(monkeypatch, tmp_path: Path) -> list[tuple[str, object]]:
+    """Capture the stop/start pair a restart performs, with both patched out."""
+
+    calls: list[tuple[str, object]] = []
+    monkeypatch.setattr(launcher, "get_runtime_home", lambda _home=None: tmp_path)
+    monkeypatch.setattr(launcher, "validate_runtime_home", lambda _home: None)
+    monkeypatch.setattr(launcher, "resolve_language", lambda: "en")
+    monkeypatch.setattr(launcher, "_log", lambda _message: None)
+    monkeypatch.setattr(launcher, "_is_pid_alive", lambda _pid: True)
+    monkeypatch.setattr(
+        launcher,
+        "stop",
+        lambda home=None, timeout=15: (calls.append(("stop", home)), True)[1],
+    )
+    monkeypatch.setattr(
+        launcher,
+        "start",
+        lambda home=None, **kwargs: calls.append(("start", kwargs)),
+    )
+    return calls
+
+
+def test_restart_reuses_the_recorded_frontend_mode(monkeypatch, tmp_path: Path) -> None:
+    paths = launcher._detached_launcher_paths(tmp_path)
+    launcher._write_detached_state(
+        paths,
+        {
+            "version": 1,
+            "token": "launch-token",
+            "pid": 4242,
+            "status": "ready",
+            "dev": True,
+        },
+    )
+    calls = _record_launcher_lifecycle(monkeypatch, tmp_path)
+
+    launcher.restart(tmp_path, open_browser=False)
+
+    assert calls == [
+        ("stop", tmp_path),
+        ("start", {"dev": True, "detach": True, "open_browser": False}),
+    ]
+
+
+def test_restart_frontend_mode_flag_overrides_recorded_state(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    paths = launcher._detached_launcher_paths(tmp_path)
+    launcher._write_detached_state(
+        paths,
+        {
+            "version": 1,
+            "token": "launch-token",
+            "pid": 4242,
+            "status": "ready",
+            "dev": True,
+        },
+    )
+    calls = _record_launcher_lifecycle(monkeypatch, tmp_path)
+
+    launcher.restart(tmp_path, dev=False)
+
+    assert calls == [
+        ("stop", tmp_path),
+        ("start", {"dev": False, "detach": True, "open_browser": True}),
+    ]
+
+
+def test_restart_without_state_starts_in_production_mode(monkeypatch, tmp_path: Path) -> None:
+    calls = _record_launcher_lifecycle(monkeypatch, tmp_path)
+
+    launcher.restart(tmp_path)
+
+    assert calls == [
+        ("stop", tmp_path),
+        ("start", {"dev": False, "detach": True, "open_browser": True}),
+    ]

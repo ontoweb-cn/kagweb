@@ -14,17 +14,17 @@ from rich.text import Text
 
 from kagweb.__version__ import __version__
 
-_ASCII_LOGO = r""" ____                    __  __            _
-|  _ \  ___  ___ _ __   |  \/  | ___ _ __ | |_ ___  _ __
-| | | |/ _ \/ _ \ '_ \  | |\/| |/ _ \ '_ \| __/ _ \| '__|
-| |_| |  __/  __/ |_) | | |  | |  __/ | | | || (_) | |
-|____/ \___|\___| .__/  |_|  |_|\___|_| |_|\__\___/|_|
-                |_|"""
+_ASCII_LOGO = r"""    _                    _   _   _ ___
+   / \   __ _  ___ _ __ | |_| | | |_ _|
+  / _ \ / _` |/ _ \ '_ \| __| | | || |
+ / ___ \ (_| |  __/ | | | |_| |_| || |
+/_/   \_\__, |\___|_| |_|\__|\___/|___|
+        |___/"""
 
 
 LABELS: dict[str, dict[str, str]] = {
     "en": {
-        "tagline": "Agent-Native Personalized Study and Research Tool, originated from DeepTutor@HKU",
+        "tagline": "Agentic WebUI  for OpenKG KAG and ONTOWEB Intellect Agent",
         "lab": "Web and Industrial Intelligence Research Team (ONTOWEB) @ WUST",
         # init
         "init.mode": "Workspace initializer",
@@ -122,6 +122,8 @@ LABELS: dict[str, dict[str, str]] = {
         "stop.requested": "Requested a graceful stop from launcher PID {pid}.",
         "stop.complete": "KAGWeb stopped.",
         "stop.timeout": "Launcher PID {pid} did not stop in time. Check {log}.",
+        # restart
+        "restart.stopping": "Restarting KAGWeb: stopping the detached launcher (PID {pid}) ...",
         "start.not_ready": "{name} did not become ready within {timeout}s",
         "start.port_in_use": (
             "KAGWeb cannot start because port(s) already in use: {ports}. "
@@ -140,7 +142,7 @@ LABELS: dict[str, dict[str, str]] = {
         "start.port_freed": "Port {port} released.",
     },
     "zh": {
-        "tagline": "智能体原生的个性化学习与科研工具，源于DeepTutor@HKU",
+        "tagline": "Agentic WebUI  for OpenKG KAG and ONTOWEB Intellect Agent",
         "lab": "武汉科技大学WEB与工业智能研究团队(ONTOWEB)",
         # init
         "init.mode": "工作目录初始化",
@@ -236,6 +238,8 @@ LABELS: dict[str, dict[str, str]] = {
         "stop.requested": "已请求 launcher PID {pid} 正常停止。",
         "stop.complete": "KAGWeb 已停止。",
         "stop.timeout": "launcher PID {pid} 未能及时停止，请检查 {log}。",
+        # restart
+        "restart.stopping": "正在重启 KAGWeb：先停止后台 launcher（PID {pid}）...",
         "start.not_ready": "{name} 在 {timeout} 秒内未就绪",
         "start.port_in_use": (
             "无法启动 KAGWeb,端口已被占用: {ports}。"

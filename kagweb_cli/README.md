@@ -13,6 +13,7 @@ Agent-first 的命令行界面。两条核心路径：
 | `chat` | 交互式 REPL |
 | `start` | 启动后端 + 前端（`--dev` / `--detach` / `--no-browser`） |
 | `serve` | 只启动 API 服务（`--host` / `--port` / `--reload`） |
+| `restart` | 重启后台 launcher（等价于 `stop` + `start --detach`） |
 | `stop` | 停止 `start --detach` 起的进程 |
 | `init` | 创建或更新 `data/user/settings`（`--cli` 只初始化 CLI 所需配置） |
 | `doctor` | 环境与配置自检 |
@@ -137,6 +138,29 @@ kagweb chat [options]
 回答生成期间按 `Ctrl-C` 会取消当前 turn 并回到输入提示符;模型通过
 `ask_user` 提问时,会在终端内渲染选项卡片并等待输入(非交互式 stdin
 下自动提交空回复,turn 不会挂起)。
+
+---
+
+## `start` / `restart` / `stop` — 启动与停止
+
+`kagweb` 安装在虚拟环境里，先激活再执行（或直接调用 `.venv/bin/kagweb`）：
+
+```bash
+source .venv/bin/activate     # Windows: .venv\Scripts\activate
+kagweb start                  # 前台运行，Ctrl+C 停止
+```
+
+后台方式启动，用 `restart` / `stop` 管理：
+
+```bash
+kagweb start --detach         # 后台启动；日志：data/user/runtime/launcher.log
+kagweb restart                # 停止当前 launcher 后重新启动
+kagweb stop                   # 停止后台 launcher
+```
+
+`kagweb restart` 默认沿用当前 launcher 的前端模式（`--dev` 或生产构建），
+需要切换时显式传 `--dev` / `--prod`。若端口被占用，`kagweb start` 会列出
+占用进程并提示改端口或停止它们（仅交互式终端）。
 
 ---
 
