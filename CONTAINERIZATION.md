@@ -483,11 +483,14 @@ at `replicas: 1` with `strategy: Recreate`; redis is only needed for
 ## Intellect in containers
 
 A containerized KAGWeb cannot spawn a host-side `intellect acp` child
-(ACP is stdio). Use the `intellect-runs` preset instead: it speaks the
-api_server run endpoints that the gateway platform already exposes on
-`http://host.docker.internal:8642` (default port, `API_SERVER_KEY`
-auth). Configure the profile URL to `http://host.docker.internal:8642`
-and set the profile `api_key` to the gateway's `API_SERVER_KEY`.
+(ACP is stdio). Use the community preset's **HTTP** connection method
+instead: it speaks the api_server run endpoints that the gateway platform
+already exposes on `http://host.docker.internal:8642` (default port,
+`API_SERVER_KEY` auth). Add an `intellect` profile and pick "HTTP service
+(/v1/runs)", or set `KAGWEB_AGENT_LOOP_BACKEND=intellect` together with
+`KAGWEB_AGENT_LOOP_TRANSPORT=http`. Configure the profile URL to
+`http://host.docker.internal:8642` and set the profile `api_key` to the
+gateway's `API_SERVER_KEY`.
 
 For the **enterprise (team)** deployment use `intellect-team`, which
 targets the same run endpoints with the team edition's event vocabulary.
@@ -499,22 +502,67 @@ mid-turn cancellation, and honour a per-turn `model`. A dropped event
 stream degrades to run-status polling, which still recovers the turn's
 final answer.
 
+**The gateway has to be serving the API at all.** `API_SERVER_ENABLED=1`
+plus a key is what starts it, and without a PostgreSQL connection the
+gateway logs `API Server enabled but no PostgreSQL connection — skipping`
+and never binds the port:
+
+```bash
+# ~/.intellect/.env (shell vars are read too; the file wins)
+API_SERVER_ENABLED=1
+API_SERVER_PORT=8642
+API_SERVER_KEY=<openssl rand -hex 32>
+```
+
+`GET {url}/health` answers without a credential and is the quickest way to
+confirm it is up. The Rust build binds `0.0.0.0` regardless of
+`API_SERVER_HOST` and ignores `INTELLECT_BASE_PATH` only if unset — when a
+base path *is* configured every route gains that prefix, so the profile URL
+has to carry it too.
+
+**A tenant-scoped gateway needs the profile's `tenant_id`.** Intellect
+validates the incoming tenant against its own `INTELLECT_TENANT_ID` and
+answers `400` (not 32 hex) or `403` (mismatch) before the turn starts; the
+value it expects is visible without credentials at `GET {url}/api/tenant/info`.
+Copy it into the profile's **Tenant id** field (settings refuse a malformed
+value at save time). Leaving it blank means "the service's default tenant",
+which is correct only when the gateway is not enforcing one.
+
 ### Per-user identity against the gateway
 
-By default KAGWeb presents the profile's `api_key` for every turn, so the
-gateway cannot tell one KAGWeb account from another. To attribute turns to
-the signed-in account, set the profile's `identity_mode`:
+Turns against an Intellect HTTP profile are **attributed by default**
+(`identity_mode` empty), which sends `X-Intellect-User: mem_<account>` with
+the profile's `api_key` still doing the authentication — the same shape the
+sibling enterprise UI presents. Nothing reaches the gateway for other
+presets unless you ask. The explicit modes:
 
-- `header` — send `X-Intellect-User: mem_<account>`. The gateway records
-  each run's owner, but the service key remains unrestricted, so this is
-  *attribution only*; KAGWeb's own session store stays the isolation
-  boundary.
+- `header` — the default; see above. The gateway records each run's owner,
+  but the service key remains unrestricted, so this is *attribution only*;
+  KAGWeb's own session store stays the isolation boundary.
 - `token` — present the account's own linked member token, so the
   gateway's roles and per-owner isolation apply. Users connect their
   account under Settings → Models. Requires the gateway to run with
   PostgreSQL and `members.enabled`.
 - `token_required` — as `token`, but a user without a link cannot start a
   turn. Use this when the gateway is expected to enforce separation.
+- `off` — send nothing extra. Correct for a gateway whose users have no
+  accounts there, or when the deployment intentionally files every turn
+  under the service principal.
+
+Under `header`, a user who has connected their account is attributed to that
+account's real member id rather than to one derived from their KAGWeb id, so
+the gateway's records name the account they actually signed in as.
+
+**The sign-in card lives under Settings → Models** and is offered to
+administrators and ordinary users alike — it is the user's own credential,
+not deployment configuration. It hides itself when no agent service is
+configured, or after the gateway reports the feature unavailable. Password
+sign-in posts once to the gateway's `/api/members/login` and stores only the
+minted `imt_*` token; "connect with a token" accepts a member token someone
+was given out of band, verifying it with `GET /api/members/me` first. Linking
+requires the gateway's `members.enabled` and, for password sign-in, that the
+account already exists (`POST /api/members/register` is how the gateway
+creates one).
 
 A linked credential that expires or is revoked fails the turn; it never
 falls back to the shared key, because that fallback is the more privileged

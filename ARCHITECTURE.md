@@ -25,12 +25,14 @@ CLI (kagweb_cli)   WebSocket /ws   Python SDK (KAGWebApp)
                        │                                   │
                  CLI subprocess                       HTTP service
         claude-code · codex · opencode ·    intellect-team · hermes ·
-        intellect (ACP) · custom-cli        agentscope · custom-http
+        intellect (ACP) · custom-cli        agentscope · custom-http ·
+                                            intellect (HTTP)
 
         intellect runs `intellect acp` — one long-lived Agent Client
         Protocol child per session: message deltas, thinking, tool
         calls, plans, approvals (ask_user cards) and usage all map to
-        neutral events; kagweb[acp] required.
+        neutral events; kagweb[acp] required. The same preset reached
+        over its HTTP transport speaks the /v1/runs channel instead.
                               │
                               ▼
                     neutral AgentLoopEvents → StreamBus → consumers
@@ -85,8 +87,8 @@ single-operator / local-deployment shape.
 One streaming POST per turn for agent services — the multi-user shape, since
 the loop's code execution happens inside the operator's service, not the
 KAGWeb process. `hermes`, `agentscope` and `custom-http` speak one small
-contract; `intellect-team` and `intellect-runs` speak Intellect's run
-channel instead (see below):
+contract; `intellect-team` and the community preset's `http` transport speak
+Intellect's run channel instead (see below):
 
 ```
 POST {url}{turn_path}                      # default path /agent/turn
@@ -108,8 +110,8 @@ real status/body.
 
 #### Intellect run channel (`protocol: "runs"`)
 
-The `intellect-team` and `intellect-runs` presets speak Intellect's run
-channel instead of the generic turn contract: `POST {url}/v1/runs` returns
+The `intellect-team` preset and the `intellect` preset's `http` transport
+speak Intellect's run channel instead of the generic turn contract: `POST {url}/v1/runs` returns
 `202 {run_id}` and `GET /v1/runs/{run_id}/events` streams lifecycle events
 (SSE, each `data:` frame a `RunEvent`). Dispatch is on the payload's own
 `type` first and the frame's `event` second — text, reasoning and the
@@ -140,8 +142,12 @@ answer arrives after the agent stopped listening.
 ### Identity: who a turn runs as
 
 `identity_mode` (per profile, HTTP family) decides what a turn presents to
-the agent service. The default `off` sends exactly what the profile
-configures — the pre-existing behaviour.
+the agent service. An absent value means "whatever this preset does by
+default": the self-hosted Intellect presets (`intellect` over HTTP,
+`intellect-team`) default to `header`, because their service records an
+owner and the sibling enterprise UI always presents the signed-in account.
+Every other preset defaults to `off`, and an explicit value — including
+`off` — is always honoured.
 
 | Mode | Sends | Effect |
 | --- | --- | --- |
@@ -149,6 +155,12 @@ configures — the pre-existing behaviour.
 | `header` | profile key + `X-Intellect-User: mem_<account>` | **Attribution**: the service records which account owns each session/run |
 | `token` | the account's own linked member token | **Delegation**: service-side roles and per-owner isolation apply; unlinked users fall back to `header` |
 | `token_required` | as `token`, but mandatory | An unlinked user cannot start a turn |
+
+Under `header`, an account that has *linked* its Intellect account is
+attributed to the real member id from that sign-in rather than to the one
+derived from KAGWeb's local account id. Linking is therefore worth doing
+before delegation is switched on: it makes the service-side record agree
+with the account the user actually signed in as.
 
 **`header` is attribution, not isolation.** The service key carries an
 unrestricted principal (`bypass_member_filter`), so every ownership check
@@ -231,11 +243,15 @@ profile when the file configures none):
       "env": {},                    // CLI: the ONLY credentials the child gets
       "session_workspace": true,    // CLI: per-session working dir
       "url": "http://localhost:8083", // HTTP: service base URL (required)
-      "turn_path": "/agent/turn",   // HTTP: turn endpoint path
+      "turn_path": "/v1/runs",      // HTTP: turn endpoint path; empty =
+                                    // the preset transport's own default
       "headers": {},                // HTTP: extra headers
       "api_key": "",                // HTTP: Bearer token
-      "identity_mode": "off",       // HTTP: off | header | token | token_required
-                                    // (see "Identity: who a turn runs as")
+      "tenant_id": "",              // HTTP: instance tenant (32-hex), sent as
+                                    // X-Tenant-Id; empty = the service's own
+      "identity_mode": "header",    // HTTP: off | header | token | token_required;
+                                    // empty = the preset's default (attribution
+                                    // for Intellect HTTP, off elsewhere)
       "model": "",                  // model this backend should run
       "context_window": 0,          // real window for history budgeting; 0 = guess
       "timeout_seconds": 900,       // per-turn wall clock (30..86400)
@@ -301,7 +317,7 @@ concrete model name on `AgentLoopRequest.model`; family support varies:
 | Family | Support | Mechanism |
 | --- | --- | --- |
 | CLI (one-shot) | ✅ | `{model}` substitution uses the turn override, else the profile's `model`, else the arg drops |
-| HTTP runs (`intellect-team` / `intellect-runs`) | ✅ | sent as `model` in the `POST /v1/runs` body, which both implementations read. The Python adapter validates it against its model catalog, so a name it does not know is rejected with `model_not_found` rather than ignored |
+| HTTP runs (`intellect-team` / `intellect` with the `http` transport) | ✅ | sent as `model` in the `POST /v1/runs` body, which both implementations read. The Python adapter validates it against its model catalog, so a name it does not know is rejected with `model_not_found` rather than ignored |
 | HTTP turn (`hermes` / `agentscope` / `custom-http`) | ⬜ body carries `model` | honored where the service reads it; unknown services claim nothing |
 | ACP | ❌ | no per-turn model field in the protocol; picker hidden |
 
