@@ -2259,6 +2259,9 @@ async def update_kag_domain(request: Request, payload: dict[str, Any]) -> dict[s
     # 空api_key = "保留已存值"（tri-state 写法，沿 agent-loop api_key 先例）
     if not str(block.get("bridge_api_key") or "").strip():
         block["bridge_api_key"] = str(get_kag_settings().get("bridge_api_key") or "")
+    # 评审 F1：与 agent-loop PUT 同款——用不含 process overrides 的文件态合并保存，
+    # 否则 env 覆盖（如 KAGWEB_AGENT_LOOP_BACKEND）会被烘焙进 system.json
     service = get_runtime_settings_service()
-    saved = service.save_system({**system, "kag": block})
+    current = service.load_system(include_process_overrides=False)
+    saved = service.save_system({**current, "kag": block})
     return _kag_domain_payload(saved.get("kag") or {})

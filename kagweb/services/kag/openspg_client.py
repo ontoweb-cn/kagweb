@@ -9,6 +9,7 @@ server 端 pemja 真实验证（M0-10 实测）。
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import httpx
@@ -27,8 +28,6 @@ def _parse_response(resp: httpx.Response) -> Any:
     """server 的成功体是 JSON；错误体常见为裸字符串（M0-4 实测）。"""
     text = resp.text or ""
     try:
-        import json
-
         return json.loads(text)
     except ValueError:
         return text
@@ -79,7 +78,9 @@ class OpenSPGClient:
     # —— 项目（ProjectController，/public/v1/project）——
 
     async def list_projects(self) -> list[dict[str, Any]]:
-        return await self._request("GET", "/public/v1/project") or []
+        # 类型防御（评审 F6）：server 偶发返回空体/字符串，统一归一为列表
+        result = await self._request("GET", "/public/v1/project")
+        return result if isinstance(result, list) else []
 
     async def get_project(self, project_id: str | int) -> dict[str, Any] | None:
         result = await self._request(
@@ -87,7 +88,7 @@ class OpenSPGClient:
         )
         if isinstance(result, list):
             return result[0] if result else None
-        return result
+        return result if isinstance(result, dict) else None
 
     async def create_project(
         self,
@@ -120,19 +121,9 @@ class OpenSPGClient:
             timeout=300.0,
         )
 
-    async def update_project(
-        self, *, project_id: str | int, name: str, namespace: str, user_no: str
-    ) -> Any:
-        return await self._request(
-            "POST",
-            "/public/v1/project/update",
-            json_body={
-                "id": int(project_id),
-                "name": name,
-                "namespace": namespace,
-                "userNo": user_no,
-            },
-        )
+    # update_project 刻意未实现（评审 F3）：server 端 /update 校验要求 config
+    # 必填（ProjectController L159），裸 update 必 400；M3 表单编辑落地时随
+    # 完整 config 一起提供。
 
     # —— Schema（SchemaController，/public/v1/schema）——
 

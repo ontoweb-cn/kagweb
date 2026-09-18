@@ -5,6 +5,10 @@
 M2 v1 改用 JSON 文件（data/system/kag_tasks.json，系统级 bridge 上报记录），
 理由：记录体量小（滚动上限）、零 schema 迁移、与 auth_users.json 同模式；
 M4 多租户（T2）时按需迁移 SQLite。
+
+已知限制（评审 F5）：``_lock`` 是线程锁，不跨进程——backend_workers > 1 时
+并发写存在丢更新窗口。任务摘要是 advisory 数据（最坏丢一条上报），不作为
+正确性依据；M4 迁移 SQLite 时一并解决。
 """
 
 from __future__ import annotations
@@ -38,7 +42,10 @@ def _normalize(record: dict[str, Any]) -> dict[str, Any]:
         "question": str(record.get("question") or "")[:2000],
         "answer_digest": str(record.get("answer_digest") or "")[:2000],
         "cost_ms": int(record.get("cost_ms") or 0),
-        "references": record.get("references") if isinstance(record.get("references"), list) else [],
+        # 条数防御（评审 F5）：bridge 侧已截 20，此处再防异常巨大的上报体
+        "references": (
+            record.get("references")[:20] if isinstance(record.get("references"), list) else []
+        ),
         "created_at": str(record.get("created_at") or time.strftime("%Y-%m-%dT%H:%M:%S%z")),
     }
 

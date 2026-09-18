@@ -15,6 +15,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Header, HTTPException, Request
+from pydantic import BaseModel
 
 from kagweb.services.kag import get_kag_settings, kag_enabled
 from kagweb.services.kag.access import kag_read_allowed
@@ -91,18 +92,29 @@ async def list_projects() -> dict[str, Any]:
     return {"projects": projects if isinstance(projects, list) else []}
 
 
+class KagProjectCreateRequest(BaseModel):
+    """创建项目的请求体（评审 F4：pydantic 模型，contracts 生成线可产出 TS 类型）。"""
+
+    name: str
+    namespace: str
+    # 模型目录 services.embedding.profiles 中的 profile id（凭据服务端取用）
+    embedding_model_id: str = ""
+    # 缺省时对 embedding 端点做一次实测探测（与 server 端校验同型）
+    vector_dimensions: int | None = None
+    service_user_no: str = ""
+
+
 @router.post("/projects")
-async def create_project(request: Request, payload: dict[str, Any]) -> dict[str, Any]:
+async def create_project(request: Request, payload: KagProjectCreateRequest) -> dict[str, Any]:
     """创建 LOCAL 项目（完整流程：vectorizer 从模型目录组装，维度经实测探测）。
 
-    body: {name, namespace, embedding_model_id?, vector_dimensions?, service_user_no?}
-    embedding_model_id 指向 KAGWeb 模型目录中的 embedding 模型（凭据不回显）。
+    embedding_model_id 指向 KAGWeb 模型目录中的 embedding profile（凭据不回显）。
     """
     _require_admin()
     _require_same_origin(request)
 
-    name = str(payload.get("name") or "").strip()
-    namespace = str(payload.get("namespace") or "").strip()
+    name = str(payload.name or "").strip()
+    namespace = str(payload.namespace or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
     if not _NAMESPACE_RE.match(namespace):
@@ -111,11 +123,14 @@ async def create_project(request: Request, payload: dict[str, Any]) -> dict[str,
             detail="namespace 必须为纯字母数字且以字母开头（Neo4j 数据库名约束，3-64 位）",
         )
     block = get_kag_settings()
-    user_no = str(payload.get("service_user_no") or block.get("service_user_no") or "kagweb")
+    user_no = str(payload.service_user_no or block.get("service_user_no") or "kagweb")
     if not _USERNO_RE.match(user_no):
         raise HTTPException(status_code=400, detail="service_user_no 须 6-20 位字母/数字/下划线")
 
-    vectorizer = await _assemble_vectorizer(payload)
+    vectorizer = await _assemble_vectorizer(
+        model_id=str(payload.embedding_model_id or "").strip(),
+        vector_dimensions=payload.vector_dimensions,
+    )
     try:
         result = await _client().create_project(
             name=name, namespace=namespace, user_no=user_no, vectorizer=vectorizer
@@ -125,19 +140,18 @@ async def create_project(request: Request, payload: dict[str, Any]) -> dict[str,
     return {"project": result}
 
 
-async def _assemble_vectorizer(payload: dict[str, Any]) -> dict[str, Any]:
-    """从模型目录的 embedding 模型组装 vectorizer（M0-10 实测契约）。
+async def _assemble_vectorizer(*, model_id: str, vector_dimensions: int | None) -> dict[str, Any]:
+    """从模型目录的 embedding profile 组装 vectorizer（M0-10 实测契约）。
 
     维度优先用请求值；缺省时对 embedding 端点做一次实测探测（一次
     /embeddings 调用，与 server 端 pemja 校验同型——避免错配维度）。
     凭据只在服务端流转，不回显。
     """
-    model_id = str(payload.get("embedding_model_id") or "").strip()
     connection = _embedding_connection(model_id)
     if connection is None:
         raise HTTPException(
             status_code=400,
-            detail="embedding_model_id 未在模型目录中配置（需 embedding 用途的模型）",
+            detail="embedding_model_id 未在模型目录的 embedding 服务中配置",
         )
     vectorizer = {
         "type": "openai",
@@ -145,35 +159,42 @@ async def _assemble_vectorizer(payload: dict[str, Any]) -> dict[str, Any]:
         "base_url": str(connection.get("base_url") or ""),
         "model": str(connection.get("model") or model_id),
     }
-    dims = payload.get("vector_dimensions")
-    if isinstance(dims, int) and dims > 0:
-        vectorizer["vector_dimensions"] = dims
+    if isinstance(vector_dimensions, int) and vector_dimensions > 0:
+        vectorizer["vector_dimensions"] = vector_dimensions
     else:
         vectorizer["vector_dimensions"] = await _probe_dimensions(vectorizer)
     return vectorizer
 
 
 def _embedding_connection(model_id: str) -> dict[str, Any] | None:
-    """模型目录中 embedding 用途条目的连接信息（api_key/base_url/model）。"""
+    """模型目录中 embedding profile 的连接信息（api_key/base_url/model）。
+
+    目录真实形态（评审 F2 修正）：``services.embedding.profiles[]``，
+    profile 自含 base_url/api_key（connection 凭据已在保存时镜像下来）。
+    凭据只在服务端流转，不回显。
+    """
     from kagweb.services.config.model_catalog import get_model_catalog_service
 
     try:
         catalog = get_model_catalog_service().load()
     except Exception:
         return None
-    for entry in catalog.get("models", []) if isinstance(catalog, dict) else []:
-        if not isinstance(entry, dict):
+    services = catalog.get("services") if isinstance(catalog, dict) else {}
+    embedding = services.get("embedding") if isinstance(services, dict) else {}
+    for profile in (embedding or {}).get("profiles", []) or []:
+        if not isinstance(profile, dict) or str(profile.get("id") or "") != model_id:
             continue
-        if str(entry.get("id") or "") != model_id:
-            continue
-        purpose = str(entry.get("purpose") or "")
-        connection = entry.get("connection") if isinstance(entry.get("connection"), dict) else {}
-        if "embedding" in purpose or entry.get("model_type") == "embedding":
-            return {
-                "api_key": connection.get("api_key") or "",
-                "base_url": connection.get("base_url") or "",
-                "model": entry.get("model") or model_id,
-            }
+        # KAGWeb 目录约定（_CONNECTION_BASE_SUFFIX）：embedding profile 的
+        # base_url 存完整端点（含 /embeddings）；KAG 的 OpenAIVectorizeModel
+        # 期望 OpenAI API base（客户端自己拼 /embeddings）——组装时转换
+        base_url = str(profile.get("base_url") or "").rstrip("/")
+        if base_url.endswith("/embeddings"):
+            base_url = base_url[: -len("/embeddings")]
+        return {
+            "api_key": str(profile.get("api_key") or ""),
+            "base_url": base_url,
+            "model": str(profile.get("model") or profile.get("name") or model_id),
+        }
     return None
 
 
