@@ -448,13 +448,17 @@ def _per_turn_model_enabled() -> bool:
     picker is hidden rather than shown uselessly.
     """
     try:
-        from kagweb.services.agent_loop.builtin import per_turn_model_apply
-        from kagweb.services.agent_loop.settings import resolve_primary_profile
+        from kagweb.services.agent_loop.settings import (
+            profile_per_turn_model,
+            resolve_primary_profile,
+        )
         from kagweb.services.config.runtime_settings import get_runtime_settings_service
 
         block = get_runtime_settings_service().load().get("agent_loop") or {}
         resolved = resolve_primary_profile(block)
-        return per_turn_model_apply(str((resolved or {}).get("preset") or ""))
+        # Per-profile, not per-preset: the community Intellect preset serves a
+        # per-turn model only over its HTTP transport.
+        return profile_per_turn_model(resolved)
     except Exception:
         return False
 

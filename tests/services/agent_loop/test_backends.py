@@ -447,17 +447,52 @@ def test_factory_http_requires_url() -> None:
 
 
 def test_intellect_http_presets_ride_the_run_channel() -> None:
-    """Both Intellect HTTP presets must select the runs transport.
+    """Both Intellect HTTP shapes must select the runs transport.
 
     ``intellect-team`` used to carry no ``turn_path``/``protocol``, so it fell
     back to the preset default ``/agent/turn`` — an endpoint the service does
     not expose, making every turn a guaranteed 404. The failure was invisible
     because the transport is chosen from the very fields that were missing.
+    The community edition reaches its runs channel through the ``http``
+    transport of the merged ``intellect`` preset.
     """
-    for preset in ("intellect-team", "intellect-runs"):
-        backend = build_agent_loop_backend({"backend": preset, "url": "http://intellect.test"})
-        assert isinstance(backend, RunsAgentLoopBackend), preset
-        assert backend.turn_path == "/v1/runs", preset
+    for spec in (
+        {"backend": "intellect-team", "url": "http://intellect.test"},
+        {"backend": "intellect", "transport": "http", "url": "http://intellect.test"},
+    ):
+        backend = build_agent_loop_backend(spec)
+        assert isinstance(backend, RunsAgentLoopBackend), spec
+        assert backend.turn_path == "/v1/runs", spec
+
+
+def test_community_intellect_defaults_to_its_local_acp_child() -> None:
+    """Omitting the transport must keep building the ACP child.
+
+    Existing profiles predate the ``transport`` field; if a bare ``intellect``
+    resolved to the HTTP shape they would silently stop spawning a local
+    process and start calling a service that may not be there.
+    """
+    from kagweb.services.agent_loop.builtin import preset_family
+
+    assert preset_family("intellect") == "cli"
+    assert preset_family("intellect", "acp") == "cli"
+    assert preset_family("intellect", "http") == "http"
+
+
+def test_an_unknown_transport_is_a_loud_error() -> None:
+    """A selector this build does not know must not fall back to the default.
+
+    The two community transports differ in privilege (local child vs remote
+    service), so silently running a turn somewhere else is not an option.
+    """
+    with pytest.raises(AgentLoopError):
+        build_agent_loop_backend(
+            {"backend": "intellect", "transport": "nonsense", "url": "http://x:1"}
+        )
+    with pytest.raises(AgentLoopError):
+        build_agent_loop_backend(
+            {"backend": "claude-code", "transport": "http", "command": "claude"}
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -892,21 +927,24 @@ def test_per_turn_model_flag_is_true_exactly_for_backends_that_consume_it() -> N
     """
     from kagweb.services.agent_loop.builtin import PRESETS, per_turn_model_apply
 
+    # Presets with one transport answer with their ``per_turn_model`` default;
+    # the merged Intellect preset answers per transport instead (its HTTP runs
+    # channel consumes a model, the ACP child has no such field).
     expected = {
         "claude-code": True,
         "codex": True,
         "opencode": True,
         "custom-cli": True,
-        "intellect": False,  # ACP: no per-turn model field in the protocol
+        "intellect": False,  # default transport is ACP: no per-turn model field
         "intellect-team": True,
-        "intellect-runs": True,
         "hermes": False,
         "agentscope": False,
         "custom-http": False,
     }
     assert {name: preset.per_turn_model for name, preset in PRESETS.items()} == expected
     assert per_turn_model_apply("claude-code") is True
-    assert per_turn_model_apply("intellect-runs") is True
+    assert per_turn_model_apply("intellect", "http") is True
+    assert per_turn_model_apply("intellect", "acp") is False
     assert per_turn_model_apply("custom-http") is False
     assert per_turn_model_apply("unknown") is False
 
@@ -923,7 +961,7 @@ def test_factory_threads_the_model_onto_every_family() -> None:
     assert http.model == "qwen-max"
 
     runs = build_agent_loop_backend(
-        {"backend": "intellect-runs", "url": "http://r:1", "model": "gpt-5"}
+        {"backend": "intellect", "transport": "http", "url": "http://r:1", "model": "gpt-5"}
     )
     assert runs.model == "gpt-5"
 

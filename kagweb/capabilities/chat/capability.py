@@ -31,7 +31,6 @@ from kagweb.core.capability_protocol import CapabilityManifest, TurnCapability
 from kagweb.core.context import UnifiedContext
 from kagweb.core.trace import build_trace_metadata, merge_trace_metadata, new_call_id
 from kagweb.services.agent_loop import build_agent_loop_backend
-from kagweb.services.agent_loop.builtin import preset_family
 from kagweb.services.agent_loop.consult import (
     consult_manifest,
     consult_session_id,
@@ -55,6 +54,7 @@ from kagweb.services.agent_loop.settings import (
     consult_profiles,
     find_consult_profile,
     get_agent_loop_settings,
+    profile_family,
     resolve_primary_profile,
 )
 from kagweb.services.i18n import t
@@ -160,7 +160,7 @@ class ChatCapability(TurnCapability):
         try:
             identity = resolve_backend_identity(
                 profile,
-                family=preset_family(str(profile.get("preset") or "")),
+                family=profile_family(profile),
                 language=language,
             )
         except IdentityUnavailable as exc:

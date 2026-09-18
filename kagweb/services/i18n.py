@@ -49,6 +49,10 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.url_required": (
             'Agent-loop backend {backend!r} needs a url; set "url" in the "agent_loop" settings.'
         ),
+        "agent_loop.unknown_transport": (
+            "Agent-loop backend {backend!r} does not offer the transport {transport!r}; "
+            'check the "agent_loop" settings.'
+        ),
         "agent_loop.empty_answer": (
             "The agent-loop backend {backend!r} finished without producing an answer."
         ),

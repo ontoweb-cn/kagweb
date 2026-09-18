@@ -68,9 +68,9 @@ def _effective_required_service(
         declared = getattr(getattr(entry, "manifest", None), "required_service", "")
         return str(declared or "llm")
 
-    from kagweb.services.agent_loop.builtin import preset_family
     from kagweb.services.agent_loop.settings import (
         get_agent_loop_settings,
+        profile_family,
         resolve_primary_profile,
     )
 
@@ -84,7 +84,10 @@ def _effective_required_service(
     if profile is None:
         # No backend → the shell stub. Nothing drives the turn.
         return "llm"
-    if preset_family(str(profile.get("preset") or "")) == "cli":
+    # Family comes from the profile, not just the preset name: the community
+    # Intellect preset is a local child (CLI grant) or a remote service
+    # (deployment default) depending on which transport the profile selected.
+    if profile_family(profile) == "cli":
         return "agent_loop_cli"
     return "agent_loop"
 
