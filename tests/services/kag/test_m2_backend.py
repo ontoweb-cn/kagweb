@@ -200,3 +200,71 @@ def test_kag_domain_payload_redacts_key() -> None:
     assert payload["bridge_api_key"] == ""  # write-only：不回显
     assert payload["bridge_api_key_set"] is True
     assert payload["bridge_command"] == "/x"
+
+
+# ---------------------------------------------------------------------------
+# 管理面响应脱敏（M2.4 冒烟发现：project.config 携带 vectorizer api_key
+# 与图存储密码，list/get/create 直接透传会向浏览器泄露服务端凭据）
+# ---------------------------------------------------------------------------
+
+
+def test_sanitize_masks_project_config_credentials() -> None:
+    from kagweb.api.routers.kag import _sanitize
+
+    row = {
+        "id": 3,
+        "name": "m0ProbeLive",
+        "config": {
+            "vectorizer": {
+                "model": "Qwen3-Embedding-8B",
+                "api_key": "gpustack_sk_live",
+                "base_url": "https://ai.example/v1",
+            },
+            "graph_store": {
+                "uri": "neo4j://h:7687",
+                "user": "neo4j",
+                "password": "neo4j@openspg",
+            },
+        },
+    }
+    sanitized = _sanitize(row)
+    vectorizer = sanitized["config"]["vectorizer"]
+    assert vectorizer["api_key"] == "***"
+    assert vectorizer["model"] == "Qwen3-Embedding-8B"  # 非敏感字段原样保留
+    assert sanitized["config"]["graph_store"]["password"] == "***"
+    assert sanitized["config"]["graph_store"]["uri"] == "neo4j://h:7687"
+    # 原对象不被就地修改（掩码只作用于响应组装）
+    assert row["config"]["vectorizer"]["api_key"] == "gpustack_sk_live"
+
+
+def test_sanitize_traverses_nested_lists_and_keeps_scalars() -> None:
+    from kagweb.api.routers.kag import _sanitize
+
+    value = {"items": [{"token": "t1", "ok": 1}, {"secret": "s"}], "n": None, "s": "x"}
+    sanitized = _sanitize(value)
+    assert sanitized == {"items": [{"token": "***", "ok": 1}, {"secret": "***"}], "n": None, "s": "x"}
+
+
+def test_sanitize_masks_serialized_json_config_string() -> None:
+    # OpenSPG 真实形态（M0-3/M2.4 冒烟实测）：project.config 是序列化 JSON
+    # 字符串，字符串内的凭据同样要掩掉，且保持字符串形态。
+    from kagweb.api.routers.kag import _sanitize
+
+    config = json.dumps(
+        {
+            "vectorizer": {"api_key": "gpustack_sk_live", "model": "Qwen3-Embedding-8B"},
+            "graph_store": {"password": "neo4j@openspg", "uri": "neo4j://h:7687"},
+        }
+    )
+    row = {"id": 3, "config": config, "name": "m0ProbeLive"}
+    sanitized = _sanitize(row)
+    assert isinstance(sanitized["config"], str)
+    parsed = json.loads(sanitized["config"])
+    assert parsed["vectorizer"]["api_key"] == "***"
+    assert parsed["vectorizer"]["model"] == "Qwen3-Embedding-8B"
+    assert parsed["graph_store"]["password"] == "***"
+    # 无凭据的 JSON 字符串原样保留（不重排键序以外的字节）
+    plain = json.dumps({"a": 1, "b": [2, 3]})
+    assert _sanitize({"config": plain})["config"] == plain
+    # 非 JSON 字符串不受影响
+    assert _sanitize({"s": "hello {not json"})["s"] == "hello {not json"

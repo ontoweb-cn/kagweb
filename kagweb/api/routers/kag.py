@@ -10,6 +10,7 @@ same-origin guard 沿用 settings router 的既有模式（origin_is_trusted）�
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -72,6 +73,45 @@ def _client() -> OpenSPGClient:
     return OpenSPGClient(str(block.get("spg_server_url") or ""))
 
 
+#: 管理面响应剔除的凭据键（M2.4 冒烟发现：OpenSPG project.config 携带
+#: vectorizer 的 api_key 与图存储密码，list/get 直接透传会向浏览器泄露
+#: 服务端凭据）。沿模型目录 CATALOG_SECRET_MASK 的掩码形态。
+_SECRET_KEYS = frozenset({"api_key", "apikey", "password", "token", "secret"})
+_SECRET_MASK = "***"
+
+
+def _sanitize(value: Any) -> Any:
+    """递归把凭据键的值替换为掩码（响应面向浏览器，凭据不出服务端）。
+
+    OpenSPG 的 ``project.config`` 是**序列化 JSON 字符串**（M0-3 实测），
+    字符串值尝试解析后掩码再原样序列化回字符串，保持字段形态不变。
+    """
+    if isinstance(value, dict):
+        return {
+            key: (
+                _SECRET_MASK
+                if str(key).lower() in _SECRET_KEYS
+                else _sanitize(child)
+            )
+            for key, child in value.items()
+        }
+    if isinstance(value, list):
+        return [_sanitize(item) for item in value]
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.startswith("{") or stripped.startswith("["):
+            try:
+                parsed = json.loads(value)
+            except ValueError:
+                return value
+            sanitized = _sanitize(parsed)
+            if sanitized == parsed:
+                return value
+            return json.dumps(sanitized, ensure_ascii=False, separators=(",", ":"))
+        return value
+    return value
+
+
 def _upstream_error(exc: OpenSPGError) -> HTTPException:
     detail = exc.body if isinstance(exc.body, str) and exc.body else str(exc)
     return HTTPException(status_code=502, detail=f"OpenSPG upstream error: {detail[:400]}")
@@ -89,7 +129,13 @@ async def list_projects() -> dict[str, Any]:
         projects = await _client().list_projects()
     except OpenSPGError as exc:
         raise _upstream_error(exc) from exc
-    return {"projects": projects if isinstance(projects, list) else []}
+    return {
+        "projects": [
+            _sanitize(p) for p in projects if isinstance(p, dict)
+        ]
+        if isinstance(projects, list)
+        else []
+    }
 
 
 class KagProjectCreateRequest(BaseModel):
@@ -137,7 +183,7 @@ async def create_project(request: Request, payload: KagProjectCreateRequest) -> 
         )
     except OpenSPGError as exc:
         raise _upstream_error(exc) from exc
-    return {"project": result}
+    return {"project": _sanitize(result)}
 
 
 async def _assemble_vectorizer(*, model_id: str, vector_dimensions: int | None) -> dict[str, Any]:
@@ -232,6 +278,7 @@ async def get_project(project_id: str) -> dict[str, Any]:
         raise _upstream_error(exc) from exc
     if project is None:
         raise HTTPException(status_code=404, detail="project not found")
+    project = _sanitize(project)
     schema_summary: Any = None
     labels: Any = None
     try:
