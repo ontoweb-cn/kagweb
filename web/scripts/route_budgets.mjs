@@ -31,6 +31,12 @@ const ROUTE_TARGETS = [
   { route: "/settings/models", requestPath: "/settings/models", budgetKb: 360 },
   { route: "/settings/knowledge", requestPath: "/settings/knowledge", budgetKb: 360 },
   { route: "/settings/agent-loop", requestPath: "/settings/agent-loop", budgetKb: 360 },
+  // KAG 管理台（设计 §5.4 注意事项 1）：M2.4 无图浏览（cytoscape 推 M3），
+  // 预算参照 settings 类页面；M3 图可视化落地时需按实测上调。
+  { route: "/kag", requestPath: "/kag", budgetKb: 360 },
+  { route: "/kag/projects/[id]", requestPath: "/kag/projects/perf-budget", budgetKb: 360 },
+  { route: "/kag/tasks", requestPath: "/kag/tasks", budgetKb: 360 },
+  { route: "/settings/kag", requestPath: "/settings/kag", budgetKb: 360 },
 ];
 
 const ROOT_SHELL_BUDGET_KB = 390;

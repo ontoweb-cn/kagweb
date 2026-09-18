@@ -77,13 +77,20 @@ export function parseKagProjectDetail(raw: unknown): KagProjectDetail | null {
   const names = Array.isArray(summary.spg_type_names)
     ? summary.spg_type_names.map(text).filter(Boolean)
     : null;
+  // 后端 spg_type_count 是真实数；spg_type_names 截断到 100（kag.py），
+  // >100 类型的项目以 names.length 计数会偏小——count 字段优先，names 仅 fallback。
+  const reported = Number(summary.spg_type_count);
+  const typeCount =
+    Number.isInteger(reported) && reported >= 0
+      ? reported
+      : (names?.length ?? 0);
   const labels = Array.isArray(payload.graph_labels)
     ? payload.graph_labels.map(text).filter(Boolean)
     : null;
   return {
     project,
     schemaSummary:
-      names === null ? null : { spgTypeCount: names.length, spgTypeNames: names },
+      names === null ? null : { spgTypeCount: typeCount, spgTypeNames: names },
     graphLabels: labels,
   };
 }

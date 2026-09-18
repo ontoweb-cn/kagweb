@@ -82,6 +82,24 @@ test("parseKagProjectDetail accepts label lists and rejects missing projects", (
   assert.equal(parseKagProjectDetail({ project: {} }), null);
 });
 
+test("parseKagProjectDetail prefers the backend count over truncated names", () => {
+  // 后端 spg_type_names 截断到 100；>100 类型的项目计数以 spg_type_count 为准
+  const detail = parseKagProjectDetail({
+    project: { id: 1, name: "big", namespace: "big" },
+    schema_summary: { spg_type_count: 120, spg_type_names: ["Entity", "big.A"] },
+    graph_labels: [],
+  });
+  assert.equal(detail?.schemaSummary?.spgTypeCount, 120);
+  assert.deepEqual(detail?.schemaSummary?.spgTypeNames, ["Entity", "big.A"]);
+  // count 字段缺失/非法时退回 names 长度
+  const fallback = parseKagProjectDetail({
+    project: { id: 1, name: "big", namespace: "big" },
+    schema_summary: { spg_type_names: ["Entity", "big.A", "big.B"] },
+    graph_labels: [],
+  });
+  assert.equal(fallback?.schemaSummary?.spgTypeCount, 3);
+});
+
 // —— Schema 树 ——
 // spgTypes 行形态：M0-3 实测 + knext rest 模型（basicInfo.name.nameEn /
 // namespace、parentTypeInfo.parentTypeIdentifier、properties[].inherited）。

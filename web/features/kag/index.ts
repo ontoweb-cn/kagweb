@@ -4,8 +4,6 @@ export {
   fetchKagProjectSchema,
   fetchKagTasks,
   createKagProject,
-  fetchKagSettings,
-  saveKagSettings,
   fetchKagEmbeddingProfiles,
 } from "./api";
 export type { KagTaskQuery } from "./api";

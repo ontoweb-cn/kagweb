@@ -11,13 +11,11 @@ import {
   parseKagProject,
   parseKagProjectDetail,
   parseKagProjects,
-  parseKagSettings,
   parseKagTasks,
   parseSpgSchema,
   type KagEmbeddingProfile,
   type KagProject,
   type KagProjectDetail,
-  type KagSettings,
   type KagTaskRow,
   type SpgTypeRow,
 } from "./model";
@@ -57,7 +55,10 @@ export async function createKagProject(
     body: JSON.stringify(body),
     scope: "kag",
   });
-  return parseKagProject(payload) ?? parseKagProjects(payload)[0];
+  // 类型诚实（评审 F6）：响应缺 project 字段属契约破坏，显式抛错而非返回 undefined
+  const project = parseKagProject(payload) ?? parseKagProjects(payload)[0];
+  if (!project) throw new Error("Create-project response is missing the project.");
+  return project;
 }
 
 export async function fetchKagProjectDetail(
@@ -99,30 +100,10 @@ export async function fetchKagTasks(
   return parseKagTasks(payload);
 }
 
-// —— kag settings 域（admin-only；设置区使用）——
-
-export async function fetchKagSettings(signal?: AbortSignal): Promise<KagSettings> {
-  const payload = await requestJson<unknown>("/api/settings/kag", {
-    cache: "no-store",
-    signal,
-    scope: "kag",
-  });
-  return parseKagSettings(payload);
-}
-
-export async function saveKagSettings(
-  body: Record<string, unknown>,
-): Promise<KagSettings> {
-  const payload = await requestJson<unknown>("/api/settings/kag", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    scope: "kag",
-  });
-  return parseKagSettings(payload);
-}
-
 // —— embedding 模型选项（创建项目表单；目录端点本身 admin-only）——
+// （kag settings 域的 GET/PUT 由 features/settings/sections/KagSettingsSection
+//  按 Attachments 扩展模式自行 apiFetch——扩展注册需要 pending-restore 特化，
+//  不走本模块的通用 transport。）
 
 export async function fetchKagEmbeddingProfiles(
   signal?: AbortSignal,

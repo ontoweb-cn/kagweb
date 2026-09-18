@@ -342,6 +342,12 @@ export default function KagProjectsPage() {
 
       <KagStateView loading={loading} error={null} />
 
+      {/* 403/502 之外（网络失败、上游 5xx 等）落到 KagStateView 的通用错误视图，
+          否则三个特化分支之外会渲染空白。 */}
+      {!loading && !denied && !unconfigured && projects === null ? (
+        <KagStateView loading={false} error={errorMessage(error)} />
+      ) : null}
+
       {!loading && denied ? (
         <div className="rounded-xl border border-[var(--border)]/60 bg-[var(--card)] px-5 py-10 text-center">
           <p className="text-[13.5px] font-medium text-[var(--foreground)]">
@@ -374,9 +380,11 @@ export default function KagProjectsPage() {
               </>
             ) : null}
           </p>
-          <p className="mx-auto mt-2 max-w-lg break-words text-[11.5px] leading-relaxed text-[var(--muted-foreground)]/80">
-            {errorMessage(error)}
-          </p>
+          {auth.isAdmin ? (
+            <p className="mx-auto mt-2 max-w-lg break-words text-[11.5px] leading-relaxed text-[var(--muted-foreground)]/80">
+              {errorMessage(error)}
+            </p>
+          ) : null}
         </div>
       ) : !loading && projects !== null ? (
         <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
