@@ -1,0 +1,54 @@
+{
+  "static": {
+    "scanned_files": 1666,
+    "hits": {
+      "TuGraph": [
+        "pom.xml :: <dep> cloudext-impl-graph-store-tugraph",
+        "pom.xml :: <dep> com.antgroup.tugraph",
+        "pom.xml :: <dep> tugraph-db-java-rpc-client",
+        "pom.xml:57 :: <tugraph.client.version>1.4.1</tugraph.client.version>",
+        "cloudext/pom.xml:43 :: <module>impl/graph-store/tugraph</module>",
+        "builder/core/pom.xml :: <dep> cloudext-impl-graph-store-tugraph",
+        "builder/core/pom.xml:44 :: <artifactId>cloudext-impl-graph-store-tugraph</artifactId>",
+        "builder/runner/local/src/main/java/com/antgroup/openspg/builder/runner/local/physical/sink/BaseSinkWriter.java:34 :: * <p>Taking TuGraph and Elasticsearch as examples."
+      ],
+      "Neo4j": [
+        "pom.xml :: <dep> cloudext-impl-graph-store-neo4j",
+        "pom.xml :: <dep> cloudext-impl-search-engine-neo4j",
+        "pom.xml :: <dep> org.neo4j.driver",
+        "pom.xml :: <dep> neo4j-java-driver",
+        "pom.xml:50 :: <neo4j.client.version>4.4.7</neo4j.client.version>",
+        "cloudext/pom.xml:44 :: <module>impl/graph-store/neo4j</module>",
+        "cloudext/pom.xml:46 :: <module>impl/search-engine/neo4j</module>",
+        "reasoner/pom.xml :: <dep> org.neo4j"
+      ]
+    },
+    "config_keys": [
+      "pom.xml:8 :: ~ http://www.apache.org/licenses/LICENSE-2.0",
+      "pom.xml:14 :: <project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"",
+      "pom.xml:15 :: xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">",
+      "pom.xml:25 :: <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>",
+      "pom.xml:467 :: <url>https://repo.maven.apache.org/maven2</url>",
+      "pom.xml:478 :: <url>https://repo.osgeo.org/repository/release/</url>",
+      "pom.xml:514 :: <argLine>@{argLine} -Xmx1024m -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m",
+      ".licenserc.yaml:1 :: header:",
+      ".licenserc.yaml:2 :: license:",
+      ".licenserc.yaml:3 :: spdx-id: Apache-2.0"
+    ]
+  },
+  "connectivity": null,
+  "note": "最小部署（docker compose 单机）按 §10 第 5 项人工验证；图存储直连端口必须纳入隔离边界（§6.1，评审 A1）。",
+  "__env__": {
+    "recorded_at": "2026-09-18T11:06:58.955377+00:00",
+    "python": "3.14.6",
+    "argv": [
+      "--openspg-dir",
+      "/Users/simon/project/openspgapp/openspg"
+    ],
+    "kag_version": "unknown",
+    "env:KAG_PROJECT_HOST_ADDR": "",
+    "env:KAG_PROJECT_ID": "",
+    "env:KAG_PROJECT_NAMESPACE": "",
+    "env:KAG_GRAPH_STORE_URI": ""
+  }
+}

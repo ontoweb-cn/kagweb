@@ -1,0 +1,39 @@
+{
+  "workdir": "/private/tmp/m0_mcp_workdir",
+  "generated": [
+    ".mcp.json",
+    "stub_server.py"
+  ],
+  "manual_steps": [
+    "实测步骤（M0-8 判定）：",
+    "  1. cd /private/tmp/m0_mcp_workdir",
+    "  2. claude mcp list",
+    "     → 期望出现 kag-bridge-stub（发现机制 OK）",
+    "  3. claude -p \"调用 kag_solve 工具，问题：测试\" --allowedTools \"mcp__kag-bridge-stub__kag_solve\"",
+    "     （参数名随 claude CLI 版本可能不同，以 claude --help 为准）",
+    "  4. cat probe_log.jsonl",
+    "     → 期望看到 initialize 的 env 字段含 KAG_BRIDGE_TOKEN=m0-probe-token",
+    "     （env 注入路径 OK，即 KAGWeb scoped token 传递形态可行）",
+    "判定：2+4 同时通过 → KAGWeb 对话链路接线（设计 §5.3）前提成立。"
+  ],
+  "note": "本脚本只做环境准备；判定命令需人工执行（避免本机 claude CLI 版本差异造成误判）。",
+  "__env__": {
+    "recorded_at": "2026-09-18T11:06:58.543453+00:00",
+    "python": "3.14.6",
+    "argv": [
+      "--workdir",
+      "/tmp/m0_mcp_workdir"
+    ],
+    "kag_version": "unknown",
+    "env:KAG_PROJECT_HOST_ADDR": "",
+    "env:KAG_PROJECT_ID": "",
+    "env:KAG_PROJECT_NAMESPACE": "",
+    "env:KAG_GRAPH_STORE_URI": ""
+  },
+  "verification_step2": {
+    "cmd": "cd /tmp/m0_mcp_workdir && claude mcp list",
+    "result": "kag-bridge-stub: python3 stub_server.py - ⏸ Pending approval (run `claude` to approve)",
+    "verdict": "PASS——workdir .mcp.json 被 Claude Code 自动发现并列出；Pending approval 为 Claude Code 对项目级 MCP 服务器的首用审批门（设计注意：KAGWeb 生成的 .mcp.json 首次使用需用户在 claude 会话内批准，或经用户配置预授权）",
+    "remaining": "步骤 3/4（实际 tools/call 调用与 env 注入日志核验）需人工在 claude 会话内批准后完成"
+  }
+}

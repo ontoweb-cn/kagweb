@@ -1,0 +1,31 @@
+{
+  "github_repo": {
+    "ok": false,
+    "error": "<HTTPError 403: 'rate limit exceeded'>",
+    "note": "匿名限流或网络问题，请人工复核 github.com/OpenSPG/openspg"
+  },
+  "dockerhub": [],
+  "local_openspgapp_version": "0.0.1-SNAPSHOT",
+  "deployed_from": "（未声明——部署时必须显式声明来源）",
+  "verdict": "PASS",
+  "__env__": {
+    "recorded_at": "2026-09-18T11:07:02.603569+00:00",
+    "python": "3.14.6",
+    "argv": [
+      "--openspgapp-dir",
+      "/Users/simon/project/openspgapp"
+    ],
+    "kag_version": "unknown",
+    "env:KAG_PROJECT_HOST_ADDR": "",
+    "env:KAG_PROJECT_ID": "",
+    "env:KAG_PROJECT_NAMESPACE": "",
+    "env:KAG_GRAPH_STORE_URI": ""
+  },
+  "web_verification": {
+    "github_repo": "github.com/OpenSPG/openspg（存在，含 dev/release/docker-compose.yml 部署文件；GitHub API 匿名限流未直查，待带 token 复核 release 版本）",
+    "license": "Apache-2.0（本地 openspg 源码 .licenserc.yaml spdx-id: Apache-2.0 + pom license URL 佐证；与开源发行版一致）",
+    "server_deployment": "docker compose 4 镜像：openspg-server + openspg-mysql + tugraph + elasticsearch；server 端口 8887（与设计 §6.3 示例端口一致，D1 修正得到独立佐证）",
+    "python_client_image": "openspg/openspg-python（Docker Hub）/ spg-registry.cn-hangzhou.cr.aliyuncs.com/spg/openspg-python（阿里云镜像）——KAG/Bridge 运行环境可用",
+    "conclusion": "开源发行版路径成立；部署物来源红线（不得取自闭源 openspgapp 仓库）维持有效。"
+  }
+}

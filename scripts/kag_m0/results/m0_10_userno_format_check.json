@@ -1,0 +1,153 @@
+{
+  "static": {
+    "hit_count": 301,
+    "hits": [
+      {
+        "file": "openspg/server/api/http-client/src/main/java/com/antgroup/openspg/server/api/http/client/account/AccountService.java:42",
+        "code": "* get account info by userNo"
+      },
+      {
+        "file": "openspg/server/api/http-client/src/main/java/com/antgroup/openspg/server/api/http/client/account/AccountService.java:44",
+        "code": "* @param userNo"
+      },
+      {
+        "file": "openspg/server/api/http-client/src/main/java/com/antgroup/openspg/server/api/http/client/account/AccountService.java:47",
+        "code": "Account getByUserNo(String userNo);"
+      },
+      {
+        "file": "openspg/server/api/http-client/src/main/java/com/antgroup/openspg/server/api/http/client/account/AccountService.java:50",
+        "code": "* get account info by userNo with private info"
+      },
+      {
+        "file": "openspg/server/api/http-client/src/main/java/com/antgroup/openspg/server/api/http/client/account/AccountService.java:52",
+        "code": "* @param userNo"
+      },
+      {
+        "file": "openspg/server/api/http-client/src/main/java/com/antgroup/openspg/server/api/http/client/account/AccountService.java:55",
+        "code": "Account getWithPrivateByUserNo(String userNo);"
+      },
+      {
+        "file": "openspg/server/api/facade/src/main/java/com/antgroup/openspg/server/api/facade/dto/common/request/ProjectCreateRequest.java:41",
+        "code": "private String userNo;"
+      },
+      {
+        "file": "openspg/server/api/facade/src/main/java/com/antgroup/openspg/server/api/facade/dto/common/request/AppRequest.java:27",
+        "code": "private String userNo;"
+      },
+      {
+        "file": "openspg/server/api/facade/src/main/java/com/antgroup/openspg/server/api/facade/dto/common/request/PermissionRequest.java:29",
+        "code": "private List<String> userNos;"
+      },
+      {
+        "file": "openspg/server/api/http-server/src/main/java/com/antgroup/openspg/server/api/http/server/openapi/ProjectController.java:69",
+        "code": "AssertUtils.assertParamObjectIsNotNull(\"userNo\", request.getUserNo());"
+      },
+      {
+        "file": "openspg/server/api/http-server/src/main/java/com/antgroup/openspg/server/api/http/server/openapi/ProjectController.java:70",
+        "code": "if (!ACCOUNT_PATTERN.matcher(request.getUserNo()).matches()) {"
+      },
+      {
+        "file": "openspg/server/api/http-server/src/main/java/com/antgroup/openspg/server/api/http/server/openapi/ProjectController.java:72",
+        "code": "\"account(userNo) length is 6-20, only support letters,numbers and underscores\");"
+      },
+      {
+        "file": "openspg/server/api/http-server/src/main/java/com/antgroup/openspg/server/api/http/server/openapi/ProjectController.java:158",
+        "code": "AssertUtils.assertParamStringIsNotBlank(\"userNo\", request.getUserNo());"
+      },
+      {
+        "file": "openspg/server/api/http-server/src/main/java/com/antgroup/openspg/server/api/http/server/openapi/ProjectController.java:160",
+        "code": "String userNo = request.getUserNo();"
+      },
+      {
+        "file": "openspg/server/api/http-server/src/main/java/com/antgroup/openspg/server/api/http/server/openapi/ProjectController.java:163",
+        "code": "userNo,"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/usermodel/UserModelRepository.java:54",
+        "code": "* @param userNo"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/usermodel/UserModelRepository.java:57",
+        "code": "List<UserModel> selectUserPrivateOrPublic(String userNo);"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/usermodel/UserModelRepository.java:65",
+        "code": "* @param userNo"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/usermodel/UserModelRepository.java:70",
+        "code": "List<Long> ids, String name, String visibility, String userNo, String config);"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:41",
+        "code": "* update account by userNo"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:46",
+        "code": "Integer updateByUserNo(Account record);"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:49",
+        "code": "* delete by userNo"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:51",
+        "code": "* @param userNo java.lang.String"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:53",
+        "code": "* @param userNo"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:56",
+        "code": "Integer deleteByUserNo(String userNo);"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:59",
+        "code": "* select account by userNo"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:61",
+        "code": "* @param userNo"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:64",
+        "code": "Account selectByUserNo(String userNo);"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:67",
+        "code": "* select account by userNo with private info"
+      },
+      {
+        "file": "openspg/server/common/service/src/main/java/com/antgroup/openspg/server/common/service/account/AccountRepository.java:69",
+        "code": "* @param userNo"
+      }
+    ]
+  },
+  "live": null,
+  "__env__": {
+    "recorded_at": "2026-09-18T11:06:58.649305+00:00",
+    "python": "3.14.6",
+    "argv": [
+      "--openspgapp-dir",
+      "/Users/simon/project/openspgapp"
+    ],
+    "kag_version": "unknown",
+    "env:KAG_PROJECT_HOST_ADDR": "",
+    "env:KAG_PROJECT_ID": "",
+    "env:KAG_PROJECT_NAMESPACE": "",
+    "env:KAG_GRAPH_STORE_URI": ""
+  },
+  "static_conclusion": {
+    "rule": "userNo: 长度 6-20，仅支持字母、数字、下划线（ACCOUNT_PATTERN）",
+    "evidence": "openspg/server/api/http-server/.../openapi/ProjectController.java:69-72（错误消息原文：account(userNo) length is 6-20, only support letters,numbers and underscores）",
+    "format_verdict": {
+      "\"164072\"": "合法（6 位数字）",
+      "\"kagweb\"": "合法（6 字母）",
+      "\"kagweb-1\"": "非法（连字符不允许）→ 设计 T2 的 kagweb-<uid> 必须改为 kagweb_<uid>",
+      "\"kagweb_1\"": "合法",
+      "\"kagweb.1\"": "非法（点号不允许）"
+    },
+    "design_impact": "§6.3 T2 归因格式改为 kagweb_<uid>（kagweb_ 前缀 7 字符 + uid ≤ 13 字符）；T1 service_user_no=kagweb 恰好 6 字符合法。实测（--host --allow-write）可后补确认。"
+  }
+}

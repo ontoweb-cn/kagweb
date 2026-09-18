@@ -1,0 +1,1009 @@
+{
+  "kag_dir": "/Users/simon/project/KAG",
+  "scan": {
+    "files": {
+      "kag/bin/commands/builder.py": [
+        {
+          "line": 115,
+          "weight": "low",
+          "code": "\"--memory\","
+        },
+        {
+          "line": 210,
+          "weight": "low",
+          "code": "\"workerMemory\": args.memory * 1024,"
+        }
+      ],
+      "kag/common/graphstore/memory_graph.py": [
+        {
+          "line": 71,
+          "weight": "low",
+          "code": ":param namespace: namespace of the memory graph"
+        },
+        {
+          "line": 553,
+          "weight": "low",
+          "code": "Upsert the subgraph with the memory graph."
+        }
+      ],
+      "kag/common/graphstore/neo4j_graph_store.py": [
+        {
+          "line": 104,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 105,
+          "weight": "low",
+          "code": "result = session.run(\"CALL db.labels()\")"
+        },
+        {
+          "line": 110,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 111,
+          "weight": "low",
+          "code": "return list(session.run(script))"
+        },
+        {
+          "line": 114,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 115,
+          "weight": "low",
+          "code": "result = session.run(\"CALL db.labels()\")"
+        },
+        {
+          "line": 118,
+          "weight": "low",
+          "code": "self._create_unique_index_constraint(self, label, session)"
+        },
+        {
+          "line": 122,
+          "weight": "low",
+          "code": "def _create_unique_index_constraint(self, label, session):"
+        },
+        {
+          "line": 127,
+          "weight": "low",
+          "code": "result = session.run(create_constraint_query)"
+        },
+        {
+          "line": 134,
+          "weight": "low",
+          "code": "self._create_index_constraint(self, label, session)"
+        },
+        {
+          "line": 137,
+          "weight": "low",
+          "code": "def _create_index_constraint(self, label, session):"
+        },
+        {
+          "line": 141,
+          "weight": "low",
+          "code": "result = session.run(create_constraint_query)"
+        },
+        {
+          "line": 227,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 229,
+          "weight": "low",
+          "code": "self._create_unique_index_constraint(self, label, session)"
+        },
+        {
+          "line": 231,
+          "weight": "low",
+          "code": "return session.execute_write("
+        },
+        {
+          "line": 259,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 261,
+          "weight": "low",
+          "code": "self._create_unique_index_constraint(self, label, session)"
+        },
+        {
+          "line": 263,
+          "weight": "low",
+          "code": "return session.execute_write("
+        },
+        {
+          "line": 430,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 431,
+          "weight": "low",
+          "code": "return session.execute_read(self._get_node, self, label, id_key, id_value)"
+        },
+        {
+          "line": 445,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 447,
+          "weight": "low",
+          "code": "session.execute_write(self._delete_node, self, label, id_key, id_value)"
+        },
+        {
+          "line": 457,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 458,
+          "weight": "low",
+          "code": "session.execute_write(self._delete_nodes, self, label, id_key, id_values)"
+        },
+        {
+          "line": 478,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 480,
+          "weight": "low",
+          "code": "return session.execute_write("
+        },
+        {
+          "line": 548,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 550,
+          "weight": "low",
+          "code": "return session.execute_write("
+        },
+        {
+          "line": 620,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 622,
+          "weight": "low",
+          "code": "session.execute_write("
+        },
+        {
+          "line": 668,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 669,
+          "weight": "low",
+          "code": "session.execute_write("
+        },
+        {
+          "line": 764,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 765,
+          "weight": "low",
+          "code": "session.execute_write("
+        },
+        {
+          "line": 796,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 797,
+          "weight": "low",
+          "code": "session.execute_write(do_create_text_index)"
+        },
+        {
+          "line": 814,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 815,
+          "weight": "low",
+          "code": "session.execute_write("
+        },
+        {
+          "line": 884,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 885,
+          "weight": "low",
+          "code": "session.execute_read(do_refresh_vector_index_meta)"
+        },
+        {
+          "line": 888,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 889,
+          "weight": "low",
+          "code": "session.execute_write(self._delete_index, self, index_name)"
+        },
+        {
+          "line": 947,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 948,
+          "weight": "low",
+          "code": "return session.execute_read(do_text_search)"
+        },
+        {
+          "line": 1015,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 1016,
+          "weight": "low",
+          "code": "return session.execute_read(do_vector_search)"
+        },
+        {
+          "line": 1019,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 1023,
+          "weight": "low",
+          "code": "result = session.run("
+        },
+        {
+          "line": 1037,
+          "weight": "low",
+          "code": "result = session.run("
+        },
+        {
+          "line": 1051,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 1055,
+          "weight": "low",
+          "code": "result = session.run("
+        },
+        {
+          "line": 1069,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 1070,
+          "weight": "low",
+          "code": "return session.execute_write("
+        },
+        {
+          "line": 1087,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 1089,
+          "weight": "low",
+          "code": "self._exists_all_graph(session, all_graph)"
+        },
+        {
+          "line": 1090,
+          "weight": "low",
+          "code": "data = session.execute_write("
+        },
+        {
+          "line": 1127,
+          "weight": "low",
+          "code": "def _exists_all_graph(session, graph_name):"
+        },
+        {
+          "line": 1130,
+          "weight": "low",
+          "code": "result = session.run("
+        },
+        {
+          "line": 1148,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 1149,
+          "weight": "low",
+          "code": "return session.execute_read(self._count, self, label)"
+        },
+        {
+          "line": 1160,
+          "weight": "low",
+          "code": "with self._driver.session(database=self._database) as session:"
+        },
+        {
+          "line": 1162,
+          "weight": "low",
+          "code": "result = session.run("
+        },
+        {
+          "line": 1177,
+          "weight": "low",
+          "code": "with self._driver.session(database=database) as session:"
+        },
+        {
+          "line": 1179,
+          "weight": "low",
+          "code": "result = session.run("
+        },
+        {
+          "line": 1194,
+          "weight": "low",
+          "code": "with self._driver.session(database=database) as session:"
+        },
+        {
+          "line": 1195,
+          "weight": "low",
+          "code": "result = session.run(query, parameters)"
+        }
+      ],
+      "kag/common/tools/search_api/impl/memory_search_api.py": [
+        {
+          "line": 45,
+          "weight": "low",
+          "code": "message = \"search_custom is not implemented for memory graph\""
+        }
+      ],
+      "kag/examples/NetOperatorQA/solver/src/llm_genereator_with_thought.py": [
+        {
+          "line": 54,
+          "weight": "low",
+          "code": "retrieved_docs = task.memory.get(\"retriever\")"
+        }
+      ],
+      "kag/examples/baike/solver/prompt/resp_generator.py": [
+        {
+          "line": 12,
+          "weight": "low",
+          "code": "\"基于给定的引用信息回答问题。\" \"\\n只输出答案，不需要输出额外的信息。\" \"\\n给定的引用信息：'$memory'\\n问题：'$instruction'\""
+        },
+        {
+          "line": 17,
+          "weight": "low",
+          "code": "\"\\nThe following are given reference:'$memory'\\nQuestion: '$instruction'\""
+        },
+        {
+          "line": 22,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/examples/csqa/solver/prompt/resp_generator.py": [
+        {
+          "line": 40,
+          "weight": "low",
+          "code": "$memory"
+        },
+        {
+          "line": 52,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/interface/common/rerank_model.py": [
+        {
+          "line": 52,
+          "weight": "low",
+          "code": "Uses streaming download with in-memory extraction to minimize disk usage."
+        }
+      ],
+      "kag/interface/solver/kag_generator_abc.py": [
+        {
+          "line": 14,
+          "weight": "low",
+          "code": "def generate(self, instruction, memory: KagMemoryABC) -> str:"
+        }
+      ],
+      "kag/interface/solver/kag_memory_abc.py": [
+        {
+          "line": 41,
+          "weight": "low",
+          "code": "Serializes the memory to str."
+        },
+        {
+          "line": 43,
+          "weight": "low",
+          "code": ":return: Serialized memory data with str format."
+        },
+        {
+          "line": 49,
+          "weight": "low",
+          "code": "Refreshes the memory."
+        },
+        {
+          "line": 51,
+          "weight": "low",
+          "code": "This method is used to reset the memory state."
+        }
+      ],
+      "kag/interface/solver/kag_reasoner_abc.py": [
+        {
+          "line": 40,
+          "weight": "low",
+          "code": "self, question: str, memory: KagMemoryABC = None, **kwargs"
+        }
+      ],
+      "kag/interface/solver/kag_reflector_abc.py": [
+        {
+          "line": 8,
+          "weight": "low",
+          "code": "def reflect_query(self, memory: KagMemoryABC, instruction: str) -> (bool, str):"
+        },
+        {
+          "line": 12,
+          "weight": "low",
+          "code": ":param memory (KagMemory): The context or memory information to use for rewriting."
+        },
+        {
+          "line": 18,
+          "weight": "low",
+          "code": "can_answer = self._can_answer(memory, instruction)"
+        },
+        {
+          "line": 20,
+          "weight": "low",
+          "code": "self._refine_query(memory, instruction) if not can_answer else instruction"
+        },
+        {
+          "line": 26,
+          "weight": "low",
+          "code": "def _can_answer(self, memory: KagMemoryABC, instruction: str):"
+        },
+        {
+          "line": 30,
+          "weight": "low",
+          "code": ":param memory (KagMemory): The context or memory information to use for rewriting."
+        },
+        {
+          "line": 37,
+          "weight": "low",
+          "code": "def _refine_query(self, memory: KagMemoryABC, instruction: str):"
+        },
+        {
+          "line": 41,
+          "weight": "low",
+          "code": ":param memory (KagMemory): The context or memory information to use for rewriting."
+        }
+      ],
+      "kag/interface/solver/plan/lf_planner_abc.py": [
+        {
+          "line": 22,
+          "weight": "low",
+          "code": "self, question: str, memory: KagMemoryABC = None, llm_output=None"
+        },
+        {
+          "line": 30,
+          "weight": "low",
+          "code": "memory (KagMemoryABC): the execute memory. Defaults to None."
+        }
+      ],
+      "kag/interface/solver/planner_abc.py": [
+        {
+          "line": 34,
+          "weight": "low",
+          "code": "memory (dict): Storage for intermediate execution data."
+        },
+        {
+          "line": 56,
+          "weight": "low",
+          "code": "memory (dict): Storage for intermediate execution data."
+        },
+        {
+          "line": 77,
+          "weight": "low",
+          "code": "self.memory = {}"
+        },
+        {
+          "line": 103,
+          "weight": "low",
+          "code": "value: Data value to be stored in task memory."
+        },
+        {
+          "line": 105,
+          "weight": "low",
+          "code": "self.memory[key] = value"
+        }
+      ],
+      "kag/open_benchmark/common_component/llm_genereator_with_thought.py": [
+        {
+          "line": 62,
+          "weight": "low",
+          "code": "retrieved_docs = task.memory.get(\"retriever\")"
+        }
+      ],
+      "kag/open_benchmark/prqa/builder/prompt/resp_generator.py": [
+        {
+          "line": 12,
+          "weight": "low",
+          "code": "\"基于给定的引用信息回答问题。\" \"\\n只输出答案，不需要输出额外的信息。\" \"\\n给定的引用信息：'$memory'\\n问题：'$instruction'\""
+        },
+        {
+          "line": 17,
+          "weight": "low",
+          "code": "\"\\nThe following are given reference:'$memory'\\nQuestion: '$instruction'\""
+        },
+        {
+          "line": 22,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/open_benchmark/prqa/solver/prompt/resp_generator.py": [
+        {
+          "line": 12,
+          "weight": "low",
+          "code": "\"基于给定的引用信息回答问题。\" \"\\n输出答案，并且给出理由。\" \"\\n给定的引用信息：'$memory'\\n问题：'$instruction'\""
+        },
+        {
+          "line": 17,
+          "weight": "low",
+          "code": "\"\\nThe following are given reference:'$memory'\\nQuestion: '$instruction'\""
+        },
+        {
+          "line": 22,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/solver/executor/deduce/kag_deduce_executor.py": [
+        {
+          "line": 72,
+          "weight": "low",
+          "code": "{\"instruction\": sub_query, \"memory\": contents},"
+        }
+      ],
+      "kag/solver/executor/mcp/mcp_client.py": [
+        {
+          "line": 39,
+          "weight": "low",
+          "code": "self.session: Optional[ClientSession] = None"
+        },
+        {
+          "line": 52,
+          "weight": "low",
+          "code": "Connects to the server, initializes communication session, and prints available tools"
+        },
+        {
+          "line": 69,
+          "weight": "low",
+          "code": "session = await self.exit_stack.enter_async_context("
+        },
+        {
+          "line": 72,
+          "weight": "low",
+          "code": "await session.initialize()"
+        },
+        {
+          "line": 73,
+          "weight": "low",
+          "code": "self.session = session"
+        },
+        {
+          "line": 92,
+          "weight": "low",
+          "code": "if not self.session:"
+        },
+        {
+          "line": 95,
+          "weight": "low",
+          "code": "tools_response = await self.session.list_tools()"
+        },
+        {
+          "line": 116,
+          "weight": "low",
+          "code": "response = await self.session.list_tools()"
+        },
+        {
+          "line": 146,
+          "weight": "low",
+          "code": "result = await self.session.call_tool(tool_name, tool_args)"
+        },
+        {
+          "line": 173,
+          "weight": "low",
+          "code": "self.session = None"
+        }
+      ],
+      "kag/solver/pipeline/kag_static_pipeline.py": [
+        {
+          "line": 154,
+          "weight": "low",
+          "code": "\"memory\": task.memory,"
+        }
+      ],
+      "kag/solver/pipeline/mcp_pipeline.py": [
+        {
+          "line": 123,
+          "weight": "low",
+          "code": "\"memory\": task.memory,"
+        }
+      ],
+      "kag/solver/pipeline/naive_generation_pipeline.py": [
+        {
+          "line": 62,
+          "weight": "low",
+          "code": "\"memory\": task.memory,"
+        }
+      ],
+      "kag/solver/pipeline/naive_rag_pipeline.py": [
+        {
+          "line": 135,
+          "weight": "low",
+          "code": "\"memory\": task.memory,"
+        }
+      ],
+      "kag/solver/pipeline/self_cognition_pipeline.py": [
+        {
+          "line": 106,
+          "weight": "low",
+          "code": "\"memory\": task.memory,"
+        }
+      ],
+      "kag/solver/prompt/deduce_choice.py": [
+        {
+          "line": 23,
+          "weight": "low",
+          "code": "$memory"
+        },
+        {
+          "line": 42,
+          "weight": "low",
+          "code": "$memory"
+        },
+        {
+          "line": 51,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/solver/prompt/deduce_entail.py": [
+        {
+          "line": 25,
+          "weight": "low",
+          "code": "$memory"
+        },
+        {
+          "line": 40,
+          "weight": "low",
+          "code": "$memory"
+        },
+        {
+          "line": 49,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/solver/prompt/deduce_extractor.py": [
+        {
+          "line": 16,
+          "weight": "low",
+          "code": "\"\\n上下文：“$memory”\\n请确保所提供的信息直接准确地来自检索文档，不允许任何自身推测。\""
+        },
+        {
+          "line": 22,
+          "weight": "low",
+          "code": "\"\\n[Information]: '$memory'\""
+        },
+        {
+          "line": 29,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/solver/prompt/deduce_judge.py": [
+        {
+          "line": 25,
+          "weight": "low",
+          "code": "$memory"
+        },
+        {
+          "line": 40,
+          "weight": "low",
+          "code": "$memory"
+        },
+        {
+          "line": 51,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/solver/prompt/deduce_multi_choice.py": [
+        {
+          "line": 23,
+          "weight": "low",
+          "code": "$memory"
+        },
+        {
+          "line": 36,
+          "weight": "low",
+          "code": "$memory"
+        },
+        {
+          "line": 45,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/solver/prompt/resp_generator.py": [
+        {
+          "line": 12,
+          "weight": "low",
+          "code": "\"基于给定的引用信息回答问题。\" \"\\n输出答案，并且给出理由。\" \"\\n给定的引用信息：'$memory'\\n问题：'$instruction'\""
+        },
+        {
+          "line": 17,
+          "weight": "low",
+          "code": "\"\\nThe following are given reference:'$memory'\\nQuestion: '$instruction'\""
+        },
+        {
+          "line": 22,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/solver/prompt/resp_judge.py": [
+        {
+          "line": 24,
+          "weight": "low",
+          "code": "\"你能否完全并准确地回答这个问题'$instruction'?\\n已知信息：'$memory'。\""
+        },
+        {
+          "line": 30,
+          "weight": "low",
+          "code": "\"\\nKnown information: '$memory'. \""
+        },
+        {
+          "line": 37,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "kag/solver/prompt/resp_reflector.py": [
+        {
+          "line": 14,
+          "weight": "low",
+          "code": "\"不要一次性生成所有思考过程！\\n[已知信息]： $memory\\n[目标问题]：$instruction\\n[你的思考]：\""
+        },
+        {
+          "line": 20,
+          "weight": "low",
+          "code": "\"DON'T generate the whole thoughts at once!\\n[Known information]: $memory\\n[Target question]: $instruction\\n[You Thought]:\""
+        },
+        {
+          "line": 25,
+          "weight": "low",
+          "code": "return [\"memory\", \"instruction\"]"
+        }
+      ],
+      "knext/reasoner/client.py": [
+        {
+          "line": 42,
+          "weight": "low",
+          "code": "\"\"\"Create session for altering schema.\"\"\""
+        },
+        {
+          "line": 51,
+          "weight": "low",
+          "code": "Create a new session and load schema information."
+        },
+        {
+          "line": 53,
+          "weight": "low",
+          "code": "- Create a session object `schema_session`."
+        },
+        {
+          "line": 54,
+          "weight": "low",
+          "code": "- Iterate through all types in the session and filter out types that are Concepts, Entities, or Events."
+        }
+      ],
+      "knext/schema/client.py": [
+        {
+          "line": 48,
+          "weight": "low",
+          "code": "\"\"\"Query project schema and init SPG types in session.\"\"\""
+        },
+        {
+          "line": 82,
+          "weight": "low",
+          "code": "\"\"\"Add an SPG type in session with `CREATE` operation.\"\"\""
+        },
+        {
+          "line": 89,
+          "weight": "low",
+          "code": "\"\"\"Add an SPG type in session with `UPDATE` operation.\"\"\""
+        },
+        {
+          "line": 95,
+          "weight": "low",
+          "code": "\"\"\"Add an SPG type in session with `DELETE` operation.\"\"\""
+        },
+        {
+          "line": 174,
+          "weight": "low",
+          "code": "\"\"\"Create session for altering schema.\"\"\""
+        }
+      ],
+      "knext/schema/marklang/concept_rule_ml.py": [
+        {
+          "line": 54,
+          "weight": "low",
+          "code": "self.session = SchemaClient("
+        },
+        {
+          "line": 224,
+          "weight": "low",
+          "code": "assert object_type in self.session.spg_types, self.error_msg("
+        },
+        {
+          "line": 228,
+          "weight": "low",
+          "code": "concept_type = self.session.get(object_type)"
+        },
+        {
+          "line": 233,
+          "weight": "low",
+          "code": "for spg_type in self.session.spg_types.values():"
+        }
+      ],
+      "knext/schema/marklang/schema_ml.py": [
+        {
+          "line": 177,
+          "weight": "low",
+          "code": "session = self.schema.create_session()"
+        },
+        {
+          "line": 178,
+          "weight": "low",
+          "code": "for type_name in session.spg_types:"
+        },
+        {
+          "line": 179,
+          "weight": "low",
+          "code": "spg_type = session.get(type_name)"
+        },
+        {
+          "line": 180,
+          "weight": "low",
+          "code": "if session.get(type_name).spg_type_enum in ["
+        },
+        {
+          "line": 219,
+          "weight": "low",
+          "code": "maintain the session for parsing"
+        },
+        {
+          "line": 236,
+          "weight": "low",
+          "code": "mark the indent level and clear related session"
+        },
+        {
+          "line": 241,
+          "weight": "low",
+          "code": "# finish type parsing, clear the field in session"
+        },
+        {
+          "line": 247,
+          "weight": "low",
+          "code": "# finish sub property parsing, clear the field in session"
+        },
+        {
+          "line": 250,
+          "weight": "low",
+          "code": "# finish predicate parsing, clear the fields in session"
+        },
+        {
+          "line": 1196,
+          "weight": "low",
+          "code": "session = self.schema.create_session()"
+        },
+        {
+          "line": 1199,
+          "weight": "low",
+          "code": "for spg_type in session.spg_types:"
+        },
+        {
+          "line": 1204,
+          "weight": "low",
+          "code": "unique_id = session.spg_types[spg_type]._rest_model.ontology_id.unique_id"
+        },
+        {
+          "line": 1209,
+          "weight": "low",
+          "code": "session.delete_type(session.get(spg_type))"
+        },
+        {
+          "line": 1218,
+          "weight": "low",
+          "code": "if spg_type not in session.spg_types:"
+        },
+        {
+          "line": 1219,
+          "weight": "low",
+          "code": "session.create_type(self.types[spg_type])"
+        },
+        {
+          "line": 1229,
+          "weight": "low",
+          "code": "old_type = session.get(spg_type)"
+        },
+        {
+          "line": 1432,
+          "weight": "low",
+          "code": "session.update_type(old_type)"
+        },
+        {
+          "line": 1434,
+          "weight": "low",
+          "code": "session.commit()"
+        },
+        {
+          "line": 1435,
+          "weight": "low",
+          "code": "if session._alter_spg_types:"
+        },
+        {
+          "line": 1446,
+          "weight": "low",
+          "code": "session = schema.create_session()"
+        },
+        {
+          "line": 1450,
+          "weight": "low",
+          "code": "for spg_type_name in sorted(session.spg_types):"
+        },
+        {
+          "line": 1460,
+          "weight": "low",
+          "code": "for prop, prop_type in session.get(spg_type_name).properties.items():"
+        },
+        {
+          "line": 1471,
+          "weight": "low",
+          "code": "for relation, relation_type in session.get(spg_type_name).relations.items():"
+        },
+        {
+          "line": 1476,
+          "weight": "low",
+          "code": "or rel in session.get(spg_type_name).properties"
+        }
+      ]
+    },
+    "total_hits": 183
+  },
+  "manual_review_note": "静态命中≠多轮机制可用。人工确认要点：是否可在 ainvoke 时注入历史/记忆；若可用，Bridge 的 kag_solve 增加 session/memorizer 参数作为 M3 增强。",
+  "__env__": {
+    "recorded_at": "2026-09-18T11:06:58.807719+00:00",
+    "python": "3.14.6",
+    "argv": [
+      "--kag-dir",
+      "/Users/simon/project/KAG"
+    ],
+    "kag_version": "unknown",
+    "env:KAG_PROJECT_HOST_ADDR": "",
+    "env:KAG_PROJECT_ID": "",
+    "env:KAG_PROJECT_NAMESPACE": "",
+    "env:KAG_GRAPH_STORE_URI": ""
+  }
+}

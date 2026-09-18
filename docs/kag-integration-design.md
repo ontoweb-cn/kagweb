@@ -258,7 +258,7 @@ flowchart LR
   "kag": {
     "spg_server_url": "http://openspg-server:8887",  // 端口以实际部署为准（KAG 侧默认 8887，SolverMain.invoke）
     "tenant_id": "<OpenSPG tenant id>",
-    "service_user_no": "kagweb",        // 账号格式需满足 server 端校验（M0 实测，§10 第 10 项）
+    "service_user_no": "kagweb",        // 6 字母，满足 ACCOUNT_PATTERN（6-20、字母/数字/下划线，M0-10 已定）
     "bridge_url": "http://kag-bridge:8930",
     "bridge_api_key": "<write-only secret>",
     "default_project_id": ""
@@ -274,7 +274,7 @@ flowchart LR
 
 - 新增 `kag_project_members`（KAGWeb 存储）：`project_id ↔ owner/members`，管理面维护；
 - 管理面读写按 membership 过滤/门禁；session 绑定 `kag_project` 时校验 membership；
-- **归属归因**：调用 OpenSPG 时 `userNo = "kagweb-<uid>"`（稳定派生），使 server 侧记录可追溯到 KAGWeb 用户；`service_user_no` 仅用于无用户上下文的系统调用（如健康检查）。
+- **归属归因**：调用 OpenSPG 时 `userNo = "kagweb_<uid>"`（稳定派生）。**格式约束（M0-10 静态已定）**：`userNo` 须 6–20 字符、仅字母/数字/下划线（`ProjectController` 的 `ACCOUNT_PATTERN`，连字符/点号非法）——`kagweb_` 前缀 7 字符 + uid ≤ 13 字符；使 server 侧记录可追溯到 KAGWeb 用户。`service_user_no` 仅用于无用户上下文的系统调用（如健康检查）。
 
 **阶段 T3（可选，M5+，深度映射）**——仅在需要 OpenSPG 侧原生权限体系时：
 
@@ -307,7 +307,7 @@ flowchart LR
 
 - 管理面变更（项目创建/更新、`alterSchema`、构建提交、member 变更）写入既有 `multi_user` audit；
 - `kag_solve` 调用即 session 内 `tool_call`/`tool_result` 事件（已持久化），Bridge 上报的任务摘要补齐管理面视角；
-- OpenSPG 侧 `userNo`（`kagweb-<uid>`）提供跨系统归因。
+- OpenSPG 侧 `userNo`（`kagweb_<uid>`）提供跨系统归因。
 
 ## 7. "不改 KAG"证据链与边界
 
@@ -343,7 +343,7 @@ flowchart LR
 | **M1 端到端** | Bridge MVP（`kag_solve` + `kag_schema` + MCP）；Claude Code 经 workdir `.mcp.json` 接入；`kag` settings 域（T1 单租户） | KAGWeb 聊天中完成一次 KAG 增强问答，轨迹以工具卡片呈现 |
 | **M2 管理面** | OpenSPG REST 客户端 + 项目/Schema（只读树+表单编辑）/图浏览/推理任务列表（自有存储）页（前端按 §5.4 接入）；`kag` grants | 管理面全流程可用，鉴权链路按 §6 落地 |
 | **M3 广度** | Intellect（HTTP 工具注册）；推理轨迹图可视化（SubGraph/RefDocSet 渲染）；`kag_reason` 可选工具 | 第二类 agent loop 接入 |
-| **M4 构建+多用户** | 文档上传 → `/public/v1/builder/kag/submit` 构建流水线与监控；T2 项目 ACL（membership + `kagweb-<uid>` 归因） | 非/admin 用户按 membership 受控访问 |
+| **M4 构建+多用户** | 文档上传 → `/public/v1/builder/kag/submit` 构建流水线与监控；T2 项目 ACL（membership + `kagweb_<uid>` 归因） | 非/admin 用户按 membership 受控访问 |
 | **M5 上游化** | 契约冻结评审、`kag[mcp]` extra、KAG CI 接入（§8 门槛） | Bridge 进入 KAG 仓库 |
 
 ## 10. M0 验证清单（实测项）
@@ -359,7 +359,7 @@ flowchart LR
 7. 多轮语义验证：KAG 是否有 memorizer/会话机制（决定 `kag_solve` 无状态语义的最终描述）；
 8. Claude Code `.mcp.json` 在 session workdir 的发现机制实测（含 env allowlist 下 token 注入路径）；
 9. **OpenSPG server 独立开源发行版验证**（评审 B1）：确认可部署发行版（如 OpenSPG/openspg）的获取途径与 License；部署物不得取自闭源 openspgapp 仓库的构建产物（§12 红线）；
-10. **`userNo` 账号格式实测**（评审 B2）：`ProjectController.check()` 对账号格式的约束（数字或字符串），确定 §6.3 T1 `service_user_no` 与 T2 `kagweb-<uid>` 的最终格式。
+10. **`userNo` 账号格式实测**（评审 B2）：`ProjectController.check()` 对账号格式的约束——**静态已判读**（L70-72：长度 6–20、仅字母/数字/下划线；原设计的 `kagweb-<uid>` 含连字符非法，T2 已改用 `kagweb_<uid>`）；带 server 后可 `--allow-write` 实测复核。
 
 ## 11. 风险登记
 
