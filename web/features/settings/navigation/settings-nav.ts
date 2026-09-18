@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Video,
+  Waypoints,
   type LucideIcon,
 } from "lucide-react";
 
@@ -304,6 +305,18 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
     icon: Bot,
   },
   {
+    // KAG 集成域（设计 §6.3）：OpenSPG server、Bridge 接线与项目绑定。
+    // admin-only，与 agent-loop 同款 SettingsDomainGate 可见性控制。
+    key: "kag",
+    adminOnly: true,
+    label: { zh: "KAG 集成", en: "KAG Integration" },
+    blurb: {
+      zh: "OpenSPG server、KAG Bridge 与项目绑定。",
+      en: "OpenSPG server, KAG bridge, and project binding.",
+    },
+    icon: Waypoints,
+  },
+  {
     // Always visible: which leaves render depends on the backend (the llm
     // leaf hides under CLI backends), but the task and voice services here
     // apply no matter which backend drives conversations.
@@ -357,6 +370,7 @@ export const SETTINGS_ROUTES: Record<string, string> = {
   appearance: "/settings/appearance",
   network: "/settings/network",
   "agent-loop": "/settings/agent-loop",
+  kag: "/settings/kag",
   models: "/settings/models",
   knowledge: "/settings/knowledge",
   chat: "/settings/chat",
@@ -403,6 +417,7 @@ const STORAGE_PATHS: Record<string, string> = {
   appearance: "data/user/settings/interface.json",
   network: "data/user/settings/system.json",
   "agent-loop": "data/user/settings/system.json",
+  kag: "data/user/settings/system.json",
   knowledge: "data/user/settings/document_parsing.json",
   connections: "data/user/settings/model_catalog.json",
   llm: "data/user/settings/model_catalog.json",

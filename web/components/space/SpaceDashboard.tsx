@@ -4,7 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useCapabilityFilter } from "@/features/capabilities/useCapabilityCatalog";
-import { ArrowUpRight, Github, History, type LucideIcon } from "lucide-react";
+import { fetchKagProjects } from "@/features/kag";
+import {
+  ArrowUpRight,
+  Github,
+  History,
+  Waypoints,
+  type LucideIcon,
+} from "lucide-react";
 
 import { listSessions } from "@/lib/session-api";
 
@@ -19,7 +26,7 @@ import { listSessions } from "@/lib/session-api";
 
 type Lang = { zh: string; en: string };
 
-type DashKey = "chat_history";
+type DashKey = "chat_history" | "kag";
 
 interface DashboardItem {
   key: DashKey;
@@ -40,6 +47,13 @@ interface DashboardItem {
    * permanently-loading number.
    */
   load?: () => Promise<number>;
+  /**
+   * When set, a failed ``load`` also removes the tile instead of merely
+   * omitting its count. For the KAG console the same request is the
+   * visibility gate: 403 (no grant) or an unreachable OpenSPG server means
+   * the surface should not be offered at all.
+   */
+  hideOnLoadError?: boolean;
   /** GitHub handle of the contributor this surface came from. */
   credit?: string;
   /**
@@ -75,6 +89,26 @@ const GROUPS: DashboardGroup[] = [
       },
     ],
   },
+  {
+    label: { zh: "知识图谱", en: "Knowledge Graph" },
+    items: [
+      {
+        key: "kag",
+        href: "/kag",
+        icon: Waypoints,
+        title: { zh: "KAG 项目", en: "KAG Projects" },
+        blurb: {
+          zh: "OpenSPG 上的知识图谱项目、Schema 与推理任务。",
+          en: "Knowledge-graph projects, schema, and reasoning tasks on OpenSPG.",
+        },
+        unit: { zh: "个项目", en: "projects" },
+        tile: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+        // 可见性即权限（设计 §5.4）：读失败 = 未配置或无 grant，整块隐藏
+        load: async () => (await fetchKagProjects()).length,
+        hideOnLoadError: true,
+      },
+    ],
+  },
 ];
 
 const ALL_ITEMS = GROUPS.flatMap((g) => g.items);
@@ -91,14 +125,16 @@ const ALL_ITEMS = GROUPS.flatMap((g) => g.items);
 export function visibleGroups(
   groups: DashboardGroup[],
   isAvailable: ((name: string) => boolean) | null,
+  hiddenKeys?: ReadonlySet<DashKey>,
 ): DashboardGroup[] {
   return groups
     .map((group) => ({
       ...group,
       items: group.items.filter(
         (item) =>
-          !item.requiresCapability ||
-          (isAvailable?.(item.requiresCapability) ?? false),
+          !hiddenKeys?.has(item.key) &&
+          (!item.requiresCapability ||
+            (isAvailable?.(item.requiresCapability) ?? false)),
       ),
     }))
     .filter((group) => group.items.length > 0);
@@ -112,11 +148,18 @@ export default function SpaceDashboard() {
   const tr = useCallback((l: Lang) => (zh ? l.zh : l.en), [zh]);
 
   const [counts, setCounts] = useState<Partial<Record<DashKey, number>>>({});
+  // Tiles whose load doubles as the access gate (hideOnLoadError) start hidden
+  // and appear only on success — the capability-gate no-flash rule — so a
+  // rejected fetch (not configured / no grant) never flashes the tile in.
+  const [hidden, setHidden] = useState<ReadonlySet<DashKey>>(
+    () =>
+      new Set(ALL_ITEMS.filter((item) => item.hideOnLoadError).map((i) => i.key)),
+  );
 
   const capabilityAvailable = useCapabilityFilter();
   const groups = useMemo(
-    () => visibleGroups(GROUPS, capabilityAvailable),
-    [capabilityAvailable],
+    () => visibleGroups(GROUPS, capabilityAvailable, hidden),
+    [capabilityAvailable, hidden],
   );
 
   useEffect(() => {
@@ -128,10 +171,20 @@ export default function SpaceDashboard() {
       item
         .load()
         .then((n) => {
-          if (!cancelled) setCounts((prev) => ({ ...prev, [item.key]: n }));
+          if (cancelled) return;
+          setCounts((prev) => ({ ...prev, [item.key]: n }));
+          if (item.hideOnLoadError)
+            setHidden((prev) => {
+              if (!prev.has(item.key)) return prev;
+              const next = new Set(prev);
+              next.delete(item.key);
+              return next;
+            });
         })
         .catch(() => {
           /* leave undefined → tile just omits the count */
+          if (!cancelled && item.hideOnLoadError)
+            setHidden((prev) => new Set(prev).add(item.key));
         });
     }
     return () => {

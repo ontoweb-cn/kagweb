@@ -19,6 +19,7 @@ export const EXTENSION_ENDPOINTS = {
   "chat-timeout": "/api/settings/chat-response-timeout",
   capabilities: "/api/capabilities/settings",
   network: "/api/settings/network",
+  kag: "/api/settings/kag",
 } as const;
 
 export type ExtensionKey = keyof typeof EXTENSION_ENDPOINTS;

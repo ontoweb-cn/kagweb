@@ -15,6 +15,7 @@ function emptyGrant(userId: string): GrantPayload {
     models: { llm: [] },
     exec_enabled: null,
     agent_loop_cli: null,
+    kag_projects: null,
   };
 }
 
@@ -214,7 +215,7 @@ export function GrantEditor({ userId }: { userId: string }) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 [scrollbar-gutter:stable]">
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             <section className="min-w-0">
               <SectionTitle>Models</SectionTitle>
               <p className="mb-1.5 px-1 text-[11px] leading-relaxed text-[var(--muted-foreground)]">
@@ -287,6 +288,24 @@ export function GrantEditor({ userId }: { userId: string }) {
                       ...current,
                       agent_loop_cli:
                         current.agent_loop_cli === true ? null : true,
+                    }))
+                  }
+                />
+              </div>
+            </section>
+            <section className="min-w-0">
+              <SectionTitle>Knowledge graph</SectionTitle>
+              <div className="space-y-1.5 text-xs">
+                <CheckRow
+                  label="View KAG projects and tasks"
+                  description="Follows the deployment. Uncheck to hide the KAG management plane for this user; creating or editing projects stays admin-only."
+                  checked={grant.kag_projects !== false}
+                  disabled={controlsDisabled}
+                  onToggle={() =>
+                    setGrant((current) => ({
+                      ...current,
+                      kag_projects:
+                        current.kag_projects === false ? null : false,
                     }))
                   }
                 />

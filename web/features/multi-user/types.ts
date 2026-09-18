@@ -11,6 +11,12 @@ export type GrantPayload = {
    * other tri-states this one is opt-in: `true` allows, `null`/`false` deny.
    */
   agent_loop_cli: boolean | null;
+  /**
+   * May this user read the KAG management plane (projects / schema / tasks)?
+   * `null` follows the deployment: readable once the kag settings domain is
+   * configured; `false` suspends that user. Writes stay admin-only (T2 ACL).
+   */
+  kag_projects: boolean | null;
 };
 
 export type MultiUserResources = {

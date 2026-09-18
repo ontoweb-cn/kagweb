@@ -50,8 +50,8 @@
           },
           "approval_timeout_seconds": {
             "default": 60,
-            "maximum": 600.0,
-            "minimum": 5.0,
+            "maximum": 600,
+            "minimum": 5,
             "title": "Approval Timeout Seconds",
             "type": "integer"
           },
@@ -74,8 +74,8 @@
           },
           "context_window": {
             "default": 0,
-            "maximum": 1000000.0,
-            "minimum": 0.0,
+            "maximum": 1000000,
+            "minimum": 0,
             "title": "Context Window",
             "type": "integer"
           },
@@ -124,8 +124,8 @@
           },
           "timeout_seconds": {
             "default": 900,
-            "maximum": 86400.0,
-            "minimum": 30.0,
+            "maximum": 86400,
+            "minimum": 30,
             "title": "Timeout Seconds",
             "type": "integer"
           },
@@ -163,8 +163,8 @@
           },
           "consult_budget": {
             "default": 3,
-            "maximum": 12.0,
-            "minimum": 0.0,
+            "maximum": 12,
+            "minimum": 0,
             "title": "Consult Budget",
             "type": "integer"
           },
@@ -364,26 +364,26 @@
         "description": "Chat attachment policy (size caps + extraction budgets).\n\nBounds mirror the normalization clamps in\n``runtime_settings.CHAT_ATTACHMENT_*_RANGE`` so the API rejects loudly\nwhat the file layer would silently clamp.",
         "properties": {
           "max_chars_per_doc": {
-            "maximum": 5000000.0,
-            "minimum": 10000.0,
+            "maximum": 5000000,
+            "minimum": 10000,
             "title": "Max Chars Per Doc",
             "type": "integer"
           },
           "max_chars_total": {
-            "maximum": 5000000.0,
-            "minimum": 10000.0,
+            "maximum": 5000000,
+            "minimum": 10000,
             "title": "Max Chars Total",
             "type": "integer"
           },
           "max_file_mb": {
-            "maximum": 1024.0,
-            "minimum": 1.0,
+            "maximum": 1024,
+            "minimum": 1,
             "title": "Max File Mb",
             "type": "integer"
           },
           "max_total_mb": {
-            "maximum": 2048.0,
-            "minimum": 1.0,
+            "maximum": 2048,
+            "minimum": 1,
             "title": "Max Total Mb",
             "type": "integer"
           }
@@ -433,8 +433,8 @@
       "ChatResponseTimeoutUpdate": {
         "properties": {
           "chat_response_timeout": {
-            "maximum": 1800.0,
-            "minimum": 30.0,
+            "maximum": 1800,
+            "minimum": 30,
             "title": "Chat Response Timeout",
             "type": "integer"
           }
@@ -449,8 +449,8 @@
         "description": "How much recent activity shapes the home screen's starting points.\n\nBounds mirror ``starter_settings.TRACE_COUNT_RANGE`` so the API rejects\nloudly what the file layer would silently clamp.",
         "properties": {
           "trace_count": {
-            "maximum": 100.0,
-            "minimum": 3.0,
+            "maximum": 100,
+            "minimum": 3,
             "title": "Trace Count",
             "type": "integer"
           }
@@ -791,23 +791,95 @@
         "title": "InstallPayload",
         "type": "object"
       },
-      "LLMSelection": {
-        "additionalProperties": false,
+      "KagProjectCreateRequest": {
+        "description": "Create-project request. embedding_model_id names an embedding profile in the model catalog (services.embedding.profiles); the server assembles the vectorizer and probes dimensions when vector_dimensions is omitted.",
         "properties": {
-          "model_id": {
-            "title": "Model Id",
+          "name": {
+            "title": "Name",
             "type": "string"
           },
-          "profile_id": {
-            "title": "Profile Id",
+          "namespace": {
+            "description": "Neo4j database name constraint: alphanumeric only, letter-first, 3-64 chars.",
+            "title": "Namespace",
+            "type": "string"
+          },
+          "embedding_model_id": {
+            "default": "",
+            "title": "Embedding Model Id",
+            "type": "string"
+          },
+          "vector_dimensions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omit to have the server probe the embedding endpoint once.",
+            "title": "Vector Dimensions"
+          },
+          "service_user_no": {
+            "default": "",
+            "description": "6-20 letters/digits/underscores; defaults to the stored domain value or kagweb.",
+            "title": "Service User No",
             "type": "string"
           }
         },
         "required": [
-          "profile_id",
-          "model_id"
+          "name",
+          "namespace"
         ],
-        "title": "LLMSelection",
+        "title": "KagProjectCreateRequest",
+        "type": "object"
+      },
+      "KagSettingsUpdate": {
+        "description": "KAG integration domain update (the `kag` block of system settings). bridge_api_key is write-only: send \"\" (or omit it) to keep the stored key.",
+        "properties": {
+          "spg_server_url": {
+            "default": "",
+            "title": "Spg Server Url",
+            "type": "string"
+          },
+          "bridge_command": {
+            "default": "",
+            "title": "Bridge Command",
+            "type": "string"
+          },
+          "bridge_args": {
+            "default": [
+              "-m",
+              "kag_bridge"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Bridge Args",
+            "type": "array"
+          },
+          "kag_project_dir": {
+            "default": "",
+            "title": "Kag Project Dir",
+            "type": "string"
+          },
+          "namespace": {
+            "default": "",
+            "title": "Namespace",
+            "type": "string"
+          },
+          "project_id": {
+            "default": "",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "bridge_api_key": {
+            "default": "",
+            "title": "Bridge Api Key",
+            "type": "string"
+          }
+        },
+        "title": "KagSettingsUpdate",
         "type": "object"
       },
       "LanguageUpdate": {
@@ -827,6 +899,25 @@
         "title": "LanguageUpdate",
         "type": "object"
       },
+      "LLMSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "profile_id": {
+            "title": "Profile Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "model_id"
+        ],
+        "title": "LLMSelection",
+        "type": "object"
+      },
       "LoginRequest": {
         "description": "Payload for the POST /login endpoint.",
         "properties": {
@@ -844,6 +935,20 @@
           "password"
         ],
         "title": "LoginRequest",
+        "type": "object"
+      },
+      "ManagedUpdateRequest": {
+        "properties": {
+          "confirmation": {
+            "const": "update-and-restart",
+            "title": "Confirmation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmation"
+        ],
+        "title": "ManagedUpdateRequest",
         "type": "object"
       },
       "MCPServerConfig": {
@@ -915,8 +1020,8 @@
           },
           "tool_timeout": {
             "default": 30,
-            "maximum": 600.0,
-            "minimum": 1.0,
+            "maximum": 600,
+            "minimum": 1,
             "title": "Tool Timeout",
             "type": "integer"
           },
@@ -956,20 +1061,6 @@
           }
         },
         "title": "MCPSettingsPayload",
-        "type": "object"
-      },
-      "ManagedUpdateRequest": {
-        "properties": {
-          "confirmation": {
-            "const": "update-and-restart",
-            "title": "Confirmation",
-            "type": "string"
-          }
-        },
-        "required": [
-          "confirmation"
-        ],
-        "title": "ManagedUpdateRequest",
         "type": "object"
       },
       "MinerUModelDownloadPayload": {
@@ -1118,8 +1209,8 @@
       "NetworkSettingsUpdate": {
         "properties": {
           "backend_port": {
-            "maximum": 65535.0,
-            "minimum": 1.0,
+            "maximum": 65535,
+            "minimum": 1,
             "title": "Backend Port",
             "type": "integer"
           },
@@ -1131,8 +1222,8 @@
             "type": "array"
           },
           "frontend_port": {
-            "maximum": 65535.0,
-            "minimum": 1.0,
+            "maximum": 65535,
+            "minimum": 1,
             "title": "Frontend Port",
             "type": "integer"
           },
@@ -1683,43 +1774,6 @@
         "title": "SettingsDraftPayload",
         "type": "object"
       },
-      "TTSRequest": {
-        "description": "Text-to-speech request body.",
-        "properties": {
-          "format": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Format"
-          },
-          "text": {
-            "minLength": 1,
-            "title": "Text",
-            "type": "string"
-          },
-          "voice": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Voice"
-          }
-        },
-        "required": [
-          "text"
-        ],
-        "title": "TTSRequest",
-        "type": "object"
-      },
       "TestResponse": {
         "properties": {
           "error": {
@@ -1847,6 +1901,43 @@
           }
         },
         "title": "TourCompletePayload",
+        "type": "object"
+      },
+      "TTSRequest": {
+        "description": "Text-to-speech request body.",
+        "properties": {
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "voice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TTSRequest",
         "type": "object"
       },
       "TurnFailureCode": {
@@ -3889,6 +3980,382 @@
         "tags": [
           "imports"
         ]
+      }
+    },
+    "/api/kag/projects": {
+      "get": {
+        "operationId": "list_projects_api_kag_projects_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Kag Projects",
+        "tags": [
+          "kag"
+        ],
+        "description": "List OpenSPG projects (proxied). Read access: admin, or non-admin with the kag read gate."
+      },
+      "post": {
+        "operationId": "create_project_api_kag_projects_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Kag Project",
+        "tags": [
+          "kag"
+        ],
+        "description": "Create a LOCAL project (admin + same-origin). The vectorizer is assembled server-side from the model catalog's embedding profile; credentials never echo back.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KagProjectCreateRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/kag/projects/{project_id}": {
+      "get": {
+        "operationId": "get_project_api_kag_projects__project_id__get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Kag Project",
+        "tags": [
+          "kag"
+        ],
+        "description": "Project detail plus a schema summary and graph-labels overview (degraded to null when the upstream call fails)."
+      }
+    },
+    "/api/kag/projects/{project_id}/schema": {
+      "get": {
+        "operationId": "get_project_schema_api_kag_projects__project_id__schema_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Kag Project Schema",
+        "tags": [
+          "kag"
+        ],
+        "description": "Raw SPG schema (spgTypes list) for the read-only schema tree."
+      }
+    },
+    "/api/kag/tasks": {
+      "get": {
+        "operationId": "get_tasks_api_kag_tasks_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Kag Tasks",
+        "tags": [
+          "kag"
+        ],
+        "description": "Bridge-reported reasoning-task rows (newest first), optionally filtered."
       }
     },
     "/api/multi-user/admin/resources": {
@@ -6665,6 +7132,142 @@
         ]
       }
     },
+    "/api/settings/kag": {
+      "get": {
+        "operationId": "get_kag_domain_api_settings_kag_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Kag Domain Settings",
+        "tags": [
+          "settings"
+        ],
+        "description": "Admin-only KAG integration domain. bridge_api_key is write-only: responses echo an empty string plus bridge_api_key_set."
+      },
+      "put": {
+        "operationId": "update_kag_domain_api_settings_kag_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Kag Domain Settings",
+        "tags": [
+          "settings"
+        ],
+        "description": "Admin-only + same-origin. An empty bridge_api_key keeps the stored value (tri-state, agent-loop api_key precedent).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KagSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/settings/language": {
       "put": {
         "operationId": "update_language_api_settings_language_put",
@@ -8550,95 +9153,6 @@
         ]
       }
     },
-    "/api/settings/tests/{service}/start": {
-      "post": {
-        "operationId": "start_service_test_api_settings_tests__service__start_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "service",
-            "required": true,
-            "schema": {
-              "title": "Service",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/CatalogPayload"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Start Service Test",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
     "/api/settings/tests/{service}/{run_id}/cancel": {
       "post": {
         "operationId": "cancel_service_test_api_settings_tests__service___run_id__cancel_post",
@@ -8796,6 +9310,95 @@
           }
         },
         "summary": "Stream Service Test Events",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/tests/{service}/start": {
+      "post": {
+        "operationId": "start_service_test_api_settings_tests__service__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "title": "Service",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CatalogPayload"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Service Test",
         "tags": [
           "settings"
         ]

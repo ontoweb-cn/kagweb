@@ -347,6 +347,90 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
+  readonly "/api/kag/projects": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    /**
+     * List Kag Projects
+     * @description List OpenSPG projects (proxied). Read access: admin, or non-admin with the kag read gate.
+     */
+    readonly get: operations["list_projects_api_kag_projects_get"];
+    readonly put?: never;
+    /**
+     * Create Kag Project
+     * @description Create a LOCAL project (admin + same-origin). The vectorizer is assembled server-side from the model catalog's embedding profile; credentials never echo back.
+     */
+    readonly post: operations["create_project_api_kag_projects_post"];
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
+  readonly "/api/kag/projects/{project_id}": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    /**
+     * Get Kag Project
+     * @description Project detail plus a schema summary and graph-labels overview (degraded to null when the upstream call fails).
+     */
+    readonly get: operations["get_project_api_kag_projects__project_id__get"];
+    readonly put?: never;
+    readonly post?: never;
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
+  readonly "/api/kag/projects/{project_id}/schema": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    /**
+     * Get Kag Project Schema
+     * @description Raw SPG schema (spgTypes list) for the read-only schema tree.
+     */
+    readonly get: operations["get_project_schema_api_kag_projects__project_id__schema_get"];
+    readonly put?: never;
+    readonly post?: never;
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
+  readonly "/api/kag/tasks": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    /**
+     * Get Kag Tasks
+     * @description Bridge-reported reasoning-task rows (newest first), optionally filtered.
+     */
+    readonly get: operations["get_tasks_api_kag_tasks_get"];
+    readonly put?: never;
+    readonly post?: never;
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
   readonly "/api/multi-user/admin/resources": {
     readonly parameters: {
       readonly query?: never;
@@ -923,6 +1007,30 @@ export interface paths {
      *     the user type model IDs by hand.
      */
     readonly post: operations["fetch_models_from_provider_api_settings_fetch_models_post"];
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
+  readonly "/api/settings/kag": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    /**
+     * Get Kag Domain Settings
+     * @description Admin-only KAG integration domain. bridge_api_key is write-only: responses echo an empty string plus bridge_api_key_set.
+     */
+    readonly get: operations["get_kag_domain_api_settings_kag_get"];
+    /**
+     * Update Kag Domain Settings
+     * @description Admin-only + same-origin. An empty bridge_api_key keeps the stored value (tri-state, agent-loop api_key precedent).
+     */
+    readonly put: operations["update_kag_domain_api_settings_kag_put"];
+    readonly post?: never;
     readonly delete?: never;
     readonly options?: never;
     readonly head?: never;
@@ -2438,6 +2546,79 @@ export interface components {
         readonly [key: string]: string;
       };
     };
+    /**
+     * KagProjectCreateRequest
+     * @description Create-project request. embedding_model_id names an embedding profile in the model catalog (services.embedding.profiles); the server assembles the vectorizer and probes dimensions when vector_dimensions is omitted.
+     */
+    readonly KagProjectCreateRequest: {
+      /**
+       * Embedding Model Id
+       * @default
+       */
+      readonly embedding_model_id: string;
+      /** Name */
+      readonly name: string;
+      /**
+       * Namespace
+       * @description Neo4j database name constraint: alphanumeric only, letter-first, 3-64 chars.
+       */
+      readonly namespace: string;
+      /**
+       * Service User No
+       * @description 6-20 letters/digits/underscores; defaults to the stored domain value or kagweb.
+       * @default
+       */
+      readonly service_user_no: string;
+      /**
+       * Vector Dimensions
+       * @description Omit to have the server probe the embedding endpoint once.
+       */
+      readonly vector_dimensions?: number | null;
+    };
+    /**
+     * KagSettingsUpdate
+     * @description KAG integration domain update (the `kag` block of system settings). bridge_api_key is write-only: send "" (or omit it) to keep the stored key.
+     */
+    readonly KagSettingsUpdate: {
+      /**
+       * Bridge Api Key
+       * @default
+       */
+      readonly bridge_api_key: string;
+      /**
+       * Bridge Args
+       * @default [
+       *       "-m",
+       *       "kag_bridge"
+       *     ]
+       */
+      readonly bridge_args: readonly string[];
+      /**
+       * Bridge Command
+       * @default
+       */
+      readonly bridge_command: string;
+      /**
+       * Kag Project Dir
+       * @default
+       */
+      readonly kag_project_dir: string;
+      /**
+       * Namespace
+       * @default
+       */
+      readonly namespace: string;
+      /**
+       * Project Id
+       * @default
+       */
+      readonly project_id: string;
+      /**
+       * Spg Server Url
+       * @default
+       */
+      readonly spg_server_url: string;
+    };
     /** LanguageUpdate */
     readonly LanguageUpdate: {
       /**
@@ -3311,6 +3492,10 @@ export type SchemaHttpValidationError =
 export type SchemaImportedMessage = components["schemas"]["ImportedMessage"];
 export type SchemaImportedSession = components["schemas"]["ImportedSession"];
 export type SchemaInstallPayload = components["schemas"]["InstallPayload"];
+export type SchemaKagProjectCreateRequest =
+  components["schemas"]["KagProjectCreateRequest"];
+export type SchemaKagSettingsUpdate =
+  components["schemas"]["KagSettingsUpdate"];
 export type SchemaLanguageUpdate = components["schemas"]["LanguageUpdate"];
 export type SchemaLlmSelection = components["schemas"]["LLMSelection"];
 export type SchemaLoginRequest = components["schemas"]["LoginRequest"];
@@ -4075,6 +4260,183 @@ export interface operations {
           readonly "application/json": {
             readonly [key: string]: unknown;
           };
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly list_projects_api_kag_projects_get: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path?: never;
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly create_project_api_kag_projects_post: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path?: never;
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody: {
+      readonly content: {
+        readonly "application/json": components["schemas"]["KagProjectCreateRequest"];
+      };
+    };
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly get_project_api_kag_projects__project_id__get: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path: {
+        readonly project_id: string;
+      };
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly get_project_schema_api_kag_projects__project_id__schema_get: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path: {
+        readonly project_id: string;
+      };
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly get_tasks_api_kag_tasks_get: {
+    readonly parameters: {
+      readonly query?: {
+        readonly limit?: number;
+        readonly project_id?: string;
+        readonly session_id?: string;
+      };
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path?: never;
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -5437,6 +5799,76 @@ export interface operations {
     readonly requestBody: {
       readonly content: {
         readonly "application/json": components["schemas"]["FetchModelsPayload"];
+      };
+    };
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly get_kag_domain_api_settings_kag_get: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path?: never;
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly update_kag_domain_api_settings_kag_put: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path?: never;
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody: {
+      readonly content: {
+        readonly "application/json": components["schemas"]["KagSettingsUpdate"];
       };
     };
     readonly responses: {
