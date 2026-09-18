@@ -150,7 +150,7 @@ flowchart TB
 |---|---|---|
 | 项目列表/创建/详情 | `/public/v1/project` | 创建时 server 端初始化默认 Schema |
 | Schema 查看/编辑 | `/public/v1/schema`（`alterSchema`/`queryProjectSchema`） | 首版只读 Schema 树 + 表单式编辑；图可视化用现成渲染库，画布式编辑后置 |
-| 图数据浏览 | `/public/v1/graph` 子图查询 | 数据抽检 |
+| 图概览 | `/public/v1/graph/allLabels` | **M2 侦察修正**：graph 控制器无子图查询端点（仅写端点+allLabels+pageRank），原"子图查询"假设证伪——图浏览（经 reason DSL 或直连）与轨迹可视化同推 M3 |
 | 知识构建任务 | `/public/v1/builder/kag/submit` + 任务查询 | M4 |
 | DSL/规则推理（可选） | `/public/v1/reason` | 与 kag_solve 互补 |
 
@@ -349,7 +349,7 @@ flowchart LR
 |---|---|---|
 | **M0 验证** | ① 继承 `OpenSPGReporter` 的 reporter + `do_qa_pipeline` 本地跑通，事件流完整（planner/executor/generator 各 segment 可还原）；② knext 客户端直连 OpenSPG server，逐端点记录 `/public/v1` 请求/响应形状；③ 确认 server 鉴权现状、tenant 字段语义、图存储后端部署形态 | 事件样本 + API 契约笔记归档 |
 | **M1 端到端** | Bridge MVP（`kag_solve` + `kag_schema` + MCP）；Claude Code 经 workdir `.mcp.json` 接入；`kag` settings 域（T1 单租户） | KAGWeb 聊天中完成一次 KAG 增强问答，轨迹以工具卡片呈现——**已完成**（`kag-bridge/` 包 + `kag` settings 域 + ChatCapability 接线；E2E 实测：`kagweb run chat` → claude-code → `kag_solve` → 答案+引用回流，commits 24a4306/0049767） |
-| **M2 管理面** | OpenSPG REST 客户端 + 项目/Schema（只读树+表单编辑）/图浏览/推理任务列表（自有存储）页（前端按 §5.4 接入）；`kag` grants | 管理面全流程可用，鉴权链路按 §6 落地 |
+| **M2 管理面** | OpenSPG REST 客户端 + 项目/Schema（只读树+表单编辑）/图浏览/推理任务列表（自有存储）页（前端按 §5.4 接入）；`kag` grants | 管理面全流程可用，鉴权链路按 §6 落地——**后端已交付**（ffbd123：客户端/API/任务存储/grants/settings 域，live 实测 6/6；范围修正：图浏览推 M3、Schema 编辑推 M3、任务存储用 JSON 文件——偏差已记录）；**前端（M2.4）进行中** |
 | **M3 广度** | Intellect（HTTP 工具注册）；推理轨迹图可视化（SubGraph/RefDocSet 渲染）；`kag_reason` 可选工具 | 第二类 agent loop 接入 |
 | **M4 构建+多用户** | 文档上传 → `/public/v1/builder/kag/submit` 构建流水线与监控；T2 项目 ACL（membership + `kagweb_<uid>` 归因） | 非/admin 用户按 membership 受控访问 |
 | **M5 上游化** | 契约冻结评审、`kag[mcp]` extra、KAG CI 接入（§8 门槛） | Bridge 进入 KAG 仓库 |
