@@ -103,6 +103,11 @@
             "title": "Id",
             "type": "string"
           },
+          "identity_mode": {
+            "default": "",
+            "title": "Identity Mode",
+            "type": "string"
+          },
           "model": {
             "default": "",
             "title": "Model",
@@ -122,12 +127,22 @@
             "title": "Session Workspace",
             "type": "boolean"
           },
+          "tenant_id": {
+            "default": "",
+            "title": "Tenant Id",
+            "type": "string"
+          },
           "timeout_seconds": {
             "default": 900,
             "maximum": 86400.0,
             "minimum": 30.0,
             "title": "Timeout Seconds",
             "type": "integer"
+          },
+          "transport": {
+            "default": "",
+            "title": "Transport",
+            "type": "string"
           },
           "turn_path": {
             "default": "",
@@ -695,6 +710,28 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IdentityLinkRequest": {
+        "description": "Either a password login, or a token the user was handed out of band.",
+        "properties": {
+          "login_name": {
+            "default": "",
+            "title": "Login Name",
+            "type": "string"
+          },
+          "password": {
+            "default": "",
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "default": "",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "title": "IdentityLinkRequest",
+        "type": "object"
+      },
       "ImportedMessage": {
         "properties": {
           "content": {
@@ -772,25 +809,6 @@
         "title": "ImportedSession",
         "type": "object"
       },
-      "InstallPayload": {
-        "description": "Install a catalog entry, optionally under a different local name.",
-        "properties": {
-          "name": {
-            "default": "",
-            "title": "Name",
-            "type": "string"
-          },
-          "secrets": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Secrets",
-            "type": "object"
-          }
-        },
-        "title": "InstallPayload",
-        "type": "object"
-      },
       "LLMSelection": {
         "additionalProperties": false,
         "properties": {
@@ -844,118 +862,6 @@
           "password"
         ],
         "title": "LoginRequest",
-        "type": "object"
-      },
-      "MCPServerConfig": {
-        "description": "One MCP server entry.\n\n``type`` is auto-detected when omitted: ``command`` ⇒ stdio; a ``url``\nending in ``/sse`` ⇒ sse; any other ``url`` ⇒ streamableHttp.",
-        "properties": {
-          "args": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Args",
-            "type": "array"
-          },
-          "auth": {
-            "default": "",
-            "enum": [
-              "",
-              "oauth"
-            ],
-            "title": "Auth",
-            "type": "string"
-          },
-          "catalog_entry": {
-            "default": "",
-            "title": "Catalog Entry",
-            "type": "string"
-          },
-          "command": {
-            "default": "",
-            "title": "Command",
-            "type": "string"
-          },
-          "cwd": {
-            "default": "",
-            "title": "Cwd",
-            "type": "string"
-          },
-          "disabled_tools": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Disabled Tools",
-            "type": "array"
-          },
-          "enabled": {
-            "default": true,
-            "title": "Enabled",
-            "type": "boolean"
-          },
-          "enabled_tools": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Enabled Tools",
-            "type": "array"
-          },
-          "env": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Env",
-            "type": "object"
-          },
-          "headers": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Headers",
-            "type": "object"
-          },
-          "tool_timeout": {
-            "default": 30,
-            "maximum": 600.0,
-            "minimum": 1.0,
-            "title": "Tool Timeout",
-            "type": "integer"
-          },
-          "type": {
-            "anyOf": [
-              {
-                "enum": [
-                  "stdio",
-                  "sse",
-                  "streamableHttp"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Type"
-          },
-          "url": {
-            "default": "",
-            "title": "Url",
-            "type": "string"
-          }
-        },
-        "title": "MCPServerConfig",
-        "type": "object"
-      },
-      "MCPSettingsPayload": {
-        "properties": {
-          "servers": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/MCPServerConfig"
-            },
-            "title": "Servers",
-            "type": "object"
-          }
-        },
-        "title": "MCPSettingsPayload",
         "type": "object"
       },
       "ManagedUpdateRequest": {
@@ -1421,26 +1327,6 @@
           "recovery_interval_seconds"
         ],
         "title": "RuntimeStatus",
-        "type": "object"
-      },
-      "ServerPayload": {
-        "description": "A server definition plus the credential values to store beside it.",
-        "properties": {
-          "config": {
-            "$ref": "#/components/schemas/MCPServerConfig"
-          },
-          "secrets": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Secrets",
-            "type": "object"
-          }
-        },
-        "required": [
-          "config"
-        ],
-        "title": "ServerPayload",
         "type": "object"
       },
       "SessionDetail": {
@@ -3893,7 +3779,7 @@
     },
     "/api/multi-user/admin/resources": {
       "get": {
-        "description": "Everything an admin can assign to a user: model catalog + MCP tools.",
+        "description": "Everything an admin can assign to a user: the model catalog.",
         "operationId": "admin_resources_api_multi_user_admin_resources_get",
         "parameters": [
           {
@@ -5117,6 +5003,216 @@
           }
         },
         "summary": "Detect Agent Loops",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/agent-loop/identity": {
+      "delete": {
+        "description": "Disconnect the calling user's Intellect account, revoking the token.\n\nGuarded like the link: a cross-site DELETE would not merely disconnect the\nvictim but let the attacker re-link them to an account of their choosing.",
+        "operationId": "unlink_agent_loop_identity_api_settings_agent_loop_identity_delete",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Unlink Agent Loop Identity Api Settings Agent Loop Identity Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unlink Agent Loop Identity",
+        "tags": [
+          "settings"
+        ]
+      },
+      "get": {
+        "description": "The calling user's linked Intellect account, if any.",
+        "operationId": "get_agent_loop_identity_api_settings_agent_loop_identity_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Agent Loop Identity Api Settings Agent Loop Identity Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Agent Loop Identity",
+        "tags": [
+          "settings"
+        ]
+      },
+      "post": {
+        "description": "Connect the calling user's Intellect account.\n\nAccepts either Intellect credentials (exchanged once for a member token) or\na token directly. Both are verified against the configured service before\nanything is stored, so a mistake is reported here rather than becoming a\nfailed conversation later.",
+        "operationId": "link_agent_loop_identity_api_settings_agent_loop_identity_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentityLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Link Agent Loop Identity Api Settings Agent Loop Identity Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Link Agent Loop Identity",
         "tags": [
           "settings"
         ]
@@ -6798,386 +6894,6 @@
         "summary": "Get Llm Options",
         "tags": [
           "settings"
-        ]
-      }
-    },
-    "/api/settings/mcp": {
-      "get": {
-        "operationId": "get_mcp_settings_api_settings_mcp_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Mcp Settings Api Settings Mcp Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Mcp Settings",
-        "tags": [
-          "mcp-settings"
-        ]
-      },
-      "put": {
-        "operationId": "update_mcp_settings_api_settings_mcp_put",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MCPSettingsPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Update Mcp Settings Api Settings Mcp Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Mcp Settings",
-        "tags": [
-          "mcp-settings"
-        ]
-      }
-    },
-    "/api/settings/mcp/servers/{name}": {
-      "delete": {
-        "operationId": "delete_mcp_server_api_settings_mcp_servers__name__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Mcp Server Api Settings Mcp Servers  Name  Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Mcp Server",
-        "tags": [
-          "mcp-settings"
-        ]
-      },
-      "put": {
-        "description": "Upsert one server, leaving every other entry byte-identical.\n\nThe whole-map ``PUT`` above cannot express \"change this one\": a client has to\nsend back everything it read, so it silently drops any field it does not\nmodel (a hand-written ``disabled_tools`` blocklist) and overwrites whatever\na second administrator saved in between.",
-        "operationId": "upsert_mcp_server_api_settings_mcp_servers__name__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MCPServerConfig"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Upsert Mcp Server Api Settings Mcp Servers  Name  Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Upsert Mcp Server",
-        "tags": [
-          "mcp-settings"
-        ]
-      }
-    },
-    "/api/settings/mcp/test": {
-      "post": {
-        "operationId": "test_mcp_server_api_settings_mcp_test_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MCPServerConfig"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Test Mcp Server Api Settings Mcp Test Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Test Mcp Server",
-        "tags": [
-          "mcp-settings"
         ]
       }
     },
@@ -9306,705 +9022,6 @@
         "summary": "Update Voice Autoplay",
         "tags": [
           "settings"
-        ]
-      }
-    },
-    "/api/space/mcp/catalog": {
-      "get": {
-        "operationId": "get_catalog_api_space_mcp_catalog_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "q",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Q",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "category",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Category",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "tier",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Tier",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Cursor",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 30,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Catalog Api Space Mcp Catalog Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Catalog",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/catalog/{entry_id}/install": {
-      "post": {
-        "operationId": "install_catalog_entry_api_space_mcp_catalog__entry_id__install_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "entry_id",
-            "required": true,
-            "schema": {
-              "title": "Entry Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InstallPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Install Catalog Entry Api Space Mcp Catalog  Entry Id  Install Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Install Catalog Entry",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/oauth/callback": {
-      "get": {
-        "description": "Where the authorization server sends the browser back.\n\nDeliberately **not** returning JSON: a person is looking at this, having just\nclicked Approve on somebody else's site. It answers with a small page that\nsays what happened and closes itself.\n\nAn unknown ``state`` completes nothing — see ``complete_authorization``.",
-        "operationId": "oauth_callback_api_space_mcp_oauth_callback_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "code",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Code",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "state",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "State",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "error",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Error",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "error_description",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Error Description",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth Callback",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/servers": {
-      "get": {
-        "description": "This surface's servers, in the same shape the admin registry returns.\n\n``servers`` + ``status`` deliberately mirror ``/settings/mcp`` so the two\nsurfaces share one set of frontend components instead of forking over a\nresponse shape. Everything specific to this surface is additive.",
-        "operationId": "list_servers_api_space_mcp_servers_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response List Servers Api Space Mcp Servers Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Servers",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/servers/{name}": {
-      "delete": {
-        "operationId": "remove_server_api_space_mcp_servers__name__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Remove Server Api Space Mcp Servers  Name  Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Remove Server",
-        "tags": [
-          "space-mcp"
-        ]
-      },
-      "put": {
-        "operationId": "upsert_server_api_space_mcp_servers__name__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ServerPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Upsert Server Api Space Mcp Servers  Name  Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Upsert Server",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/servers/{name}/authorize": {
-      "post": {
-        "description": "Begin an OAuth consent for one of the caller's servers.\n\nReturns the URL to send the person to. This is the **only** place a flow may\nstart: a background reconnect has nobody in front of it, so it reports\n``needs_auth`` and waits for someone to click.",
-        "operationId": "authorize_server_api_space_mcp_servers__name__authorize_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Authorize Server Api Space Mcp Servers  Name  Authorize Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Authorize Server",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/servers/{name}/test": {
-      "post": {
-        "description": "Probe a definition before saving it.\n\nRuns under the caller's own owner id so the probe obeys the same address\npolicy and redirect rule the real connection will — a Test more permissive\nthan the connection it previews is worse than no Test at all.\n\nDeliberately side-effect free: nothing is written, so the incoming config is\nprobed as given (any literal credential in it is used in memory only). That\nalso means a caller may probe under a scratch name the store would refuse,\nwhich is how the UI tests a draft before it has one.",
-        "operationId": "test_server_api_space_mcp_servers__name__test_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ServerPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Test Server Api Space Mcp Servers  Name  Test Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Test Server",
-        "tags": [
-          "space-mcp"
         ]
       }
     },

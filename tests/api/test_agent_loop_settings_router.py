@@ -79,16 +79,26 @@ def test_get_returns_presets_and_bounds(client: TestClient) -> None:
     assert data["bounds"]["consult_budget"] == [0, 12]
     assert data["env_overrides"] == {
         "preset": False,
+        "transport": False,
         "command": False,
         "url": False,
         "api_key": False,
     }
+    # The community preset exposes both ways to reach Intellect, so the picker
+    # offers them from one card instead of listing two pseudo-presets.
+    intellect = next(preset for preset in data["presets"] if preset["name"] == "intellect")
+    assert intellect["default_transport"] == "acp"
+    assert {entry["id"] for entry in intellect["transports"]} == {"acp", "http"}
+    assert all(entry["detect_key"] for entry in intellect["transports"])
+    # The folded preset name must be gone from the catalogue entirely.
+    assert "intellect-runs" not in preset_names
     # With nothing configured the shell stub drives turns, so no backend is
     # resolved and the LLM section stays off.
     assert data["effective_primary"] == {
         "id": "",
         "name": "",
         "preset": "",
+        "transport": "",
         "family": "",
         "per_turn_model": False,
         "llm_settings_enabled": False,
@@ -247,12 +257,14 @@ def test_detect_reports_cli_presets_and_http_profiles(client: TestClient) -> Non
         for key, r in http.items()
         if not r["key"].startswith("intellect")
     )
-    # Profiles without a URL are not probed at all. Both Intellect run presets
-    # carry a preset-level probe, so the probe count is the agentscope profile
+    # Profiles without a URL are not probed at all. The Intellect run channels
+    # carry preset-level probes, so the probe count is the agentscope profile
     # plus those two — the team preset gaining a probe target is the fix for a
     # preset that previously had none at all.
     assert len(http) == 3
-    assert http["intellect-runs"]["local"] is True  # preset-level local gateway probe
+    # The community runs channel is keyed per transport (`intellect:http`), so
+    # each button in the picker can show its own badge.
+    assert http["intellect:http"]["local"] is True
     assert http["intellect-team"]["local"] is True
 
 
@@ -468,3 +480,74 @@ def test_the_cross_site_guard_also_covers_the_codex_lifecycle(client: TestClient
     ):
         response = client.post(path, headers={"Origin": "https://evil.example"})
         assert response.status_code == 403, path
+
+
+def test_a_malformed_tenant_id_is_refused_while_saving(client: TestClient) -> None:
+    """Intellect compares the tenant header with its own configured tenant and
+    refuses anything that is not 32 hex characters — on every turn. Catching a
+    typo at save time is the difference between one error message and a
+    deployment where every turn fails with a 400 from the service."""
+    response = client.put(
+        "/api/settings/agent-loop",
+        json={
+            "profiles": [
+                _profile(
+                    id="team",
+                    preset="intellect-team",
+                    url="https://gw",
+                    tenant_id="not-a-tenant",
+                )
+            ]
+        },
+    )
+    assert response.status_code == 400
+    assert "32 hex" in response.json()["detail"]
+
+    # A well-formed id is accepted and survives the round trip.
+    data = _put(
+        client,
+        [
+            _profile(
+                id="team",
+                preset="intellect-team",
+                url="https://gw",
+                tenant_id="AB" * 16,
+            )
+        ],
+    )
+    (profile,) = data["settings"]["profiles"]
+    assert profile["tenant_id"] == "AB" * 16  # casing is the service's business
+
+
+def test_an_absent_identity_mode_takes_the_preset_default(client: TestClient) -> None:
+    """The self-hosted Intellect services attribute turns to the calling
+    account by default (the shape the sibling enterprise UI sends); every other
+    preset keeps sending nothing. An explicit "off" is honoured, because that is
+    how an operator turns attribution back off."""
+    data = _put(
+        client,
+        [
+            _profile(preset="intellect-team", url="https://gw"),
+            _profile(preset="hermes", url="https://h"),
+            _profile(preset="intellect-team", url="https://gw2", identity_mode="off"),
+        ],
+    )
+    modes = {p["url"]: p["identity_mode"] for p in data["settings"]["profiles"]}
+    assert modes["https://gw"] == "header"  # absent = the preset default
+    assert modes["https://h"] == "off"  # a service that knows no such header
+    assert modes["https://gw2"] == "off"  # an explicit choice is honoured
+
+
+def test_the_profiles_turn_path_takes_the_presets_endpoint(client: TestClient) -> None:
+    """The settings page leaves the field blank; both Intellect presets must
+    still resolve to the run channel they actually speak, not the generic
+    contract path the service never implemented."""
+    data = _put(
+        client,
+        [
+            _profile(preset="intellect-team", url="https://gw", turn_path=""),
+            _profile(preset="hermes", url="https://h", turn_path=""),
+        ],
+    )
+    paths = sorted(p["turn_path"] for p in data["settings"]["profiles"])
+    assert paths == ["/agent/turn", "/v1/runs"]

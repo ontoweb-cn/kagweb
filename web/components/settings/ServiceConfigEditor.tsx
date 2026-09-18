@@ -1143,6 +1143,13 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
               )}
         </ConfirmDialog>
       )}
+
+      {/* Personal, and just as relevant to an administrator as to anyone
+          else: the deployment's provider list is what a turn authenticates
+          *with*, while this card is the account a turn is attributed *to*. It
+          used to render only in the non-editable branch, which hid it from
+          exactly the operator who configures the agent backend. */}
+      {service === "llm" && <IntellectLinkCard />}
     </div>
   );
 }

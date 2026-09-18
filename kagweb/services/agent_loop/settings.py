@@ -30,9 +30,13 @@ from typing import Any
 #:         "session_workspace": True, # per-session working directory
 #:         # HTTP family fields:
 #:         "url": "",                 # service base URL (required)
-#:         "turn_path": "/agent/turn",
+#:         "turn_path": "",           # "" = the preset transport's own path
 #:         "headers": {},             # extra headers (auth schemes etc.)
 #:         "api_key": "",             # Authorization: Bearer …
+#:         "tenant_id": "",           # instance tenant, sent as X-Tenant-Id
+#:                                    # (32 hex); "" = the service's default
+#:         "identity_mode": "",       # "" = the preset's default: attribution
+#:                                    # for Intellect HTTP, nothing elsewhere
 #:         # shared:
 #:         "timeout_seconds": 900,    # per-turn wall clock cap
 #:         "consult_enabled": True,   # may the primary consult this profile
@@ -64,15 +68,37 @@ def agent_loop_backend_name() -> str:
 def profile_family(profile: dict[str, Any] | None) -> str:
     """Transport family of a resolved profile: ``cli`` | ``http`` | ``""``.
 
-    Family lives on the *preset*, not on the stored profile dict — resolve
-    through the preset registry here so every caller shares one derivation
-    (a raw ``profile.get("family")`` is always empty).
+    Family follows from the preset **and the profile's transport** — the
+    community Intellect preset is local (ACP) or remote (HTTP) depending on
+    which one the profile selected. Resolve through the preset registry here
+    so every caller shares one derivation (a raw ``profile.get("family")`` is
+    always empty).
     """
     if not profile:
         return ""
     from kagweb.services.agent_loop.builtin import preset_family
 
-    return preset_family(str(profile.get("preset") or ""))
+    return preset_family(str(profile.get("preset") or ""), str(profile.get("transport") or ""))
+
+
+def profile_per_turn_model(profile: dict[str, Any] | None) -> bool:
+    """Whether the per-turn model selection reaches this profile's backend."""
+    if not profile:
+        return False
+    from kagweb.services.agent_loop.builtin import per_turn_model_apply
+
+    return per_turn_model_apply(
+        str(profile.get("preset") or ""), str(profile.get("transport") or "")
+    )
+
+
+def profile_llm_settings_apply(profile: dict[str, Any] | None) -> bool:
+    """Whether the conversation-facing LLM settings apply to this profile."""
+    if not profile:
+        return False
+    from kagweb.services.agent_loop.builtin import llm_settings_apply
+
+    return llm_settings_apply(str(profile.get("preset") or ""), str(profile.get("transport") or ""))
 
 
 def _as_profile_list(block: dict[str, Any]) -> list[dict[str, Any]]:
@@ -160,5 +186,8 @@ __all__ = [
     "consult_profiles",
     "find_consult_profile",
     "get_agent_loop_settings",
+    "profile_family",
+    "profile_llm_settings_apply",
+    "profile_per_turn_model",
     "resolve_primary_profile",
 ]

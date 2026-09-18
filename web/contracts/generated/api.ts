@@ -356,7 +356,7 @@ export interface paths {
     };
     /**
      * Admin Resources
-     * @description Everything an admin can assign to a user: model catalog + MCP tools.
+     * @description Everything an admin can assign to a user: the model catalog.
      */
     readonly get: operations["admin_resources_api_multi_user_admin_resources_get"];
     readonly put?: never;
@@ -566,6 +566,42 @@ export interface paths {
     readonly put?: never;
     readonly post?: never;
     readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
+  readonly "/api/settings/agent-loop/identity": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    /**
+     * Get Agent Loop Identity
+     * @description The calling user's linked Intellect account, if any.
+     */
+    readonly get: operations["get_agent_loop_identity_api_settings_agent_loop_identity_get"];
+    readonly put?: never;
+    /**
+     * Link Agent Loop Identity
+     * @description Connect the calling user's Intellect account.
+     *
+     *     Accepts either Intellect credentials (exchanged once for a member token) or
+     *     a token directly. Both are verified against the configured service before
+     *     anything is stored, so a mistake is reported here rather than becoming a
+     *     failed conversation later.
+     */
+    readonly post: operations["link_agent_loop_identity_api_settings_agent_loop_identity_post"];
+    /**
+     * Unlink Agent Loop Identity
+     * @description Disconnect the calling user's Intellect account, revoking the token.
+     *
+     *     Guarded like the link: a cross-site DELETE would not merely disconnect the
+     *     victim but let the attacker re-link them to an account of their choosing.
+     */
+    readonly delete: operations["unlink_agent_loop_identity_api_settings_agent_loop_identity_delete"];
     readonly options?: never;
     readonly head?: never;
     readonly patch?: never;
@@ -957,67 +993,6 @@ export interface paths {
     readonly get: operations["get_llm_options_api_settings_llm_options_get"];
     readonly put?: never;
     readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/settings/mcp": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /** Get Mcp Settings */
-    readonly get: operations["get_mcp_settings_api_settings_mcp_get"];
-    /** Update Mcp Settings */
-    readonly put: operations["update_mcp_settings_api_settings_mcp_put"];
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/settings/mcp/servers/{name}": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    /**
-     * Upsert Mcp Server
-     * @description Upsert one server, leaving every other entry byte-identical.
-     *
-     *     The whole-map ``PUT`` above cannot express "change this one": a client has to
-     *     send back everything it read, so it silently drops any field it does not
-     *     model (a hand-written ``disabled_tools`` blocklist) and overwrites whatever
-     *     a second administrator saved in between.
-     */
-    readonly put: operations["upsert_mcp_server_api_settings_mcp_servers__name__put"];
-    readonly post?: never;
-    /** Delete Mcp Server */
-    readonly delete: operations["delete_mcp_server_api_settings_mcp_servers__name__delete"];
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/settings/mcp/test": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /** Test Mcp Server */
-    readonly post: operations["test_mcp_server_api_settings_mcp_test_post"];
     readonly delete?: never;
     readonly options?: never;
     readonly head?: never;
@@ -1548,161 +1523,6 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
-  readonly "/api/space/mcp/catalog": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /** Get Catalog */
-    readonly get: operations["get_catalog_api_space_mcp_catalog_get"];
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/space/mcp/catalog/{entry_id}/install": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /** Install Catalog Entry */
-    readonly post: operations["install_catalog_entry_api_space_mcp_catalog__entry_id__install_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/space/mcp/oauth/callback": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /**
-     * Oauth Callback
-     * @description Where the authorization server sends the browser back.
-     *
-     *     Deliberately **not** returning JSON: a person is looking at this, having just
-     *     clicked Approve on somebody else's site. It answers with a small page that
-     *     says what happened and closes itself.
-     *
-     *     An unknown ``state`` completes nothing — see ``complete_authorization``.
-     */
-    readonly get: operations["oauth_callback_api_space_mcp_oauth_callback_get"];
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/space/mcp/servers": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /**
-     * List Servers
-     * @description This surface's servers, in the same shape the admin registry returns.
-     *
-     *     ``servers`` + ``status`` deliberately mirror ``/settings/mcp`` so the two
-     *     surfaces share one set of frontend components instead of forking over a
-     *     response shape. Everything specific to this surface is additive.
-     */
-    readonly get: operations["list_servers_api_space_mcp_servers_get"];
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/space/mcp/servers/{name}": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    /** Upsert Server */
-    readonly put: operations["upsert_server_api_space_mcp_servers__name__put"];
-    readonly post?: never;
-    /** Remove Server */
-    readonly delete: operations["remove_server_api_space_mcp_servers__name__delete"];
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/space/mcp/servers/{name}/authorize": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /**
-     * Authorize Server
-     * @description Begin an OAuth consent for one of the caller's servers.
-     *
-     *     Returns the URL to send the person to. This is the **only** place a flow may
-     *     start: a background reconnect has nobody in front of it, so it reports
-     *     ``needs_auth`` and waits for someone to click.
-     */
-    readonly post: operations["authorize_server_api_space_mcp_servers__name__authorize_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/space/mcp/servers/{name}/test": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /**
-     * Test Server
-     * @description Probe a definition before saving it.
-     *
-     *     Runs under the caller's own owner id so the probe obeys the same address
-     *     policy and redirect rule the real connection will — a Test more permissive
-     *     than the connection it previews is worse than no Test at all.
-     *
-     *     Deliberately side-effect free: nothing is written, so the incoming config is
-     *     probed as given (any literal credential in it is used in memory only). That
-     *     also means a caller may probe under a scratch name the store would refuse,
-     *     which is how the UI tests a draft before it has one.
-     */
-    readonly post: operations["test_server_api_space_mcp_servers__name__test_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
   readonly "/api/system/memory": {
     readonly parameters: {
       readonly query?: never;
@@ -2092,6 +1912,11 @@ export interface components {
        */
       readonly id: string;
       /**
+       * Identity Mode
+       * @default
+       */
+      readonly identity_mode: string;
+      /**
        * Model
        * @default
        */
@@ -2109,10 +1934,20 @@ export interface components {
        */
       readonly session_workspace: boolean;
       /**
+       * Tenant Id
+       * @default
+       */
+      readonly tenant_id: string;
+      /**
        * Timeout Seconds
        * @default 900
        */
       readonly timeout_seconds: number;
+      /**
+       * Transport
+       * @default
+       */
+      readonly transport: string;
       /**
        * Turn Path
        * @default
@@ -2386,6 +2221,27 @@ export interface components {
       /** Detail */
       readonly detail?: readonly components["schemas"]["ValidationError"][];
     };
+    /**
+     * IdentityLinkRequest
+     * @description Either a password login, or a token the user was handed out of band.
+     */
+    readonly IdentityLinkRequest: {
+      /**
+       * Login Name
+       * @default
+       */
+      readonly login_name: string;
+      /**
+       * Password
+       * @default
+       */
+      readonly password: string;
+      /**
+       * Token
+       * @default
+       */
+      readonly token: string;
+    };
     /** ImportedMessage */
     readonly ImportedMessage: {
       /**
@@ -2423,21 +2279,6 @@ export interface components {
       /** Updated At */
       readonly updated_at: number;
     };
-    /**
-     * InstallPayload
-     * @description Install a catalog entry, optionally under a different local name.
-     */
-    readonly InstallPayload: {
-      /**
-       * Name
-       * @default
-       */
-      readonly name: string;
-      /** Secrets */
-      readonly secrets?: {
-        readonly [key: string]: string;
-      };
-    };
     /** LanguageUpdate */
     readonly LanguageUpdate: {
       /**
@@ -2470,74 +2311,6 @@ export interface components {
        * @constant
        */
       readonly confirmation: "update-and-restart";
-    };
-    /**
-     * MCPServerConfig
-     * @description One MCP server entry.
-     *
-     *     ``type`` is auto-detected when omitted: ``command`` ⇒ stdio; a ``url``
-     *     ending in ``/sse`` ⇒ sse; any other ``url`` ⇒ streamableHttp.
-     */
-    readonly MCPServerConfig: {
-      /** Args */
-      readonly args?: readonly string[];
-      /**
-       * Auth
-       * @default
-       * @enum {string}
-       */
-      readonly auth: "" | "oauth";
-      /**
-       * Catalog Entry
-       * @default
-       */
-      readonly catalog_entry: string;
-      /**
-       * Command
-       * @default
-       */
-      readonly command: string;
-      /**
-       * Cwd
-       * @default
-       */
-      readonly cwd: string;
-      /** Disabled Tools */
-      readonly disabled_tools?: readonly string[];
-      /**
-       * Enabled
-       * @default true
-       */
-      readonly enabled: boolean;
-      /** Enabled Tools */
-      readonly enabled_tools?: readonly string[];
-      /** Env */
-      readonly env?: {
-        readonly [key: string]: string;
-      };
-      /** Headers */
-      readonly headers?: {
-        readonly [key: string]: string;
-      };
-      /**
-       * Tool Timeout
-       * @default 30
-       */
-      readonly tool_timeout: number;
-      /** Type */
-      readonly type?: ("stdio" | "sse" | "streamableHttp") | null;
-      /**
-       * Url
-       * @default
-       */
-      readonly url: string;
-    };
-    /** MCPSettingsPayload */
-    readonly MCPSettingsPayload: {
-      /** Servers */
-      readonly servers?: {
-        readonly [key: string]: components["schemas"]["MCPServerConfig"];
-      };
     };
     /**
      * MinerUModelDownloadPayload
@@ -2788,17 +2561,6 @@ export interface components {
       readonly worker_count: number;
       /** Worker Id */
       readonly worker_id: string;
-    };
-    /**
-     * ServerPayload
-     * @description A server definition plus the credential values to store beside it.
-     */
-    readonly ServerPayload: {
-      readonly config: components["schemas"]["MCPServerConfig"];
-      /** Secrets */
-      readonly secrets?: {
-        readonly [key: string]: string;
-      };
     };
     /** SessionDetail */
     readonly SessionDetail: {
@@ -3308,17 +3070,15 @@ export type SchemaFetchModelsPayload =
 export type SchemaGrantPayload = components["schemas"]["GrantPayload"];
 export type SchemaHttpValidationError =
   components["schemas"]["HTTPValidationError"];
+export type SchemaIdentityLinkRequest =
+  components["schemas"]["IdentityLinkRequest"];
 export type SchemaImportedMessage = components["schemas"]["ImportedMessage"];
 export type SchemaImportedSession = components["schemas"]["ImportedSession"];
-export type SchemaInstallPayload = components["schemas"]["InstallPayload"];
 export type SchemaLanguageUpdate = components["schemas"]["LanguageUpdate"];
 export type SchemaLlmSelection = components["schemas"]["LLMSelection"];
 export type SchemaLoginRequest = components["schemas"]["LoginRequest"];
 export type SchemaManagedUpdateRequest =
   components["schemas"]["ManagedUpdateRequest"];
-export type SchemaMcpServerConfig = components["schemas"]["MCPServerConfig"];
-export type SchemaMcpSettingsPayload =
-  components["schemas"]["MCPSettingsPayload"];
 export type SchemaMinerUModelDownloadPayload =
   components["schemas"]["MinerUModelDownloadPayload"];
 export type SchemaMinerUSettingsUpdate =
@@ -3333,7 +3093,6 @@ export type SchemaReadingReference = components["schemas"]["ReadingReference"];
 export type SchemaReadingViewport = components["schemas"]["ReadingViewport"];
 export type SchemaRegisterRequest = components["schemas"]["RegisterRequest"];
 export type SchemaRuntimeStatus = components["schemas"]["RuntimeStatus"];
-export type SchemaServerPayload = components["schemas"]["ServerPayload"];
 export type SchemaSessionDetail = components["schemas"]["SessionDetail"];
 export type SchemaSessionOrganizationRequest =
   components["schemas"]["SessionOrganizationRequest"];
@@ -4675,6 +4434,115 @@ export interface operations {
       };
     };
   };
+  readonly get_agent_loop_identity_api_settings_agent_loop_identity_get: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path?: never;
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": {
+            readonly [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly link_agent_loop_identity_api_settings_agent_loop_identity_post: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path?: never;
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody: {
+      readonly content: {
+        readonly "application/json": components["schemas"]["IdentityLinkRequest"];
+      };
+    };
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": {
+            readonly [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly unlink_agent_loop_identity_api_settings_agent_loop_identity_delete: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path?: never;
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": {
+            readonly [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   readonly test_agent_loop_settings_api_settings_agent_loop_test_post: {
     readonly parameters: {
       readonly query?: never;
@@ -5517,197 +5385,6 @@ export interface operations {
         };
         content: {
           readonly "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly get_mcp_settings_api_settings_mcp_get: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly update_mcp_settings_api_settings_mcp_put: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["MCPSettingsPayload"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly upsert_mcp_server_api_settings_mcp_servers__name__put: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly name: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["MCPServerConfig"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly delete_mcp_server_api_settings_mcp_servers__name__delete: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly name: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly test_mcp_server_api_settings_mcp_test_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["MCPServerConfig"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
         };
       };
       /** @description Validation Error */
@@ -6794,317 +6471,6 @@ export interface operations {
         };
         content: {
           readonly "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly get_catalog_api_space_mcp_catalog_get: {
-    readonly parameters: {
-      readonly query?: {
-        readonly category?: string;
-        readonly cursor?: string;
-        readonly limit?: number;
-        readonly q?: string;
-        readonly tier?: string;
-      };
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly install_catalog_entry_api_space_mcp_catalog__entry_id__install_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly entry_id: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["InstallPayload"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly oauth_callback_api_space_mcp_oauth_callback_get: {
-    readonly parameters: {
-      readonly query?: {
-        readonly code?: string;
-        readonly error?: string;
-        readonly error_description?: string;
-        readonly state?: string;
-      };
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly list_servers_api_space_mcp_servers_get: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly upsert_server_api_space_mcp_servers__name__put: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly name: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["ServerPayload"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly remove_server_api_space_mcp_servers__name__delete: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly name: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly authorize_server_api_space_mcp_servers__name__authorize_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly name: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly test_server_api_space_mcp_servers__name__test_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path: {
-        readonly name: string;
-      };
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["ServerPayload"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
         };
       };
       /** @description Validation Error */

@@ -7,6 +7,7 @@ not merely that something was.
 
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 import time
 
@@ -94,6 +95,51 @@ def test_header_mode_attributes_the_turn_to_the_account(user_root) -> None:
     # Attribution keeps the service credential: it is not an access boundary.
     assert identity.api_key == "svc"
     assert identity.session_prefix == "u_abc:"
+
+
+def test_attribution_uses_the_linked_member_id_when_there_is_one(user_root) -> None:
+    """A connected account is what the turn is attributed to.
+
+    Attribution otherwise derives a member id from KAGWeb's own account id,
+    which names an account the service has never seen. Once a user has signed
+    in to the service, that sign-in is the identity worth recording — it is the
+    same shape the sibling enterprise UI presents (service key authenticates,
+    the real member id attributes), so a service-side audit sees one user, not
+    two different spellings of them.
+    """
+    identity_store_for("u_1").save(_link("u_1"))
+    identity = resolve_backend_identity(
+        {"api_key": "svc", "identity_mode": "header", "url": _GW}, user_id="u_1"
+    )
+    assert identity is not None
+    assert identity.tier == "header"
+    assert identity.headers["X-Intellect-User"] == "mem_u_1"
+    # Still attribution: the deployment key stays the credential.
+    assert identity.api_key == "svc"
+
+
+def test_attribution_ignores_a_link_made_to_another_service(user_root) -> None:
+    """An id minted by a different instance names an account that does not
+    exist there, so the derived id is the only one worth sending."""
+    foreign = replace(
+        _link("u_1", service_origin="https://other.test"), member_id="mem_from_elsewhere"
+    )
+    identity_store_for("u_1").save(foreign)
+    identity = resolve_backend_identity(
+        {"api_key": "svc", "identity_mode": "header", "url": _GW}, user_id="u_1"
+    )
+    assert identity is not None
+    assert identity.headers["X-Intellect-User"] == member_id_for("u_1")
+    assert identity.headers["X-Intellect-User"] != "mem_from_elsewhere"
+
+
+def test_attribution_ignores_an_expired_link(user_root) -> None:
+    identity_store_for("u_1").save(_link("u_1", expires_at=1.0))
+    identity = resolve_backend_identity(
+        {"api_key": "svc", "identity_mode": "header", "url": _GW}, user_id="u_1"
+    )
+    assert identity is not None
+    assert identity.headers["X-Intellect-User"] == member_id_for("u_1")
 
 
 def test_a_profile_cannot_forge_the_identity_header(user_root) -> None:
@@ -699,3 +745,60 @@ def test_member_id_always_satisfies_the_service_contract() -> None:
         body = value[4:]
         assert body and all(c.isascii() and (c.isalnum() or c in "_-") for c in body), value
     assert member_id_for("") == ""
+
+
+# ── the instance tenant: a deployment fact, sent on every request ──────────
+
+
+def test_the_tenant_header_rides_every_request() -> None:
+    """The tenant is deployment configuration, not per-turn identity.
+
+    Intellect validates it against the instance it is configured with (and
+    answers 400/403 on a mismatch), so it has to be on the request that starts
+    a run *and* on the follow-ups the turn makes. The two implementations read
+    different header names and each ignores the other's, so both are sent.
+    """
+    backend = build_agent_loop_backend(
+        {
+            "preset": "intellect-team",
+            "url": _GW,
+            "api_key": "svc",
+            "tenant_id": "ab" * 16,
+        }
+    )
+    assert backend is not None
+    headers = backend._headers()
+    assert headers["X-Tenant-Id"] == "ab" * 16
+    assert headers["X-Intellect-Tenant-Id"] == "ab" * 16
+
+
+def test_no_tenant_configured_sends_no_tenant_header() -> None:
+    """Empty means "the service's own default" — not an empty header, which the
+    service would reject as malformed."""
+    backend = build_agent_loop_backend({"preset": "intellect-team", "url": _GW, "api_key": "svc"})
+    assert backend is not None
+    headers = backend._headers()
+    assert "X-Tenant-Id" not in headers
+    assert "X-Intellect-Tenant-Id" not in headers
+
+
+def test_the_tenant_survives_applying_a_turn_identity() -> None:
+    """``with_identity`` replaces the profile's headers wholesale, so the tenant
+    must not be stored there — a turn that applied identity would otherwise
+    drop it and fail on the service's tenant check."""
+    backend = build_agent_loop_backend(
+        {"preset": "intellect-team", "url": _GW, "api_key": "svc", "tenant_id": "cd" * 16}
+    )
+    assert backend is not None
+    backend.with_identity(
+        BackendIdentity(
+            api_key="svc",
+            headers={"X-Intellect-User": "mem_u_1"},
+            session_prefix="u_1:",
+            tier="header",
+            member_id="mem_u_1",
+        )
+    )
+    headers = backend._headers()
+    assert headers["X-Tenant-Id"] == "cd" * 16
+    assert headers["X-Intellect-User"] == "mem_u_1"

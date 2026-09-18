@@ -463,6 +463,22 @@ def resolve_backend_identity(
 
     member_id = member_id_for(owner)
     if mode == "header":
+        # Attribution: the service key still authenticates, and the account
+        # rides along as the member id. A linked account makes that id the
+        # *real* Intellect member rather than one derived from the local
+        # account name — the same shape the sibling enterprise deployment
+        # presents (service key + X-Intellect-User from a real sign-in), so a
+        # user who connected their account is attributed to it even before the
+        # deployment opts into token delegation.
+        if linked is ...:
+            linked = load_linked_identity(owner)
+        record = linked if isinstance(linked, LinkedIdentity) else None
+        if record is not None and not record.is_expired() and record.member_id:
+            # Only for the origin the link was made against: an id minted by a
+            # different instance would attribute this turn to an account that
+            # does not exist there.
+            if _same_origin(record.service_origin, profile.get("url")):
+                member_id = record.member_id
         if member_id:
             _set_header(headers, _HEADER_USER, member_id)
         return BackendIdentity(

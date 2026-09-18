@@ -249,6 +249,10 @@ class AgentLoopProfileUpdate(BaseModel):
     id: str = ""
     name: str = ""
     preset: str
+    #: Which way to reach a preset that offers several (the community
+    #: Intellect preset: ``acp`` local child vs ``http`` service). Empty =
+    #: the preset's default.
+    transport: str = ""
     enabled: bool = True
     command: str = ""
     args: List[str] = Field(default_factory=list)
@@ -280,8 +284,14 @@ class AgentLoopProfileUpdate(BaseModel):
     #: HTTP family only. Who a turn runs as on the remote service: ``off``
     #: sends nothing extra, ``header`` attributes the turn to the calling
     #: account, ``token`` also presents that account's own linked member token,
-    #: ``token_required`` refuses to run without one.
-    identity_mode: str = "off"
+    #: ``token_required`` refuses to run without one. Empty = the preset's own
+    #: default (attribution for the self-hosted Intellect services).
+    identity_mode: str = ""
+    #: The instance tenant the service runs as, when the deployment names one.
+    #: Intellect validates it against its configured tenant (32 hex chars) and
+    #: answers 400/403 on a malformed or mismatched value, so it is checked
+    #: here rather than at the first turn. Empty = the service's default tenant.
+    tenant_id: str = ""
 
 
 class AgentLoopSettingsUpdate(BaseModel):
@@ -1125,7 +1135,7 @@ async def update_chat_attachment_settings(payload: ChatAttachmentSettingsUpdate)
 # agent_loop block keys a process-env override can currently pin. When one is
 # pinned, the stored value is not what turns actually use — the UI disables the
 # corresponding input instead of letting an operator "save" a lie.
-AGENT_LOOP_ENV_OVERRIDABLE_KEYS = ("preset", "command", "url", "api_key")
+AGENT_LOOP_ENV_OVERRIDABLE_KEYS = ("preset", "transport", "command", "url", "api_key")
 
 
 def _agent_loop_profile_block(
@@ -1134,6 +1144,8 @@ def _agent_loop_profile_block(
 ) -> dict[str, Any]:
     """One profile as persisted — honoring the api_key tri-state and the
     stored key for unknown ids (new profiles default to no key)."""
+    from kagweb.services.agent_loop.builtin import profile_transport_id
+
     stored = stored_profiles.get(profile.id) or {}
     api_key = str(stored.get("api_key") or "")
     if profile.api_key is not None:
@@ -1142,6 +1154,10 @@ def _agent_loop_profile_block(
         "id": profile.id.strip(),
         "name": profile.name.strip(),
         "preset": profile.preset,
+        # Stored normalized: a single-transport preset keeps "" (so the file
+        # does not grow a field that means nothing), and a multi-transport
+        # preset resolves its default here rather than at every read site.
+        "transport": profile_transport_id(profile.preset, profile.transport),
         "enabled": profile.enabled,
         "command": profile.command,
         "args": [str(arg) for arg in profile.args],
@@ -1158,7 +1174,8 @@ def _agent_loop_profile_block(
         "approval_default": profile.approval_default,
         "model": profile.model.strip(),
         "context_window": profile.context_window,
-        "identity_mode": profile.identity_mode,
+        "identity_mode": profile.identity_mode.strip(),
+        "tenant_id": profile.tenant_id.strip(),
     }
 
 
@@ -1221,12 +1238,13 @@ def _agent_loop_payload() -> dict[str, Any]:
 
     effective_primary = str(effective.get("primary") or "")
     stored_primary = str(stored.get("primary") or "")
-    from kagweb.services.agent_loop.builtin import (
-        llm_settings_apply,
-        per_turn_model_apply,
-        preset_family,
+    from kagweb.services.agent_loop.builtin import preset_transports, transport_key
+    from kagweb.services.agent_loop.settings import (
+        profile_family,
+        profile_llm_settings_apply,
+        profile_per_turn_model,
+        resolve_primary_profile,
     )
-    from kagweb.services.agent_loop.settings import resolve_primary_profile
     from kagweb.services.config.runtime_settings import _auto_primary_agent_loop
 
     # Which backend actually drives turns, and whether the LLM settings apply to
@@ -1235,6 +1253,7 @@ def _agent_loop_payload() -> dict[str, Any]:
     # behaviour.
     resolved = resolve_primary_profile(effective)
     resolved_preset = str((resolved or {}).get("preset") or "")
+    resolved_transport = str((resolved or {}).get("transport") or "")
 
     return {
         "settings": _public(stored),
@@ -1243,13 +1262,14 @@ def _agent_loop_payload() -> dict[str, Any]:
             "id": str((resolved or {}).get("id") or ""),
             "name": str((resolved or {}).get("name") or ""),
             "preset": resolved_preset,
-            "family": preset_family(resolved_preset),
+            "transport": resolved_transport,
+            "family": profile_family(resolved),
             # Gates the LLM (models and connections) section: only a
             # self-hosted HTTP backend needs model credentials entered here.
-            "llm_settings_enabled": llm_settings_apply(resolved_preset),
+            "llm_settings_enabled": profile_llm_settings_apply(resolved),
             # Gates the composer's model selector: only backends that consume
             # a per-turn model expose one (one-shot CLI family today).
-            "per_turn_model": per_turn_model_apply(resolved_preset),
+            "per_turn_model": profile_per_turn_model(resolved),
         },
         # What the default rule (local Intellect first) would pick — shown
         # next to the "Automatic" primary option so the rule is visible.
@@ -1266,6 +1286,22 @@ def _agent_loop_payload() -> dict[str, Any]:
                 "name": preset.name,
                 "family": preset.family,
                 "description": preset.description,
+                # Several ways to reach the same product (the community
+                # Intellect preset: local ACP child vs remote /v1/runs
+                # service). Empty for single-transport presets.
+                "transports": [
+                    {
+                        "id": transport.id,
+                        "family": transport.family,
+                        "label": transport.label,
+                        "description": transport.description,
+                        "detect_key": transport_key(preset.name, transport.id),
+                    }
+                    for transport in preset_transports(preset.name)
+                ]
+                if preset.transports
+                else [],
+                "default_transport": preset.default_transport,
                 # The preset picker's detection column is filled by /detect.
             }
             for preset in PRESETS.values()
@@ -1328,6 +1364,32 @@ def _reject_unauthorized_workdirs(block: dict[str, Any]) -> None:
             )
 
 
+def _reject_malformed_tenant_ids(block: dict[str, Any]) -> None:
+    """Refuse a tenant id the service would reject, while saving.
+
+    Intellect compares the header with the tenant its instance is configured
+    with, and a value that is not 32 hex characters is refused outright with a
+    400 before the comparison even happens. Both failure modes are identical on
+    every turn, so the one place a typo can be caught is here — the field is a
+    deployment fact the operator copies from the service, not something KAGWeb
+    can repair or normalize (re-casing would silently stop matching a service
+    configured with a lowercase id).
+    """
+    for profile in block.get("profiles") or []:
+        tenant = str(profile.get("tenant_id") or "").strip()
+        if not tenant:
+            continue
+        if len(tenant) != 32 or any(char not in "0123456789abcdefABCDEF" for char in tenant):
+            label = profile.get("name") or profile.get("id") or "profile"
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Profile {label!r}: tenant_id must be 32 hex characters "
+                    f"(the service's tenant id), got {tenant!r}."
+                ),
+            )
+
+
 @router.put("/agent-loop")
 async def update_agent_loop_settings(payload: AgentLoopSettingsUpdate):
     _require_settings_admin()
@@ -1335,6 +1397,7 @@ async def update_agent_loop_settings(payload: AgentLoopSettingsUpdate):
     current = service.load_system(include_process_overrides=False)
     block = _agent_loop_settings_block(payload)
     _reject_unauthorized_workdirs(block)
+    _reject_malformed_tenant_ids(block)
     # save_system re-normalizes (migration of odd shapes, id dedupe, the
     # auto-primary rule, clamps) exactly as it does for every other
     # system.json block, so the response is the truth.
