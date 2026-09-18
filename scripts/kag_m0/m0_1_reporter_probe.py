@@ -109,14 +109,14 @@ async def run(args) -> dict:
             "KAG 配置为空：请在 KAG 项目目录内运行（含 kag_config.yaml），或用 --project-dir 指定"
         )
 
-    # —— 模仿 qa()（main_solver.py L219-260）的最小初始化子集 ——
-    host_addr = os.environ.get("KAG_PROJECT_HOST_ADDR", "")
-    if KAG_PROJECT_CONF is not None and host_addr:
-        KAG_PROJECT_CONF.host_addr = host_addr
-    # TODO(M0-2)：qa() 还包含 llm extra_body 归一化与 KB 配置装配（L233-295），
-    # 探针先按单项目跑通；KB 多知识库场景在 Bridge 实装时补齐。
-    if KAG_CONFIG is not None and main_config.get("llm"):
-        KAG_CONFIG.update_conf({"llm": main_config["llm"]})
+    # —— 配置来源说明（M0 实测修正）——
+    # kag_config.yaml 为唯一配置源：project.host_addr / llm / vectorizer 均从 yaml 加载。
+    # 刻意不做 qa() 的运行时覆盖（KAG_PROJECT_CONF.host_addr = env）：该赋值会触发
+    # KAG 配置内部重建并丢失 all_config 的 llm 键（repro3 实测，KeyError→占位符
+    # 解析失败）；且 do_cycle_report 在 while 内吞 CancelledError，异常会被
+    # asyncio 清理死锁掩盖（KAG bug，两个发现均已归档）。
+    # TODO(M0-2)：qa() 的 llm extra_body 归一化与 KB 配置装配（L233-295）在
+    # Bridge 实装时补齐；探针按单项目跑通。
 
     task_id = f"m0_probe_{int(time.time())}"
     reporter = build_probe_reporter(
@@ -129,15 +129,19 @@ async def run(args) -> dict:
 
     t0 = time.time()
     await reporter.start()
-    answer = await do_qa_pipeline(
-        args.pipeline,
-        args.query,
-        main_config,
-        reporter,
-        task_id=task_id,
-        kb_project_ids=[],
-    )
-    await reporter.stop()
+    try:
+        answer = await do_qa_pipeline(
+            args.pipeline,
+            args.query,
+            main_config,
+            reporter,
+            task_id=task_id,
+            kb_project_ids=[],
+        )
+    finally:
+        # 异常路径也必须 stop（置 _running=False），否则 KAG 的
+        # do_cycle_report 吞 CancelledError 会让 asyncio.run 清理阶段死锁
+        await reporter.stop()
     cost = elapsed_ms(t0)
 
     # —— 统计 ——

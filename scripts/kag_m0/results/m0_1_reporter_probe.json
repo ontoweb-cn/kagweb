@@ -1,0 +1,216 @@
+{
+  "query": "OpenSPG 是什么？",
+  "pipeline": "think_pipeline",
+  "answer": "OpenSPG 可以理解为蚂蚁集团开源的一个知识图谱/知识服务引擎，也是 KAG 的底层基础。KAG 就是基于 OpenSPG 引擎加上大语言模型构建的逻辑推理问答框架，用来做专业领域知识库的推理问答。\n\n在 OpenSPG 基础上，KAG 进一步把 SPG 升级成对 LLM 更友好的 LLMFriSPG，支持图结构与原始文本块互索引、无 Schema 信息抽取和有 Schema 专业知识构建等能力。\n\n如果想进一步了解，可以看它的 GitHub：https://github.com/OpenSPG/openspg ，官网：https://spg.openkg.cn/ 。",
+  "cost_ms": 9688,
+  "event_count": 6,
+  "segment_distribution": {
+    "generator": 2,
+    "generator_reference": 1,
+    "generator_reference_all": 1,
+    "generator_reference_graphs": 1,
+    "answer": 1
+  },
+  "top_tags": {
+    "task_process": 1,
+    "final_generator_input": 1,
+    "reference_chunk": 1,
+    "reference_ref_format": 1,
+    "reference_graph": 1,
+    "Final Answer": 1
+  },
+  "status_distribution": {
+    "FINISH": 6
+  },
+  "do_report_calls": 8,
+  "first_events": [
+    {
+      "ts": 1789734852.87,
+      "segment": "generator",
+      "tag": "task_process",
+      "status": "FINISH",
+      "content_len": 72,
+      "kwargs_keys": []
+    },
+    {
+      "ts": 1789734852.87,
+      "segment": "generator",
+      "tag": "final_generator_input",
+      "status": "FINISH",
+      "content_len": 3540,
+      "kwargs_keys": []
+    },
+    {
+      "ts": 1789734852.87,
+      "segment": "generator_reference",
+      "tag": "reference_chunk",
+      "status": "FINISH",
+      "content_len": 2,
+      "kwargs_keys": []
+    },
+    {
+      "ts": 1789734852.87,
+      "segment": "generator_reference_all",
+      "tag": "reference_ref_format",
+      "status": "FINISH",
+      "content_len": 2,
+      "kwargs_keys": []
+    },
+    {
+      "ts": 1789734852.87,
+      "segment": "generator_reference_graphs",
+      "tag": "reference_graph",
+      "status": "FINISH",
+      "content_len": 73,
+      "kwargs_keys": []
+    },
+    {
+      "ts": 1789734859.082,
+      "segment": "answer",
+      "tag": "Final Answer",
+      "status": "FINISH",
+      "content_len": 289,
+      "kwargs_keys": [
+        "reporter",
+        "segment_name"
+      ]
+    }
+  ],
+  "last_events": [
+    {
+      "ts": 1789734852.87,
+      "segment": "generator",
+      "tag": "task_process",
+      "status": "FINISH",
+      "content_len": 72,
+      "kwargs_keys": []
+    },
+    {
+      "ts": 1789734852.87,
+      "segment": "generator",
+      "tag": "final_generator_input",
+      "status": "FINISH",
+      "content_len": 3540,
+      "kwargs_keys": []
+    },
+    {
+      "ts": 1789734852.87,
+      "segment": "generator_reference",
+      "tag": "reference_chunk",
+      "status": "FINISH",
+      "content_len": 2,
+      "kwargs_keys": []
+    },
+    {
+      "ts": 1789734852.87,
+      "segment": "generator_reference_all",
+      "tag": "reference_ref_format",
+      "status": "FINISH",
+      "content_len": 2,
+      "kwargs_keys": []
+    },
+    {
+      "ts": 1789734852.87,
+      "segment": "generator_reference_graphs",
+      "tag": "reference_graph",
+      "status": "FINISH",
+      "content_len": 73,
+      "kwargs_keys": []
+    },
+    {
+      "ts": 1789734859.082,
+      "segment": "answer",
+      "tag": "Final Answer",
+      "status": "FINISH",
+      "content_len": 289,
+      "kwargs_keys": [
+        "reporter",
+        "segment_name"
+      ]
+    }
+  ],
+  "snapshots": [
+    {
+      "ts": 1789734858.885,
+      "status": "RUNNING",
+      "stream_data": {
+        "answer": "",
+        "reference": [
+          {
+            "id": "reference_ref_format",
+            "type": "chunk",
+            "info": []
+          }
+        ],
+        "think": "<think>",
+        "metrics": {
+          "think_cost": 0.0
+        },
+        "subgraph": []
+      }
+    },
+    {
+      "ts": 1789734859.888,
+      "status": "FINISH",
+      "stream_data": {
+        "answer": "OpenSPG 可以理解为蚂蚁集团开源的一个知识图谱/知识服务引擎，也是 KAG 的底层基础。KAG 就是基于 OpenSPG 引擎加上大语言模型构建的逻辑推理问答框架，用来做专业领域知识库的推理问答。\n\n在 OpenSPG 基础上，KAG 进一步把 SPG 升级成对 LLM 更友好的 LLMFriSPG，支持图结构与原始文本块互索引、无 Schema 信息抽取和有 Schema 专业知识构建等能力。\n\n如果想进一步了解，可以看它的 GitHub：https://github.com/OpenSPG/openspg ，官网：https://spg.openkg.cn/ 。",
+        "reference": [
+          {
+            "id": "reference_ref_format",
+            "type": "chunk",
+            "info": []
+          }
+        ],
+        "think": "<think></think>",
+        "metrics": {
+          "think_cost": 0.0
+        },
+        "subgraph": []
+      }
+    },
+    {
+      "ts": 1789734859.889,
+      "status": "FINISH",
+      "stream_data": {
+        "answer": "OpenSPG 可以理解为蚂蚁集团开源的一个知识图谱/知识服务引擎，也是 KAG 的底层基础。KAG 就是基于 OpenSPG 引擎加上大语言模型构建的逻辑推理问答框架，用来做专业领域知识库的推理问答。\n\n在 OpenSPG 基础上，KAG 进一步把 SPG 升级成对 LLM 更友好的 LLMFriSPG，支持图结构与原始文本块互索引、无 Schema 信息抽取和有 Schema 专业知识构建等能力。\n\n如果想进一步了解，可以看它的 GitHub：https://github.com/OpenSPG/openspg ，官网：https://spg.openkg.cn/ 。",
+        "reference": [
+          {
+            "id": "reference_ref_format",
+            "type": "chunk",
+            "info": []
+          }
+        ],
+        "think": "<think></think>",
+        "metrics": {
+          "think_cost": 0.0
+        },
+        "subgraph": []
+      }
+    }
+  ],
+  "ok": true,
+  "__env__": {
+    "recorded_at": "2026-09-18T12:34:19.890768+00:00",
+    "python": "3.12.13",
+    "argv": [
+      "OpenSPG 是什么？",
+      "--project-dir",
+      "/tmp/m0_kag_project",
+      "--pipeline",
+      "think_pipeline"
+    ],
+    "kag_version": "0.8.0",
+    "env:KAG_PROJECT_HOST_ADDR": "http://127.0.0.1:8887",
+    "env:KAG_PROJECT_ID": "3",
+    "env:KAG_PROJECT_NAMESPACE": "",
+    "env:KAG_GRAPH_STORE_URI": ""
+  },
+  "live_conclusion": {
+    "result": "PASS——探针端到端跑通：deepseek-flash（llm）+ Qwen3-Embedding-8B@GPUStack（vectorizer）+ OpenSPG server 项目 m0ProbeLive(3)；6 条 add_report_line 事件、8 次 do_report 周期快照、answer 9.7s",
+    "stream_data_products": "generate_report_data() 产物验证：StreamData{answer, think, reference, subgraph, metrics}——附录 A.2 的 reference/subgraph 数据模型成立",
+    "kag_quirk_1": "KAG_PROJECT_CONF.host_addr 运行时赋值会触发配置内部重建并丢失 all_config 的 llm 键（KeyError → {chat_llm} 占位符解析失败）——Bridge 必须以 kag_config.yaml 为唯一配置源，禁止运行时覆盖",
+    "kag_quirk_2": "ReporterABC.do_cycle_report 在 while 内吞 CancelledError：pipeline 抛异常时 asyncio.run 清理阶段死锁、真实 traceback 被掩盖——Bridge 必须以 try/finally 保证 reporter.stop()（该 bug 值得在 M5 上游化时修复）",
+    "python_runtime": "Python 3.12.13 venv（本机 3.14 亦有疑似 asyncio 兼容问题，未深究；server 镜像内为 3.10）",
+    "segments_note": "事件分布以 generator/reference 段为主（空知识库下检索快速收敛）；M1 接入真实数据后 thinker 段事件量会显著增加"
+  }
+}

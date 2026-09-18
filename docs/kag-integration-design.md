@@ -127,6 +127,12 @@ flowchart TB
 
 **事件桥接（评审修正 R1）**：自定义 reporter **继承 `OpenSPGReporter`**（KAG 仓库内，Apache-2.0，可直接复用），重写 `do_report()` 把"推送给 server 的流"改为"入本地事件队列"，再转 MCP progress notification / SSE `progress` 帧；终态经 `tool_result` 返回答案 + 引用（RefDocSet）+ 轨迹（SubGraph/Metrics，数据模型沿用 OpenSPGReporter 已有组装）。
 
+**实装注意（M0-1 实测发现，两个 KAG 陷阱）**：
+
+1. **配置必须以 kag_config.yaml 为唯一来源**：运行时执行 `KAG_PROJECT_CONF.host_addr = <env>` 会触发 KAG 配置内部重建并**丢失 `all_config` 的 `llm` 键**（后续 `{chat_llm}` 占位符解析直接 RuntimeError）——Bridge 生成配置文件后禁止任何运行时覆盖；
+2. **reporter 生命周期必须 try/finally**：`ReporterABC.do_cycle_report` 在 while 循环内吞 `CancelledError`——pipeline 抛异常时 `asyncio.run` 清理阶段死锁、真实 traceback 被掩盖。Bridge 以 try/finally 保证 `reporter.stop()`；该 bug 与上一条均为 M5 上游化时的候选修复项。
+   （验证环境：deepseek-flash + Qwen3-Embedding-8B@GPUStack，探针 6 事件 / 8 快照 / 9.7s 出答案，StreamData 五字段产物齐全——详见 `results/m0_1`。）
+
 **双协议**：
 
 - **MCP Server**：Claude Code（session workdir `.mcp.json` 自动发现 / `--mcp-config`）、Codex（config.toml）原生支持；
@@ -352,9 +358,9 @@ flowchart LR
 
 > 验证脚本骨架：`scripts/kag_m0/`（`m0_1`/`m0_3`/`m0_4`/`m0_5`/`m0_7`/`m0_8`/`m0_9`/`m0_10` + `_common.py`，编号与下方清单项对应；结果统一写 `scripts/kag_m0/results/`；已过语法检查与代码评审）。建议执行顺序：无环境依赖的静态/探测先行——m0_7（多轮机制扫描）→ m0_5（图存储后端确认）→ m0_9（发行版验证）→ m0_10 静态扫描；需 server 的 m0_4 → m0_3 → m0_10 `--allow-write` 实测；需完整 KAG 项目环境的 m0_1；人工实测 m0_8。
 
-1. 自定义 reporter（继承 `OpenSPGReporter`，重写 `do_report`）跑 `do_qa_pipeline`：记录全部 `add_report_line` 调用的 segment/tag/status 分布；验证 SubGraph/RefDocSet 组装产物；
-2. `do_qa_pipeline` 与 `qa()` 的 reporter 注入差异（前者显式传参，后者内部构造）——确认 Bridge 走前者；
-3. knext `ProjectClient`/`SchemaSession`（经 `ReasonerClient`）/`ReasonerApi` 直连 OpenSPG server：逐端点 curl 记录请求/响应（`/public/v1/project`、`/schema`、`/graph` 子图、`/reason/run`、`/builder/kag/submit`）——**已执行**（knext venv 0.8.0 对 live server：project_get/get_config 通过；SchemaSession 因项目无 schema 阻塞，待 embedding 凭据后复跑，详见 `results/m0_3`；knext 的 schema 加载实际走 `/public/v1/reason/schema`）；
+1. 自定义 reporter（继承 `OpenSPGReporter`，重写 `do_report`）跑 `do_qa_pipeline`：记录全部 `add_report_line` 调用的 segment/tag/status 分布；验证 SubGraph/RefDocSet 组装产物——**已执行（PASS）**：deepseek-flash + Qwen3-Embedding-8B@GPUStack 端到端，StreamData{answer,think,reference,subgraph,metrics} 产物验证成立；**同轮发现两个 KAG 实装陷阱**（详见 §5.1 实装注意）；
+2. `do_qa_pipeline` 与 `qa()` 的 reporter 注入差异（前者显式传参，后者内部构造）——确认 Bridge 走前者——**运行复核通过**（探针即走前者并成功产出事件与答案）；
+3. knext `ProjectClient`/`SchemaSession`（经 `ReasonerClient`）/`ReasonerApi` 直连 OpenSPG server：逐端点 curl 记录请求/响应——**已执行（PASS）**：project_get / get_config（config 含 `graph_store`+`vectorizer`）/ SchemaSession 加载默认 schema（5 个 SPG type）全部通过；knext 的 schema 加载实际走 `/public/v1/reason/schema`；
 4. OpenSPG server 鉴权实测（无 token 直调各端点的可达性）与 tenant/project 字段语义——**已执行**（`/public/*` 全端点无认证可达、builder 提交 200；非 public 路径登录门；详见 `results/m0_4`）；
 5. OpenSPG server 图存储后端确认（TuGraph 或其他）与最小部署（docker compose 单机）；
 6. KAG 版本基线记录（`KAG_VERSION`）与 Bridge 钉版本的依赖声明；
