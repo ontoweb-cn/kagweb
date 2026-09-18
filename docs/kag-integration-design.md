@@ -1,7 +1,7 @@
-# KAG × KAGWeb 集成设计（定稿 v1.2）
+# KAG × KAGWeb 集成设计（定稿 v1.3）
 
-> 状态：已评审定稿（含评审修正项 R1–R6、Bridge 演进路径、前端接入设计 §5.4、二轮评审修正 A1/A2/D1–D4、附录 A 契约样本）
-> 日期：2026-09-18（v1.2 二轮评审修订；v1.1 增补前端接入设计与 M0 脚本评审修复）
+> 状态：已评审定稿（含评审修正项 R1–R6、Bridge 演进路径、前端接入设计 §5.4、二轮评审修正 A1/A2/D1–D4、附录 A 契约样本；v1.3 并入 M0 实测结论）
+> 日期：2026-09-18（v1.3 M0 实测修订；v1.2 二轮评审修订；v1.1 增补前端接入设计）
 > 代码基线：kagweb（本仓库）、`~/project/KAG`（KAG 开源框架）、`~/project/openspgapp`（闭源参考，不进入任何交付物）
 
 ---
@@ -59,7 +59,8 @@ KAG（开源推理框架）──REST（配置·Schema）──▶ OpenSPG Serve
 | 事实 | 证据 |
 |---|---|
 | 原生 API 面：`/public/v1/project`（创建/查询/更新，创建时初始化默认 Schema）、`/public/v1/schema`（alterSchema/queryProjectSchema）、`/public/v1/graph`（upsert/delete/writerGraph/子图查询）、`/public/v1/reason`（DSL/规则推理）、`/public/v1/builder/kag/submit`（KAG_COMMAND 构建任务） | `openspg/server/api/http-server/.../openapi/{ProjectController,SchemaController,GraphController,ReasonController,BuilderController}.java` |
-| **全部 `/public/v1/*` 端点无 token/header 鉴权**：`userNo`/`tenantId` 是请求字段，信任调用方；图写入同样无鉴权 | 同上各 Controller 的 `check()` 均为空或仅校验参数 |
+| **全部 `/public/v1/*` 端点无认证**（M0-4 实测：GET/POST 均无 401/403，builder 提交返回 200）；部分写路径有基于请求内 `userNo` 的服务端权限检查（project/update 校验 OWNER——但 userNo 来自请求体，可伪造）；**非 public 路径有登录门**（AclFilter：`/v2/api-docs` 返回 LOGIN_0002）——安全模型精确化：`/public/*` 免鉴权 + 其余登录门 | 各 Controller `check()` 仅校验参数；M0-4/m0-10 实测归档（`scripts/kag_m0/results/`） |
+| 项目创建契约（M0-10 实测）：`userNo` 须 6–20 位字母/数字/下划线（ACCOUNT_PATTERN）；`tag=LOCAL` 需 config 含 `vectorizer` 键且经 pemja 注册**真实 embedding 配置**；`tag=PUBLIC_NET` 跳过 vectorizer 与自动建 schema，但 config 落库为 `{}`；alterSchema 要求项目 config 含 `vectorizer.vectorDimensions`（否则 PostProcessStage NPE） | `ProjectController` L69–104；`SchemaController` L62–87；`PostProcessStage` L76–87 |
 | 租户/项目模型：独立 `/public/v1/tenant` API；Project 字段含 `userNo/name/namespace/tag/visibility/config`，按 `tenantId/projectId` 查询 | `openapi/TenantController.java`；`openapi/ProjectController.java` L109–L145 |
 | 可选权限模型：`hasPermission(userNo, resourceId, resourceTag)`，按控制器显式调用、非中间件强制 | `permission/PermissionController.java` L59–L62 |
 
@@ -152,7 +153,8 @@ flowchart TB
 - 配置域：`data/user/settings/system.json` 新增 `kag` 块（§6.3），走既有 `RuntimeSettingsService`；
 - 后端：`kagweb/services/kag/`（OpenSPG REST 客户端 + Bridge 客户端）+ `kagweb/api/routers/kag.py`；
 - 前端：`web/features/kag/` 页面（Next.js 既有体系内自研，功能布局可参考 openspgapp UI 的信息架构；接入细则见 §5.4）；
-- 会话绑定：session 增加可选 `kag_project` 字段，绑定校验 membership + grant（§6.4）。
+- 会话绑定：session 增加可选 `kag_project` 字段，绑定校验 membership + grant（§6.4）；
+- **项目创建的 vectorizer 前置（M0-10 实测发现）**：`tag=LOCAL` 的项目创建必须携带 `vectorizer` 配置且经 server 端 pemja 注册（需真实 embedding 凭据）——M2 的项目创建 UI 需从 KAGWeb 的 embedding 模型设置生成该配置（同时提供 `vectorDimensions`，alterSchema 依赖它）；`tag=PUBLIC_NET` 可跳过但 config 落库为 `{}` 且无默认 schema，仅适用于探测性场景。
 
 **推理任务模型（评审修正调整 2）**：不复刻 openspgapp 的 `ReasonTaskRepository` 状态机。正常路径中 KAG 推理即聊天中的工具调用记录（`tool_call`/`tool_result` 已被 session 历史持久化）；Bridge 在 `kag_solve` 完成时向 KAGWeb 上报任务摘要（question/project/耗时/引用），存 KAGWeb 既有 SQLite/PocketBase，供管理面"推理任务列表"查询。
 
@@ -234,7 +236,7 @@ flowchart LR
 | 边界 | 机制 | 依据 |
 |---|---|---|
 | 浏览器 → KAGWeb | 既有 JWT（`require_auth`/`require_admin`） | KAGWeb 唯一公网入口 |
-| KAGWeb → OpenSPG server | **无上游鉴权可用**（实测：`/public/v1/*` 无 token 校验，图写入裸奔）→ **硬性部署要求：仅内网** | §3.2 证据 |
+| KAGWeb → OpenSPG server | **无认证可用**（M0-4 实测：`/public/*` 全端点含写路径无 401/403；仅非 public 路径有登录门；`userNo` 权限门可伪造）→ **硬性部署要求：仅内网** | §3.2 证据 + M0-4 实测归档 |
 | KAGWeb → Bridge | 内网 + api_key（服务间） | Bridge 以服务权限跑 KAG |
 | Agent Loop CLI 子进程 → Bridge | `.mcp.json` 注入**实例级 bridge api_key**（M1；仅 Bridge 权限、不含 OpenSPG 直连能力，调用在 Bridge 侧按 `session_id` 归因；per-session token 签发为 M3 强化，附录 A.3）；经 env allowlist 下发 | 复用既有机制 |
 | Bridge（KAG 进程内）→ 图存储 | 直连（`KAG_GRAPH_STORE_URI` + 凭据），无鉴权端口 → 与 OpenSPG server 同一隔离区 | 评审 A1；§3.1 证据 |
@@ -352,14 +354,14 @@ flowchart LR
 
 1. 自定义 reporter（继承 `OpenSPGReporter`，重写 `do_report`）跑 `do_qa_pipeline`：记录全部 `add_report_line` 调用的 segment/tag/status 分布；验证 SubGraph/RefDocSet 组装产物；
 2. `do_qa_pipeline` 与 `qa()` 的 reporter 注入差异（前者显式传参，后者内部构造）——确认 Bridge 走前者；
-3. knext `ProjectClient`/`SchemaSession`（经 `ReasonerClient`）/`ReasonerApi` 直连 OpenSPG server：逐端点 curl 记录请求/响应（`/public/v1/project`、`/schema`、`/graph` 子图、`/reason/run`、`/builder/kag/submit`）；
-4. OpenSPG server 鉴权实测（无 token 直调各端点的可达性）与 tenant/project 字段语义；
+3. knext `ProjectClient`/`SchemaSession`（经 `ReasonerClient`）/`ReasonerApi` 直连 OpenSPG server：逐端点 curl 记录请求/响应（`/public/v1/project`、`/schema`、`/graph` 子图、`/reason/run`、`/builder/kag/submit`）——**已执行**（knext venv 0.8.0 对 live server：project_get/get_config 通过；SchemaSession 因项目无 schema 阻塞，待 embedding 凭据后复跑，详见 `results/m0_3`；knext 的 schema 加载实际走 `/public/v1/reason/schema`）；
+4. OpenSPG server 鉴权实测（无 token 直调各端点的可达性）与 tenant/project 字段语义——**已执行**（`/public/*` 全端点无认证可达、builder 提交 200；非 public 路径登录门；详见 `results/m0_4`）；
 5. OpenSPG server 图存储后端确认（TuGraph 或其他）与最小部署（docker compose 单机）；
 6. KAG 版本基线记录（`KAG_VERSION`）与 Bridge 钉版本的依赖声明；
 7. 多轮语义验证：KAG 是否有 memorizer/会话机制（决定 `kag_solve` 无状态语义的最终描述）；
 8. Claude Code `.mcp.json` 在 session workdir 的发现机制实测（含 env allowlist 下 token 注入路径）；
 9. **OpenSPG server 独立开源发行版验证**（评审 B1）：确认可部署发行版（如 OpenSPG/openspg）的获取途径与 License；部署物不得取自闭源 openspgapp 仓库的构建产物（§12 红线）；
-10. **`userNo` 账号格式实测**（评审 B2）：`ProjectController.check()` 对账号格式的约束——**静态已判读**（L70-72：长度 6–20、仅字母/数字/下划线；原设计的 `kagweb-<uid>` 含连字符非法，T2 已改用 `kagweb_<uid>`）；带 server 后可 `--allow-write` 实测复核。
+10. **`userNo` 账号格式实测**（评审 B2）：`ProjectController.check()` 对账号格式的约束——**静态已判读 + 实测已复核**（`kagweb-1`/`kagweb.1` 被 ACCOUNT_PATTERN 拒、`kagweb_1`/`164072`/`kagweb` 通过账号校验；T2 的 `kagweb_<uid>` 成立；同轮发现项目创建的 vectorizer 前置，见 §3.2/§5.2）。
 
 ## 11. 风险登记
 
@@ -369,7 +371,7 @@ flowchart LR
 | 2 | OpenSPG server 与图存储无鉴权面暴露（图检索直连端口同样裸奔，评审 A1） | 硬性内网部署（NetworkPolicy/compose 隔离网络，范围含图存储直连端口）；KAGWeb 为唯一边界（§6.1） |
 | 3 | 多轮上下文机制缺失 | `kag_solve` 无状态语义 + agent loop 拼装（R2）；M0-7 验证 |
 | 4 | `/public/v1` 契约稳定性（`alterSchema` 字段完整性等） | M0-3 实测归档；以 knext 客户端模型为基线 |
-| 5 | BuilderJob 的 KAG 执行细节未验证（server 收到 KAG_COMMAND 后如何拉起 Python） | M4 前读 `openspg/server` 调度实现；不可用则构建走 KAG CLI 侧触发 |
+| 5 | BuilderJob 的 KAG 执行细节未验证（server 收到 KAG_COMMAND 后如何拉起 Python）——M0-4 实测补充：任务受理 200，但执行报 computing engine driver 缺失（本 compose 未配置） | M4 前读 `openspg/server` 调度实现；不可用则构建走 KAG CLI 侧触发 |
 | 6 | Agent Loop 工具注册差异（Intellect/Hermes 自定义工具接入点） | M3 前逐一确认；MCP 为最大公约数 |
 | 7 | Schema 编辑器/图可视化工作量 | 首版只读 + 表单编辑 + 现成渲染库；画布式后置 |
 | 8 | 并入 KAG 的上游接受度 | 门槛 ③；不接受则退化为"独立包跟随 KAG 版本同步发版"，不阻塞功能 |

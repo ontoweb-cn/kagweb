@@ -1,0 +1,86 @@
+{
+  "host": "http://127.0.0.1:8887",
+  "probes": [
+    {
+      "method": "GET",
+      "path": "/public/v1/project",
+      "desc": "项目列表（ProjectController）",
+      "ok": true,
+      "status": 200,
+      "auth_required": false,
+      "body_head": "[{\"id\":1,\"name\":\"m0-probe-pubnet\",\"namespace\":\"m0_probe_pubnet\",\"config\":\"{}\",\"tag\":\"PUBLIC_NET\"}]"
+    },
+    {
+      "method": "GET",
+      "path": "/public/v1/tenant",
+      "desc": "租户列表（TenantController）",
+      "ok": true,
+      "status": 200,
+      "auth_required": false,
+      "body_head": "[{\"id\":1,\"name\":\"defaultTenant\",\"description\":\"\"}]"
+    },
+    {
+      "method": "GET",
+      "path": "/public/v1/schema/queryProjectSchema?projectId=1",
+      "desc": "项目 Schema（候选路径 A）",
+      "ok": true,
+      "status": 200,
+      "auth_required": false,
+      "body_head": "{\"spgTypes\":[{\"@type\":\"TEXT\",\"basicType\":\"TEXT\",\"basicInfo\":{\"name\":{\"@type\":\"SPG_TYPE\",\"nameEn\":\"Text\",\"identityType\":\"SPG_TYPE\"},\"nameZh\":\"文本\"},\"spgTypeEnum\":\"BASIC_TYPE\",\"properties\":[],\"relations\":[],\"advancedConfig\":{\"visibleScope\":\"PUBLIC\"},\"ontologyId\":{\"uniqueId\":2,\"alterId\":2},\"extInfo\":{\"constrains\":[{\"id\":\"REQUIRE\",\"name\":\"Required\",\"nameZh\":\"值非空\"},{\"id\":\"UNIQUE\",\"name\":\"Unique\",\"nameZh\":\"值唯一\"},{\"id\":\"ENUM\",\"name\":\"Enum\",\"nameZh\":\"枚举\"},{\"id\":\"MULTIVALUE\",\"name\":\"Multi value\",\"nameZh\":\"多值\"},{\"id\":\"REGULAR\",\"name\":\"Regular match\",\"nameZh\":\"正则匹配\"}]}},{\"@type\":\"LONG\",\"basicType\":\"LONG\",\"basicInfo\":{\"name\":{\"@type\":\"SPG_TYPE\",\"nameEn\":\"Integer\",\"identityType\":\"SPG_TYPE\"},\"nameZh\":\"整型\"},\"spgTypeEnum\":\"BASIC_TYPE\",\"properties\":[],\"relations\":[],\"adva"
+    },
+    {
+      "method": "GET",
+      "path": "/public/v1/schema?projectId=1",
+      "desc": "项目 Schema（候选路径 B）",
+      "ok": true,
+      "status": 404,
+      "auth_required": false,
+      "body_head": "{\"timestamp\":\"2026-09-18 19:18:31\",\"status\":404,\"error\":\"Not Found\",\"path\":\"/public/v1/schema\"}"
+    },
+    {
+      "method": "POST",
+      "path": "/public/v1/project",
+      "desc": "创建项目（写；--allow-write 才执行）",
+      "ok": true,
+      "status": 400,
+      "auth_required": false,
+      "body_head": "\"account(userNo) length is 6-20, only support letters,numbers and underscores\""
+    },
+    {
+      "method": "POST",
+      "path": "/public/v1/builder/kag/submit",
+      "desc": "提交 KAG_COMMAND 构建（写；--allow-write 才执行）",
+      "ok": true,
+      "status": 200,
+      "auth_required": false,
+      "body_head": "{\"result\":{\"id\":1,\"projectId\":1,\"gmtCreate\":\"2026-09-18 19:18:31\",\"gmtModified\":\"2026-09-18 19:18:31\",\"modifyUser\":\"164072\",\"createUser\":\"164072\",\"jobName\":\"KAG_COMMAND_164072_20260918191831\",\"fileUrl\":\"\",\"status\":\"RUNNING\",\"dataSourceType\":\"KAG\",\"type\":\"KAG_COMMAND\",\"version\":\"V3\",\"computingConf\":\"{\\\"command\\\":\\\"echo m0-probe\\\",\\\"projectId\\\":1,\\\"workerNum\\\":1}\",\"lifeCycle\":\"ONCE\"},\"success\":true,\"remote\":\"172.18.0.5\",\"traceId\":\"ac120005178973031137110241\"}"
+    }
+  ],
+  "conclusion": {
+    "probed": 6,
+    "reachable_without_auth": 6,
+    "note": "若全部 reachable_without_auth=probed：证实 /public/v1 无鉴权、信任调用方，KAGWeb 必须是唯一安全边界且 server 仅内网部署（设计 §6.1/§11-2）。"
+  },
+  "__env__": {
+    "recorded_at": "2026-09-18T11:18:31.373916+00:00",
+    "python": "3.14.6",
+    "argv": [
+      "--host",
+      "http://127.0.0.1:8887",
+      "--project-id",
+      "1",
+      "--allow-write"
+    ],
+    "kag_version": "unknown",
+    "env:KAG_PROJECT_HOST_ADDR": "",
+    "env:KAG_PROJECT_ID": "",
+    "env:KAG_PROJECT_NAMESPACE": "",
+    "env:KAG_GRAPH_STORE_URI": ""
+  },
+  "live_conclusion": {
+    "auth": "AclFilter 实测：/public/v1/*（含图写入路径与 builder 提交）全部无认证可达（200/业务 4xx，无 401/403）；非 public 路径（/v2/api-docs 等）有登录门（LOGIN_0002）——安全模型精确化为：/public/* 免鉴权 + 其余登录门",
+    "schema_path": "schema 查询真实路径 = /public/v1/schema/queryProjectSchema（候选 A 200）；knext SchemaSession 实际走 GET /public/v1/reason/schema（ReasonController）",
+    "builder": "POST /public/v1/builder/kag/submit 无认证返回 200（任务已受理）；任务执行失败（cannot find driver for）——computing engine 未在本 compose 配置，属 M4 议题（设计风险 #5）",
+    "write_paths": "部分写路径有基于请求内 userNo 的服务端权限检查（project/update 校验 hasPermission OWNER）——但 userNo 来自请求体（可伪造），仍属信任调用方模型"
+  }
+}

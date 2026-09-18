@@ -66,7 +66,8 @@ def live_probe(host: str) -> list:
         body = {
             "name": f"m0-probe-userno-{fmt.replace('.', 'dot')}",
             "namespace": f"m0_probe_userno_{re.sub(r'[^0-9a-zA-Z]', '_', fmt)}",
-            "config": {},
+            # tag=LOCAL 时 config 必含 "vectorizer" 键（ProjectController L81-84，仅 containsKey 校验）
+            "config": {"vectorizer": {"name": "m0-probe-vectorizer"}},
             "visibility": "PRIVATE",
             "tag": "LOCAL",
             "userNo": fmt,

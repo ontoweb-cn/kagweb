@@ -1,0 +1,56 @@
+{
+  "host": "http://127.0.0.1:8887",
+  "project_id": "1",
+  "steps": [
+    {
+      "step": "project_get（GET /public/v1/project）",
+      "ok": true,
+      "count": 1,
+      "first_project_fields": {
+        "id": "1",
+        "name": "m0-probe-pubnet",
+        "description": "None",
+        "namespace": "m0_probe_pubnet",
+        "tenant_id": "None",
+        "config": "{}"
+      }
+    },
+    {
+      "step": "get_config（项目 config 字段解析）",
+      "ok": true,
+      "config_keys": []
+    },
+    {
+      "step": "SchemaSession 加载",
+      "ok": false,
+      "error": "ApiException()"
+    },
+    {
+      "step": "REST 方法对照（人工核对用）",
+      "methods": [
+        "ProjectApi.project_get / project_create_post / project_update_post",
+        "ReasonerApi.reason_run_post / reasoner_dialog_report_completions_post",
+        "SchemaSession → schema_query_project_schema_get"
+      ],
+      "note": "各方法 resource_path 见 knext/*/rest/*_api.py；m0_4 裸探测端点表以此为权威。"
+    }
+  ],
+  "ok": false,
+  "__env__": {
+    "recorded_at": "2026-09-18T11:18:41.194675+00:00",
+    "python": "3.14.6",
+    "argv": [],
+    "kag_version": "0.8.0",
+    "env:KAG_PROJECT_HOST_ADDR": "http://127.0.0.1:8887",
+    "env:KAG_PROJECT_ID": "1",
+    "env:KAG_PROJECT_NAMESPACE": "",
+    "env:KAG_GRAPH_STORE_URI": ""
+  },
+  "live_conclusion": {
+    "env": "knext 来自 /tmp/kag_m0_venv（openspg-kag 0.8.0 本地源码安装），server 为开源发行版 4 镜像 compose（OpenSPG/openspg master）",
+    "passed": "ProjectClient.project_get（1 项目）与 get_config 均通过——项目/配置契约成立",
+    "schema_blocked": "SchemaSession 加载走 GET /public/v1/reason/schema，对无 schema 项目抛 500（ReasonerManagerImpl.getReasonSchema）",
+    "blocker_chain": "PUBLIC_NET 项目 config 持久化为 {}（vectorizer 被 check 读到但不落库）→ alterSchema 在 getVectorDimensions 对 config 无 vectorizer 键 NPE；LOCAL 项目创建经 pemja 注册 vectorizer 需真实 embedding 配置——两条路都汇聚到：需要可用的 embedding 凭据（设计 §5.1 Bridge 凭据注入前提）",
+    "next": "提供 embedding 配置（或经 server UI 完整建项目）后重跑：预期 SchemaSession 成功加载 alter 后的 schema"
+  }
+}

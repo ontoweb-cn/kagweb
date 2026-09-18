@@ -124,13 +124,56 @@
       }
     ]
   },
-  "live": null,
+  "live": [
+    {
+      "format": "164072",
+      "ok": true,
+      "status": 400,
+      "accepted": false,
+      "verdict": "格式被拒",
+      "body_head": "\"PemjaUtils.invoke Exception:pemja.core.PythonException: \\u003cclass \\u0027RuntimeError\\u0027\\u003e: invalid vectorizer config: abstract method vectorize is not implemented\""
+    },
+    {
+      "format": "kagweb",
+      "ok": true,
+      "status": 400,
+      "accepted": false,
+      "verdict": "格式被拒",
+      "body_head": "\"PemjaUtils.invoke Exception:pemja.core.PythonException: \\u003cclass \\u0027RuntimeError\\u0027\\u003e: invalid vectorizer config: abstract method vectorize is not implemented\""
+    },
+    {
+      "format": "kagweb-1",
+      "ok": true,
+      "status": 400,
+      "accepted": false,
+      "verdict": "格式被拒",
+      "body_head": "\"account(userNo) length is 6-20, only support letters,numbers and underscores\""
+    },
+    {
+      "format": "kagweb_1",
+      "ok": true,
+      "status": 400,
+      "accepted": false,
+      "verdict": "格式被拒",
+      "body_head": "\"PemjaUtils.invoke Exception:pemja.core.PythonException: \\u003cclass \\u0027RuntimeError\\u0027\\u003e: invalid vectorizer config: abstract method vectorize is not implemented\""
+    },
+    {
+      "format": "kagweb.1",
+      "ok": true,
+      "status": 400,
+      "accepted": false,
+      "verdict": "格式被拒",
+      "body_head": "\"account(userNo) length is 6-20, only support letters,numbers and underscores\""
+    }
+  ],
+  "conclusion_note": "据实测通过的格式回填设计 §6.3 的 service_user_no / kagweb-<uid>；创建成功的 m0_probe 测试项目需人工清理（记录见 body_head）。",
   "__env__": {
-    "recorded_at": "2026-09-18T11:06:58.649305+00:00",
+    "recorded_at": "2026-09-18T11:17:43.372626+00:00",
     "python": "3.14.6",
     "argv": [
-      "--openspgapp-dir",
-      "/Users/simon/project/openspgapp"
+      "--host",
+      "http://127.0.0.1:8887",
+      "--allow-write"
     ],
     "kag_version": "unknown",
     "env:KAG_PROJECT_HOST_ADDR": "",
@@ -138,16 +181,9 @@
     "env:KAG_PROJECT_NAMESPACE": "",
     "env:KAG_GRAPH_STORE_URI": ""
   },
-  "static_conclusion": {
-    "rule": "userNo: 长度 6-20，仅支持字母、数字、下划线（ACCOUNT_PATTERN）",
-    "evidence": "openspg/server/api/http-server/.../openapi/ProjectController.java:69-72（错误消息原文：account(userNo) length is 6-20, only support letters,numbers and underscores）",
-    "format_verdict": {
-      "\"164072\"": "合法（6 位数字）",
-      "\"kagweb\"": "合法（6 字母）",
-      "\"kagweb-1\"": "非法（连字符不允许）→ 设计 T2 的 kagweb-<uid> 必须改为 kagweb_<uid>",
-      "\"kagweb_1\"": "合法",
-      "\"kagweb.1\"": "非法（点号不允许）"
-    },
-    "design_impact": "§6.3 T2 归因格式改为 kagweb_<uid>（kagweb_ 前缀 7 字符 + uid ≤ 13 字符）；T1 service_user_no=kagweb 恰好 6 字符合法。实测（--host --allow-write）可后补确认。"
+  "live_conclusion": {
+    "userno_rule_confirmed": "实测与静态一致：kagweb-1 / kagweb.1 被 ACCOUNT_PATTERN 拒（400 原文）；164072 / kagweb / kagweb_1 通过账号校验（进入后续业务校验）——设计 T2 的 kagweb_<uid> 格式实测成立",
+    "project_create_contract": "新发现：tag=LOCAL 时 config 必含 vectorizer 键（containsKey 校验），且经 pemja 调 Python 注册真实 vectorizer（需 embedding 配置）；tag=PUBLIC_NET 跳过 vectorizer 与自动建 schema，但 config 落库为 {}",
+    "design_impact": "M2 管理面项目创建 UI 必须生成 vectorizer 配置（对接 KAGWeb 的 embedding 模型设置）——已并入设计文档 §5.2 注记"
   }
 }
