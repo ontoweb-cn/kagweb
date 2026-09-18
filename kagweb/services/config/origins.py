@@ -88,6 +88,26 @@ def origin_netloc(origin: Any) -> str:
     return f"{host}:{number}"
 
 
+def request_authority(host: Any, forwarded_host: Any = None) -> str:
+    """The ``host[:port]`` the *browser* addressed, for same-origin checks.
+
+    KAGWeb's frontend proxies ``/api/*`` to the backend with a rewrite, which
+    rewrites ``Host`` to the backend port while appending ``X-Forwarded-Host``
+    with the browser's original authority. Comparing the browser ``Origin``
+    against the forwarded ``Host`` therefore rejects every legitimate
+    same-origin mutation behind that proxy (verified live: Origin
+    ``:8092`` vs Host ``:8082`` → 403). Reverse proxies behave the same way,
+    so the forwarded header wins whenever it is present.
+
+    Forging ``X-Forwarded-Host`` requires a non-browser client that can also
+    simply omit ``Origin`` — which :func:`origin_is_trusted` already allows by
+    design (the guard defends browser-driven CSRF, not direct callers) — so
+    trusting the forwarded header adds no new exposure.
+    """
+    forwarded = str(forwarded_host or "").strip()
+    return forwarded if forwarded else str(host or "").strip()
+
+
 def origin_is_trusted(
     origin: Any,
     host: Any,

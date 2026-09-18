@@ -461,7 +461,11 @@ def _require_same_origin(request: Request) -> None:
     the check is made against the request's own origin. See
     :func:`kagweb.services.config.origins.origin_is_trusted`.
     """
-    from kagweb.services.config.origins import normalize_origins, origin_is_trusted
+    from kagweb.services.config.origins import (
+        normalize_origins,
+        origin_is_trusted,
+        request_authority,
+    )
     from kagweb.services.config.runtime_settings import load_system_settings
 
     try:
@@ -475,7 +479,9 @@ def _require_same_origin(request: Request) -> None:
         allowed = []
     if not origin_is_trusted(
         request.headers.get("origin"),
-        request.headers.get("host"),
+        request_authority(
+            request.headers.get("host"), request.headers.get("x-forwarded-host")
+        ),
         allowed,
     ):
         raise HTTPException(
@@ -2243,14 +2249,21 @@ async def get_kag_domain() -> dict[str, Any]:
 async def update_kag_domain(request: Request, payload: dict[str, Any]) -> dict[str, Any]:
     _require_settings_admin()
     # same-origin guard：变更类端点防跨站 JSON POST 副作用（沿 identity 端点模式）
-    from kagweb.services.config.origins import origin_is_trusted
+    from kagweb.services.config.origins import origin_is_trusted, request_authority
+    from kagweb.services.config.runtime_settings import load_system_settings
 
     system = load_system_settings()
     allowed = [
         str(system.get("cors_origin") or ""),
         *(str(x) for x in (system.get("cors_origins") or [])),
     ]
-    if not origin_is_trusted(request.headers.get("origin"), request.headers.get("host"), allowed):
+    if not origin_is_trusted(
+        request.headers.get("origin"),
+        request_authority(
+            request.headers.get("host"), request.headers.get("x-forwarded-host")
+        ),
+        allowed,
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cross-site request refused.")
 
     from kagweb.services.kag import get_kag_settings

@@ -10,7 +10,12 @@ from __future__ import annotations
 
 import pytest
 
-from kagweb.services.config.origins import normalize_origins, origin_is_trusted, origin_netloc
+from kagweb.services.config.origins import (
+    normalize_origins,
+    origin_is_trusted,
+    origin_netloc,
+    request_authority,
+)
 
 
 @pytest.mark.parametrize(
@@ -78,3 +83,26 @@ def test_a_wildcard_allowlist_is_not_an_exemption() -> None:
     """``*`` means "any site", which is precisely the condition being defended
     against — it must not be read as "origins are unrestricted, so allow"."""
     assert origin_is_trusted("https://evil.example", "app.example", ["*"]) is False
+
+
+def test_request_authority_prefers_the_forwarded_host() -> None:
+    """The frontend's /api rewrite (and any reverse proxy) rewrites Host to the
+    backend port while appending X-Forwarded-Host with the browser's original
+    authority — the same-origin comparison must use the latter."""
+    assert request_authority("127.0.0.1:8082", "127.0.0.1:8092") == "127.0.0.1:8092"
+    # No forwarded header: the direct-request form keeps the plain Host.
+    assert request_authority("127.0.0.1:8082", "") == "127.0.0.1:8082"
+    assert request_authority("127.0.0.1:8082", None) == "127.0.0.1:8082"
+    assert request_authority("127.0.0.1:8082", "   ") == "127.0.0.1:8082"
+
+
+def test_same_origin_behind_the_frontend_proxy() -> None:
+    """Live-verified proxy shape (M2.4 review F-8): Origin names the frontend
+    port, Host names the backend port, X-Forwarded-Host names the frontend."""
+    authority = request_authority("127.0.0.1:8082", "127.0.0.1:8092")
+    assert origin_is_trusted("http://127.0.0.1:8092", authority, []) is True
+    # An attacking site is still refused, whichever host form is used.
+    assert origin_is_trusted("https://evil.example", authority, []) is False
+    # And the pre-fix behavior — comparing against the raw Host — must fail,
+    # which is why the guard call sites route through request_authority.
+    assert origin_is_trusted("http://127.0.0.1:8092", "127.0.0.1:8082", []) is False

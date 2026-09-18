@@ -245,6 +245,28 @@ def test_sanitize_traverses_nested_lists_and_keeps_scalars() -> None:
     assert sanitized == {"items": [{"token": "***", "ok": 1}, {"secret": "***"}], "n": None, "s": "x"}
 
 
+def test_sanitize_catches_key_name_variants() -> None:
+    # 评审 F3：apiKey / api-key / user_password / auth_token 等变体同样掩码；
+    # keyword / monkey 一类普通词不受后缀规则误伤。
+    from kagweb.api.routers.kag import _sanitize
+
+    row = {
+        "apiKey": "v1",
+        "api-key": "v2",
+        "user_password": "v3",
+        "auth_token": "v4",
+        "keyword": "keep1",
+        "monkey": "keep2",
+    }
+    sanitized = _sanitize(row)
+    assert sanitized["apiKey"] == "***"
+    assert sanitized["api-key"] == "***"
+    assert sanitized["user_password"] == "***"
+    assert sanitized["auth_token"] == "***"
+    assert sanitized["keyword"] == "keep1"
+    assert sanitized["monkey"] == "keep2"
+
+
 def test_sanitize_masks_serialized_json_config_string() -> None:
     # OpenSPG 真实形态（M0-3/M2.4 冒烟实测）：project.config 是序列化 JSON
     # 字符串，字符串内的凭据同样要掩掉，且保持字符串形态。
@@ -268,3 +290,62 @@ def test_sanitize_masks_serialized_json_config_string() -> None:
     assert _sanitize({"config": plain})["config"] == plain
     # 非 JSON 字符串不受影响
     assert _sanitize({"s": "hello {not json"})["s"] == "hello {not json"
+
+
+# ---------------------------------------------------------------------------
+# PUT /api/settings/kag 路由级回归（M2.4 评审 F-8 实测暴露的两个问题：
+# ① update_kag_domain 引用了未 import 的 load_system_settings → 500；
+# ② same-origin guard 用后端 Host 与浏览器 Origin 比较，经前端 /api rewrite
+#    （Host=后端:8082、X-Forwarded-Host=前端:8092）时合法同源请求被 403）
+# ---------------------------------------------------------------------------
+
+
+def test_settings_kag_put_roundtrip_behind_frontend_proxy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fastapi.testclient import TestClient
+    from types import SimpleNamespace
+
+    from kagweb.api import main as api_main
+    from kagweb.api.routers import settings as settings_router
+    from kagweb.services.config.runtime_settings import RuntimeSettingsService
+
+    service = RuntimeSettingsService(tmp_path, process_env={})
+    monkeypatch.setattr(settings_router, "get_runtime_settings_service", lambda: service)
+    monkeypatch.setattr(settings_router, "get_current_user", lambda: SimpleNamespace(is_admin=True))
+    # update_kag_domain 里的 load_system_settings 是函数内 import，patch 源模块
+    monkeypatch.setattr(
+        "kagweb.services.config.runtime_settings.load_system_settings",
+        lambda: service.load_system(),
+    )
+    client = TestClient(api_main.app)
+    proxy_headers = {
+        # 浏览器经前端:8092 发起，Next rewrite 转发后 Host=testserver，
+        # X-Forwarded-Host 保留浏览器原始 authority
+        "Origin": "http://127.0.0.1:8092",
+        "X-Forwarded-Host": "127.0.0.1:8092",
+    }
+
+    response = client.put(
+        "/api/settings/kag",
+        json={"spg_server_url": "http://127.0.0.1:8887", "bridge_api_key": ""},
+        headers=proxy_headers,
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["spg_server_url"] == "http://127.0.0.1:8887"
+    assert body["bridge_api_key"] == ""  # write-only：不回显
+    assert body["bridge_api_key_set"] is False
+
+    # 落盘可读回（隔离目录，不碰真实 data/）
+    saved = json.loads((tmp_path / "system.json").read_text(encoding="utf-8"))
+    assert saved["kag"]["spg_server_url"] == "http://127.0.0.1:8887"
+
+    # 跨站 Origin 仍被拒（即使带着前端的 X-Forwarded-Host）
+    refused = client.put(
+        "/api/settings/kag",
+        json={"spg_server_url": "http://127.0.0.1:8887"},
+        headers={"Origin": "https://evil.example", "X-Forwarded-Host": "127.0.0.1:8092"},
+    )
+    assert refused.status_code == 403
+    assert refused.json()["detail"] == "Cross-site request refused."

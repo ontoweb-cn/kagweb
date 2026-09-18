@@ -51,7 +51,7 @@ def _require_admin() -> None:
 
 
 def _require_same_origin(request: Request) -> None:
-    from kagweb.services.config.origins import origin_is_trusted
+    from kagweb.services.config.origins import origin_is_trusted, request_authority
     from kagweb.services.config.runtime_settings import load_system_settings
 
     try:
@@ -62,8 +62,14 @@ def _require_same_origin(request: Request) -> None:
         ]
     except Exception:
         allowed = []
+    # 浏览器原始 host 优先（Next rewrite 会把 Host 改写为后端端口并追加
+    # X-Forwarded-Host——同源判定用后者，见 origins.request_authority）
     if not origin_is_trusted(
-        request.headers.get("origin"), request.headers.get("host"), allowed
+        request.headers.get("origin"),
+        request_authority(
+            request.headers.get("host"), request.headers.get("x-forwarded-host")
+        ),
+        allowed,
     ):
         raise HTTPException(status_code=403, detail="Cross-site request refused.")
 
@@ -77,7 +83,20 @@ def _client() -> OpenSPGClient:
 #: vectorizer 的 api_key 与图存储密码，list/get 直接透传会向浏览器泄露
 #: 服务端凭据）。沿模型目录 CATALOG_SECRET_MASK 的掩码形态。
 _SECRET_KEYS = frozenset({"api_key", "apikey", "password", "token", "secret"})
+#: 凭据后缀（评审 F3：与 grants.validate_grant 的 endswith("_key") 规则对齐，
+#: 覆盖 user_password / auth_token 等复合键）。
+_SECRET_SUFFIXES = ("_key", "_token", "_password", "_secret")
 _SECRET_MASK = "***"
+
+
+def _is_secret_key(key: Any) -> bool:
+    """键名归一（小写、连字符→下划线）后判定：精确集或凭据后缀。
+
+    覆盖 apiKey / api-key / user_password 等变体；"keyword" 一类普通词
+    不含下划线、不以凭据后缀结尾，不误伤。
+    """
+    lowered = str(key).lower().replace("-", "_")
+    return lowered in _SECRET_KEYS or lowered.endswith(_SECRET_SUFFIXES)
 
 
 def _sanitize(value: Any) -> Any:
@@ -88,11 +107,7 @@ def _sanitize(value: Any) -> Any:
     """
     if isinstance(value, dict):
         return {
-            key: (
-                _SECRET_MASK
-                if str(key).lower() in _SECRET_KEYS
-                else _sanitize(child)
-            )
+            key: (_SECRET_MASK if _is_secret_key(key) else _sanitize(child))
             for key, child in value.items()
         }
     if isinstance(value, list):
