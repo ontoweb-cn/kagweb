@@ -1484,7 +1484,7 @@ class RuntimeSettingsService:
             "version": 1,
             "bridge_command": _string(block.get("bridge_command")),
             "bridge_args": (
-                [str(a) for a in args if str(a).strip()]
+                [str(a).strip() for a in args if str(a).strip()]
                 if isinstance(args, list) and args
                 else ["-m", "kag_bridge"]
             ),

@@ -88,25 +88,29 @@ def ensure_session_mcp_config(
         # M1 单操作员语义；per-user kag.solve grant 于 M2，设计 §6.4）：
         #   enableAllProjectMcpServers —— 项目级 MCP server 审批（M0-8 实测）
         #   permissions.allow —— 非交互模式下 CLI 的工具级 permission 门
-        settings_dir = Path(workdir) / ".claude"
-        settings_dir.mkdir(parents=True, exist_ok=True)
-        (settings_dir / "settings.json").write_text(
-            json.dumps(
-                {
-                    "enableAllProjectMcpServers": True,
-                    "permissions": {
-                        "allow": [
-                            f"mcp__{MCP_SERVER_NAME}__kag_solve",
-                            f"mcp__{MCP_SERVER_NAME}__kag_schema",
-                            f"mcp__{MCP_SERVER_NAME}__kag_status",
-                        ]
-                    },
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
+        # 与已有内容合并（workdir 内可能存在 agent/用户自建的 settings.json，
+        # 只更新我们管辖的键，不整体覆盖）。
+        settings_path = Path(workdir) / ".claude" / "settings.json"
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        existing: dict[str, Any] = {}
+        try:
+            parsed = json.loads(settings_path.read_text(encoding="utf-8"))
+            if isinstance(parsed, dict):
+                existing = parsed
+        except (OSError, ValueError):
+            existing = {}
+        allow = set(existing.get("permissions", {}).get("allow", []) or [])
+        allow.update(
+            [
+                f"mcp__{MCP_SERVER_NAME}__kag_solve",
+                f"mcp__{MCP_SERVER_NAME}__kag_schema",
+                f"mcp__{MCP_SERVER_NAME}__kag_status",
+            ]
         )
+        merged = dict(existing)
+        merged["enableAllProjectMcpServers"] = True
+        merged["permissions"] = {**existing.get("permissions", {}), "allow": sorted(allow)}
+        settings_path.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
         return True
     except OSError:
         return False

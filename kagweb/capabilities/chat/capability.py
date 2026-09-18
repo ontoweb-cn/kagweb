@@ -703,10 +703,14 @@ def _build_request(
 
     # Agent loops carry their own system prompt; KAGWeb contributes its
     # per-turn grounding blocks, then the user message.
+    kag_settings: dict[str, Any] = {}
     try:
-        from kagweb.services.kag import kag_grounding_block
+        from kagweb.services.kag import get_kag_settings, kag_grounding_block
 
-        kag_block = kag_grounding_block()
+        # 一次读取复用：grounding 块与 .mcp.json 共用本 turn 的 kag 块
+        # （capability 对 agent_loop 的 "one settings read" 原则同样适用）
+        kag_settings = get_kag_settings()
+        kag_block = kag_grounding_block(kag_settings)
     except Exception:
         kag_block = ""  # 可选集成：KAG 服务异常不阻塞 turn
     blocks = [
@@ -743,7 +747,7 @@ def _build_request(
         try:
             from kagweb.services.kag import ensure_session_mcp_config
 
-            ensure_session_mcp_config(resolved_workdir, str(context.session_id or ""))
+            ensure_session_mcp_config(resolved_workdir, str(context.session_id or ""), kag_settings)
         except Exception:
             pass
 

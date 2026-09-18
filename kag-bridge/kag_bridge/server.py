@@ -16,6 +16,8 @@
 import asyncio
 import json
 import os
+import sys
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -29,6 +31,7 @@ mcp = FastMCP("kag-bridge")
 # —— KAG 延迟加载（MCP 服务可先起，首个工具调用时加载 KAG）——
 _KAG_READY = False
 _MAIN_CONFIG: dict = {}
+_kag_init_lock = threading.Lock()
 
 # M1 单并发：KAGConfigAccessor 是进程级全局状态，并发 solve 需排队（§5.1 R3 的最小实现）
 _solve_semaphore = asyncio.Semaphore(1)
@@ -38,19 +41,22 @@ def _ensure_kag() -> None:
     global _KAG_READY, _MAIN_CONFIG
     if _KAG_READY:
         return
-    if not KAG_PROJECT_DIR or not Path(KAG_PROJECT_DIR, "kag_config.yaml").is_file():
-        raise RuntimeError(
-            "KAG_PROJECT_DIR 未设置或其下无 kag_config.yaml（Bridge 以项目目录的配置文件为唯一配置源）"
-        )
-    # KAGConfigAccessor 读取 cwd 下的 kag_config.yaml（M0-1 验证的加载方式）
-    os.chdir(KAG_PROJECT_DIR)
-    from kag.common.conf import KAGConfigAccessor
+    with _kag_init_lock:
+        if _KAG_READY:  # 双检：等锁期间可能已被并发首调完成
+            return
+        if not KAG_PROJECT_DIR or not Path(KAG_PROJECT_DIR, "kag_config.yaml").is_file():
+            raise RuntimeError(
+                "KAG_PROJECT_DIR 未设置或其下无 kag_config.yaml（Bridge 以项目目录的配置文件为唯一配置源）"
+            )
+        # KAGConfigAccessor 读取 cwd 下的 kag_config.yaml（M0-1 验证的加载方式）
+        os.chdir(KAG_PROJECT_DIR)
+        from kag.common.conf import KAGConfigAccessor
 
-    cfg = KAGConfigAccessor.get_config().all_config
-    if not cfg or "llm" not in cfg or "project" not in cfg:
-        raise RuntimeError("kag_config.yaml 缺少 llm / project 配置")
-    _MAIN_CONFIG = cfg
-    _KAG_READY = True
+        cfg = KAGConfigAccessor.get_config().all_config
+        if not cfg or "llm" not in cfg or "project" not in cfg:
+            raise RuntimeError("kag_config.yaml 缺少 llm / project 配置")
+        _MAIN_CONFIG = cfg
+        _KAG_READY = True
 
 
 def _project_info() -> dict:
@@ -207,14 +213,17 @@ async def kag_status(ctx: Context = None) -> str:
     """Bridge 与 OpenSPG server 的健康/连通性检查（不回显任何凭据）。"""
     _ensure_kag()
     info = _project_info()
-    server_ok, detail = False, ""
-    try:
-        req = urllib.request.Request(f"{info['host_addr'].rstrip('/')}/public/v1/project", method="GET")
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            server_ok = resp.status == 200
-            detail = f"HTTP {resp.status}"
-    except Exception as exc:
-        detail = repr(exc)[:200]
+
+    def _probe_server() -> tuple[bool, str]:
+        try:
+            req = urllib.request.Request(f"{info['host_addr'].rstrip('/')}/public/v1/project", method="GET")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return resp.status == 200, f"HTTP {resp.status}"
+        except Exception as exc:  # noqa: BLE001 - 健康探测需把任何失败转为状态
+            return False, repr(exc)[:200]
+
+    # 同步 urllib 放线程池，避免阻塞事件循环
+    server_ok, detail = await asyncio.to_thread(_probe_server)
     return json.dumps(
         {
             "bridge": "ok",
@@ -231,8 +240,8 @@ async def kag_status(ctx: Context = None) -> str:
 
 def main() -> None:
     if not KAG_PROJECT_DIR:
-        # 允许先起服务（kag_status 之前的工具调用会给出明确错误）
-        print("WARN: KAG_PROJECT_DIR 未设置，KAG 工具将在调用时报错", flush=True)
+        # stderr，绝不能 print 到 stdout——stdio transport 下 stdout 是协议通道
+        print("WARN: KAG_PROJECT_DIR 未设置，KAG 工具将在调用时报错", file=sys.stderr, flush=True)
     mcp.run()  # stdio transport
 
 
