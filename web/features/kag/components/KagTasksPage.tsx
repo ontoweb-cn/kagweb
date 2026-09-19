@@ -50,9 +50,16 @@ function TaskRow({ task }: { task: KagTaskRow }) {
           aria-hidden
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium text-[var(--foreground)]">
-            {task.question || t("(no question)")}
-          </p>
+          <div className="flex items-center gap-2">
+            {task.kind === "build" ? (
+              <span className="shrink-0 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-600 dark:text-sky-400">
+                {t("Build")}
+              </span>
+            ) : null}
+            <p className="min-w-0 truncate text-[13px] font-medium text-[var(--foreground)]">
+              {task.question || t("(no question)")}
+            </p>
+          </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-[var(--muted-foreground)]">
             <span className="font-mono">{task.namespace || task.projectId}</span>
             {task.sessionId ? (

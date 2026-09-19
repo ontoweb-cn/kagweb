@@ -324,6 +324,8 @@ export function parseGraphQueryResult(raw: unknown): KagGraphQueryResult {
 
 export interface KagTaskRow {
   taskId: string;
+  /** 任务类型（M4-A）：inference（bridge 上报）或 build（构建任务）。 */
+  kind: string;
   sessionId: string;
   projectId: string;
   namespace: string;
@@ -346,6 +348,7 @@ export function parseKagTasks(raw: unknown): KagTaskRow[] {
     const costMs = Number(row.cost_ms);
     return {
       taskId: text(row.task_id),
+      kind: text(row.kind) || "inference",
       sessionId: text(row.session_id),
       projectId: text(row.project_id),
       namespace: text(row.namespace),

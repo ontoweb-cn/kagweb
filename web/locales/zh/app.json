@@ -4879,5 +4879,6 @@
   "Too many nodes to render ({{count}}); refine the query": "节点过多（{{count}}），无法渲染——请缩小查询范围",
   "{{count}} row(s) returned": "返回 {{count}} 行",
   "Graph canvas": "图画布",
-  "Run a read-only reason DSL query. Node types must use the namespace-qualified full name; relation labels are bare. Two-column id results render as a graph. The DSL takes no LIMIT clause - results are capped server-side.": "执行只读 reason DSL 查询。节点类型须用带 namespace 的全名，关系 label 用裸名；两列 id 的结果渲染为图。DSL 不支持 LIMIT 子句——结果在服务端截断。"
+  "Run a read-only reason DSL query. Node types must use the namespace-qualified full name; relation labels are bare. Two-column id results render as a graph. The DSL takes no LIMIT clause - results are capped server-side.": "执行只读 reason DSL 查询。节点类型须用带 namespace 的全名，关系 label 用裸名；两列 id 的结果渲染为图。DSL 不支持 LIMIT 子句——结果在服务端截断。",
+  "Build": "构建"
 }
