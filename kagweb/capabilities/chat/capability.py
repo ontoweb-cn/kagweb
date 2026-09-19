@@ -232,7 +232,7 @@ class ChatCapability(TurnCapability):
                 source=self.name,
                 language=language,
             )
-        request = _build_request(
+        request = await _build_request(
             context,
             session_workspace=bool(primary.get("session_workspace")),
             workdir=workdir,
@@ -693,7 +693,7 @@ async def _prepare_workdir(
     return path
 
 
-def _build_request(
+async def _build_request(
     context: UnifiedContext,
     *,
     session_workspace: bool,
@@ -744,11 +744,14 @@ def _build_request(
             resolved_workdir = ""
     if resolved_workdir:
         # KAG 接线：CLI 后端经 session workdir 的 .mcp.json 发现 bridge
-        # （设计 §5.3）。可选集成——写入失败仅意味着本 turn 无 KAG 工具。
+        # （设计 §5.3）。可选集成——写入失败仅意味着本 turn 无 KAG 工具
+        # （M3.6 起 http 形态需先向 bridge 换 per-session token，故 async）。
         try:
             from kagweb.services.kag import ensure_session_mcp_config
 
-            ensure_session_mcp_config(resolved_workdir, str(context.session_id or ""), kag_settings)
+            await ensure_session_mcp_config(
+                resolved_workdir, str(context.session_id or ""), kag_settings
+            )
         except Exception:
             pass
 

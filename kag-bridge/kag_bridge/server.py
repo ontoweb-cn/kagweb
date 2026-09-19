@@ -22,6 +22,8 @@ transport 选择（KAG_BRIDGE_TRANSPORT）：
 """
 
 import asyncio
+import base64
+import hashlib
 import hmac
 import json
 import os
@@ -71,6 +73,62 @@ _solve_semaphore = asyncio.Semaphore(1)
 # M3.3 kag_reason：工具级超时与返回行上限（DSL 查全图时防膨胀/防线程挂起）
 _REASON_TIMEOUT_SECONDS = 120
 _MAX_REASON_ROWS = 200
+
+# —— per-session token（M3.6，附录 A.3）——
+# HMAC 无状态短期 token：实例 key 只留在 KAGWeb 服务端与 bridge 部署配置，
+# 不进 session workdir（.mcp.json 只携带 token）——泄漏窗口 = TTL；bridge 重启
+# 不影响已签发 token（签名自包含）；实例 key 变更即全部 token 失效。token
+# payload 自带 session/project（归因审计；M2 多项目路由落地时用于 scope 校验）。
+_TOKEN_KEY_INFO = b"kag-bridge-token-v1"
+_TOKEN_PREFIX = "kagt."
+_TOKEN_DEFAULT_TTL = 900
+_TOKEN_MIN_TTL = 60
+_TOKEN_MAX_TTL = 3600
+
+
+def _token_sign_key(api_key: str) -> bytes:
+    # 派生密钥：泄漏的 token 无法反推实例 key（单向 HMAC）
+    return hmac.new(api_key.encode("utf-8"), _TOKEN_KEY_INFO, hashlib.sha256).digest()
+
+
+def issue_session_token(
+    api_key: str, *, session_id: str, project_id: str, ttl_seconds: int = _TOKEN_DEFAULT_TTL
+) -> tuple[str, int]:
+    """签发自包含短期 token，返回 ``(token, expires_at)``。"""
+    exp = int(time.time()) + ttl_seconds
+    payload = json.dumps(
+        {"sid": str(session_id), "pid": str(project_id), "exp": exp},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    b64 = base64.urlsafe_b64encode(payload.encode("utf-8")).decode("ascii")
+    sig = hmac.new(_token_sign_key(api_key), b64.encode("ascii"), hashlib.sha256).hexdigest()
+    return f"{_TOKEN_PREFIX}{b64}.{sig}", exp
+
+
+def verify_session_token(api_key: str, token: str) -> dict[str, Any] | None:
+    """验证 token；有效返回 payload（sid/pid/exp），否则 ``None``。"""
+    if not token.startswith(_TOKEN_PREFIX):
+        return None
+    parts = token[len(_TOKEN_PREFIX):].split(".")
+    if len(parts) != 2:
+        return None
+    b64, sig = parts
+    expected = hmac.new(
+        _token_sign_key(api_key), b64.encode("ascii"), hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        return None
+    try:
+        payload = json.loads(base64.urlsafe_b64decode(b64.encode("ascii")))
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    exp = payload.get("exp")
+    if not isinstance(exp, int) or exp < int(time.time()):
+        return None
+    return payload
 
 
 def _ensure_kag() -> None:
@@ -412,6 +470,10 @@ class _BearerAuthMiddleware:
     不用 Starlette BaseHTTPMiddleware——它对流式响应（streamable-http 的
     POST 返回为 SSE/流式 JSON）有缓冲副作用；纯 ASGI 包装对任意响应安全。
     hmac.compare_digest 防时序侧信道。
+
+    凭证两种（M3.6）：实例级 api_key（部署方/管理面全权）或 per-session
+    token（短期、签发自包含——session workdir 只落它，见 issue_session_token）。
+    单项目实例的"项目白名单"由实例物理隔离承担（§5.1 一项目一实例）。
     """
 
     #: 豁免路径精确匹配（评审 M-2）：startswith 前缀会放过 /healthzanything
@@ -421,6 +483,12 @@ class _BearerAuthMiddleware:
     def __init__(self, app, api_key: str):
         self.app = app
         self.api_key = api_key
+
+    def _authorized(self, auth: str) -> bool:
+        if hmac.compare_digest(auth, f"Bearer {self.api_key}"):
+            return True
+        token = auth[7:].strip() if auth.startswith("Bearer ") else ""
+        return bool(token) and verify_session_token(self.api_key, token) is not None
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "websocket":
@@ -435,8 +503,7 @@ class _BearerAuthMiddleware:
                 if k.decode("latin-1").lower() == "authorization":
                     auth = v.decode("latin-1")
                     break
-            expected = f"Bearer {self.api_key}"
-            if not hmac.compare_digest(auth, expected):
+            if not self._authorized(auth):
                 body = json.dumps(
                     {"error": "unauthorized", "hint": "Authorization: Bearer <KAG_BRIDGE_API_KEY>"},
                     ensure_ascii=False,
@@ -493,8 +560,48 @@ def _run_http() -> None:
 
         return JSONResponse({"status": "ok", "transport": "streamable-http"})
 
+    async def _issue_token(request):
+        """POST /tokens（M3.6，附录 A.3）：实例 key 鉴权下签发 per-session
+        短期 token——KAGWeb 生成 .mcp.json 时换取，实例 key 不进 workdir。"""
+        from starlette.responses import JSONResponse
+
+        try:
+            body = await request.json()
+        except Exception:  # noqa: BLE001 - 非法 body 统一按 400
+            body = None
+        if not isinstance(body, dict):
+            body = {}
+        session_id = str(body.get("session_id") or "").strip()
+        if not session_id:
+            return JSONResponse({"error": "session_id required"}, status_code=400)
+        raw_ttl = body.get("ttl_seconds")
+        try:
+            ttl = _TOKEN_DEFAULT_TTL if raw_ttl is None else int(raw_ttl)
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "ttl_seconds must be an int"}, status_code=400)
+        ttl = min(max(ttl, _TOKEN_MIN_TTL), _TOKEN_MAX_TTL)
+        try:
+            _ensure_kag()
+            info = _project_info()
+        except Exception as exc:  # noqa: BLE001 - 项目未就绪给可读 503
+            return JSONResponse({"error": f"bridge project not ready: {exc!r}"}, status_code=503)
+        token, exp = issue_session_token(
+            api_key, session_id=session_id, project_id=info["project_id"], ttl_seconds=ttl
+        )
+        return JSONResponse(
+            {
+                "token": token,
+                "expires_at": exp,
+                "session_id": session_id,
+                "project_id": info["project_id"],
+            }
+        )
+
     from starlette.routing import Route
 
+    # /tokens 在 Bearer 中间件之内且不豁免：token 不能换 token（防滚雪球），
+    # 只有实例 key（管理面/部署方）能签发。
+    app.app.routes.append(Route("/tokens", _issue_token, methods=["POST"]))
     app.app.routes.append(Route("/healthz", _healthz, methods=["GET"]))
 
     import uvicorn

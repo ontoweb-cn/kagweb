@@ -598,7 +598,7 @@ async def test_session_workspace_is_created_before_use(tmp_path, monkeypatch) ->
             return tmp_path / "ws" / feature / task_id  # deliberately not created
 
     monkeypatch.setattr("kagweb.services.path_service.get_path_service", lambda: _StubPathService())
-    request = _build_request(
+    request = await _build_request(
         UnifiedContext(session_id="sess-9", user_message="hi"), session_workspace=True
     )
     assert request.workdir == str(tmp_path / "ws" / "chat" / "sess-9")
@@ -608,6 +608,8 @@ async def test_session_workspace_is_created_before_use(tmp_path, monkeypatch) ->
 def test_turn_model_resolves_from_the_metadata_selection(monkeypatch) -> None:
     """The turn's grant-validated llm_selection becomes the concrete model
     name on the AgentLoopRequest; a dangling selection degrades to ""."""
+    import asyncio
+
     from kagweb.capabilities.chat.capability import _build_request
 
     catalog = {
@@ -626,17 +628,17 @@ def test_turn_model_resolves_from_the_metadata_selection(monkeypatch) -> None:
         user_message="hi",
         metadata={"llm_selection": {"profile_id": "p1", "model_id": "m1"}},
     )
-    assert _build_request(context, session_workspace=False).model == "deepseek-v3"
+    assert asyncio.run(_build_request(context, session_workspace=False)).model == "deepseek-v3"
 
     dangling = UnifiedContext(
         session_id="s",
         user_message="hi",
         metadata={"llm_selection": {"profile_id": "p1", "model_id": "gone"}},
     )
-    assert _build_request(dangling, session_workspace=False).model == ""
+    assert asyncio.run(_build_request(dangling, session_workspace=False)).model == ""
 
     bare = UnifiedContext(session_id="s", user_message="hi", metadata={})
-    assert _build_request(bare, session_workspace=False).model == ""
+    assert asyncio.run(_build_request(bare, session_workspace=False)).model == ""
 
 
 # ---------------------------------------------------------------------------

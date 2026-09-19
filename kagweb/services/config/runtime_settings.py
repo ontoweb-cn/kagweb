@@ -81,7 +81,11 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
     # Bridge 以 MCP 服务接入 agent loop（CLI 后端经 session workdir 的
     # .mcp.json 发现）。kag_project_dir 指向含 kag_config.yaml 的项目目录
     # ——Bridge 以该文件为唯一配置源（M0-1 实测：运行时覆盖会丢 llm 键）。
-    # 管理面 REST/UI、多项目路由、bridge_api_key 鉴权于 M2 提供。
+    # bridge_http_url（M3.6）：bridge **根 URL**（无路径，如
+    # http://127.0.0.1:8890）——.mcp.json 生成 http 形态并拼默认 /mcp 端点，
+    # 生成时经实例 key 向 bridge POST /tokens 换 per-session 短期 token——
+    # 实例 key 不进 session workdir（附录 A.3）。bridge 侧自定义
+    # KAG_BRIDGE_HTTP_PATH（非默认 /mcp）时需两侧同步配置。
     "kag": {
         "version": 1,
         "bridge_command": "",
@@ -91,6 +95,7 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
         "project_id": "",
         "spg_server_url": "",
         "bridge_api_key": "",
+        "bridge_http_url": "",
     },
 }
 
@@ -1493,6 +1498,7 @@ class RuntimeSettingsService:
             "project_id": _string(block.get("project_id")),
             "spg_server_url": _string(block.get("spg_server_url")),
             "bridge_api_key": _string(block.get("bridge_api_key")),
+            "bridge_http_url": _string(block.get("bridge_http_url")),
         }
 
     def _normalize_auth(self, settings: dict[str, Any]) -> dict[str, Any]:
