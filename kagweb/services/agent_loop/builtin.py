@@ -69,6 +69,12 @@ class AgentLoopTransport:
     # the body's ``model`` key — an operator-curated per-profile ``models``
     # list opts one in (see ``profile_per_turn_model``).
     per_turn_model: bool = False
+    # Native agent-session resume for one-shot CLIs: "" = none, otherwise the
+    # resume dialect ("claude" → --session-id/--resume, "codex" → exec resume
+    # + thread.started capture). When a stored agent session exists the
+    # backend re-attaches instead of re-inlining a budget-truncated history
+    # (agent-loop history design, L1); agents without a resume surface keep "".
+    resume_kind: str = ""
 
 
 @dataclass(frozen=True)
@@ -101,6 +107,9 @@ class AgentLoopPreset:
     # the body's ``model`` key — an operator-curated per-profile ``models``
     # list opts one in (see ``profile_per_turn_model``).
     per_turn_model: bool = False
+    # Native agent-session resume dialect for one-shot CLIs (see the
+    # transport field); "" for families whose history model needs none.
+    resume_kind: str = ""
     # Several transports for one product; empty = the preset fields above
     # describe its only transport.
     transports: tuple[AgentLoopTransport, ...] = ()
@@ -116,6 +125,7 @@ PRESETS: dict[str, AgentLoopPreset] = {
         AgentLoopPreset(
             name="claude-code",
             per_turn_model=True,
+            resume_kind="claude",
             family="cli",
             description="Anthropic Claude Code CLI in stream-json print mode.",
             command="claude",
@@ -125,6 +135,7 @@ PRESETS: dict[str, AgentLoopPreset] = {
         AgentLoopPreset(
             name="codex",
             per_turn_model=True,
+            resume_kind="codex",
             family="cli",
             description="OpenAI Codex CLI in non-interactive JSON mode.",
             command="codex",
@@ -294,6 +305,7 @@ def _transport_from_preset(preset: AgentLoopPreset) -> AgentLoopTransport:
         protocol=preset.protocol,
         probe_url=preset.probe_url,
         per_turn_model=preset.per_turn_model,
+        resume_kind=preset.resume_kind,
     )
 
 

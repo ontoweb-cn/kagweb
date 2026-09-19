@@ -104,3 +104,13 @@ async def purge_session_artifacts(
         await asyncio.to_thread(forget_acp_sessions_for, session_id)
     except Exception:
         logger.exception("failed to clean up ACP session records for session %s", session_id)
+    try:
+        # Same reasoning for the one-shot CLIs' native resume records
+        # (claude --session-id / codex thread ids).
+        from kagweb.services.agent_loop.agent_session_store import (
+            forget_agent_sessions_for,
+        )
+
+        await asyncio.to_thread(forget_agent_sessions_for, session_id)
+    except Exception:
+        logger.exception("failed to clean up agent session records for session %s", session_id)

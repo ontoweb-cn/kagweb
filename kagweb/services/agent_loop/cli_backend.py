@@ -23,9 +23,15 @@ import json
 import logging
 import os
 from typing import Any, Callable
+import uuid
 
 from kagweb.services.i18n import t
 
+from .agent_session_store import (
+    forget_agent_session,
+    load_agent_session,
+    save_agent_session,
+)
 from .protocol import (
     MAX_LINE_BYTES,
     AgentLoopBackend,
@@ -108,6 +114,25 @@ _CHILD_ENV_ALLOWLIST = frozenset(
         "LOCALAPPDATA",
     }
 )
+
+
+#: Substrings that identify a failed resume: the agent no longer holds the
+#: recorded session (its store was wiped, the record pruned). Matched
+#: case-insensitively against the child's stderr tail — deliberately narrow,
+#: because any failure here triggers a fresh-session retry and the turn's
+#: work would run twice.
+_SESSION_MISSING_MARKERS = (
+    "no conversation found",
+    "session not found",
+    "no session found",
+    "unknown session",
+    "unrecognized session",
+)
+
+
+def _resume_target_missing(detail: str) -> bool:
+    lowered = detail.lower()
+    return any(marker in lowered for marker in _SESSION_MISSING_MARKERS)
 
 
 def _build_child_env(os_env: dict[str, str], extra: dict[str, str]) -> dict[str, str]:
@@ -312,6 +337,13 @@ def translate_codex(obj: dict[str, Any], state: dict[str, Any]) -> list[AgentLoo
     events: list[AgentLoopEvent] = []
     msg = obj.get("msg") if isinstance(obj.get("msg"), dict) else obj
     msg_type = str(msg.get("type") or "")
+    if msg_type == "thread.started":
+        # The resume handle for later turns (`codex exec resume <id>`);
+        # recorded in state for the backend, never rendered.
+        thread_id = str(msg.get("thread_id") or "").strip()
+        if thread_id:
+            state["agent_session_id"] = thread_id
+        return events
     if msg_type == "agent_message":
         text = str(msg.get("message") or "")
         if text:
@@ -529,6 +561,7 @@ class CliAgentLoopBackend(AgentLoopBackend):
         text_output: bool = False,
         model: str = "",
         models: list[dict[str, str]] | None = None,
+        resume_kind: str = "",
     ) -> None:
         self.name = name
         self.command = command
@@ -547,6 +580,11 @@ class CliAgentLoopBackend(AgentLoopBackend):
         #: The operator-curated per-turn model vocabulary ([{id, name}]) — the
         #: composer's option source and the ``filter_turn_model`` whitelist.
         self.models = list(models or [])
+        #: Native agent-session resume dialect ("" | "claude" | "codex").
+        #: When a stored agent session exists the turn re-attaches to it
+        #: (L1 of the history design) instead of re-inlining a truncated
+        #: transcript; a failed re-attach retries fresh (L2) — see ``run``.
+        self.resume_kind = str(resume_kind or "").strip()
 
     @staticmethod
     def _prompt_with_history(request: AgentLoopRequest) -> str:
@@ -620,16 +658,121 @@ class CliAgentLoopBackend(AgentLoopBackend):
             rendered.append(rendered_arg)
         return rendered, prompt_pinned
 
-    def build_argv(self, request: AgentLoopRequest) -> list[str]:
-        prompt = self._prompt_with_history(request)
+    def _session_key(self, request: AgentLoopRequest) -> str:
+        """Store key for one KAGWeb conversation under this preset."""
+        return f"{self.name}:{request.session_id}" if request.session_id else ""
+
+    def _resolve_resume(self, request: AgentLoopRequest) -> tuple[str, str, str]:
+        """The stored agent session to resume, a fresh claude id, and the key.
+
+        ``(resume_id, fresh_id, key)``: exactly one of the first two is set.
+        A stored id resumes the agent's own lossless history; without one, a
+        claude turn mints a dictated session id so later turns can resume it.
+        """
+        if not self.resume_kind or not request.session_id:
+            return "", "", ""
+        key = self._session_key(request)
+        stored = load_agent_session(key)
+        if stored:
+            return stored, "", key
+        if self.resume_kind == "claude":
+            # Only claude lets the client dictate a session id; codex's is
+            # captured from the thread.started event instead.
+            return "", str(uuid.uuid4()), key
+        return "", "", ""
+
+    def build_argv(
+        self,
+        request: AgentLoopRequest,
+        *,
+        resume_id: str = "",
+        fresh_session_id: str = "",
+    ) -> list[str]:
+        """The child argv for one turn, with session-continuation flags.
+
+        Resuming re-attaches the agent's own session, so the prompt carries
+        only the new turn (plus grounding blocks the caller already folded
+        in) — the folded transcript is exactly what resume makes redundant.
+        Operator-supplied `--resume`/`--session-id`/`--continue` args always
+        win: injecting a second one would change which conversation runs.
+        """
+        use_resume = bool(resume_id)
+        prompt = request.prompt if use_resume else self._prompt_with_history(request)
         extra_args, prompt_pinned = self._render_extra_args(prompt, turn_model=request.model)
         argv = [self.command, *self.base_args, *extra_args]
+        if self.resume_kind == "codex" and use_resume and self.base_args[:1] == ["exec"]:
+            # clap subcommand: `codex exec resume <id> [OPTIONS] [PROMPT]` —
+            # the resume subcommand must precede exec's own flags.
+            argv = [self.command, "exec", "resume", resume_id, *self.base_args[1:], *extra_args]
+        elif self.resume_kind == "claude" and not any(
+            arg.startswith(("--resume", "--session-id", "--continue")) for arg in extra_args
+        ):
+            if use_resume:
+                argv += ["--resume", resume_id]
+            elif fresh_session_id:
+                argv += ["--session-id", fresh_session_id]
         if not prompt_pinned and prompt:
             argv.append(prompt)
         return argv
 
+    def _remember_session(
+        self,
+        request: AgentLoopRequest,
+        *,
+        resume_id: str,
+        fresh_session_id: str,
+        state: dict[str, Any],
+    ) -> None:
+        """Persist the agent session id after a successful turn."""
+        key = self._session_key(request)
+        if not key:
+            return
+        if resume_id:
+            return  # already recorded
+        agent_session_id = fresh_session_id or str(state.get("agent_session_id") or "")
+        if agent_session_id:
+            save_agent_session(key, agent_session_id=agent_session_id, cwd=request.workdir or "")
+
     async def run(self, request: AgentLoopRequest) -> AsyncIterator[AgentLoopEvent]:
-        argv = self.build_argv(request)
+        resume_id, fresh_session_id, session_key = self._resolve_resume(request)
+        while True:
+            events_yielded = False
+            try:
+                async for event in self._run_once(
+                    request,
+                    resume_id=resume_id,
+                    fresh_session_id=fresh_session_id,
+                ):
+                    events_yielded = True
+                    yield event
+                return
+            except AgentLoopError as exc:
+                # L2 fallback (history design §3): a resume whose target no
+                # longer exists degrades to a fresh session — once, only
+                # before any event reached the stream (a mid-stream failure
+                # already did work; re-running it would double both), and
+                # observably. The mapping is dropped so the fresh session
+                # gets recorded on success.
+                if not (resume_id and not events_yielded and _resume_target_missing(str(exc))):
+                    raise
+                if session_key:
+                    forget_agent_session(session_key)
+                yield AgentLoopEvent(
+                    "progress", text=t("agent_loop.session_reset", backend=self.name)
+                )
+                # Re-mint so the fresh session is dictated (claude) and gets
+                # recorded on success — the next turn resumes it.
+                resume_id = ""
+                fresh_session_id = str(uuid.uuid4()) if self.resume_kind == "claude" else ""
+
+    async def _run_once(
+        self,
+        request: AgentLoopRequest,
+        *,
+        resume_id: str = "",
+        fresh_session_id: str = "",
+    ) -> AsyncIterator[AgentLoopEvent]:
+        argv = self.build_argv(request, resume_id=resume_id, fresh_session_id=fresh_session_id)
         env = _build_child_env(dict(os.environ), self.env)
         cwd = request.workdir or None
         proc: asyncio.subprocess.Process | None = None
@@ -667,6 +810,13 @@ class CliAgentLoopBackend(AgentLoopBackend):
                 returncode = await proc.wait()
             if self.text_output and returncode == 0 and answer.strip():
                 yield AgentLoopEvent("content", text=answer)
+            if returncode == 0:
+                self._remember_session(
+                    request,
+                    resume_id=resume_id,
+                    fresh_session_id=fresh_session_id,
+                    state=state,
+                )
             if returncode != 0:
                 detail = (
                     b"".join(stderr_tail)[-_STDERR_TAIL_LIMIT:].decode("utf-8", "replace").strip()

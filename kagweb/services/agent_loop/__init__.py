@@ -97,6 +97,7 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
             text_output=bool(resolved.get("text_output")),
             model=model,
             models=models,
+            resume_kind=transport.resume_kind,
         )
 
     url = str(resolved.get("url") or "").strip()

@@ -35,6 +35,10 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "agent_loop.spawn_failed": ("Agent-loop backend {backend!r} failed to start: {error}"),
         "agent_loop.exited": ("Agent-loop backend {backend!r} exited with code {code}{detail}"),
         "agent_loop.timeout": ("Agent-loop backend {backend!r} timed out after {seconds}s."),
+        "agent_loop.session_reset": (
+            "The agent's own session for this conversation no longer exists; "
+            "restarting fresh — history re-attaches from the transcript."
+        ),
         "agent_loop.http_status": (
             "Agent-loop backend {backend!r} returned HTTP {status}: {detail}"
         ),
@@ -191,6 +195,7 @@ _MESSAGES: dict[str, dict[str, str]] = {
         ),
     },
     "zh": {
+        "agent_loop.session_reset": "该 agent 的会话已不存在，正在全新重启——历史将从转录重新附着。",
         "api.content_required": "content 不能为空",
         "api.invalid_channels_config": "渠道配置无效",
         "api.partner_already_exists": "伙伴 '{name}' 已存在",

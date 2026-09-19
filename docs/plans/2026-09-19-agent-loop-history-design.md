@@ -1,7 +1,7 @@
 # Agent Loop 历史与会话续接改进方案(intellect / codex / claude code / opencode / zcode 横评)
 
 日期:2026-09-19
-状态:**待评审**(批准后按 §5 分阶段实施)
+状态:**M1+M2 已实施**(提交见 git log,2026-09-19);M3/M4 待做(§8 修订记录见文末)
 
 ## 0. 命题校准
 
@@ -110,3 +110,22 @@ session id。各族续接方式见 §4。resume 生效时**停用内联折叠**,
 - codex `exec resume --json` 的 flag 组合与 `thread_id` 稳定性:M2 首项
   实测先行。
 - opencode serve 模式的认证/多会话形状:M4 实测后定。
+
+## 8. 实施修订记录(2026-09-19)
+
+1. **M1+M2 已落地**(真机验证:claude 两回合——T1 `--session-id` 铸 id 入库,
+   T2 `--resume` 在**内联折叠停用**下答出仅存在于 agent 会话中的暗号;
+   codex `exec resume <id> --json` 真机证实以同一 `thread_id` 重挂)。
+   `acp_session_store` 未动,新增姊妹模块 `agent_session_store`(纯字符串 id,
+   无 config_key 绑定——理由见模块 docstring);会话删除时经
+   `workspace_cleanup` 同步清理。
+2. **fork(`--fork-session`)延期**:分支身份无法用 `branch_parent_id` 表达
+   (顺序回合的 parent 逐回合变化),需要"祖先链分叉检测"才能真正对齐
+   KAGWeb 的编辑分支;当前与 ACP 行为保持一致(分支共享 agent 会话),
+   后续单独立项。
+3. **L2 兜底语义定稿**:仅当 resume 回合在**任何事件产出前**失败且 stderr
+   命中会话丢失标记(`_SESSION_MISSING_MARKERS`)时重试一次——中流失败
+   不重试(agent 已做功,重跑会双倍执行);重试前发 progress 事件、清映射、
+   重铸 session id。
+4. M3(L0 转录文件 + ACP G-1 兜底)与 M4(opencode/zcode)保持原方案,
+   待后续批次。
