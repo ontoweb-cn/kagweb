@@ -145,10 +145,16 @@ PRESETS: dict[str, AgentLoopPreset] = {
         AgentLoopPreset(
             name="opencode",
             per_turn_model=True,
+            resume_kind="opencode",
             family="cli",
-            description="OpenCode CLI agent in non-interactive JSON mode (generic mapping).",
+            description=(
+                "OpenCode v2 CLI (`opencode run --format json`). Native session"
+                " resume (`-s <id>`), per-turn model via {model} as provider/model."
+                " If `opencode` is not on the server's PATH, set the profile's"
+                " command to the absolute path."
+            ),
             command="opencode",
-            base_args=("run", "--json"),
+            base_args=("run", "--format", "json"),
             translator="generic",
         ),
         AgentLoopPreset(

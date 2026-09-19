@@ -852,3 +852,50 @@ async def test_acp_filter_without_a_session_passes_through(tmp_path) -> None:
     backend = _backend("models", tmp_path / "result.json")
 
     assert backend.filter_turn_model("anything", "no-such-session") == "anything"
+
+
+async def test_acp_reset_after_lost_session_is_observable_and_folds_history(tmp_path) -> None:
+    """G-1: a load_session failure opens a fresh agent session — the turn
+    announces the reset and folds a bounded tail of the KAGWeb history into
+    the first prompt instead of silently losing the conversation."""
+    result_file = tmp_path / "result.json"
+    backend = _backend("reject-load-stop-end_turn", result_file)
+    # A recorded session the agent no longer holds: the re-attach must fail.
+    from kagweb.services.agent_loop.acp_session_store import save_acp_session
+
+    save_acp_session(
+        "acp-reset",
+        config_key=backend._config_key,
+        session_id="vanished-id",
+        cwd=str(tmp_path),
+    )
+    request = AgentLoopRequest(
+        prompt="继续",
+        session_id="acp-reset",
+        workdir=str(tmp_path),
+        history=[
+            {"role": "user", "content": "第一回合:记住暗号菠萝42"},
+            {"role": "assistant", "content": "好的"},
+        ],
+    )
+
+    events = [event async for event in backend.run(request)]
+
+    assert not [event for event in events if event.kind == "error"]
+    assert [event.kind for event in events if event.kind == "progress"] == ["progress"]
+    outcome = json.loads(result_file.read_text())
+    assert "Conversation context" in outcome["prompt_head"]
+    assert "菠萝42" in outcome["prompt_head"]
+    await backend._manager.close_all()
+
+
+async def test_acp_first_turn_without_history_stays_quiet(tmp_path) -> None:
+    """A brand-new conversation has nothing to restore: no progress event,
+    no fold — the flag is consumed without noise."""
+    result_file = tmp_path / "result.json"
+    backend = _backend("models-stop-end_turn", result_file)
+
+    events = [event async for event in backend.run(_request("acp-fresh", tmp_path))]
+
+    assert not [event for event in events if event.kind == "progress"]
+    await backend._manager.close_all()

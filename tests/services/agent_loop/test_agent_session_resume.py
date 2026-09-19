@@ -48,7 +48,7 @@ def _request(session_id: str = "s1", content: str = "Q") -> AgentLoopRequest:
 def test_resume_kind_is_preset_truth() -> None:
     assert resolve_transport("claude-code").resume_kind == "claude"
     assert resolve_transport("codex").resume_kind == "codex"
-    assert resolve_transport("opencode").resume_kind == ""
+    assert resolve_transport("opencode").resume_kind == "opencode"
     assert resolve_transport("hermes").resume_kind == ""
     assert PRESETS["claude-code"].resume_kind == "claude"
 
@@ -239,3 +239,53 @@ async def test_healthy_resume_never_retries(isolated_store, tmp_path) -> None:
     # Mapping untouched.
     assert agent_session_store.load_agent_session("claude-code:s1") == "alive-1"
     del calls
+
+
+# ---------------------------------------------------------------------------
+# M4: opencode v2 (`run -s <id>`, sessionID on every event)
+# ---------------------------------------------------------------------------
+
+
+def test_opencode_resume_injects_the_session_flag(isolated_store) -> None:
+    backend = _backend(
+        "opencode",
+        name="opencode",
+        command="opencode",
+        base_args=["run", "--format", "json"],
+    )
+    argv = backend.build_argv(_request(), resume_id="ses_abc")
+    assert argv == ["opencode", "run", "--format", "json", "-s", "ses_abc", "Q"]
+
+
+def test_opencode_capture_reads_sessionid_off_any_event(isolated_store) -> None:
+    """opencode stamps every NDJSON event (errors included) with the
+    sessionID; the capture is translator-independent."""
+    backend = _backend(
+        "opencode",
+        name="opencode",
+        command="opencode",
+        base_args=["run", "--format", "json"],
+    )
+    state: dict = {}
+    assert (
+        backend._line_events(b'{"type":"error","sessionID":"ses_1","error":{"message":"x"}}', state)
+        == []
+    )
+    assert state["agent_session_id"] == "ses_1"
+    # Non-opencode backends must not pick the key up.
+    plain = _backend("")
+    state2: dict = {}
+    plain._line_events(b'{"type":"error","sessionID":"ses_2"}', state2)
+    assert "agent_session_id" not in state2
+
+
+def test_opencode_capture_survives_the_msg_wrapper(isolated_store) -> None:
+    backend = _backend(
+        "opencode",
+        name="opencode",
+        command="opencode",
+        base_args=["run", "--format", "json"],
+    )
+    state: dict = {}
+    backend._line_events(b'{"msg": {"type": "x", "sessionID": "ses_wrapped"}}', state)
+    assert state["agent_session_id"] == "ses_wrapped"

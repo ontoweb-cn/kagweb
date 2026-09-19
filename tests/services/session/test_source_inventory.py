@@ -80,6 +80,22 @@ class _EmptyStore:
         return []
 
 
+class _StubStore(_EmptyStore):
+    """_EmptyStore plus the accessors the transcript path reads."""
+
+    async def get_session(self, session_id: str) -> dict:
+        return {"id": session_id, "title": "t"}
+
+    async def get_messages_for_context(
+        self, session_id: str, leaf_message_id: int | None = None
+    ) -> list[dict]:
+        return []
+
+
+async def _noop_materialize(records):
+    return {}
+
+
 async def test_build_inventory_accepts_a_fresh_attachment_end_to_end() -> None:
     """The real entry point a chat turn calls: it used to raise TypeError
     before the turn could start whenever the turn carried an attachment."""
@@ -266,3 +282,77 @@ async def test_materialize_failure_degrades_to_pathless_rows() -> None:
 
     assert "old.txt" in manifest
     assert "path:" not in manifest
+
+
+# ---------------------------------------------------------------------------
+# L0: the session's own transcript as a workspace file (history design M3)
+# ---------------------------------------------------------------------------
+
+
+async def test_current_transcript_becomes_a_path_row(tmp_path, monkeypatch) -> None:
+    """A large-enough transcript is written into the session workspace and
+    rendered as a path row the agent can read."""
+    from kagweb.services.path_service import PathService
+    from kagweb.services.session import source_inventory
+
+    path_service = PathService(workspace_root=tmp_path)
+    monkeypatch.setattr("kagweb.services.path_service.get_path_service", lambda: path_service)
+
+    transcript = "User: hi\\n\\nAssistant: hello\\n" * 300  # > TRANSCRIPT_FILE_MIN_CHARS
+    inv = await build_inventory(
+        _StubStore(),
+        session_id="s1",
+        leaf_message_id=None,
+        current_turn_ordinal=1,
+        fresh_attachment_records=[],
+        fresh_history_session_ids=[],
+        materialize=lambda records: _noop_materialize(records),
+        current_transcript=transcript,
+    )
+
+    rows = [entry for entry in inv.entries if entry.sid == "session-transcript"]
+    assert len(rows) == 1
+    assert rows[0].path.endswith("session-transcript.md")
+    assert rows[0].kind == "transcript"
+    written = path_service.get_task_workspace("chat", "s1") / "session-transcript.md"
+    assert written.read_text(encoding="utf-8") == transcript
+    manifest = render_manifest(inv)
+    assert "path:" in manifest and "session-transcript.md" in manifest
+
+
+async def test_small_transcript_stays_inline_only(tmp_path, monkeypatch) -> None:
+    from kagweb.services.path_service import PathService
+    from kagweb.services.session import source_inventory
+
+    monkeypatch.setattr(
+        "kagweb.services.path_service.get_path_service",
+        lambda: PathService(workspace_root=tmp_path),
+    )
+
+    inv = await build_inventory(
+        _StubStore(),
+        session_id="s1",
+        leaf_message_id=None,
+        current_turn_ordinal=1,
+        fresh_attachment_records=[],
+        fresh_history_session_ids=[],
+        materialize=lambda records: _noop_materialize(records),
+        current_transcript="User: hi",
+    )
+    assert not [entry for entry in inv.entries if entry.sid == "session-transcript"]
+
+
+async def test_without_materialize_no_transcript_row(tmp_path, monkeypatch) -> None:
+    """HTTP-family turns run in no filesystem workspace: no file, no row —
+    the transcript would be dead weight in the manifest."""
+    inv = await build_inventory(
+        _StubStore(),
+        session_id="s1",
+        leaf_message_id=None,
+        current_turn_ordinal=1,
+        fresh_attachment_records=[],
+        fresh_history_session_ids=[],
+        materialize=None,
+        current_transcript="x" * 5000,
+    )
+    assert not [entry for entry in inv.entries if entry.sid == "session-transcript"]

@@ -121,6 +121,10 @@ _CHILD_ENV_ALLOWLIST = frozenset(
 #: case-insensitively against the child's stderr tail — deliberately narrow,
 #: because any failure here triggers a fresh-session retry and the turn's
 #: work would run twice.
+#: opencode's own session-selection flags (`-s <id>` / `--session <id>` /
+#: `--continue`): same operator-wins rule as claude's.
+_OPENCODE_SESSION_FLAG_PREFIXES = ("-s", "--session", "--continue")
+
 _SESSION_MISSING_MARKERS = (
     "no conversation found",
     "session not found",
@@ -136,9 +140,9 @@ _SESSION_MISSING_MARKERS = (
 _SESSION_FLAG_PREFIXES = ("--resume", "--session-id", "--continue")
 
 
-def _has_operator_session_flag(args: list[str]) -> bool:
+def _has_operator_session_flag(args: list[str], prefixes: tuple[str, ...]) -> bool:
     for arg in args:
-        for flag in _SESSION_FLAG_PREFIXES:
+        for flag in prefixes:
             if arg == flag or arg.startswith(flag + "="):
                 return True
     return False
@@ -714,9 +718,16 @@ class CliAgentLoopBackend(AgentLoopBackend):
         folded transcript is restored: it is then the only history channel,
         and dropping it too would lose the context entirely.
         """
-        operator_session_flag = self.resume_kind == "claude" and _has_operator_session_flag(
-            self.extra_args
-        )
+        if self.resume_kind == "claude":
+            operator_session_flag = _has_operator_session_flag(
+                self.extra_args, _SESSION_FLAG_PREFIXES
+            )
+        elif self.resume_kind == "opencode":
+            operator_session_flag = _has_operator_session_flag(
+                self.extra_args, _OPENCODE_SESSION_FLAG_PREFIXES
+            )
+        else:
+            operator_session_flag = False
         resume_active = bool(resume_id) and not operator_session_flag
         if self.resume_kind == "codex" and resume_active and self.base_args[:1] != ["exec"]:
             resume_active = False
@@ -727,6 +738,11 @@ class CliAgentLoopBackend(AgentLoopBackend):
             # clap subcommand: `codex exec resume <id> [OPTIONS] [PROMPT]` —
             # the resume subcommand must precede exec's own flags.
             argv = [self.command, "exec", "resume", resume_id, *self.base_args[1:], *extra_args]
+        elif self.resume_kind == "opencode" and resume_active:
+            # `opencode run -s <id> [message...]` — v2 stamps every NDJSON
+            # event (errors included) with the sessionID, which is what fills
+            # the mapping on the first turn.
+            argv += ["-s", resume_id]
         elif self.resume_kind == "claude" and not operator_session_flag:
             if resume_active:
                 argv += ["--resume", resume_id]
@@ -975,6 +991,15 @@ class CliAgentLoopBackend(AgentLoopBackend):
         if not isinstance(obj, dict):
             state["dropped_lines"] = int(state.get("dropped_lines") or 0) + 1
             return []
+        if self.resume_kind == "opencode":
+            # opencode v2 stamps every NDJSON event (errors included) with the
+            # sessionID — the resume handle for `run -s <id>`. Translator
+            # independent, so it survives format drift.
+            session_id = str(obj.get("sessionID") or "").strip()
+            if not session_id and isinstance(obj.get("msg"), dict):
+                session_id = str(obj["msg"].get("sessionID") or "").strip()
+            if session_id:
+                state["agent_session_id"] = session_id
         return self.translator(obj, state)
 
     @staticmethod

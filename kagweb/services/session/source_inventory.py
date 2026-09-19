@@ -117,6 +117,12 @@ class SourceInventory:
 # ---------------------------------------------------------------------------
 
 
+#: Below this size the session transcript stays inline-only: the folded
+#: history the executor already carries covers it, and a manifest row would
+#: be pure noise.
+TRANSCRIPT_FILE_MIN_CHARS = 2_000
+
+
 async def build_inventory(
     store: SessionStoreProtocol,
     *,
@@ -128,6 +134,7 @@ async def build_inventory(
     language: str = "en",
     attachment_paths: dict[str, str] | None = None,
     materialize: MaterializeCallback | None = None,
+    current_transcript: str | None = None,
 ) -> SourceInventory:
     """Compose the session-cumulative inventory for one chat turn.
 
@@ -168,6 +175,35 @@ async def build_inventory(
         attachment_paths=paths,
         materialize=materialize,
     )
+    # L0 of the agent-loop history design: the session's own transcript as a
+    # workspace file. Every backend family running in a filesystem workspace
+    # (the ``materialize`` gate) can then read the full conversation on
+    # demand — the fallback when the agent's own session was reset, and the
+    # reference channel that survives backend switches. Only worth a row
+    # once the transcript outgrows the inline previews.
+    if (
+        materialize is not None
+        and current_transcript
+        and len(current_transcript) >= TRANSCRIPT_FILE_MIN_CHARS
+    ):
+        try:
+            from kagweb.services.session.attachment_workspace import write_session_transcript
+
+            path = await write_session_transcript(session_id, current_transcript)
+        except Exception:  # noqa: BLE001 - the transcript row is best effort
+            path = ""
+        if path:
+            inv.add(
+                SourceEntry(
+                    sid="session-transcript",
+                    kind="transcript",
+                    name="This session's transcript",
+                    full_text=current_transcript,
+                    fresh=True,
+                    first_seen_turn=current_turn_ordinal,
+                    path=path,
+                )
+            )
     return inv
 
 

@@ -72,6 +72,7 @@ class FakeAgent:
                     "elicitation_action": getattr(self, "elicitation_action", ""),
                     "elicitation_answer": getattr(self, "elicitation_answer", ""),
                     "applied_model": self.applied_model,
+                    "prompt_head": getattr(self, "prompt_head", ""),
                 },
                 fh,
             )
@@ -118,6 +119,12 @@ class FakeAgent:
 
     async def _prompt(self, session_id, prompt, **kwargs):
         self.session_id = session_id
+        # Head of the first prompt block, for the reset-fold assertion (G-1).
+        try:
+            blocks = prompt if isinstance(prompt, list) else [prompt]
+            self.prompt_head = str(getattr(blocks[0], "text", "") or "")[:400] if blocks else ""
+        except Exception:
+            self.prompt_head = ""
         if self.scenario == "hang":
             await asyncio.sleep(30)
             return schema.PromptResponse(stop_reason="end_turn")

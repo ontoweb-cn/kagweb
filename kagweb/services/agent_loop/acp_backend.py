@@ -70,6 +70,42 @@ _MODEL_OPTIONS_CACHE: dict[str, tuple[float, list[dict[str, Any]] | None]] = {}
 #: shutdown hook.
 REAP_AFTER_SECONDS = 600.0
 
+#: Caps for the G-1 reset fold: a bounded tail of the KAGWeb transcript,
+#: not a replacement for the agent's own session memory.
+_RESET_FOLD_MAX_MESSAGES = 30
+_RESET_FOLD_MAX_CHARS = 12_000
+
+#: Header for the fold, addressed at the agent. The workspace transcript
+#: (L0) gives it full fidelity when it wants more than the tail.
+_RESET_FOLD_HEADER = (
+    "[Conversation context — the previous agent session was lost and a new "
+    "one was opened; the prior turns follow, most recent last. The full "
+    "transcript is in session-transcript.md in the working directory.]\n"
+)
+
+
+def _fold_history_for_reset(history: list[dict[str, Any]]) -> str:
+    """A bounded transcript of the prior turns for a reset agent session."""
+    labels = {"user": "User", "assistant": "Assistant", "system": "System"}
+    lines: list[str] = []
+    total = len(_RESET_FOLD_HEADER)
+    for item in list(history or [])[-_RESET_FOLD_MAX_MESSAGES:]:
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get("role") or "").strip().lower()
+        content = str(item.get("content") or "").strip()
+        label = labels.get(role)
+        if label is None or not content:
+            continue
+        block = f"[{label}]: {content}"
+        total += len(block)
+        if total > _RESET_FOLD_MAX_CHARS:
+            break
+        lines.append(block)
+    if not lines:
+        return ""
+    return _RESET_FOLD_HEADER + "\n\n".join(lines) + "\n\n"
+
 
 def _extract_model_options(response: Any) -> list[dict[str, Any]] | None:
     """Pull the agent's model selector out of an ACP handshake response.
@@ -595,6 +631,12 @@ class AcpSessionHandle:
     #: ``[{id, name, description?, current}]`` rows. ``None`` = the agent
     #: advertised no model option; ``[]`` = advertised an empty one.
     model_options: list[dict[str, Any]] | None = None
+    #: Set when this spawn opened a FRESH agent session while the KAGWeb side
+    #: still holds a transcript for it (a failed ``load_session`` re-attach,
+    #: or no stored id at all). Consumed by ``run``: the first prompt carries
+    #: a bounded fold of the prior turns (G-1 of the history design), and the
+    #: reset is announced as a progress event instead of staying silent.
+    session_reset: bool = False
 
     def touch(self) -> None:
         self.last_used = time.monotonic()
@@ -900,9 +942,17 @@ class AcpAgentLoopBackend(AgentLoopBackend):
                 except Exception:  # noqa: BLE001 - stale id: start a fresh one
                     response = await connection.new_session(cwd=handle.cwd or "")
                     handle.acp_session_id = str(response.session_id)
+                    # G-1: the re-attach failed — the agent has no memory of
+                    # this conversation even though KAGWeb does. run() folds
+                    # the prior turns into the first prompt.
+                    handle.session_reset = True
             else:
                 response = await connection.new_session(cwd=handle.cwd or "")
                 handle.acp_session_id = str(response.session_id)
+                # A brand-new agent session (first turn, or the stored record
+                # was lost). run() only acts when KAGWeb actually has prior
+                # history to restore.
+                handle.session_reset = True
             # The model selector (when the agent advertises one) rides the same
             # response; recorded here so the composer and the turn-model filter
             # can read it without another handshake.
@@ -976,6 +1026,19 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         self._current_key = session_key
         handle = await self._manager.ensure(session_key, request.workdir)
         await self._apply_turn_model(handle, request)
+        prompt = request.prompt
+        if handle.session_reset:
+            # G-1: a fresh agent session under a conversation KAGWeb still
+            # remembers. Never silent again — say so, and restore a bounded
+            # tail of the prior turns into this first prompt (the full
+            # transcript rides in the workspace file the manifest names).
+            handle.session_reset = False
+            fold = _fold_history_for_reset(request.history)
+            if fold:
+                yield AgentLoopEvent(
+                    "progress", text=t("agent_loop.session_reset", backend=self.name)
+                )
+                prompt = fold + request.prompt
         # Sweep anything the previous turn left parked. The previous turn's
         # own sweep runs before its sink is detached, so a request that lands
         # in that gap is registered but never answered; without this it would
@@ -987,7 +1050,7 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         prompt_task = asyncio.create_task(
             handle.connection.prompt(
                 handle.acp_session_id,
-                [schema.TextContentBlock(type="text", text=request.prompt)],
+                [schema.TextContentBlock(type="text", text=prompt)],
             )
         )
         stop_reason = ""
