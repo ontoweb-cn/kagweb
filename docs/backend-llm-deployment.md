@@ -126,6 +126,12 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 
 **运营后果**：一份 ChatGPT/Codex 订阅不会在两者间共享。登录 KAGWeb 的 provider **不会**让 `codex` agent-loop 预设获得认证，反之亦然。
 
+**处置状态（2026-09-19）**：该打通项（§六 P3）已完成决策材料细化——`codex_auth`
+长期定位的三选项（退役 / 维持 / CODEX_HOME 托管目录打通）与建议见
+`docs/plans/2026-09-19-pending-decisions-credentials-and-history.md`（决策一），
+**待拍板**。对照项：claude-code 预设无需打通，操作员经 profile env 填
+`ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` 即可。
+
 ### 1.6 检测与测试：只看「在不在」，不看「能不能用」
 
 `detect.py` 与 `/agent-loop/test` 端点（`api/routers/settings.py:1184-1246`）都只做存在性检查：
@@ -1064,7 +1070,7 @@ HTTP 族的通用 «turn» 协议（`custom-http`）现在会 **fail 掉回合**
 | **P1** | 合伙人与 IM 通道移除（约 42,000 行） | §五 决策 7 | 与决策 1 同源；**前置：迁移 `safe_filename`** | ⬜ 未做 |
 | **P2** | 学习 / 研究表述清理 | §五 决策 4 | 学习者/监护人去留已决策为移除 | ✅ 完成（批次四/五：学习者子系统移除 + 导航更名 + 死词条清理，见 `ef8bbf5`） |
 | **P2** | 工具层与 MCP 的重新定位 | §四 #6、§五 3c | 架构方向，取决于决策 1 的落地深度 | ✅ 2026-09-11 裁决：撤退，整块移除 |
-| **P3** | 凭据打通（codex OAuth 复用） | §四 #10 | 需架构决策（涉及把凭据交给外部进程） |
+| **P3** | 凭据打通（codex OAuth 复用） | §四 #10 | 需架构决策（涉及把凭据交给外部进程）——决策材料已细化（三选项+建议），见 `docs/plans/2026-09-19-pending-decisions-credentials-and-history.md` 决策一，**待拍板** |
 
 **建议的执行批次**：
 
