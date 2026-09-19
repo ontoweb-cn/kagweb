@@ -576,11 +576,18 @@ async def test_regenerate_restores_a_backend_native_selection(
 
 
 async def test_long_session_transcript_becomes_a_workspace_file(
-    store, stub_workspace, monkeypatch
+    store, stub_workspace, monkeypatch, tmp_path
 ) -> None:
     """M3-L0: with a workspace-running backend, the session transcript from
     the store is written to the workspace and referenced in the manifest."""
     from kagweb.services.agent_loop.protocol import AgentLoopEvent
+    from kagweb.services.path_service import PathService
+
+    # The transcript write resolves the path service from its own module —
+    # isolate it too, or the test would write into the developer's real
+    # data tree (and fail on CI, where that tree does not exist).
+    path_service = PathService(workspace_root=tmp_path)
+    monkeypatch.setattr("kagweb.services.path_service.get_path_service", lambda: path_service)
 
     backend = _FakeAgentBackend(AgentLoopEvent("content", text="ok"))
     monkeypatch.setattr(
@@ -615,10 +622,6 @@ async def test_long_session_transcript_becomes_a_workspace_file(
     final = await store.get_turn(turn2["id"])
     assert final is not None and final["status"] == "completed", final
     # The workspace file exists and the manifest row referenced it.
-    from kagweb.services.path_service import get_path_service
-
-    transcript = (
-        get_path_service().get_task_workspace("chat", session["id"]) / "session-transcript.md"
-    )
+    transcript = path_service.get_task_workspace("chat", session["id"]) / "session-transcript.md"
     assert transcript.exists()
     assert "第一回合长文本" in transcript.read_text(encoding="utf-8")
