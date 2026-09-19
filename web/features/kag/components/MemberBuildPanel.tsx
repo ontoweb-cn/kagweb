@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import Link from "next/link";
 import { Boxes, Hammer, Save, Users } from "lucide-react";
 
 import { isApiError } from "@/shared/api/errors";
@@ -29,6 +30,8 @@ export function MemberBuildPanel({ projectId }: { projectId: string }) {
   const [command, setCommand] = useState("");
   const [building, setBuilding] = useState(false);
   const [buildError, setBuildError] = useState("");
+  // P0a：提交成功后回显受理记录 taskId，并给出任务列表入口
+  const [buildAccepted, setBuildAccepted] = useState<{ taskId: string } | null>(null);
 
   const loadMembers = useCallback(async () => {
     setMemberError("");
@@ -76,9 +79,11 @@ export function MemberBuildPanel({ projectId }: { projectId: string }) {
       return;
     }
     setBuildError("");
+    setBuildAccepted(null);
     setBuilding(true);
     try {
-      await submitKagBuild(projectId, command.trim());
+      const accepted = await submitKagBuild(projectId, command.trim());
+      setBuildAccepted(accepted);
       setCommand("");
     } catch (err) {
       setBuildError(
@@ -196,6 +201,14 @@ export function MemberBuildPanel({ projectId }: { projectId: string }) {
         {buildError ? (
           <p className="mt-2 rounded-md bg-red-500/10 px-3 py-2 text-[11.5px] text-red-600 dark:text-red-400">
             {buildError}
+          </p>
+        ) : null}
+        {buildAccepted ? (
+          <p className="mt-2 rounded-md bg-emerald-500/10 px-3 py-2 text-[11.5px] text-emerald-600 dark:text-emerald-400">
+            {t("Build accepted: {{taskId}}", { taskId: buildAccepted.taskId })}{" "}
+            <Link href="/kag/tasks" className="underline underline-offset-2">
+              {t("View in task list")}
+            </Link>
           </p>
         ) : null}
       </section>

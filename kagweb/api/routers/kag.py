@@ -10,6 +10,7 @@ same-origin guard 沿用 settings router 的既有模式（origin_is_trusted）�
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import Any
@@ -32,7 +33,7 @@ from kagweb.services.kag.member_store import (
     update_project_members,
 )
 from kagweb.services.kag.openspg_client import OpenSPGClient, OpenSPGError
-from kagweb.services.kag.task_store import append_task, list_tasks
+from kagweb.services.kag.task_store import append_task, list_tasks, update_task
 
 router = APIRouter()
 bridge_router = APIRouter()
@@ -96,6 +97,89 @@ def _require_same_origin(request: Request) -> None:
 def _client() -> OpenSPGClient:
     block = get_kag_settings()
     return OpenSPGClient(str(block.get("spg_server_url") or ""))
+
+
+# ---------------------------------------------------------------------------
+# 构建任务可观测（P0a；A1.4 实测口径）
+# ---------------------------------------------------------------------------
+# 状态权威源：节点级。BuilderJob.status 恒 RUNNING（不随执行更新）；实例级
+# status 可能停在 WAITING（DAG 未完）。成败判定取 taskDag.nodes[].properties.status
+# （列表）或 SchedulerTask.status（详情）聚合；无节点时兜底实例/Job 状态。
+
+
+def _map_legacy_status(status: Any) -> str:
+    """单个状态值 → 归一（running/success/failed/pending）。"""
+    value = str(status or "").upper()
+    if value in {"ERROR", "FAILED"}:
+        return "failed"
+    if value in {"FINISH", "SUCCESS"}:
+        return "success"
+    if value == "RUNNING":
+        return "running"
+    return "pending"
+
+
+def _aggregate_build_status(instance: dict[str, Any]) -> str:
+    """节点级聚合（A1.4 实测：失败信号在 taskDag 节点属性）。"""
+    dag = instance.get("taskDag") or {}
+    nodes = dag.get("nodes") or []
+    statuses: list[str] = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        props = node.get("properties") or {}
+        statuses.append(str(props.get("status") or node.get("status") or ""))
+    statuses = [value for value in statuses if value]
+    if statuses:
+        if any(value == "ERROR" for value in statuses):
+            return "failed"
+        if all(value == "FINISH" for value in statuses):
+            return "success"
+        if any(value == "RUNNING" for value in statuses):
+            return "running"
+        return "pending"
+    return _map_legacy_status(instance.get("status"))
+
+
+async def _resolve_build_live(row: dict[str, Any]) -> str:
+    """本地 build 记录 → live 状态。scheduler_job_id 命中缓存则跳过 getById；
+    成功后惰性回填缓存（update_task，失败不阻塞）。"""
+    task_id = str(row.get("task_id") or "")
+    # 评审 P1：非数字 task_id（submit_build 兜底 ``build_<ts>``）无法查询
+    # OpenSPG job，直接 unknown——避免 int() ValueError 拖垮整个列表页
+    if not task_id or not task_id.isdigit():
+        return "unknown"
+    client = _client()
+    scheduler_id = str(row.get("scheduler_job_id") or "")
+    job: dict[str, Any] = {}
+    if not scheduler_id:
+        job = await client.get_builder_job(task_id)
+        scheduler_id = str(job.get("taskId") or job.get("task_id") or "")
+        if scheduler_id:
+            update_task(task_id, scheduler_job_id=scheduler_id)
+    if not scheduler_id:
+        return _map_legacy_status(job.get("status"))
+    instances = await client.search_scheduler_instances(scheduler_id, page_size=1)
+    if not instances:
+        return _map_legacy_status(job.get("status"))
+    return _aggregate_build_status(instances[0])
+
+
+async def _merge_build_live(rows: list[dict[str, Any]]) -> dict[str, str]:
+    """并行逐条解析 build 记录 live 状态（评审 P1-1）；上游错误降级 unknown。"""
+    live: dict[str, str] = {}
+
+    async def resolve(row: dict[str, Any]) -> None:
+        task_id = str(row.get("task_id") or "")
+        if not task_id:
+            return
+        try:
+            live[task_id] = await _resolve_build_live(row)
+        except OpenSPGError:
+            live[task_id] = "unknown"
+
+    await asyncio.gather(*(resolve(row) for row in rows))
+    return live
 
 
 #: 管理面响应剔除的凭据键（M2.4 冒烟发现：OpenSPG project.config 携带
@@ -604,7 +688,7 @@ async def get_tasks(
         # 显式 project 过滤：校验该项目的 membership（admin 恒过）
         if not project_access_allowed(user, project_id, kag_configured=kag_enabled()):
             raise HTTPException(status_code=403, detail="You do not have access to this KAG project.")
-        return {"tasks": rows, "count": len(rows)}
+        return await _with_build_live(rows)
     if not _is_admin(user):
         # 无 project 过滤（全量浏览）：仅保留用户可见项目的任务
         visible = {
@@ -616,7 +700,107 @@ async def get_tasks(
             )
         }
         rows = [r for r in rows if not r.get("project_id") or str(r.get("project_id")) in visible]
+    return await _with_build_live(rows)
+
+
+async def _with_build_live(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """build 记录附加 live 状态（P0a；评审 P1-1：并行、逐条容错、inference 不受影响）。"""
+    build_rows = [row for row in rows if row.get("kind") == "build"]
+    live = await _merge_build_live(build_rows) if build_rows else {}
+    for row in rows:
+        if row.get("kind") == "build":
+            row["live_status"] = live.get(str(row.get("task_id") or ""), "unknown")
     return {"tasks": rows, "count": len(rows)}
+
+
+# ---------------------------------------------------------------------------
+# 构建任务可观测（P0a）：项目构建列表 + 详情
+# ---------------------------------------------------------------------------
+
+
+@router.get("/projects/{project_id}/builds")
+async def list_project_builds(project_id: str) -> dict[str, Any]:
+    """项目构建任务列表（read + membership；P0a）。
+
+    本地 build 摘要（task_store，kind=build） × 实时节点级状态合并；
+    OpenSPG 不可达时降级 live_status=unknown，不 500。
+    """
+    _require_project_access(project_id)
+    rows = list_tasks(limit=100, project_id=project_id)
+    build_rows = [row for row in rows if row.get("kind") == "build"]
+    live = await _merge_build_live(build_rows) if build_rows else {}
+    for row in build_rows:
+        row["live_status"] = live.get(str(row.get("task_id") or ""), "unknown")
+    return {"builds": build_rows, "count": len(build_rows)}
+
+
+@router.get("/builds/{job_id}")
+async def get_build_detail(job_id: str) -> dict[str, Any]:
+    """构建任务详情（read + 经 project_id 的 membership；P0a）。
+
+    Job → SchedulerInstance → SchedulerTask[]：节点级 {name, type, status,
+    trace_log}（traceLog 只读、截断 2k，A1.4 实测失败任务会被调度器反复重试、
+    traceLog 持续追加）。无 task 记录时回退 taskDag 节点状态。
+    """
+    _require_read()
+    # 评审 P1：非数字 job_id 直接 404（OpenSPG BuilderJob id 必为数字），
+    # 避免 int() ValueError → 500
+    if not str(job_id).isdigit():
+        raise HTTPException(status_code=404, detail="Build job not found.")
+    try:
+        job = await _client().get_builder_job(job_id)
+    except OpenSPGError as exc:
+        raise _upstream_error(exc) from exc
+    if not job:
+        raise HTTPException(status_code=404, detail="Build job not found.")
+    project_id = str(job.get("projectId") or job.get("project_id") or "")
+    user = _current_user()
+    if not project_access_allowed(user, project_id, kag_configured=kag_enabled()):
+        raise HTTPException(status_code=403, detail="You do not have access to this KAG project.")
+    scheduler_id = str(job.get("taskId") or job.get("task_id") or "")
+    instance: dict[str, Any] = {}
+    scheduler_tasks: list[dict[str, Any]] = []
+    if scheduler_id:
+        try:
+            instances = await _client().search_scheduler_instances(scheduler_id, page_size=1)
+        except OpenSPGError as exc:
+            raise _upstream_error(exc) from exc
+        if instances:
+            instance = instances[0]
+            instance_id = instance.get("id")
+            if instance_id:
+                try:
+                    scheduler_tasks = await _client().search_scheduler_tasks(instance_id)
+                except OpenSPGError:
+                    # traceLog 缺失不阻断详情（节点状态已随 instance 返回）
+                    scheduler_tasks = []
+    nodes: list[dict[str, Any]] = []
+    if scheduler_tasks:
+        nodes = [
+            {
+                "name": str(task.get("title") or task.get("name") or ""),
+                "type": str(task.get("type") or ""),
+                "status": _map_legacy_status(task.get("status")),
+                "trace_log": str(task.get("traceLog") or "")[:2000],
+            }
+            for task in scheduler_tasks
+        ]
+    else:
+        dag = instance.get("taskDag") or {}
+        nodes = [
+            {
+                "name": str(node.get("name") or ""),
+                "type": str(node.get("taskComponent") or ""),
+                "status": _map_legacy_status(((node.get("properties") or {}).get("status"))),
+                "trace_log": "",
+            }
+            for node in (dag.get("nodes") or [])
+            if isinstance(node, dict)
+        ]
+    live_status = (
+        _aggregate_build_status(instance) if instance else _map_legacy_status(job.get("status"))
+    )
+    return {"job": _sanitize(job), "live_status": live_status, "nodes": nodes}
 
 
 @bridge_router.post("/tasks")

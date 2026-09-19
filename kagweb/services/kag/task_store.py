@@ -43,6 +43,9 @@ def _normalize(record: dict[str, Any]) -> dict[str, Any]:
         "question": str(record.get("question") or "")[:2000],
         "answer_digest": str(record.get("answer_digest") or "")[:2000],
         "cost_ms": int(record.get("cost_ms") or 0),
+        # P0a：build 记录可观测字段（可选，详情端点惰性回填，见 update_task）
+        "scheduler_job_id": str(record.get("scheduler_job_id") or ""),
+        "status": str(record.get("status") or ""),
         # 条数防御（评审 F5）：bridge 侧已截 20，此处再防异常巨大的上报体
         "references": (
             record.get("references")[:20] if isinstance(record.get("references"), list) else []
@@ -83,3 +86,31 @@ def list_tasks(limit: int = 100, session_id: str = "", project_id: str = "") -> 
     if project_id:
         rows = [r for r in rows if r.get("project_id") == project_id]
     return rows[: max(1, min(limit, KAG_TASKS_LIMIT))]
+
+
+def update_task(task_id: str, **fields: Any) -> dict[str, Any] | None:
+    """幂等更新已有记录的可观测字段（P0a live 状态回写/缓存回填）。
+
+    白名单：scheduler_job_id / status / answer_digest / cost_ms；task_id
+    不存在或存储缺失时返回 None（不新建、不报错——advisory 语义）。
+    """
+    if not task_id:
+        return None
+    allowed = {"scheduler_job_id", "status", "answer_digest", "cost_ms"}
+    updates = {key: value for key, value in fields.items() if key in allowed}
+    if not updates:
+        return None
+    with _lock:
+        path = _store_path()
+        try:
+            rows = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        if not isinstance(rows, list):
+            return None
+        for row in rows:
+            if str(row.get("task_id") or "") == task_id:
+                row.update(updates)
+                path.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
+                return row
+    return None

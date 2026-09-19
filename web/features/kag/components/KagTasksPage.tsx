@@ -2,19 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ChevronDown,
-  ListChecks,
-  RefreshCw,
-} from "lucide-react";
+import { ChevronDown, ListChecks, RefreshCw } from "lucide-react";
 
-import { fetchKagTasks } from "../api";
-import type { KagTaskRow } from "../model";
+import { fetchKagBuildDetail, fetchKagTasks } from "../api";
+import type { KagBuildLiveStatus, KagTaskRow } from "../model";
 import { KagBackLink, KagPageBody, KagPageHeader, KagStateView } from "./KagPageFrame";
 
 /**
  * `/kag/tasks` 推理任务页（M2.4）：Bridge 上报的 kag_solve 摘要列表
- * （附录 A.3）。advisory 数据：bridge 未上报/未配置时为空列表属正常态。
+ * （附录 A.3）+ P0a 构建任务可观测（实时状态 badge、详情节点/traceLog）。
+ * advisory 数据：bridge 未上报/未配置时为空列表属正常态。
  */
 
 function formatCost(ms: number): string {
@@ -33,13 +30,72 @@ function formatTime(iso: string): string {
   return parsed.toLocaleString();
 }
 
+const BUILD_STATUS_STYLE: Record<KagBuildLiveStatus, string> = {
+  running: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  failed: "bg-red-500/10 text-red-600 dark:text-red-400",
+  pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  unknown: "bg-[var(--muted)]/50 text-[var(--muted-foreground)]",
+};
+
+const NODE_STATUS_DOT: Record<string, string> = {
+  failed: "bg-red-500",
+  success: "bg-emerald-500",
+  running: "bg-sky-500",
+  pending: "bg-amber-500",
+};
+
+function BuildStatusBadge({ status }: { status: KagBuildLiveStatus }) {
+  const { t } = useTranslation();
+  const labels: Record<KagBuildLiveStatus, string> = {
+    running: t("Running"),
+    success: t("Success"),
+    failed: t("Failed"),
+    pending: t("Pending"),
+    unknown: t("Unknown"),
+  };
+  return (
+    <span
+      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${BUILD_STATUS_STYLE[status]}`}
+    >
+      {labels[status]}
+    </span>
+  );
+}
+
 function TaskRow({ task }: { task: KagTaskRow }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  // P0a：build 行展开时惰性拉取详情（节点状态 + traceLog），失败可重试
+  const [detail, setDetail] = useState<Awaited<ReturnType<typeof fetchKagBuildDetail>> | null>(
+    null,
+  );
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  async function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next && task.kind === "build" && detail === null && !detailLoading) {
+      setDetailLoading(true);
+      setDetailError(null);
+      try {
+        setDetail(await fetchKagBuildDetail(task.taskId));
+      } catch (cause) {
+        setDetailError(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        setDetailLoading(false);
+      }
+    }
+  }
+
+  const liveStatus: KagBuildLiveStatus | null =
+    task.kind === "build" ? (task.liveStatus ?? "unknown") : null;
+
   return (
     <div className="px-5 py-3.5">
       <button
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => void toggle()}
         className="flex w-full items-start gap-3 text-left"
       >
         <ChevronDown
@@ -56,6 +112,7 @@ function TaskRow({ task }: { task: KagTaskRow }) {
                 {t("Build")}
               </span>
             ) : null}
+            {liveStatus ? <BuildStatusBadge status={liveStatus} /> : null}
             <p className="min-w-0 truncate text-[13px] font-medium text-[var(--foreground)]">
               {task.question || t("(no question)")}
             </p>
@@ -77,32 +134,76 @@ function TaskRow({ task }: { task: KagTaskRow }) {
       </button>
       {open ? (
         <div className="mt-2.5 space-y-2 border-l-2 border-[var(--border)] pl-4">
-          {task.answerDigest ? (
-            <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-[var(--foreground)]/90">
-              {task.answerDigest}
-            </p>
-          ) : (
-            <p className="text-[12px] text-[var(--muted-foreground)]">
-              {t("No answer digest reported")}
-            </p>
-          )}
-          {task.references.length > 0 ? (
-            <div className="space-y-1">
-              <p className="text-[11px] font-medium text-[var(--muted-foreground)]">
-                {t("References")}
+          {task.kind === "build" ? (
+            detailLoading ? (
+              <p className="text-[12px] text-[var(--muted-foreground)]">{t("Loading…")}</p>
+            ) : detailError ? (
+              <p className="rounded-md bg-red-500/10 px-3 py-2 text-[11.5px] text-red-600 dark:text-red-400">
+                {detailError}
               </p>
-              <ul className="space-y-0.5">
-                {task.references.map((reference, index) => (
-                  <li
-                    key={`${task.taskId}-${index}`}
-                    className="break-words font-mono text-[11px] leading-relaxed text-[var(--muted-foreground)]"
-                  >
-                    {reference}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+            ) : detail ? (
+              detail.nodes.length === 0 ? (
+                <p className="text-[12px] text-[var(--muted-foreground)]">
+                  {t("No task nodes reported")}
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {detail.nodes.map((node) => (
+                    <div key={`${node.name}-${node.type}`}>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`size-1.5 shrink-0 rounded-full ${
+                            NODE_STATUS_DOT[node.status] ?? "bg-[var(--muted-foreground)]/50"
+                          }`}
+                          aria-hidden
+                        />
+                        <p className="font-mono text-[12px] font-medium text-[var(--foreground)]">
+                          {node.name}
+                        </p>
+                        <span className="truncate font-mono text-[10.5px] text-[var(--muted-foreground)]">
+                          {node.type}
+                        </span>
+                      </div>
+                      {node.traceLog ? (
+                        <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-[var(--muted)]/40 p-2 font-mono text-[10.5px] leading-relaxed text-[var(--foreground)]/80">
+                          {node.traceLog}
+                        </pre>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : null
+          ) : (
+            <>
+              {task.answerDigest ? (
+                <p className="whitespace-pre-wrap break-words text-[12.5px] leading-relaxed text-[var(--foreground)]/90">
+                  {task.answerDigest}
+                </p>
+              ) : (
+                <p className="text-[12px] text-[var(--muted-foreground)]">
+                  {t("No answer digest reported")}
+                </p>
+              )}
+              {task.references.length > 0 ? (
+                <div className="space-y-1">
+                  <p className="text-[11px] font-medium text-[var(--muted-foreground)]">
+                    {t("References")}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {task.references.map((reference, index) => (
+                      <li
+                        key={`${task.taskId}-${index}`}
+                        className="break-words font-mono text-[11px] leading-relaxed text-[var(--muted-foreground)]"
+                      >
+                        {reference}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
       ) : null}
     </div>

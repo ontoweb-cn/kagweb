@@ -9,11 +9,15 @@ import { requestJson } from "@/shared/api/client";
 import {
   parseEmbeddingProfiles,
   parseGraphQueryResult,
+  parseKagBuildDetail,
+  parseKagBuilds,
   parseKagProject,
   parseKagProjectDetail,
   parseKagProjects,
   parseKagTasks,
   parseSpgSchema,
+  type KagBuildDetail,
+  type KagBuildLiveStatus,
   type KagEmbeddingProfile,
   type KagGraphQueryResult,
   type KagProject,
@@ -124,12 +128,13 @@ export async function queryKagGraph(
   return parseGraphQueryResult(payload);
 }
 
-/** M4-A：触发 KAG_COMMAND 构建（受理层；本地 executor 缺失时执行会失败）。 */
+/** M4-A：触发 KAG_COMMAND 构建（受理层；本地 executor 缺失时执行会失败）。
+ * P0a：返回受理记录 taskId（=OpenSPG BuilderJob.id），供提交后回显/跳转。 */
 export async function submitKagBuild(
   projectId: string,
   command: string,
-): Promise<unknown> {
-  return requestJson<unknown>(
+): Promise<{ taskId: string }> {
+  const payload = await requestJson<unknown>(
     `/api/kag/projects/${encodeURIComponent(projectId)}/build`,
     {
       method: "POST",
@@ -138,6 +143,12 @@ export async function submitKagBuild(
       scope: "kag",
     },
   );
+  const record = (payload ?? {}) as Record<string, unknown>;
+  const task = (record.task ?? {}) as Record<string, unknown>;
+  const buildJob = (record.build_job ?? {}) as Record<string, unknown>;
+  return {
+    taskId: String(task.task_id ?? buildJob.id ?? ""),
+  };
 }
 
 /** M4-B：项目成员 + owner（owner_user_no 为 OpenSPG 归因 userNo）。 */
@@ -197,6 +208,32 @@ export async function fetchKagTasks(
     { cache: "no-store", signal, scope: "kag" },
   );
   return parseKagTasks(payload);
+}
+
+/** P0a：项目构建任务列表（本地 build 摘要 × 实时节点级状态）。 */
+export async function fetchKagBuilds(
+  projectId: string,
+  signal?: AbortSignal,
+): Promise<(KagTaskRow & { liveStatus: KagBuildLiveStatus })[]> {
+  const payload = await requestJson<unknown>(
+    `/api/kag/projects/${encodeURIComponent(projectId)}/builds`,
+    { cache: "no-store", signal, scope: "kag" },
+  );
+  return parseKagBuilds(payload);
+}
+
+/** P0a：构建任务详情（节点状态 + traceLog，只读）。 */
+export async function fetchKagBuildDetail(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<KagBuildDetail> {
+  const payload = await requestJson<unknown>(
+    `/api/kag/builds/${encodeURIComponent(jobId)}`,
+    { cache: "no-store", signal, scope: "kag" },
+  );
+  const detail = parseKagBuildDetail(payload);
+  if (!detail) throw new Error("Build detail not found.");
+  return detail;
 }
 
 // —— embedding 模型选项（创建项目表单；目录端点本身 admin-only）——

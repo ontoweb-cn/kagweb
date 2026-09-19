@@ -322,6 +322,16 @@ export function parseGraphQueryResult(raw: unknown): KagGraphQueryResult {
 
 // —— 推理任务（GET /api/kag/tasks，A.3 契约）——
 
+/** 构建任务 live 状态（P0a：节点级聚合；unknown=上游不可达/无此 job）。 */
+export type KagBuildLiveStatus = "running" | "success" | "failed" | "pending" | "unknown";
+
+export function parseBuildLiveStatus(raw: unknown): KagBuildLiveStatus {
+  const value = text(raw);
+  return value === "running" || value === "success" || value === "failed" || value === "pending"
+    ? value
+    : "unknown";
+}
+
 export interface KagTaskRow {
   taskId: string;
   /** 任务类型（M4-A）：inference（bridge 上报）或 build（构建任务）。 */
@@ -334,6 +344,8 @@ export interface KagTaskRow {
   costMs: number;
   references: string[];
   createdAt: string;
+  /** P0a：build 记录实时状态（inference 行无此字段）。 */
+  liveStatus?: KagBuildLiveStatus;
 }
 
 export function parseKagTasks(raw: unknown): KagTaskRow[] {
@@ -357,8 +369,60 @@ export function parseKagTasks(raw: unknown): KagTaskRow[] {
       costMs: Number.isFinite(costMs) ? Math.max(0, Math.trunc(costMs)) : 0,
       references,
       createdAt: text(row.created_at),
+      liveStatus: parseBuildLiveStatus(row.live_status),
     };
   });
+}
+
+// —— 构建任务可观测（P0a：项目构建列表 + 详情节点）——
+
+/** 详情执行节点（name/type/status/traceLog；traceLog 服务端已截断 2k）。 */
+export interface KagBuildNode {
+  name: string;
+  type: string;
+  status: string;
+  traceLog: string;
+}
+
+export interface KagBuildDetail {
+  job: Record<string, unknown>;
+  liveStatus: KagBuildLiveStatus;
+  nodes: KagBuildNode[];
+}
+
+export function parseKagBuilds(
+  raw: unknown,
+): (KagTaskRow & { liveStatus: KagBuildLiveStatus })[] {
+  const payload = record(raw);
+  const rows = payload.builds;
+  if (!Array.isArray(rows)) return [];
+  const tasks = parseKagTasks({ tasks: rows });
+  return rows.map((rawRow, index) => {
+    const row = record(rawRow);
+    return { ...tasks[index], liveStatus: parseBuildLiveStatus(row.live_status) };
+  });
+}
+
+export function parseKagBuildDetail(raw: unknown): KagBuildDetail | null {
+  const payload = record(raw);
+  const job = record(payload.job);
+  if (!job.id && !job.taskId) return null;
+  const nodes = Array.isArray(payload.nodes)
+    ? payload.nodes.map((rawNode) => {
+        const node = record(rawNode);
+        return {
+          name: text(node.name),
+          type: text(node.type),
+          status: text(node.status),
+          traceLog: text(node.trace_log),
+        };
+      })
+    : [];
+  return {
+    job,
+    liveStatus: parseBuildLiveStatus(payload.live_status),
+    nodes,
+  };
 }
 
 // —— kag settings 域（GET/PUT /api/settings/kag；bridge_api_key write-only）——

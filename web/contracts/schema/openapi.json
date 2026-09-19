@@ -50,8 +50,8 @@
           },
           "approval_timeout_seconds": {
             "default": 60,
-            "maximum": 600,
-            "minimum": 5,
+            "maximum": 600.0,
+            "minimum": 5.0,
             "title": "Approval Timeout Seconds",
             "type": "integer"
           },
@@ -74,8 +74,8 @@
           },
           "context_window": {
             "default": 0,
-            "maximum": 1000000,
-            "minimum": 0,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
             "title": "Context Window",
             "type": "integer"
           },
@@ -103,6 +103,11 @@
             "title": "Id",
             "type": "string"
           },
+          "identity_mode": {
+            "default": "off",
+            "title": "Identity Mode",
+            "type": "string"
+          },
           "model": {
             "default": "",
             "title": "Model",
@@ -124,8 +129,8 @@
           },
           "timeout_seconds": {
             "default": 900,
-            "maximum": 86400,
-            "minimum": 30,
+            "maximum": 86400.0,
+            "minimum": 30.0,
             "title": "Timeout Seconds",
             "type": "integer"
           },
@@ -163,8 +168,8 @@
           },
           "consult_budget": {
             "default": 3,
-            "maximum": 12,
-            "minimum": 0,
+            "maximum": 12.0,
+            "minimum": 0.0,
             "title": "Consult Budget",
             "type": "integer"
           },
@@ -364,26 +369,26 @@
         "description": "Chat attachment policy (size caps + extraction budgets).\n\nBounds mirror the normalization clamps in\n``runtime_settings.CHAT_ATTACHMENT_*_RANGE`` so the API rejects loudly\nwhat the file layer would silently clamp.",
         "properties": {
           "max_chars_per_doc": {
-            "maximum": 5000000,
-            "minimum": 10000,
+            "maximum": 5000000.0,
+            "minimum": 10000.0,
             "title": "Max Chars Per Doc",
             "type": "integer"
           },
           "max_chars_total": {
-            "maximum": 5000000,
-            "minimum": 10000,
+            "maximum": 5000000.0,
+            "minimum": 10000.0,
             "title": "Max Chars Total",
             "type": "integer"
           },
           "max_file_mb": {
-            "maximum": 1024,
-            "minimum": 1,
+            "maximum": 1024.0,
+            "minimum": 1.0,
             "title": "Max File Mb",
             "type": "integer"
           },
           "max_total_mb": {
-            "maximum": 2048,
-            "minimum": 1,
+            "maximum": 2048.0,
+            "minimum": 1.0,
             "title": "Max Total Mb",
             "type": "integer"
           }
@@ -433,8 +438,8 @@
       "ChatResponseTimeoutUpdate": {
         "properties": {
           "chat_response_timeout": {
-            "maximum": 1800,
-            "minimum": 30,
+            "maximum": 1800.0,
+            "minimum": 30.0,
             "title": "Chat Response Timeout",
             "type": "integer"
           }
@@ -449,8 +454,8 @@
         "description": "How much recent activity shapes the home screen's starting points.\n\nBounds mirror ``starter_settings.TRACE_COUNT_RANGE`` so the API rejects\nloudly what the file layer would silently clamp.",
         "properties": {
           "trace_count": {
-            "maximum": 100,
-            "minimum": 3,
+            "maximum": 100.0,
+            "minimum": 3.0,
             "title": "Trace Count",
             "type": "integer"
           }
@@ -695,6 +700,28 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IdentityLinkRequest": {
+        "description": "Either a password login, or a token the user was handed out of band.",
+        "properties": {
+          "login_name": {
+            "default": "",
+            "title": "Login Name",
+            "type": "string"
+          },
+          "password": {
+            "default": "",
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "default": "",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "title": "IdentityLinkRequest",
+        "type": "object"
+      },
       "ImportedMessage": {
         "properties": {
           "content": {
@@ -772,40 +799,81 @@
         "title": "ImportedSession",
         "type": "object"
       },
-      "InstallPayload": {
-        "description": "Install a catalog entry, optionally under a different local name.",
+      "KagBuildRequest": {
+        "description": "触发 KAG_COMMAND 构建（M4-A）。command 为 server 侧执行的构建命令。",
         "properties": {
-          "name": {
-            "default": "",
-            "title": "Name",
+          "command": {
+            "title": "Command",
             "type": "string"
           },
-          "secrets": {
+          "worker_num": {
+            "default": 1,
+            "title": "Worker Num",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "title": "KagBuildRequest",
+        "type": "object"
+      },
+      "KagGraphQueryRequest": {
+        "description": "图浏览 DSL 查询（M3.4，经 /public/v1/reason/run）。\n\ndsl 契约（M3.0/M3.3 实测）：节点类型须 namespace 全名（如\nm0ProbeLive.Person），关系 label 裸名（如 workFor）；params 值须\n字符串化列表。",
+        "properties": {
+          "dsl": {
+            "title": "Dsl",
+            "type": "string"
+          },
+          "params": {
             "additionalProperties": {
               "type": "string"
             },
-            "title": "Secrets",
+            "default": {},
+            "title": "Params",
             "type": "object"
           }
         },
-        "title": "InstallPayload",
+        "required": [
+          "dsl"
+        ],
+        "title": "KagGraphQueryRequest",
+        "type": "object"
+      },
+      "KagMembersUpdateRequest": {
+        "description": "项目成员设置（T2，M4-B）：owner 不变，members 为成员 uid 列表。",
+        "properties": {
+          "members": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "title": "KagMembersUpdateRequest",
         "type": "object"
       },
       "KagProjectCreateRequest": {
-        "description": "Create-project request. embedding_model_id names an embedding profile in the model catalog (services.embedding.profiles); the server assembles the vectorizer and probes dimensions when vector_dimensions is omitted.",
+        "description": "创建项目的请求体（评审 F4：pydantic 模型，contracts 生成线可产出 TS 类型）。",
         "properties": {
+          "embedding_model_id": {
+            "default": "",
+            "title": "Embedding Model Id",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
           },
           "namespace": {
-            "description": "Neo4j database name constraint: alphanumeric only, letter-first, 3-64 chars.",
             "title": "Namespace",
             "type": "string"
           },
-          "embedding_model_id": {
+          "service_user_no": {
             "default": "",
-            "title": "Embedding Model Id",
+            "title": "Service User No",
             "type": "string"
           },
           "vector_dimensions": {
@@ -817,14 +885,7 @@
                 "type": "null"
               }
             ],
-            "description": "Omit to have the server probe the embedding endpoint once.",
             "title": "Vector Dimensions"
-          },
-          "service_user_no": {
-            "default": "",
-            "description": "6-20 letters/digits/underscores; defaults to the stored domain value or kagweb.",
-            "title": "Service User No",
-            "type": "string"
           }
         },
         "required": [
@@ -834,69 +895,64 @@
         "title": "KagProjectCreateRequest",
         "type": "object"
       },
-      "KagSettingsUpdate": {
-        "description": "KAG integration domain update (the `kag` block of system settings). bridge_api_key is write-only: send \"\" (or omit it) to keep the stored key.",
+      "KagSchemaEditRequest": {
+        "description": "Schema 编辑（M3.5）：读模型进、wire 转换在后端。\n\n``spg_type`` 为 queryProjectSchema 返回的 SPG type 原样（前端就地编辑\n中文名/描述等）；新增/删除关系以意图列表表达（CREATE/DELETE 元素级\n操作由服务端组装——M3.5 实测 wire 契约，schema_draft.py）。",
         "properties": {
-          "spg_server_url": {
-            "default": "",
-            "title": "Spg Server Url",
-            "type": "string"
+          "add_relations": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/KagSchemaRelationAdd"
+            },
+            "title": "Add Relations",
+            "type": "array"
           },
-          "bridge_command": {
-            "default": "",
-            "title": "Bridge Command",
-            "type": "string"
-          },
-          "bridge_args": {
-            "default": [
-              "-m",
-              "kag_bridge"
-            ],
+          "delete_relations": {
+            "default": [],
             "items": {
               "type": "string"
             },
-            "title": "Bridge Args",
+            "title": "Delete Relations",
             "type": "array"
           },
-          "kag_project_dir": {
-            "default": "",
-            "title": "Kag Project Dir",
-            "type": "string"
-          },
-          "namespace": {
-            "default": "",
-            "title": "Namespace",
-            "type": "string"
-          },
-          "project_id": {
-            "default": "",
-            "title": "Project Id",
-            "type": "string"
-          },
-          "bridge_api_key": {
-            "default": "",
-            "title": "Bridge Api Key",
-            "type": "string"
+          "spg_type": {
+            "additionalProperties": true,
+            "title": "Spg Type",
+            "type": "object"
           }
         },
-        "title": "KagSettingsUpdate",
+        "required": [
+          "spg_type"
+        ],
+        "title": "KagSchemaEditRequest",
         "type": "object"
       },
-      "LanguageUpdate": {
+      "KagSchemaRelationAdd": {
+        "description": "新增关系（M3.5）：目标类型用 nameEn（schema 内现有类型）。",
         "properties": {
-          "language": {
-            "enum": [
-              "zh",
-              "en"
-            ],
-            "title": "Language",
+          "desc": {
+            "default": "",
+            "title": "Desc",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "name_zh": {
+            "default": "",
+            "title": "Name Zh",
+            "type": "string"
+          },
+          "object_type_name": {
+            "title": "Object Type Name",
             "type": "string"
           }
         },
         "required": [
-          "language"
+          "name",
+          "object_type_name"
         ],
-        "title": "LanguageUpdate",
+        "title": "KagSchemaRelationAdd",
         "type": "object"
       },
       "LLMSelection": {
@@ -916,6 +972,23 @@
           "model_id"
         ],
         "title": "LLMSelection",
+        "type": "object"
+      },
+      "LanguageUpdate": {
+        "properties": {
+          "language": {
+            "enum": [
+              "zh",
+              "en"
+            ],
+            "title": "Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "language"
+        ],
+        "title": "LanguageUpdate",
         "type": "object"
       },
       "LoginRequest": {
@@ -949,118 +1022,6 @@
           "confirmation"
         ],
         "title": "ManagedUpdateRequest",
-        "type": "object"
-      },
-      "MCPServerConfig": {
-        "description": "One MCP server entry.\n\n``type`` is auto-detected when omitted: ``command`` ⇒ stdio; a ``url``\nending in ``/sse`` ⇒ sse; any other ``url`` ⇒ streamableHttp.",
-        "properties": {
-          "args": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Args",
-            "type": "array"
-          },
-          "auth": {
-            "default": "",
-            "enum": [
-              "",
-              "oauth"
-            ],
-            "title": "Auth",
-            "type": "string"
-          },
-          "catalog_entry": {
-            "default": "",
-            "title": "Catalog Entry",
-            "type": "string"
-          },
-          "command": {
-            "default": "",
-            "title": "Command",
-            "type": "string"
-          },
-          "cwd": {
-            "default": "",
-            "title": "Cwd",
-            "type": "string"
-          },
-          "disabled_tools": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Disabled Tools",
-            "type": "array"
-          },
-          "enabled": {
-            "default": true,
-            "title": "Enabled",
-            "type": "boolean"
-          },
-          "enabled_tools": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Enabled Tools",
-            "type": "array"
-          },
-          "env": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Env",
-            "type": "object"
-          },
-          "headers": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Headers",
-            "type": "object"
-          },
-          "tool_timeout": {
-            "default": 30,
-            "maximum": 600,
-            "minimum": 1,
-            "title": "Tool Timeout",
-            "type": "integer"
-          },
-          "type": {
-            "anyOf": [
-              {
-                "enum": [
-                  "stdio",
-                  "sse",
-                  "streamableHttp"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Type"
-          },
-          "url": {
-            "default": "",
-            "title": "Url",
-            "type": "string"
-          }
-        },
-        "title": "MCPServerConfig",
-        "type": "object"
-      },
-      "MCPSettingsPayload": {
-        "properties": {
-          "servers": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/MCPServerConfig"
-            },
-            "title": "Servers",
-            "type": "object"
-          }
-        },
-        "title": "MCPSettingsPayload",
         "type": "object"
       },
       "MinerUModelDownloadPayload": {
@@ -1209,8 +1170,8 @@
       "NetworkSettingsUpdate": {
         "properties": {
           "backend_port": {
-            "maximum": 65535,
-            "minimum": 1,
+            "maximum": 65535.0,
+            "minimum": 1.0,
             "title": "Backend Port",
             "type": "integer"
           },
@@ -1222,8 +1183,8 @@
             "type": "array"
           },
           "frontend_port": {
-            "maximum": 65535,
-            "minimum": 1,
+            "maximum": 65535.0,
+            "minimum": 1.0,
             "title": "Frontend Port",
             "type": "integer"
           },
@@ -1514,26 +1475,6 @@
         "title": "RuntimeStatus",
         "type": "object"
       },
-      "ServerPayload": {
-        "description": "A server definition plus the credential values to store beside it.",
-        "properties": {
-          "config": {
-            "$ref": "#/components/schemas/MCPServerConfig"
-          },
-          "secrets": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Secrets",
-            "type": "object"
-          }
-        },
-        "required": [
-          "config"
-        ],
-        "title": "ServerPayload",
-        "type": "object"
-      },
       "SessionDetail": {
         "additionalProperties": false,
         "properties": {
@@ -1774,6 +1715,43 @@
         "title": "SettingsDraftPayload",
         "type": "object"
       },
+      "TTSRequest": {
+        "description": "Text-to-speech request body.",
+        "properties": {
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "voice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TTSRequest",
+        "type": "object"
+      },
       "TestResponse": {
         "properties": {
           "error": {
@@ -1901,43 +1879,6 @@
           }
         },
         "title": "TourCompletePayload",
-        "type": "object"
-      },
-      "TTSRequest": {
-        "description": "Text-to-speech request body.",
-        "properties": {
-          "format": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Format"
-          },
-          "text": {
-            "minLength": 1,
-            "title": "Text",
-            "type": "string"
-          },
-          "voice": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Voice"
-          }
-        },
-        "required": [
-          "text"
-        ],
-        "title": "TTSRequest",
         "type": "object"
       },
       "TurnFailureCode": {
@@ -2623,122 +2564,6 @@
           "voice_autoplay"
         ],
         "title": "VoiceAutoplayUpdate",
-        "type": "object"
-      },
-      "KagSchemaRelationAdd": {
-        "description": "New relation for the schema edit endpoint: object_type_name is the nameEn of an existing SPG type.",
-        "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "name_zh": {
-            "default": "",
-            "title": "Name Zh",
-            "type": "string"
-          },
-          "desc": {
-            "default": "",
-            "title": "Desc",
-            "type": "string"
-          },
-          "object_type_name": {
-            "title": "Object Type Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "object_type_name"
-        ],
-        "title": "KagSchemaRelationAdd",
-        "type": "object"
-      },
-      "KagSchemaEditRequest": {
-        "description": "Schema edit (M3.5): the spg_type is the read-model SPG type verbatim; add/delete intents are lists; the server assembles the wire draft (CREATE/DELETE element operations).",
-        "properties": {
-          "spg_type": {
-            "title": "Spg Type",
-            "type": "object",
-            "additionalProperties": true
-          },
-          "add_relations": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/KagSchemaRelationAdd"
-            },
-            "title": "Add Relations",
-            "type": "array"
-          },
-          "delete_relations": {
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "title": "Delete Relations",
-            "type": "array"
-          }
-        },
-        "required": [
-          "spg_type"
-        ],
-        "title": "KagSchemaEditRequest",
-        "type": "object"
-      },
-      "KagGraphQueryRequest": {
-        "description": "Graph-browsing DSL query (M3.4, via /public/v1/reason/run): node types must use the namespace-qualified full name; relation labels are bare.",
-        "properties": {
-          "dsl": {
-            "title": "Dsl",
-            "type": "string"
-          },
-          "params": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "default": {},
-            "title": "Params",
-            "type": "object"
-          }
-        },
-        "required": [
-          "dsl"
-        ],
-        "title": "KagGraphQueryRequest",
-        "type": "object"
-      },
-      "KagMembersUpdateRequest": {
-        "description": "Project member set (T2, M4-B): owner is pinned; members is the uid list.",
-        "properties": {
-          "members": {
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "title": "Members",
-            "type": "array"
-          }
-        },
-        "title": "KagMembersUpdateRequest",
-        "type": "object"
-      },
-      "KagBuildRequest": {
-        "description": "Trigger a KAG_COMMAND build (M4-A). command runs server-side.",
-        "properties": {
-          "command": {
-            "title": "Command",
-            "type": "string"
-          },
-          "worker_num": {
-            "default": 1,
-            "title": "Worker Num",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "command"
-        ],
-        "title": "KagBuildRequest",
         "type": "object"
       }
     }
@@ -4098,6 +3923,141 @@
         ]
       }
     },
+    "/api/kag/bridge/tasks": {
+      "post": {
+        "description": "Bridge 任务上报（附录 A.3）：bridge_api_key 鉴权（常量时间比较）。",
+        "operationId": "report_bridge_task_api_kag_bridge_tasks_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-KAG-Bridge-Key",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Kag-Bridge-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Report Bridge Task Api Kag Bridge Tasks Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Report Bridge Task",
+        "tags": [
+          "kag"
+        ]
+      }
+    },
+    "/api/kag/builds/{job_id}": {
+      "get": {
+        "description": "构建任务详情（read + 经 project_id 的 membership；P0a）。\n\nJob → SchedulerInstance → SchedulerTask[]：节点级 {name, type, status,\ntrace_log}（traceLog 只读、截断 2k，A1.4 实测失败任务会被调度器反复重试、\ntraceLog 持续追加）。无 task 记录时回退 taskDag 节点状态。",
+        "operationId": "get_build_detail_api_kag_builds__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Build Detail Api Kag Builds  Job Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Build Detail",
+        "tags": [
+          "kag"
+        ]
+      }
+    },
     "/api/kag/projects": {
       "get": {
         "operationId": "list_projects_api_kag_projects_get",
@@ -4139,7 +4099,11 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Projects Api Kag Projects Get",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -4155,13 +4119,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Kag Projects",
+        "summary": "List Projects",
         "tags": [
           "kag"
-        ],
-        "description": "List OpenSPG projects (proxied). Read access: admin, or non-admin with the kag read gate."
+        ]
       },
       "post": {
+        "description": "创建 LOCAL 项目（完整流程：vectorizer 从模型目录组装，维度经实测探测）。\n\nembedding_model_id 指向 KAGWeb 模型目录中的 embedding profile（凭据不回显）。\nT2（M4-B）：创建者成为项目 owner（登记 member_store），userNo 归因为\n``derive_user_no(user_id)``（系统调用/本地无用户上下文回落 service_user_no）。",
         "operationId": "create_project_api_kag_projects_post",
         "parameters": [
           {
@@ -4197,31 +4161,6 @@
             }
           }
         ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Kag Project",
-        "tags": [
-          "kag"
-        ],
-        "description": "Create a LOCAL project (admin + same-origin). The vectorizer is assembled server-side from the model catalog's embedding profile; credentials never echo back.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4231,13 +4170,51 @@
             }
           },
           "required": true
-        }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Project Api Kag Projects Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Project",
+        "tags": [
+          "kag"
+        ]
       }
     },
     "/api/kag/projects/{project_id}": {
       "get": {
+        "description": "项目详情 + Schema 摘要 + 图 labels 概览（labels 失败不阻塞详情）。",
         "operationId": "get_project_api_kag_projects__project_id__get",
         "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
           {
             "in": "header",
             "name": "Authorization",
@@ -4269,22 +4246,17 @@
               ],
               "title": "Dt Token"
             }
-          },
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "title": "Project Id",
-              "type": "string"
-            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Project Api Kag Projects  Project Id  Get",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -4300,11 +4272,423 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Kag Project",
+        "summary": "Get Project",
         "tags": [
           "kag"
+        ]
+      }
+    },
+    "/api/kag/projects/{project_id}/build": {
+      "post": {
+        "description": "提交构建任务（项目成员 + same-origin；M4-A）。\n\n受理层交付：经 ``/public/v1/builder/kag/submit`` 提交并登记 task_store\n（kind=build）。奇偶性：本地 compose 的 computing engine 未配置，任务\n受理 RUNNING 但执行会失败（设计风险 #5）——端到端执行依赖 M5 上游化。",
+        "operationId": "submit_build_api_kag_projects__project_id__build_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
         ],
-        "description": "Project detail plus a schema summary and graph-labels overview (degraded to null when the upstream call fails)."
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KagBuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Submit Build Api Kag Projects  Project Id  Build Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Build",
+        "tags": [
+          "kag"
+        ]
+      }
+    },
+    "/api/kag/projects/{project_id}/builds": {
+      "get": {
+        "description": "项目构建任务列表（read + membership；P0a）。\n\n本地 build 摘要（task_store，kind=build） × 实时节点级状态合并；\nOpenSPG 不可达时降级 live_status=unknown，不 500。",
+        "operationId": "list_project_builds_api_kag_projects__project_id__builds_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Project Builds Api Kag Projects  Project Id  Builds Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Project Builds",
+        "tags": [
+          "kag"
+        ]
+      }
+    },
+    "/api/kag/projects/{project_id}/graph/query": {
+      "post": {
+        "description": "图浏览 DSL 查询（read 权限 + same-origin；M3.4）——rows ≤200 裁剪。\n\nsame-origin 与其他 POST 端点一致（评审 M-3，纵深防御：跨站无法读\n响应，但保持写类端点的统一门禁面）。T2（M4-B）项目级门禁。",
+        "operationId": "query_project_graph_api_kag_projects__project_id__graph_query_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KagGraphQueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Query Project Graph Api Kag Projects  Project Id  Graph Query Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Query Project Graph",
+        "tags": [
+          "kag"
+        ]
+      }
+    },
+    "/api/kag/projects/{project_id}/members": {
+      "get": {
+        "description": "项目成员（项目访问可读；T2）。``can_edit`` 标记当前用户是否可改\n成员（admin），供前端控制编辑区显隐。",
+        "operationId": "get_project_members_api_kag_projects__project_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Project Members Api Kag Projects  Project Id  Members Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project Members",
+        "tags": [
+          "kag"
+        ]
+      },
+      "put": {
+        "description": "设置项目成员（admin + same-origin；T2，M4-B）。",
+        "operationId": "put_project_members_api_kag_projects__project_id__members_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KagMembersUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Project Members Api Kag Projects  Project Id  Members Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Project Members",
+        "tags": [
+          "kag"
+        ]
       }
     },
     "/api/kag/projects/{project_id}/schema": {
@@ -4312,6 +4696,15 @@
         "operationId": "get_project_schema_api_kag_projects__project_id__schema_get",
         "parameters": [
           {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "Authorization",
             "required": false,
@@ -4342,22 +4735,17 @@
               ],
               "title": "Dt Token"
             }
-          },
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "title": "Project Id",
-              "type": "string"
-            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Project Schema Api Kag Projects  Project Id  Schema Get",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -4373,17 +4761,26 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Kag Project Schema",
+        "summary": "Get Project Schema",
         "tags": [
           "kag"
-        ],
-        "description": "Raw SPG schema (spgTypes list) for the read-only schema tree."
+        ]
       }
     },
-    "/api/kag/tasks": {
-      "get": {
-        "operationId": "get_tasks_api_kag_tasks_get",
+    "/api/kag/projects/{project_id}/schema/alter": {
+      "post": {
+        "description": "提交 Schema 变更（项目成员 + same-origin；M3.5）。\n\n语义（M3.5 实测）：UPDATE 覆写 + 元素级 CREATE/DELETE；缺条目不等于\n删除（服务端 500），删除必须显式 DELETE 操作。T2（M4-B）写操作由\nadmin-only 放宽为项目 membership（owner/成员可改自己的项目）。",
+        "operationId": "alter_project_schema_api_kag_projects__project_id__schema_alter_post",
         "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
           {
             "in": "header",
             "name": "Authorization",
@@ -4415,7 +4812,53 @@
               ],
               "title": "Dt Token"
             }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KagSchemaEditRequest"
+              }
+            }
           },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Alter Project Schema Api Kag Projects  Project Id  Schema Alter Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Alter Project Schema",
+        "tags": [
+          "kag"
+        ]
+      }
+    },
+    "/api/kag/tasks": {
+      "get": {
+        "description": "推理任务列表（T2，M4-B 评审 M-7）：admin 全量；非 admin 仅其\nmembership 可见项目的任务（防跨项目窥探 question/answer/references）。",
+        "operationId": "get_tasks_api_kag_tasks_get",
+        "parameters": [
           {
             "in": "query",
             "name": "limit",
@@ -4445,13 +4888,49 @@
               "title": "Project Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Tasks Api Kag Tasks Get",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -4467,16 +4946,15 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Kag Tasks",
+        "summary": "Get Tasks",
         "tags": [
           "kag"
-        ],
-        "description": "Bridge-reported reasoning-task rows (newest first), optionally filtered."
+        ]
       }
     },
     "/api/multi-user/admin/resources": {
       "get": {
-        "description": "Everything an admin can assign to a user: model catalog + MCP tools.",
+        "description": "Everything an admin can assign to a user: the model catalog.",
         "operationId": "admin_resources_api_multi_user_admin_resources_get",
         "parameters": [
           {
@@ -5700,6 +6178,216 @@
           }
         },
         "summary": "Detect Agent Loops",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/agent-loop/identity": {
+      "delete": {
+        "description": "Disconnect the calling user's Intellect account, revoking the token.\n\nGuarded like the link: a cross-site DELETE would not merely disconnect the\nvictim but let the attacker re-link them to an account of their choosing.",
+        "operationId": "unlink_agent_loop_identity_api_settings_agent_loop_identity_delete",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Unlink Agent Loop Identity Api Settings Agent Loop Identity Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unlink Agent Loop Identity",
+        "tags": [
+          "settings"
+        ]
+      },
+      "get": {
+        "description": "The calling user's linked Intellect account, if any.",
+        "operationId": "get_agent_loop_identity_api_settings_agent_loop_identity_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Agent Loop Identity Api Settings Agent Loop Identity Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Agent Loop Identity",
+        "tags": [
+          "settings"
+        ]
+      },
+      "post": {
+        "description": "Connect the calling user's Intellect account.\n\nAccepts either Intellect credentials (exchanged once for a member token) or\na token directly. Both are verified against the configured service before\nanything is stored, so a mistake is reported here rather than becoming a\nfailed conversation later.",
+        "operationId": "link_agent_loop_identity_api_settings_agent_loop_identity_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentityLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Link Agent Loop Identity Api Settings Agent Loop Identity Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Link Agent Loop Identity",
         "tags": [
           "settings"
         ]
@@ -7289,7 +7977,11 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Kag Domain Api Settings Kag Get",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -7305,11 +7997,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Kag Domain Settings",
+        "summary": "Get Kag Domain",
         "tags": [
           "settings"
-        ],
-        "description": "Admin-only KAG integration domain. bridge_api_key is write-only: responses echo an empty string plus bridge_api_key_set."
+        ]
       },
       "put": {
         "operationId": "update_kag_domain_api_settings_kag_put",
@@ -7347,11 +8038,27 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Kag Domain Api Settings Kag Put",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -7367,21 +8074,10 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update Kag Domain Settings",
+        "summary": "Update Kag Domain",
         "tags": [
           "settings"
-        ],
-        "description": "Admin-only + same-origin. An empty bridge_api_key keeps the stored value (tri-state, agent-loop api_key precedent).",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KagSettingsUpdate"
-              }
-            }
-          },
-          "required": true
-        }
+        ]
       }
     },
     "/api/settings/language": {
@@ -7517,386 +8213,6 @@
         "summary": "Get Llm Options",
         "tags": [
           "settings"
-        ]
-      }
-    },
-    "/api/settings/mcp": {
-      "get": {
-        "operationId": "get_mcp_settings_api_settings_mcp_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Mcp Settings Api Settings Mcp Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Mcp Settings",
-        "tags": [
-          "mcp-settings"
-        ]
-      },
-      "put": {
-        "operationId": "update_mcp_settings_api_settings_mcp_put",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MCPSettingsPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Update Mcp Settings Api Settings Mcp Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Mcp Settings",
-        "tags": [
-          "mcp-settings"
-        ]
-      }
-    },
-    "/api/settings/mcp/servers/{name}": {
-      "delete": {
-        "operationId": "delete_mcp_server_api_settings_mcp_servers__name__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Mcp Server Api Settings Mcp Servers  Name  Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Mcp Server",
-        "tags": [
-          "mcp-settings"
-        ]
-      },
-      "put": {
-        "description": "Upsert one server, leaving every other entry byte-identical.\n\nThe whole-map ``PUT`` above cannot express \"change this one\": a client has to\nsend back everything it read, so it silently drops any field it does not\nmodel (a hand-written ``disabled_tools`` blocklist) and overwrites whatever\na second administrator saved in between.",
-        "operationId": "upsert_mcp_server_api_settings_mcp_servers__name__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MCPServerConfig"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Upsert Mcp Server Api Settings Mcp Servers  Name  Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Upsert Mcp Server",
-        "tags": [
-          "mcp-settings"
-        ]
-      }
-    },
-    "/api/settings/mcp/test": {
-      "post": {
-        "operationId": "test_mcp_server_api_settings_mcp_test_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MCPServerConfig"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Test Mcp Server Api Settings Mcp Test Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Test Mcp Server",
-        "tags": [
-          "mcp-settings"
         ]
       }
     },
@@ -9269,6 +9585,95 @@
         ]
       }
     },
+    "/api/settings/tests/{service}/start": {
+      "post": {
+        "operationId": "start_service_test_api_settings_tests__service__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "title": "Service",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CatalogPayload"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Service Test",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/api/settings/tests/{service}/{run_id}/cancel": {
       "post": {
         "operationId": "cancel_service_test_api_settings_tests__service___run_id__cancel_post",
@@ -9426,95 +9831,6 @@
           }
         },
         "summary": "Stream Service Test Events",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
-    "/api/settings/tests/{service}/start": {
-      "post": {
-        "operationId": "start_service_test_api_settings_tests__service__start_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "service",
-            "required": true,
-            "schema": {
-              "title": "Service",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/CatalogPayload"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Payload"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Start Service Test",
         "tags": [
           "settings"
         ]
@@ -10025,705 +10341,6 @@
         "summary": "Update Voice Autoplay",
         "tags": [
           "settings"
-        ]
-      }
-    },
-    "/api/space/mcp/catalog": {
-      "get": {
-        "operationId": "get_catalog_api_space_mcp_catalog_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "q",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Q",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "category",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Category",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "tier",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Tier",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Cursor",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 30,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Catalog Api Space Mcp Catalog Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Catalog",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/catalog/{entry_id}/install": {
-      "post": {
-        "operationId": "install_catalog_entry_api_space_mcp_catalog__entry_id__install_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "entry_id",
-            "required": true,
-            "schema": {
-              "title": "Entry Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InstallPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Install Catalog Entry Api Space Mcp Catalog  Entry Id  Install Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Install Catalog Entry",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/oauth/callback": {
-      "get": {
-        "description": "Where the authorization server sends the browser back.\n\nDeliberately **not** returning JSON: a person is looking at this, having just\nclicked Approve on somebody else's site. It answers with a small page that\nsays what happened and closes itself.\n\nAn unknown ``state`` completes nothing — see ``complete_authorization``.",
-        "operationId": "oauth_callback_api_space_mcp_oauth_callback_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "code",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Code",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "state",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "State",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "error",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Error",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "error_description",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Error Description",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth Callback",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/servers": {
-      "get": {
-        "description": "This surface's servers, in the same shape the admin registry returns.\n\n``servers`` + ``status`` deliberately mirror ``/settings/mcp`` so the two\nsurfaces share one set of frontend components instead of forking over a\nresponse shape. Everything specific to this surface is additive.",
-        "operationId": "list_servers_api_space_mcp_servers_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response List Servers Api Space Mcp Servers Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Servers",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/servers/{name}": {
-      "delete": {
-        "operationId": "remove_server_api_space_mcp_servers__name__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Remove Server Api Space Mcp Servers  Name  Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Remove Server",
-        "tags": [
-          "space-mcp"
-        ]
-      },
-      "put": {
-        "operationId": "upsert_server_api_space_mcp_servers__name__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ServerPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Upsert Server Api Space Mcp Servers  Name  Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Upsert Server",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/servers/{name}/authorize": {
-      "post": {
-        "description": "Begin an OAuth consent for one of the caller's servers.\n\nReturns the URL to send the person to. This is the **only** place a flow may\nstart: a background reconnect has nobody in front of it, so it reports\n``needs_auth`` and waits for someone to click.",
-        "operationId": "authorize_server_api_space_mcp_servers__name__authorize_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Authorize Server Api Space Mcp Servers  Name  Authorize Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Authorize Server",
-        "tags": [
-          "space-mcp"
-        ]
-      }
-    },
-    "/api/space/mcp/servers/{name}/test": {
-      "post": {
-        "description": "Probe a definition before saving it.\n\nRuns under the caller's own owner id so the probe obeys the same address\npolicy and redirect rule the real connection will — a Test more permissive\nthan the connection it previews is worse than no Test at all.\n\nDeliberately side-effect free: nothing is written, so the incoming config is\nprobed as given (any literal credential in it is used in memory only). That\nalso means a caller may probe under a scratch name the store would refuse,\nwhich is how the UI tests a draft before it has one.",
-        "operationId": "test_server_api_space_mcp_servers__name__test_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "title": "Name",
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ServerPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Test Server Api Space Mcp Servers  Name  Test Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Test Server",
-        "tags": [
-          "space-mcp"
         ]
       }
     },
@@ -11834,409 +11451,6 @@
           }
         },
         "summary": "Health Ready"
-      }
-    },
-    "/api/kag/projects/{project_id}/schema/alter": {
-      "post": {
-        "operationId": "alter_project_schema_api_kag_projects__project_id__schema_alter_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          },
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "title": "Project Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KagSchemaEditRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Alter Kag Project Schema",
-        "tags": [
-          "kag"
-        ],
-        "description": "Submit a schema change (admin + same-origin). Deletion is not omission: removals keep the entry with an element-level DELETE operation; additions use the CREATE template. The server re-queries after the alter so a cached read cannot mask a failed change."
-      }
-    },
-    "/api/kag/projects/{project_id}/graph/query": {
-      "post": {
-        "operationId": "query_project_graph_api_kag_projects__project_id__graph_query_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          },
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "title": "Project Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KagGraphQueryRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Query Kag Project Graph",
-        "tags": [
-          "kag"
-        ],
-        "description": "Run a read-only reason DSL query for graph browsing; rows are capped at 200 with a truncated flag, and upstream errors come back as a structured error field."
-      }
-    },
-    "/api/kag/projects/{project_id}/members": {
-      "get": {
-        "operationId": "get_project_members_api_kag_projects__project_id__members_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          },
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "title": "Project Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Kag Project Members",
-        "tags": [
-          "kag"
-        ],
-        "description": "Project owner + member uids (project access required)."
-      },
-      "put": {
-        "operationId": "put_project_members_api_kag_projects__project_id__members_put",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          },
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "title": "Project Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KagMembersUpdateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Kag Project Members",
-        "tags": [
-          "kag"
-        ],
-        "description": "Set the member uids (admin + same-origin; T2)."
-      }
-    },
-    "/api/kag/projects/{project_id}/build": {
-      "post": {
-        "operationId": "submit_build_api_kag_projects__project_id__build_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          },
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "title": "Project Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KagBuildRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Submit Kag Build",
-        "tags": [
-          "kag"
-        ],
-        "description": "Accept a KAG_COMMAND build (project member + same-origin; M4-A)."
       }
     }
   },

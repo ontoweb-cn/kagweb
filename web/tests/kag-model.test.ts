@@ -5,7 +5,10 @@ import {
   kagDraftToRequest,
   kagSettingsToDraft,
   ownProperties,
+  parseBuildLiveStatus,
   parseEmbeddingProfiles,
+  parseKagBuildDetail,
+  parseKagBuilds,
   parseKagProjectDetail,
   parseKagProjects,
   parseKagSettings,
@@ -212,6 +215,62 @@ test("parseKagTasks normalizes bridge rows defensively", () => {
   assert.deepEqual(tasks[0].references, ["r1", "r2", "3"]);
   assert.deepEqual(parseKagTasks({ tasks: [] }), []);
   assert.deepEqual(parseKagTasks({}), []);
+});
+
+// —— 构建任务可观测（P0a：live 状态 + 详情节点）——
+
+test("parseBuildLiveStatus normalizes and degrades to unknown", () => {
+  assert.equal(parseBuildLiveStatus("running"), "running");
+  assert.equal(parseBuildLiveStatus("success"), "success");
+  assert.equal(parseBuildLiveStatus("failed"), "failed");
+  assert.equal(parseBuildLiveStatus("pending"), "pending");
+  assert.equal(parseBuildLiveStatus("bogus"), "unknown");
+  assert.equal(parseBuildLiveStatus(null), "unknown");
+});
+
+test("parseKagTasks carries live_status for build rows only", () => {
+  const tasks = parseKagTasks({
+    tasks: [
+      { task_id: "2", kind: "build", live_status: "failed", question: "echo x" },
+      { task_id: "i1", kind: "inference", question: "q" },
+    ],
+  });
+  assert.equal(tasks[0].liveStatus, "failed");
+  assert.equal(tasks[1].liveStatus, "unknown"); // inference 行缺省即 unknown，渲染端不展示
+});
+
+test("parseKagBuilds merges live status onto build summaries", () => {
+  const rows = parseKagBuilds({
+    builds: [
+      { task_id: "2", kind: "build", project_id: "3", question: "echo x", live_status: "failed" },
+    ],
+    count: 1,
+  });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].taskId, "2");
+  assert.equal(rows[0].liveStatus, "failed");
+  assert.deepEqual(parseKagBuilds(null), []);
+  assert.deepEqual(parseKagBuilds({ builds: "nope" }), []);
+});
+
+test("parseKagBuildDetail maps nodes and truncates tolerant raw shapes", () => {
+  const detail = parseKagBuildDetail({
+    job: { id: 2, taskId: 22, status: "RUNNING" },
+    live_status: "failed",
+    nodes: [
+      { name: "Builder", type: "computingEngineAsyncTask", status: "failed", trace_log: "log" },
+      { name: "PostProcessor", type: "kagCommandPostSyncTask", status: "pending", trace_log: "" },
+    ],
+  });
+  assert.ok(detail);
+  assert.equal(detail.liveStatus, "failed");
+  assert.equal(detail.nodes.length, 2);
+  assert.equal(detail.nodes[0].traceLog, "log");
+  // job 缺失 → null（详情不存在）；nodes 非数组 → 空列表
+  assert.equal(parseKagBuildDetail({ live_status: "failed" }), null);
+  const degraded = parseKagBuildDetail({ job: { id: 1 }, live_status: "success", nodes: "nope" });
+  assert.ok(degraded);
+  assert.deepEqual(degraded.nodes, []);
 });
 
 // —— kag settings 域（bridge_api_key write-only）——

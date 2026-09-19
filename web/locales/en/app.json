@@ -244,5 +244,13 @@
   "Enter a build command first": "Enter a build command first",
   "Submit build": "Submit build",
   "The build submission was rejected": "The build submission was rejected",
+  "Build accepted: {{taskId}}": "Build accepted: {{taskId}}",
+  "View in task list": "View in task list",
+  "Running": "Running",
+  "Success": "Success",
+  "Failed": "Failed",
+  "Pending": "Pending",
+  "Unknown": "Unknown",
+  "No task nodes reported": "No task nodes reported",
   "Members: {{n}}": "Members: {{n}}"
 }

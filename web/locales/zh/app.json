@@ -4895,5 +4895,13 @@
   "Enter a build command first": "请先输入构建命令",
   "Submit build": "提交构建",
   "The build submission was rejected": "构建提交被拒绝",
+  "Build accepted: {{taskId}}": "构建已受理：{{taskId}}",
+  "View in task list": "在任务列表查看",
+  "Running": "执行中",
+  "Success": "成功",
+  "Failed": "失败",
+  "Pending": "排队中",
+  "Unknown": "未知",
+  "No task nodes reported": "暂无任务节点",
   "Members: {{n}}": "成员：{{n}}"
 }

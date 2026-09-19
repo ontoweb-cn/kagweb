@@ -33,6 +33,17 @@ def _parse_response(resp: httpx.Response) -> Any:
         return text
 
 
+def _unwrap_results(result: Any) -> list[dict[str, Any]]:
+    """execute2 信封 ``{result: {results: [...]}}`` → results 列表（防御空体/漂移）。"""
+    if isinstance(result, dict):
+        payload = result.get("result")
+        if isinstance(payload, dict):
+            rows = payload.get("results")
+            if isinstance(rows, list):
+                return [row for row in rows if isinstance(row, dict)]
+    return []
+
+
 class OpenSPGClient:
     """轻量异步封装：每方法一次请求、无内部重试（管理面代理语义）。
 
@@ -215,3 +226,59 @@ class OpenSPGClient:
             timeout=120.0,
         )
         return result if isinstance(result, dict) else {}
+
+    # —— 构建任务可观测（Builder/SchedulerController，/public/v1/*；P0a）——
+    # A1.4 实测：builder/scheduler 控制器走 execute2 信封 {result: ...}，与
+    # project/reason 端点的裸对象响应不同；search 分页字段为 pageIdx/pageSize/total。
+
+    async def get_builder_job(self, job_id: str | int) -> dict[str, Any]:
+        """BuilderJob 详情（id = BuilderJob.id）。
+
+        A1.4 实测：status 恒 ``RUNNING``（不随执行更新），仅作「已受理」标识；
+        ``taskId`` 为 SchedulerJob id（详情链路惰性解析用）。
+        """
+        result = await self._request(
+            "GET", "/public/v1/builder/getById", params={"id": int(job_id)}
+        )
+        if isinstance(result, dict):
+            payload = result.get("result")
+            if isinstance(payload, dict):
+                return payload
+        return {}
+
+    async def search_builder_jobs(
+        self, project_id: str | int, page_size: int = 100
+    ) -> list[dict[str, Any]]:
+        """按项目批量查 BuilderJob（项目构建列表 live 合并用）。"""
+        result = await self._request(
+            "POST",
+            "/public/v1/builder/search",
+            json_body={"projectId": int(project_id), "pageNo": 1, "pageSize": page_size},
+        )
+        return _unwrap_results(result)
+
+    async def search_scheduler_instances(
+        self, job_id: str | int, page_size: int = 5
+    ) -> list[dict[str, Any]]:
+        """按 SchedulerJob id（=BuilderJob.taskId）查调度实例。
+
+        A1.4 实测：实例内嵌 ``taskDag.nodes[].properties.status``——失败信号在
+        节点级；实例级 status 可能停在 WAITING（DAG 未完），不能直接映射成败。
+        """
+        result = await self._request(
+            "POST",
+            "/public/v1/scheduler/instance/search",
+            json_body={"jobId": int(job_id), "pageNo": 1, "pageSize": page_size},
+        )
+        return _unwrap_results(result)
+
+    async def search_scheduler_tasks(
+        self, instance_id: str | int, page_size: int = 50
+    ) -> list[dict[str, Any]]:
+        """按 instanceId 查调度任务（每节点一条，``traceLog`` 为可读文本）。"""
+        result = await self._request(
+            "POST",
+            "/public/v1/scheduler/task/search",
+            json_body={"instanceId": int(instance_id), "pageNo": 1, "pageSize": page_size},
+        )
+        return _unwrap_results(result)
