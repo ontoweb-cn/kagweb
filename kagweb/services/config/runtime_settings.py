@@ -94,6 +94,7 @@ DEFAULT_SYSTEM_SETTINGS: dict[str, Any] = {
         "namespace": "",
         "project_id": "",
         "spg_server_url": "",
+        "service_user_no": "",
         "bridge_api_key": "",
         "bridge_http_url": "",
     },
@@ -1497,6 +1498,9 @@ class RuntimeSettingsService:
             "namespace": _string(block.get("namespace")),
             "project_id": _string(block.get("project_id")),
             "spg_server_url": _string(block.get("spg_server_url")),
+            # 系统调用/无用户上下文时的 OpenSPG 归因（create_project 回落），
+            # settings 域可配；与 create 请求体的 payload.service_user_no 二选一
+            "service_user_no": _string(block.get("service_user_no")),
             "bridge_api_key": _string(block.get("bridge_api_key")),
             "bridge_http_url": _string(block.get("bridge_http_url")),
         }

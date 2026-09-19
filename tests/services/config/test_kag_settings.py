@@ -24,6 +24,13 @@ def test_defaults_when_block_missing() -> None:
     assert block["kag_project_dir"] == ""
     assert block["bridge_api_key"] == ""
     assert block["bridge_http_url"] == ""
+    assert block["service_user_no"] == ""
+
+
+def test_service_user_no_roundtrips() -> None:
+    """评审修复：settings 域可配 service_user_no（无用户上下文的系统调用归因）。"""
+    assert _normalize_kag({"service_user_no": " kag-svc "})["service_user_no"] == "kag-svc"
+    assert _normalize_kag({"service_user_no": ""})["service_user_no"] == ""
 
 
 def test_normalize_strips_and_keeps_fields() -> None:

@@ -370,6 +370,8 @@ export interface KagSettings {
   kagProjectDir: string;
   namespace: string;
   projectId: string;
+  /** 无用户上下文时 OpenSPG 归因（create_project 回落）。 */
+  serviceUserNo: string;
   /** 响应恒不回显 key，只回显“已设置”标记。 */
   bridgeApiKeySet: boolean;
 }
@@ -384,6 +386,7 @@ export function parseKagSettings(raw: unknown): KagSettings {
     kagProjectDir: text(row.kag_project_dir),
     namespace: text(row.namespace),
     projectId: text(row.project_id),
+    serviceUserNo: text(row.service_user_no),
     bridgeApiKeySet: row.bridge_api_key_set === true,
   };
 }
@@ -396,6 +399,7 @@ export interface KagSettingsDraft {
   kagProjectDir: string;
   namespace: string;
   projectId: string;
+  serviceUserNo: string;
   bridgeApiKey: string | null;
 }
 
@@ -407,6 +411,7 @@ export function kagSettingsToDraft(settings: KagSettings): KagSettingsDraft {
     kagProjectDir: settings.kagProjectDir,
     namespace: settings.namespace,
     projectId: settings.projectId,
+    serviceUserNo: settings.serviceUserNo,
     bridgeApiKey: null,
   };
 }
@@ -423,6 +428,7 @@ export function kagDraftToRequest(draft: KagSettingsDraft): Record<string, unkno
     kag_project_dir: draft.kagProjectDir.trim(),
     namespace: draft.namespace.trim(),
     project_id: draft.projectId.trim(),
+    service_user_no: draft.serviceUserNo.trim(),
     // null/空串都表示“保留已存值”（后端：空即沿用旧值）
     bridge_api_key: draft.bridgeApiKey == null ? "" : draft.bridgeApiKey,
   };

@@ -231,6 +231,8 @@ test("parseKagSettings keeps the key-set flag without echoing the key", () => {
   assert.equal(settings.spgServerUrl, "http://127.0.0.1:8887");
   assert.deepEqual(settings.bridgeArgs, ["-m", "kag_bridge"]);
   assert.equal(settings.bridgeApiKeySet, true);
+  // 未提供 service_user_no → 空串
+  assert.equal(settings.serviceUserNo, "");
 });
 
 test("draft round-trip: empty key keeps the stored value", () => {
@@ -241,6 +243,7 @@ test("draft round-trip: empty key keeps the stored value", () => {
     kagProjectDir: "/p",
     namespace: "ns",
     projectId: "3",
+    serviceUserNo: "kag-svc",
     bridgeApiKeySet: true,
   });
   // 未触碰 key → null → 请求体空串（后端语义：保留旧值）
@@ -248,6 +251,7 @@ test("draft round-trip: empty key keeps the stored value", () => {
   const body = kagDraftToRequest(draft);
   assert.equal(body.bridge_api_key, "");
   assert.deepEqual(body.bridge_args, ["-m", "kag_bridge"]);
+  assert.equal(body.service_user_no, "kag-svc");
   // 显式输入 → 原样下发
   assert.equal(
     kagDraftToRequest({ ...draft, bridgeApiKey: "new-key" }).bridge_api_key,

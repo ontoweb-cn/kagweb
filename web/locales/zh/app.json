@@ -2592,6 +2592,8 @@
   "Optional. Point to a mineru executable in an isolated environment (uv tool, pipx, conda) to avoid dependency conflicts. Leave blank to auto-detect from PATH.": "可选。指向隔离环境（uv tool、pipx、conda）中的 mineru 可执行文件，避免依赖冲突。留空则从 PATH 自动检测。",
   "Optional. Sent as the X-Api-Key header for a secured server.": "可选。对于启用安全认证的服务器，会作为 X-Api-Key 请求头发送。",
   "Optional. The OpenSPG project id bound to this namespace.": "可选。绑定到该命名空间的 OpenSPG 项目 ID。",
+  "OpenSPG account used for system calls without a user context (e.g. create-project attribution). Falls back to the request payload's value, then to \"kagweb\".": "无用户上下文的系统调用（如创建项目归因）所使用的 OpenSPG 账号。依次回退到请求体中的值、默认 \"kagweb\"。",
+  "Service user no": "服务用户号",
   "Optional. e.g. http://localhost:8000 — scores via a vLLM /v1/rerank service. Leave empty to load the model locally.": "可选，如 http://localhost:8000 —— 通过 vLLM /v1/rerank 服务打分。留空则在本地加载模型。",
   "Optional: add a web search provider for real-time information.": "可选：添加网络搜索提供商以获取实时信息。",
   "Optional: why are you skipping this?": "可选：为什么跳过这一项？",

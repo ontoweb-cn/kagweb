@@ -1,7 +1,7 @@
-# KAG × KAGWeb 集成设计（定稿 v1.3）
+# KAG × KAGWeb 集成设计（定稿 v1.4）
 
-> 状态：已评审定稿（含评审修正项 R1–R6、Bridge 演进路径、前端接入设计 §5.4、二轮评审修正 A1/A2/D1–D4、附录 A 契约样本；v1.3 并入 M0 实测结论）
-> 日期：2026-09-18（v1.3 M0 实测修订；v1.2 二轮评审修订；v1.1 增补前端接入设计）
+> 状态：已评审定稿（含评审修正项 R1–R6、Bridge 演进路径、前端接入设计 §5.4、二轮评审修正 A1/A2/D1–D4、v1.3 并入 M0 实测结论、M1–M5 落地备注；v1.4 §6.3 配置块字段与实装对齐 + 服务端归因偏差标注）
+> 日期：2026-09-19（v1.4 §6.3 对齐实装修订；v1.3 2026-09-18 M0 实测修订；v1.2 二轮评审修订；v1.1 增补前端接入设计）
 > 代码基线：kagweb（本仓库）、`~/project/KAG`（KAG 开源框架）、`~/project/openspgapp`（闭源参考，不进入任何交付物）
 
 ---
@@ -267,21 +267,27 @@ flowchart LR
 
 **阶段 T1（MVP，单租户）**——实例级映射：
 
+> 字段以实装为准：见 `runtime_settings.py` 的 `_normalize_kag`。下方注释差异项：
+> - `bridge_url` 实装为 **`bridge_http_url`**；
+> - `tenant_id`、`default_project_id` **未实现**（T1 单租户以 `spg_server_url` 直连，项目绑定用 `project_id`/`namespace`）；
+> - `service_user_no` 参与 `_normalize_kag` 归一化（v1.4 起 settings 域可配）——`create_project` 的归因回退为 `payload.service_user_no` → settings 域 → 默认 `"kagweb"`（见 `kag.py`、`runtime_settings.py`）。
+
 ```json
-// data/user/settings/system.json 新增 "kag" 块（admin-only）
+// data/user/settings/system.json 新增 "kag" 块（admin-only；字段以 _normalize_kag 为准）
 {
-  "kag": {
-    "spg_server_url": "http://openspg-server:8887",  // 端口以实际部署为准（KAG 侧默认 8887，SolverMain.invoke）
-    "tenant_id": "<OpenSPG tenant id>",
-    "service_user_no": "kagweb",        // 6 字母，满足 ACCOUNT_PATTERN（6-20、字母/数字/下划线，M0-10 已定）
-    "bridge_url": "http://kag-bridge:8930",
-    "bridge_api_key": "<write-only secret>",
-    "default_project_id": ""
-  }
+  "version": 1,
+  "spg_server_url": "http://openspg-server:8887",  // 端口以实际部署为准（KAG 侧默认 8887，SolverMain.invoke）
+  "bridge_http_url": "http://kag-bridge:8890",     // bridge 根 URL（无路径），MCP 端点拼默认 /mcp
+  "bridge_command": "",                            // stdio 形态：bridge 可执行（如 venv python）
+  "bridge_args": ["-m", "kag_bridge"],
+  "kag_project_dir": "",                           // stdio 形态：含 kag_config.yaml 的项目目录
+  "namespace": "",
+  "project_id": "",
+  "bridge_api_key": "<write-only secret>"
 }
 ```
 
-- KAGWeb 实例 ↔ 一个 OpenSPG tenant；所有调用以 `service_user_no` 归因；
+- KAGWeb 实例 ↔ 一个 OpenSPG tenant；所有调用以 `service_user_no`（缺省 `"kagweb"`，见上注释）归因；
 - 项目可见性：`/public/v1/project` 按 `tenantId` 拉全量列表，KAGWeb 内部按 membership 过滤后返回前端；
 - 控权完全由 KAGWeb grants 承担。
 

@@ -70,6 +70,7 @@ export default function KagSettingsSection() {
             kagProjectDir: String(pending.kag_project_dir ?? ""),
             namespace: String(pending.namespace ?? ""),
             projectId: String(pending.project_id ?? ""),
+            serviceUserNo: String(pending.service_user_no ?? ""),
             bridgeApiKey:
               typeof pending.bridge_api_key === "string" &&
               pending.bridge_api_key !== ""
@@ -105,6 +106,7 @@ export default function KagSettingsSection() {
       loaded.kagProjectDir !== draft.kagProjectDir ||
       loaded.namespace !== draft.namespace ||
       loaded.projectId !== draft.projectId ||
+      loaded.serviceUserNo !== draft.serviceUserNo ||
       draft.bridgeApiKey !== null
     );
   }, [draft, loaded]);
@@ -303,6 +305,20 @@ export default function KagSettingsSection() {
                   className={`${inputClass} w-[160px] font-mono`}
                   value={draft.projectId}
                   onChange={(event) => setField("projectId", event.target.value)}
+                />
+              }
+            />
+            <SettingRow
+              title={t("Service user no")}
+              description={t(
+                "OpenSPG account used for system calls without a user context (e.g. create-project attribution). Falls back to the request payload's value, then to \"kagweb\".",
+              )}
+              control={
+                <input
+                  className={`${inputClass} w-[200px] font-mono`}
+                  value={draft.serviceUserNo}
+                  onChange={(event) => setField("serviceUserNo", event.target.value)}
+                  placeholder="kagweb"
                 />
               }
             />
