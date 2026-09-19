@@ -30,6 +30,7 @@ import threading
 import time
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -66,6 +67,10 @@ _kag_init_lock = threading.Lock()
 
 # M1 单并发：KAGConfigAccessor 是进程级全局状态，并发 solve 需排队（§5.1 R3 的最小实现）
 _solve_semaphore = asyncio.Semaphore(1)
+
+# M3.3 kag_reason：工具级超时与返回行上限（DSL 查全图时防膨胀/防线程挂起）
+_REASON_TIMEOUT_SECONDS = 120
+_MAX_REASON_ROWS = 200
 
 
 def _ensure_kag() -> None:
@@ -229,6 +234,99 @@ async def kag_solve(
             ensure_ascii=False,
             default=str,
         )
+
+
+@mcp.tool()
+async def kag_reason(
+    dsl: str,
+    params: dict[str, Any] | None = None,
+    project_id: str = "",
+    ctx: Context = None,
+) -> str:
+    """对绑定的 KAG 项目执行 reason DSL 图查询（只读），返回表格结果。
+
+    DSL 契约（M3.0/M3.3 实测，附录 A.1）：
+    - 节点类型必须用带 namespace 的全名（如 m0ProbeLive.Person，可先调
+      kag_schema 查类型清单）；短名（如 Person）报 Cannot find name；
+    - 关系 label 用裸名（如 workFor），前提 schema 关系已持久化；
+    - 对端不能用 :`Entity` 泛型配合 typed p（SchemaException）；
+    - 结果在 rows（二维数组，列序对应 header）；resultNodes/resultEdges 恒空；
+    - 占位符 $name 经 params 传入，值须字符串化列表——本工具自动归一，
+      list/dict 值会 JSON 序列化，直接传原始数组即可。
+    示例：MATCH (n:m0ProbeLive.Person)-[p:workFor]->(o:m0ProbeLive.Organization)
+    WHERE n.id in $ids RETURN n.id, o.id（params: {"ids": ["ZhangSan"]}）
+    """
+    _ensure_kag()
+    info = _project_info()
+    if project_id and project_id != info["project_id"]:
+        return json.dumps(
+            {"error": f"Bridge 绑定项目 {info['project_id']}（namespace={info['namespace']}），"
+            f"project_id={project_id} 的多项目路由于 M2 提供"},
+            ensure_ascii=False,
+        )
+
+    # params 值归一（M3.0 实测坑 4）：DSL 占位符替换要求字符串化列表
+    # （'["张三"]'）——agent 传真数组同样成立，非 str 值一律 JSON 序列化。
+    normalized: dict[str, str] = {}
+    for key, value in (params or {}).items():
+        normalized[str(key)] = (
+            value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
+        )
+    if ctx:
+        await ctx.info(f"kag_reason 开始（namespace={info['namespace']}，dsl 长度 {len(dsl)}）")
+    t0 = time.time()
+
+    # 不经 knext ReasonerClient：其 ReasonTask 模型未映射 resultMessage 字段
+    # （M3.3 实测：ERROR 时的错误详情只在原始响应的 task.resultMessage 里），
+    # 且构造时会额外加载 schema。直调 /public/v1/reason/run（M3.0② 实测契约）。
+    url = f"{info['host_addr'].rstrip('/')}/public/v1/reason/run"
+    body = json.dumps(
+        {"projectId": int(info["project_id"]), "dsl": dsl, "params": normalized}
+    ).encode()
+
+    def _run() -> dict:
+        req = urllib.request.Request(
+            url, data=body, method="POST", headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=_REASON_TIMEOUT_SECONDS) as resp:
+            return json.loads(resp.read())
+
+    try:
+        # 同步阻塞（HTTP 往返 + 服务端同步推理）——放线程池避免卡死事件循环
+        # （http transport 单循环）；wait_for 兜底防线程挂起。
+        resp_json = await asyncio.wait_for(
+            asyncio.to_thread(_run), timeout=_REASON_TIMEOUT_SECONDS + 5
+        )
+    except asyncio.TimeoutError:
+        return json.dumps(
+            {"error": f"reason 超时（>{_REASON_TIMEOUT_SECONDS}s）"}, ensure_ascii=False
+        )
+    except Exception as exc:  # noqa: BLE001 - 工具结果需结构化错误而非崩流
+        return json.dumps({"error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False, default=str)
+    cost_ms = int((time.time() - t0) * 1000)
+
+    task = (resp_json or {}).get("task") or {}
+    status = str(task.get("status") or "")
+    table = task.get("resultTableResult") or {}
+    header = list(table.get("header") or [])
+    rows = list(table.get("rows") or [])
+    out: dict[str, Any] = {
+        "status": status or "UNKNOWN",
+        "header": header,
+        "rows": rows[:_MAX_REASON_ROWS],
+        "row_count": int(table.get("total") or len(rows)),
+        "truncated": len(rows) > _MAX_REASON_ROWS,
+        "cost_ms": cost_ms,
+        "namespace": info["namespace"],
+    }
+    if status != "FINISH":
+        # resultMessage 携带完整服务端堆栈（Scala trace 数 KB）——截断到
+        # 首行错误语义，足够 agent 自纠 DSL，又不撑爆工具结果。
+        detail = str(task.get("resultMessage") or f"任务未完成：status={status or 'UNKNOWN'}")
+        if len(detail) > 600:
+            detail = detail[:600].rstrip() + "…"
+        out["error"] = detail
+    return json.dumps(out, ensure_ascii=False, default=str)
 
 
 @mcp.tool()
