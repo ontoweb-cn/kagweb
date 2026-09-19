@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { listAgentLoopModels } from "@/lib/agent-loop-models";
-import { createSingleFlight } from "@/lib/single-flight";
 
 interface RefreshOptions {
   force?: boolean;
@@ -45,8 +44,11 @@ const INITIAL: AgentLoopModelsState = { status: "loading", payload: null };
 export function useAgentLoopModels(sessionId: string | null, enabled = true) {
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const latestRequestRef = useRef(0);
-  const [loadOptions] = useState(() => createSingleFlight(listAgentLoopModels));
   const mountedRef = useRef(true);
+  // No keyless single-flight here (unlike useLLMOptions): concurrent same-key
+  // requests are already shared by withClientCache's stored promise, and a
+  // keyless share would hand a session switch the previous session's
+  // in-flight answer (the ACP `is_current` is session-scoped).
 
   useEffect(() => {
     mountedRef.current = true;
@@ -61,7 +63,7 @@ export function useAgentLoopModels(sessionId: string | null, enabled = true) {
       const requestId = ++latestRequestRef.current;
       dispatch({ type: "refresh-started", background: options?.background ?? false });
       try {
-        const payload = await loadOptions({ sessionId, force: options?.force });
+        const payload = await listAgentLoopModels({ sessionId, force: options?.force });
         if (!mountedRef.current || requestId !== latestRequestRef.current) return;
         dispatch({ type: "refresh-succeeded", payload });
       } catch {
@@ -69,7 +71,7 @@ export function useAgentLoopModels(sessionId: string | null, enabled = true) {
         dispatch({ type: "refresh-failed" });
       }
     },
-    [loadOptions, sessionId, enabled],
+    [sessionId, enabled],
   );
 
   useEffect(() => {

@@ -338,6 +338,32 @@ export default function ChatWorkspace() {
 
   const modelSelectedKey = llmSelectionKey(state.llmSelection)
 
+  // The stored selection belongs to the backend that offered it (design
+  // §4.3-4): when the option source is known and the selection cannot match
+  // it — the operator switched backends, or edited the vocabulary — clear it
+  // instead of displaying a label that matches nothing. The server-side
+  // `filter_turn_model` already degrades such picks safely; this keeps the
+  // UI honest about it. Backend sources with an empty list are skipped: a
+  // failed ACP probe falls back to the profile vocabulary and must not wipe
+  // a selection the agent's own session would still honor.
+  useEffect(() => {
+    if (!agentModelsSource) return
+    const selection = state.llmSelection
+    if (!selection) return
+    const key = llmSelectionKey(selection)
+    if (useCatalogPicker) {
+      if (key.startsWith('backend:')) setLLMSelection(null)
+      return
+    }
+    if (!key.startsWith('backend:')) {
+      setLLMSelection(null)
+      return
+    }
+    if (agentModelOptions.length === 0) return
+    const id = key.slice('backend:'.length)
+    if (id && !agentModelOptions.some(option => option.id === id)) setLLMSelection(null)
+  }, [agentModelsSource, agentModelOptions, useCatalogPicker, setLLMSelection, state.llmSelection])
+
   const handleSelectModel = useCallback(
     (key: string) => {
       if (!key) {
@@ -1443,7 +1469,7 @@ export default function ChatWorkspace() {
             activeCap={activeCap}
             modelPickerOptions={modelPickerOptions}
             modelSelectedKey={modelSelectedKey}
-            modelDefaultLabel={t('Backend default')}
+            modelDefaultLabel={useCatalogPicker ? t('System default') : t('Backend default')}
             modelDefaultDetail={
               useCatalogPicker
                 ? t('Use the active default model from Settings')
