@@ -289,3 +289,47 @@ def test_opencode_capture_survives_the_msg_wrapper(isolated_store) -> None:
     state: dict = {}
     backend._line_events(b'{"msg": {"type": "x", "sessionID": "ses_wrapped"}}', state)
     assert state["agent_session_id"] == "ses_wrapped"
+
+
+# ---------------------------------------------------------------------------
+# translate_opencode: shapes sampled from v2.0.9
+# ---------------------------------------------------------------------------
+
+
+def test_opencode_text_part_becomes_content() -> None:
+    from kagweb.services.agent_loop.cli_backend import translate_opencode
+
+    state: dict = {}
+    assert (
+        translate_opencode(
+            {"type": "step_start", "sessionID": "s", "part": {"type": "step-start"}}, state
+        )
+        == []
+    )
+    events = translate_opencode(
+        {"type": "text", "sessionID": "s", "part": {"type": "text", "text": "OK"}}, state
+    )
+    assert [(e.kind, e.text) for e in events] == [("content", "OK")]
+
+
+def test_opencode_tool_part_degrades_to_progress() -> None:
+    from kagweb.services.agent_loop.cli_backend import translate_opencode
+
+    state: dict = {}
+    events = translate_opencode(
+        {
+            "type": "tool",
+            "sessionID": "s",
+            "part": {"type": "tool", "tool": "bash", "state": {"status": "running"}},
+        },
+        state,
+    )
+    assert [e.kind for e in events] == ["progress"]
+    assert "bash" in events[0].text
+
+
+def test_opencode_unknown_type_is_skipped() -> None:
+    from kagweb.services.agent_loop.cli_backend import translate_opencode
+
+    state: dict = {}
+    assert translate_opencode({"type": "mystery", "sessionID": "s"}, state) == []

@@ -155,7 +155,7 @@ PRESETS: dict[str, AgentLoopPreset] = {
             ),
             command="opencode",
             base_args=("run", "--format", "json"),
-            translator="generic",
+            translator="opencode",
         ),
         AgentLoopPreset(
             name="intellect",

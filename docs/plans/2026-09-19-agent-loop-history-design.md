@@ -142,6 +142,15 @@ session id。各族续接方式见 §4。resume 生效时**停用内联折叠**,
    `opencode auth login` 后验证;v2 成功事件形状未采样,generic translator
    的内容抽取可能需要专用的 `translate_opencode`(等真实事件样本)。
    zcode 维持无预设(无 CLI 面)。
+   **2026-09-19 晚:provider 已配置并全链路验证 PASS**——用户侧配置经
+   `auth login --method key` 的 pty 驱动 + 自定义 provider
+   (`opencode.json`,`@ai-sdk/openai-compatible`,baseURL=api.deepseek.com,
+   模型 deepseek-flash/deepseek-v4-pro;v2 的 auth 存 opencode.db,
+   auth.json 已废弃,且 credential 表约定不明,直接写行会破坏 auth list)。
+   专用 `translate_opencode` 上线(按 v2.0.9 真实采样:text part → content、
+   tool part → progress、step-finish tokens → usage、未知跳过;generic 对
+   v2 事件抽取为零)。**M4 两回合真机续接 PASS**(T2 折叠停用下答出仅存于
+   agent 会话的暗号)。
 8. **调试期间的运维观察**:客户端超时放弃后,服务端回合继续跑并占满
    `_MAX_CONCURRENT_TURNS`(4)信号量,新回合会饿死——多次重试前先
    `kagweb restart` 清场;`start_turn` 契约无 `command_id`;WS 事件流的

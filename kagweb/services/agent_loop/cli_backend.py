@@ -554,9 +554,51 @@ def translate_generic(obj: dict[str, Any], state: dict[str, Any]) -> list[AgentL
     return events
 
 
+def translate_opencode(obj: dict[str, Any], state: dict[str, Any]) -> list[AgentLoopEvent]:
+    """OpenCode v2 ``run --format json`` NDJSON events.
+
+    Shapes sampled from v2.0.9: ``{"type": "text", "part": {"type": "text",
+    "text": …}}`` for answers, ``step_start``/``step_finish`` for steps, and
+    a ``sessionID`` on every event (captured translator-independently in
+    ``_line_events`` — it feeds the ``-s <id>`` resume mapping). Tool parts
+    exist but their exact shape is not sampled yet; they degrade to progress
+    rows so the activity trace still shows the loop working. Unknown types
+    are skipped — v2 evolves fast.
+    """
+    events: list[AgentLoopEvent] = []
+    part = obj.get("part") if isinstance(obj.get("part"), dict) else {}
+    part_type = str(part.get("type") or obj.get("type") or "")
+    if part_type == "text" or obj.get("type") == "text":
+        text = str(part.get("text") if part.get("text") is not None else obj.get("text") or "")
+        if text.strip():
+            events.append(AgentLoopEvent("content", text=text))
+        return events
+    if "tool" in part_type:
+        name = str(part.get("tool") or part.get("name") or "tool")
+        tool_state = part.get("state")
+        status = ""
+        if isinstance(tool_state, dict):
+            status = str(tool_state.get("status") or "")
+        events.append(AgentLoopEvent("progress", text=f"{name}: {status}".strip(": "), name=name))
+        return events
+    tokens = (part.get("tokens") or {}) if isinstance(part.get("tokens"), dict) else {}
+    if part_type in {"step-finish", "step_finish"} and tokens.get("output") is not None:
+        events.append(
+            AgentLoopEvent(
+                "usage",
+                data={
+                    "input_tokens": int(tokens.get("input") or 0),
+                    "output_tokens": int(tokens.get("output") or 0),
+                },
+            )
+        )
+    return events
+
+
 TRANSLATORS: dict[str, Translator] = {
     "claude-code": translate_claude_code,
     "codex": translate_codex,
+    "opencode": translate_opencode,
     "generic": translate_generic,
 }
 
