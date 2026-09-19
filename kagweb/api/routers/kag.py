@@ -392,7 +392,6 @@ async def alter_project_schema(
                 raise HTTPException(status_code=400, detail="relation name is required")
             draft.setdefault("relations", []).append(
                 new_relation(
-                    host_type=spg_type,
                     object_type=target,
                     name=str(add.name).strip(),
                     name_zh=str(add.name_zh or ""),
@@ -443,10 +442,15 @@ _MAX_GRAPH_ROWS = 200
 
 @router.post("/projects/{project_id}/graph/query")
 async def query_project_graph(
-    project_id: str, payload: KagGraphQueryRequest
+    request: Request, project_id: str, payload: KagGraphQueryRequest
 ) -> dict[str, Any]:
-    """图浏览 DSL 查询（read 权限；M3.4）——rows ≤200 裁剪 + 结构化错误。"""
+    """图浏览 DSL 查询（read 权限 + same-origin；M3.4）——rows ≤200 裁剪。
+
+    same-origin 与其他 POST 端点一致（评审 M-3，纵深防御：跨站无法读
+    响应，但保持写类端点的统一门禁面）。
+    """
     _require_read()
+    _require_same_origin(request)
     dsl = str(payload.dsl or "").strip()
     if not dsl:
         raise HTTPException(status_code=400, detail="dsl is required")

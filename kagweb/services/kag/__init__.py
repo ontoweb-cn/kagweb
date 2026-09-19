@@ -79,7 +79,8 @@ async def _exchange_session_token(
 
     实例 key 只在本函数（服务端内存）使用，不写入 workdir；失败返回空串
     （调用方按"本 turn 无 KAG 工具"降级，不阻塞 turn）。TTL 用 bridge 缺省
-    （900s）——.mcp.json 每 turn 重写即持续刷新。
+    （900s）——.mcp.json 每 turn 重写即持续刷新。超时 30s：bridge 首次
+    ``/tokens`` 触发 KAG 延迟加载（冷启动秒级），10s 余量不足（评审 M-4）。
     """
     key = str(block.get("bridge_api_key") or "").strip()
     if not key:
@@ -87,7 +88,7 @@ async def _exchange_session_token(
     try:
         import httpx
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
                 f"{http_url.rstrip('/')}/tokens",
                 json={"session_id": str(session_id or "")},

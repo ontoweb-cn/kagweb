@@ -132,7 +132,6 @@ def test_new_relation_uses_create_operation_template() -> None:
     """新增关系（knext add_relation 的 wire 拦截形态）：元素级 CREATE、
     subjectTypeRef 骨架、objectTypeRef 全量 basicInfo。"""
     rel = new_relation(
-        host_type=READ_TYPE,
         object_type=OBJECT_TYPE,
         name="mentorOf",
         name_zh="指导",

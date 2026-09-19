@@ -42,7 +42,6 @@ def read_type_to_draft(spg_type: dict[str, Any], *, operation: str = "UPDATE") -
 
 def new_relation(
     *,
-    host_type: dict[str, Any],
     object_type: dict[str, Any],
     name: str,
     name_zh: str = "",
@@ -51,7 +50,7 @@ def new_relation(
     """组装一条新 relation 的写模型元素（M3.5 实测：knext add_relation 的
     wire 拦截形态）。
 
-    host_type/object_type 为读模型中的 SPG type；元素级
+    object_type 为读模型中的目标 SPG type；元素级
     ``alterOperation: "CREATE"``，subjectTypeRef 只需骨架（knext 实发形态），
     objectTypeRef 带目标类型全量 basicInfo；无 ontologyId/projectId 键
     （服务端分配）。

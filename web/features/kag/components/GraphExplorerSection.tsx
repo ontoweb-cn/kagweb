@@ -88,15 +88,13 @@ export function GraphExplorerSection({
       </h2>
       <p className="mb-3 text-[12.5px] leading-relaxed text-[var(--muted-foreground)]">
         {t(
-          "Run a read-only reason DSL query. Node types must use the namespace-qualified full name; relation labels are bare. Two-column id results render as a graph.",
+          "Run a read-only reason DSL query. Node types must use the namespace-qualified full name; relation labels are bare. Two-column id results render as a graph. The DSL takes no LIMIT clause - results are capped server-side.",
         )}
       </p>
       <div className="mb-2 flex flex-wrap gap-1.5">
         <button
           type="button"
-          onClick={() =>
-            setDsl(`MATCH (n:${firstType}) RETURN n.id, n.name LIMIT 200`)
-          }
+          onClick={() => setDsl(`MATCH (n:${firstType}) RETURN n.id, n.name`)}
           className="rounded-full border border-[var(--border)]/60 bg-[var(--card)] px-2.5 py-1 font-mono text-[11px] text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]/50"
         >
           {t("Node template")}
@@ -105,7 +103,7 @@ export function GraphExplorerSection({
           type="button"
           onClick={() =>
             setDsl(
-              `MATCH (n:${firstType})-[p:workFor]->(o:${business[1]?.key ?? firstType}) RETURN n.id, o.id LIMIT 200`,
+              `MATCH (n:${firstType})-[p:workFor]->(o:${business[1]?.key ?? firstType}) RETURN n.id, o.id`,
             )
           }
           className="rounded-full border border-[var(--border)]/60 bg-[var(--card)] px-2.5 py-1 font-mono text-[11px] text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]/50"
@@ -118,7 +116,7 @@ export function GraphExplorerSection({
           value={dsl}
           disabled={busy}
           onChange={(e) => setDsl(e.target.value)}
-          placeholder="MATCH (n:ns.Type)-[p:rel]->(o:ns.Other) RETURN n.id, o.id LIMIT 200"
+          placeholder="MATCH (n:ns.Type)-[p:rel]->(o:ns.Other) RETURN n.id, o.id"
           className="min-w-0 flex-1 rounded-md border border-[var(--border)]/60 bg-[var(--card)] px-3 py-2 font-mono text-[12px] text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)]/60 focus:border-[var(--foreground)]/30"
         />
         <button
