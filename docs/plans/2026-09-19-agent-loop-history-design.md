@@ -129,3 +129,10 @@ session id。各族续接方式见 §4。resume 生效时**停用内联折叠**,
    重铸 session id。
 4. M3(L0 转录文件 + ACP G-1 兜底)与 M4(opencode/zcode)保持原方案,
    待后续批次。
+5. **第一轮代码评审修复**:降级路径历史丢失——resume 注入被跳过时
+   (操作员自带 session flag、codex 命令非 `exec` 形状)原先**同时**停用了
+   内联折叠,回合会失去全部上下文;现 `resume_active` 以"flag 真正可注入"
+   为准,任何降级都恢复折叠转录。`--continue` 前缀误匹配(如
+   `--continue-on-error`)收窄为精确/`=` 形态匹配。claude 真机实测:缺失
+   会话的报错文案 "No conversation found with session ID: …" 确认命中
+   L2 标记。consult 回合沿用 `::consult::` 派生键,与 ACP 语义一致。

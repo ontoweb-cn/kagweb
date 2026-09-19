@@ -104,9 +104,43 @@ def test_claude_resume_folds_history_when_absent(isolated_store) -> None:
 
 def test_operator_session_flags_win_over_injection(isolated_store) -> None:
     backend = _backend("claude", extra_args=["--resume", "operator-id"])
-    argv = backend.build_argv(_request(), resume_id="agent-9", fresh_session_id="u1")
+    request = AgentLoopRequest(
+        prompt="Q",
+        session_id="s1",
+        history=[{"role": "user", "content": "earlier"}],
+    )
+    argv = backend.build_argv(request, resume_id="agent-9", fresh_session_id="u1")
     assert argv.count("--resume") == 1  # the operator's, untouched
     assert "--session-id" not in argv
+    # Degraded, not silent: with injection skipped the folded transcript is
+    # restored — it is the only history channel left.
+    assert "Conversation so far" in argv[-1]
+
+
+def test_joined_session_flag_form_also_counts(isolated_store) -> None:
+    backend = _backend("claude", extra_args=["--session-id=operator-id"])
+    argv = backend.build_argv(_request(), resume_id="agent-9", fresh_session_id="u1")
+    assert "--session-id" not in argv[1:-1] or argv.count("--session-id") == 1
+
+
+def test_codex_non_exec_command_falls_back_to_folded_history(isolated_store) -> None:
+    """A codex preset pointed at a wrapper that is not `exec` cannot take the
+    resume splice — the turn must degrade to the folded transcript instead of
+    silently losing all context."""
+    backend = _backend(
+        "codex",
+        name="codex",
+        command="codex-wrap",
+        base_args=["run", "--json"],
+    )
+    request = AgentLoopRequest(
+        prompt="Q",
+        session_id="s1",
+        history=[{"role": "user", "content": "earlier"}],
+    )
+    argv = backend.build_argv(request, resume_id="thread-1")
+    assert "resume" not in argv[:3]
+    assert "Conversation so far" in argv[-1]
 
 
 def test_codex_resume_splices_the_subcommand(isolated_store) -> None:

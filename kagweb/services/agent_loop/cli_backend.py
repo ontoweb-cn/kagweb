@@ -130,6 +130,20 @@ _SESSION_MISSING_MARKERS = (
 )
 
 
+#: Session-selection flags a claude profile may carry in its own args; when
+#: present, KAGWeb injects nothing (the operator owns which conversation runs).
+#: Joined (`--resume=x`) and separated (`--resume x`) forms both count.
+_SESSION_FLAG_PREFIXES = ("--resume", "--session-id", "--continue")
+
+
+def _has_operator_session_flag(args: list[str]) -> bool:
+    for arg in args:
+        for flag in _SESSION_FLAG_PREFIXES:
+            if arg == flag or arg.startswith(flag + "="):
+                return True
+    return False
+
+
 def _resume_target_missing(detail: str) -> bool:
     lowered = detail.lower()
     return any(marker in lowered for marker in _SESSION_MISSING_MARKERS)
@@ -693,21 +707,28 @@ class CliAgentLoopBackend(AgentLoopBackend):
         Resuming re-attaches the agent's own session, so the prompt carries
         only the new turn (plus grounding blocks the caller already folded
         in) — the folded transcript is exactly what resume makes redundant.
-        Operator-supplied `--resume`/`--session-id`/`--continue` args always
-        win: injecting a second one would change which conversation runs.
+        Operator-supplied session flags always win: injecting a second one
+        would change which conversation runs. Resume only counts when its
+        flag can actually be injected — a codex command without the expected
+        `exec` shape cannot take the splice, and in every degraded case the
+        folded transcript is restored: it is then the only history channel,
+        and dropping it too would lose the context entirely.
         """
-        use_resume = bool(resume_id)
-        prompt = request.prompt if use_resume else self._prompt_with_history(request)
+        operator_session_flag = self.resume_kind == "claude" and _has_operator_session_flag(
+            self.extra_args
+        )
+        resume_active = bool(resume_id) and not operator_session_flag
+        if self.resume_kind == "codex" and resume_active and self.base_args[:1] != ["exec"]:
+            resume_active = False
+        prompt = request.prompt if resume_active else self._prompt_with_history(request)
         extra_args, prompt_pinned = self._render_extra_args(prompt, turn_model=request.model)
         argv = [self.command, *self.base_args, *extra_args]
-        if self.resume_kind == "codex" and use_resume and self.base_args[:1] == ["exec"]:
+        if self.resume_kind == "codex" and resume_active:
             # clap subcommand: `codex exec resume <id> [OPTIONS] [PROMPT]` —
             # the resume subcommand must precede exec's own flags.
             argv = [self.command, "exec", "resume", resume_id, *self.base_args[1:], *extra_args]
-        elif self.resume_kind == "claude" and not any(
-            arg.startswith(("--resume", "--session-id", "--continue")) for arg in extra_args
-        ):
-            if use_resume:
+        elif self.resume_kind == "claude" and not operator_session_flag:
+            if resume_active:
                 argv += ["--resume", resume_id]
             elif fresh_session_id:
                 argv += ["--session-id", fresh_session_id]
