@@ -27,6 +27,7 @@ M3.2 设计（docs/kag-integration-design.md §9 / 附录 A.2）：Bridge 的
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 #: 产出可归一轨迹元数据的 KAG Bridge 工具名（M1 工具面，docs 附录 A.1）。
@@ -90,7 +91,9 @@ def kag_trace_metadata(
     if graph:
         out["tool_metadata"] = {"provider": "kag", "graph": graph}
 
-    answer = str(payload.get("answer") or "").strip()
+    # answer 常内嵌 KAG 的引用标记（live 实测 ``<reference id="chunk:0_1">
+    # </reference>``）——摘录是给 UI 展示的纯文本，剥掉再存（评审 N-2）。
+    answer = re.sub(r"</?reference[^>]*>", "", str(payload.get("answer") or "")).strip()
     if answer:
         out["excerpt"] = answer
 
@@ -163,9 +166,12 @@ def _normalize_graph(subgraph: Any) -> dict[str, Any] | None:
     edge_keys: set[str] = set()
     edges: list[dict[str, Any]] = []
 
-    for graph in subgraph:
-        if not isinstance(graph, dict):
-            continue
+    graphs = [graph for graph in subgraph if isinstance(graph, dict)]
+
+    # 两遍法（评审 M-1）：先收编全部图的节点，再收边。逐图交替收集时，
+    # 前一张图的边若引用后一张图才出现的节点，会被"孤立边"规则顺序敏感地
+    # 误杀；先集齐节点后，边只受真实的存在性与上限约束。
+    for graph in graphs:
         for raw in graph.get("result_nodes") or []:
             node = _normalize_node(raw)
             if node is None:
@@ -178,6 +184,8 @@ def _normalize_graph(subgraph: Any) -> dict[str, Any] | None:
                 nodes[node["id"]] = node
             elif not existing.get("description") and node.get("description"):
                 existing["description"] = node["description"]
+
+    for graph in graphs:
         for raw in graph.get("result_edges") or []:
             edge = _normalize_edge(raw)
             if edge is None:

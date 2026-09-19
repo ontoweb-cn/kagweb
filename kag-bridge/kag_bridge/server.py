@@ -316,12 +316,22 @@ class _BearerAuthMiddleware:
     hmac.compare_digest 防时序侧信道。
     """
 
+    #: 豁免路径精确匹配（评审 M-2）：startswith 前缀会放过 /healthzanything
+    #: 等未知路径；healthz 挂载为精确路由，这里同步精确（含尾斜杠变体）。
+    _HEALTHZ_PATHS = ("/healthz", "/healthz/")
+
     def __init__(self, app, api_key: str):
         self.app = app
         self.api_key = api_key
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and not scope.get("path", "").startswith("/healthz"):
+        if scope["type"] == "websocket":
+            # 拒绝 websocket 升级（评审 M-3）：本服务只提供 streamable-http，
+            # 鉴权只覆盖 http scope——不显式拒绝的话，未来内层 app 若挂 WS
+            # 路由会绕过 Bearer。lifespan 等非 http scope 照常透传。
+            await send({"type": "websocket.close", "code": 1008})
+            return
+        if scope["type"] == "http" and scope.get("path") not in self._HEALTHZ_PATHS:
             auth = ""
             for k, v in scope.get("headers", []):
                 if k.decode("latin-1").lower() == "authorization":
@@ -353,11 +363,28 @@ def _run_http() -> None:
     api_key = os.environ.get("KAG_BRIDGE_API_KEY", "").strip()
     if not api_key:
         raise SystemExit("KAG_BRIDGE_TRANSPORT=http 时必须设置 KAG_BRIDGE_API_KEY（拒绝无鉴权启动）")
-    host = os.environ.get("KAG_BRIDGE_HTTP_HOST", "127.0.0.1")
-    port = int(os.environ.get("KAG_BRIDGE_HTTP_PORT", "8890"))
+    host = os.environ.get("KAG_BRIDGE_HTTP_HOST", "127.0.0.1").strip()
+    raw_port = os.environ.get("KAG_BRIDGE_HTTP_PORT", "8890").strip()
+    # 配置校验（评审 N-5）：解析失败给可读的启动错误而非裸 traceback。
+    try:
+        port = int(raw_port)
+    except ValueError:
+        raise SystemExit(f"KAG_BRIDGE_HTTP_PORT 必须是数字端口号：{raw_port!r}")
+    path = os.environ.get("KAG_BRIDGE_HTTP_PATH", "/mcp").strip()
+    if not path.startswith("/"):
+        raise SystemExit(f"KAG_BRIDGE_HTTP_PATH 必须以 / 开头：{path!r}")
+    if host == "0.0.0.0":
+        # 评审 N-3：绑定全接口时客户端 Host 头（实际 IP）不在 DNS-rebinding
+        # 放行表，会被 421 拒——fail closed 是有意的，但值得显式提醒配置方。
+        print(
+            "WARN: KAG_BRIDGE_HTTP_HOST=0.0.0.0 时，客户端 Host 头（实际 IP）不在放行表，"
+            "需 KAG_BRIDGE_EXTRA_HOSTS 显式放行（如内网 IP/域名）",
+            file=sys.stderr,
+            flush=True,
+        )
     mcp.settings.host = host
     mcp.settings.port = port
-    mcp.settings.streamable_http_path = os.environ.get("KAG_BRIDGE_HTTP_PATH", "/mcp")
+    mcp.settings.streamable_http_path = path
     # 无状态单发工具服务（kag_solve 单问单答），不依赖服务端会话保持
     mcp.settings.stateless_http = True
 

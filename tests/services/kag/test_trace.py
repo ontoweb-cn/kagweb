@@ -173,6 +173,47 @@ def test_claude_code_result_wrapper_is_unwrapped() -> None:
     assert kag_trace_metadata("kag_solve", None, '{"result": "pong"}') is None
 
 
+def test_cross_graph_forward_edge_is_kept() -> None:
+    """评审 M-1：前一张图的边引用后一张图才出现的节点（跨图共享节点），
+    两遍法收集后必须保留，而非被"孤立边"规则顺序敏感地丢弃。"""
+    payload = {
+        "answer": "ok",
+        "subgraph": [
+            {
+                "class_name": "graph_1",
+                "result_nodes": [{"id": "a", "label": "A", "name": "A"}],
+                # 引用 graph_2 才有的节点 b——旧逐图交替实现会丢这条边。
+                "result_edges": [{"_from": "a", "to": "b", "label": "relates"}],
+            },
+            {
+                "class_name": "graph_2",
+                "result_nodes": [{"id": "b", "label": "B", "name": "B"}],
+                "result_edges": [],
+            },
+        ],
+    }
+    meta = kag_trace_metadata("kag_solve", None, json.dumps(payload))
+    graph = meta["tool_metadata"]["graph"]
+    assert {n["id"] for n in graph["nodes"]} == {"a", "b"}
+    assert graph["edges"] == [
+        {"source": "a", "target": "b", "description": "relates", "weight": 1}
+    ]
+
+
+def test_excerpt_strips_reference_tags() -> None:
+    """评审 N-2：answer 内嵌 KAG 引用标记（live 实测
+    ``<reference id="chunk:0_1"></reference>``）——摘录是 UI 纯文本，剥掉。"""
+    payload = {
+        "answer": "张三是开元大学的教授<reference id=\"chunk:0_1\"></reference>。",
+        "reference": [
+            {"type": "chunk", "info": [{"document_name": "开元大学简介"}]}
+        ],
+    }
+    meta = kag_trace_metadata("kag_solve", None, json.dumps(payload))
+    assert meta["excerpt"] == "张三是开元大学的教授。"
+    assert "<reference" not in meta["excerpt"]
+
+
 def test_edgeless_graph_yields_no_graph_but_keeps_sources() -> None:
     """kg_cs 未命中时 subgraph 无边（§5.1 实装注意二第 4 条）——不出图签，
     但 chunk 引用与摘录仍归一。"""
