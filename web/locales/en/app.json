@@ -201,5 +201,19 @@
   "intellect.link.connect": "Connect",
   "intellect.link.disconnect": "Disconnect",
   "intellect.link.genericError": "Could not connect. Try again.",
-  "intellect.link.staleServiceChanged": "This connection is to a different agent service than the one now configured. Reconnect to keep your turns attributed to you."
+  "intellect.link.staleServiceChanged": "This connection is to a different agent service than the one now configured. Reconnect to keep your turns attributed to you.",
+  "Relations": "Relations",
+  "No relations": "No relations",
+  "Mark relation for deletion": "Mark relation for deletion",
+  "Delete {{count}} relation(s)": "Delete {{count}} relation(s)",
+  "Add a relation": "Add a relation",
+  "Add relation": "Add relation",
+  "Relation name (e.g. workFor)": "Relation name (e.g. workFor)",
+  "Display name (Chinese)": "Display name (Chinese)",
+  "Object type": "Object type",
+  "Description (optional)": "Description (optional)",
+  "Relation name and object type are required": "Relation name and object type are required",
+  "The schema change was rejected": "The schema change was rejected",
+  "Submitting…": "Submitting…",
+  "SPG type tree. Expand a business type to add or remove its relations; deletions submit explicitly and are applied server-side.": "SPG type tree. Expand a business type to add or remove its relations; deletions submit explicitly and are applied server-side."
 }

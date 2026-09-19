@@ -411,6 +411,26 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
+  readonly "/api/kag/projects/{project_id}/schema/alter": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    readonly get?: never;
+    readonly put?: never;
+    /**
+     * Alter Kag Project Schema
+     * @description Submit a schema change (admin + same-origin). Deletion is not omission: removals keep the entry with an element-level DELETE operation; additions use the CREATE template. The server re-queries after the alter so a cached read cannot mask a failed change.
+     */
+    readonly post: operations["alter_project_schema_api_kag_projects__project_id__schema_alter_post"];
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
   readonly "/api/kag/tasks": {
     readonly parameters: {
       readonly query?: never;
@@ -2576,6 +2596,46 @@ export interface components {
       readonly vector_dimensions?: number | null;
     };
     /**
+     * KagSchemaEditRequest
+     * @description Schema edit (M3.5): the spg_type is the read-model SPG type verbatim; add/delete intents are lists; the server assembles the wire draft (CREATE/DELETE element operations).
+     */
+    readonly KagSchemaEditRequest: {
+      /**
+       * Add Relations
+       * @default []
+       */
+      readonly add_relations: readonly components["schemas"]["KagSchemaRelationAdd"][];
+      /**
+       * Delete Relations
+       * @default []
+       */
+      readonly delete_relations: readonly string[];
+      /** Spg Type */
+      readonly spg_type: {
+        readonly [key: string]: unknown;
+      };
+    };
+    /**
+     * KagSchemaRelationAdd
+     * @description New relation for the schema edit endpoint: object_type_name is the nameEn of an existing SPG type.
+     */
+    readonly KagSchemaRelationAdd: {
+      /**
+       * Desc
+       * @default
+       */
+      readonly desc: string;
+      /** Name */
+      readonly name: string;
+      /**
+       * Name Zh
+       * @default
+       */
+      readonly name_zh: string;
+      /** Object Type Name */
+      readonly object_type_name: string;
+    };
+    /**
      * KagSettingsUpdate
      * @description KAG integration domain update (the `kag` block of system settings). bridge_api_key is write-only: send "" (or omit it) to keep the stored key.
      */
@@ -3494,6 +3554,10 @@ export type SchemaImportedSession = components["schemas"]["ImportedSession"];
 export type SchemaInstallPayload = components["schemas"]["InstallPayload"];
 export type SchemaKagProjectCreateRequest =
   components["schemas"]["KagProjectCreateRequest"];
+export type SchemaKagSchemaEditRequest =
+  components["schemas"]["KagSchemaEditRequest"];
+export type SchemaKagSchemaRelationAdd =
+  components["schemas"]["KagSchemaRelationAdd"];
 export type SchemaKagSettingsUpdate =
   components["schemas"]["KagSettingsUpdate"];
 export type SchemaLanguageUpdate = components["schemas"]["LanguageUpdate"];
@@ -4392,6 +4456,45 @@ export interface operations {
       };
     };
     readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly alter_project_schema_api_kag_projects__project_id__schema_alter_post: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path: {
+        readonly project_id: string;
+      };
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody: {
+      readonly content: {
+        readonly "application/json": components["schemas"]["KagSchemaEditRequest"];
+      };
+    };
     readonly responses: {
       /** @description Successful Response */
       readonly 200: {

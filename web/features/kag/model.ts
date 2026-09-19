@@ -132,6 +132,8 @@ export interface SpgTypeRow {
   kind: SpgTypeKind;
   parent: string | null;
   properties: SpgPropertyRow[];
+  /** 原始读模型 JSON（M3.5 编辑端点要求原样回传——wire 转换在服务端）。 */
+  raw: Record<string, unknown>;
 }
 
 function qualifiedName(basicInfo: Record<string, unknown>): string {
@@ -183,6 +185,7 @@ function parseSpgType(raw: unknown): SpgTypeRow {
     kind,
     parent: parent && parent !== key ? parent : null,
     properties,
+    raw: row,
   };
 }
 
@@ -226,6 +229,34 @@ export function buildSpgTypeTree(rows: SpgTypeRow[]): SpgTypeNode[] {
 /** properties 按继承分离：详情树中默认只展示自有属性。 */
 export function ownProperties(row: SpgTypeRow): SpgPropertyRow[] {
   return row.properties.filter((property) => !property.inherited);
+}
+
+/** Schema 关系行（M3.5 编辑：从 raw.relations 解析，编辑意图走 add/delete 列表）。 */
+export interface SpgRelationRow {
+  name: string;
+  nameZh: string;
+  desc: string;
+  objectType: string;
+  inherited: boolean;
+}
+
+export function parseRelations(raw: unknown): SpgRelationRow[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      const row = record(item);
+      const info = record(row.basicInfo);
+      const predicate = record(info.name);
+      const objectType = qualifiedName(record(record(row.objectTypeRef).basicInfo));
+      return {
+        name: text(predicate.name),
+        nameZh: text(info.nameZh),
+        desc: textOrNull(info.desc) ?? "",
+        objectType,
+        inherited: row.inherited === true,
+      };
+    })
+    .filter((rel) => rel.name !== "");
 }
 
 // —— 推理任务（GET /api/kag/tasks，A.3 契约）——

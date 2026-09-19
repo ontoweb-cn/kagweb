@@ -19,12 +19,15 @@ import {
   ownProperties,
   type KagProjectDetail,
   type SpgTypeNode,
+  type SpgTypeRow,
 } from "../model";
 import { KagBackLink, KagPageBody, KagPageHeader, KagStateView } from "./KagPageFrame";
+import { SchemaEditPanel } from "./SchemaEditPanel";
 
 /**
- * `/kag/projects/[id]` 详情页（M2.4：Schema 只读树 + graph labels 概览；
- * 表单式 Schema 编辑与图浏览为 M3 —— OpenSPG graph 无子图查询端点）。
+ * `/kag/projects/[id]` 详情页（M2.4：Schema 树 + graph labels 概览；
+ * M3.5：类型展开区的 Schema 关系编辑（读模型回传 + 服务端 wire 转换）；
+ * 图浏览为 M3.4 —— OpenSPG graph 无子图查询端点，经 reason DSL）。
  */
 
 const KIND_LABEL: Record<string, { zh: string; en: string }> = {
@@ -100,7 +103,19 @@ function PropertyList({
   );
 }
 
-function TypeNodeRow({ node, depth }: { node: SpgTypeNode; depth: number }) {
+function TypeNodeRow({
+  node,
+  depth,
+  projectId,
+  allTypes,
+  onAltered,
+}: {
+  node: SpgTypeNode;
+  depth: number;
+  projectId: string;
+  allTypes: SpgTypeRow[];
+  onAltered: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const zh = Boolean(i18n.language?.toLowerCase().startsWith("zh"));
   const [open, setOpen] = useState(depth < 1);
@@ -108,6 +123,8 @@ function TypeNodeRow({ node, depth }: { node: SpgTypeNode; depth: number }) {
   const kind = KIND_LABEL[node.kind] ?? KIND_LABEL.unknown;
   const hasChildren = node.children.length > 0;
   const own = ownProperties(node).length;
+  // 关系编辑只对业务类型开放（basic/standard 无关系语义）
+  const editable = node.kind !== "basic" && node.kind !== "standard";
 
   return (
     <div>
@@ -164,9 +181,29 @@ function TypeNodeRow({ node, depth }: { node: SpgTypeNode; depth: number }) {
               <PropertyList properties={node.properties} showInherited={showInherited} />
             </div>
           ) : null}
+          {editable ? (
+            <div
+              className="px-3 py-2"
+              style={{ paddingLeft: `${24 + depth * 16}px` }}
+            >
+              <SchemaEditPanel
+                projectId={projectId}
+                typeRow={node}
+                allTypes={allTypes}
+                onAltered={onAltered}
+              />
+            </div>
+          ) : null}
           {hasChildren
             ? node.children.map((child) => (
-                <TypeNodeRow key={child.key} node={child} depth={depth + 1} />
+                <TypeNodeRow
+                  key={child.key}
+                  node={child}
+                  depth={depth + 1}
+                  projectId={projectId}
+                  allTypes={allTypes}
+                  onAltered={onAltered}
+                />
               ))
             : null}
         </div>
@@ -205,6 +242,7 @@ export default function KagProjectDetailPage({
   const { t } = useTranslation();
   const [detail, setDetail] = useState<KagProjectDetail | null>(null);
   const [tree, setTree] = useState<SpgTypeNode[] | null>(null);
+  const [rows, setRows] = useState<SpgTypeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -215,6 +253,7 @@ export default function KagProjectDetailPage({
       setLoading(true);
       setDetail(null);
       setTree(null);
+      setRows([]);
       setError(null);
       setNotFound(false);
       try {
@@ -223,8 +262,11 @@ export default function KagProjectDetailPage({
         setDetail(next);
         // 详情先渲染；全量 Schema 树独立加载（可能较大，失败不阻塞详情）
         try {
-          const rows = await fetchKagProjectSchema(projectId);
-          if (!cancelled) setTree(buildSpgTypeTree(rows));
+          const schemaRows = await fetchKagProjectSchema(projectId);
+          if (!cancelled) {
+            setRows(schemaRows);
+            setTree(buildSpgTypeTree(schemaRows));
+          }
         } catch {
           if (!cancelled) setTree([]);
         }
@@ -246,6 +288,17 @@ export default function KagProjectDetailPage({
       cancelled = true;
     };
   }, [projectId, t]);
+
+  /** M3.5 编辑成功后的重载：只刷 Schema 树（详情 tiles 不变）。 */
+  async function reloadSchema() {
+    try {
+      const schemaRows = await fetchKagProjectSchema(projectId);
+      setRows(schemaRows);
+      setTree(buildSpgTypeTree(schemaRows));
+    } catch {
+      // 刷新失败保留现树（下一次进页会重拉）
+    }
+  }
 
   if (loading) {
     return (
@@ -346,7 +399,7 @@ export default function KagProjectDetailPage({
         </h2>
         <p className="mb-3 text-[12.5px] leading-relaxed text-[var(--muted-foreground)]">
           {t(
-            "Read-only SPG type tree. Editing the schema from this page arrives with a later milestone.",
+            "SPG type tree. Expand a business type to add or remove its relations; deletions submit explicitly and are applied server-side.",
           )}
         </p>
         {tree === null ? (
@@ -358,7 +411,14 @@ export default function KagProjectDetailPage({
         ) : (
           <div className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
             {tree.map((node) => (
-              <TypeNodeRow key={node.key} node={node} depth={0} />
+              <TypeNodeRow
+                key={node.key}
+                node={node}
+                depth={0}
+                projectId={projectId}
+                allTypes={rows}
+                onAltered={reloadSchema}
+              />
             ))}
           </div>
         )}
