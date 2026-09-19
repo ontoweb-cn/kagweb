@@ -573,3 +573,52 @@ async def test_regenerate_restores_a_backend_native_selection(
     await execution2.task
     assert len(backend.requests) == 2
     assert backend.requests[1].model == "picked-model"  # snapshot restored verbatim
+
+
+async def test_long_session_transcript_becomes_a_workspace_file(
+    store, stub_workspace, monkeypatch
+) -> None:
+    """M3-L0: with a workspace-running backend, the session transcript from
+    the store is written to the workspace and referenced in the manifest."""
+    from kagweb.services.agent_loop.protocol import AgentLoopEvent
+
+    backend = _FakeAgentBackend(AgentLoopEvent("content", text="ok"))
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "fake", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(
+        "kagweb.services.model_selection.runtime.activate_llm_selection",
+        lambda selection: (
+            SimpleNamespace(model="agent-loop", context_window=None, max_tokens=None),
+            None,
+        ),
+    )
+    monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
+
+    # The fake backend must look like the CLI family (workspace consumer).
+    backend.uses_workdir = False
+    long_turn = "第一回合长文本。" * 300  # > TRANSCRIPT_FILE_MIN_CHARS
+    runtime = TurnRuntimeManager(store=store)
+    session, turn = await runtime.start_turn({**_stub_payload(long_turn)})
+    execution = runtime._executions.get(turn["id"])
+    await execution.task
+    # Turn 2: the transcript of turn 1 is now in the store.
+    _, turn2 = await runtime.start_turn({**_stub_payload("只回复OK"), "session_id": session["id"]})
+    execution2 = runtime._executions.get(turn2["id"])
+    await execution2.task
+
+    final = await store.get_turn(turn2["id"])
+    assert final is not None and final["status"] == "completed", final
+    # The workspace file exists and the manifest row referenced it.
+    from kagweb.services.path_service import get_path_service
+
+    transcript = (
+        get_path_service().get_task_workspace("chat", session["id"]) / "session-transcript.md"
+    )
+    assert transcript.exists()
+    assert "第一回合长文本" in transcript.read_text(encoding="utf-8")

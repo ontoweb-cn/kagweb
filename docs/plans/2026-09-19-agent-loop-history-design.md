@@ -129,6 +129,24 @@ session id。各族续接方式见 §4。resume 生效时**停用内联折叠**,
    重铸 session id。
 4. M3(L0 转录文件 + ACP G-1 兜底)与 M4(opencode/zcode)保持原方案,
    待后续批次。
+6. **M3 已实施并真机验证**(提交见 git log):两回合 WS 会话后
+   `session-transcript.md`(4999 字符)落盘会话工作区,manifest path 行
+   生效;失败序列化降级为 warning 日志。G-1 由 fake ACP agent 真实协议
+   测试覆盖(reject-load 场景 → progress 事件 + 折叠头注入)。
+7. **M4 部分实施**:opencode v2.0.9(本机 `~/.opencode/bin/opencode`,
+   **不在服务默认 PATH**——profile command 需绝对路径)实测:顶层
+   `-s/--session` 寻址成立、JSON 流每事件携带 `sessionID`(错误事件也带)
+   → translator 无关捕获;预设升级为 `run --format json`(v2 移除了
+   `--json`)+ `resume_kind="opencode"`。**未完成部分**:provider 未配置
+   (free 模型路由报 `provider.no-route`)→ 完整两回合续接待用户
+   `opencode auth login` 后验证;v2 成功事件形状未采样,generic translator
+   的内容抽取可能需要专用的 `translate_opencode`(等真实事件样本)。
+   zcode 维持无预设(无 CLI 面)。
+8. **调试期间的运维观察**:客户端超时放弃后,服务端回合继续跑并占满
+   `_MAX_CONCURRENT_TURNS`(4)信号量,新回合会饿死——多次重试前先
+   `kagweb restart` 清场;`start_turn` 契约无 `command_id`;WS 事件流的
+   `session_id` 分布不均(session_meta 不总带),客户端应以「任意帧携带
+   即取」的方式维护会话 id。
 5. **第一轮代码评审修复**:降级路径历史丢失——resume 注入被跳过时
    (操作员自带 session flag、codex 命令非 `exec` 形状)原先**同时**停用了
    内联折叠,回合会失去全部上下文;现 `resume_active` 以"flag 真正可注入"

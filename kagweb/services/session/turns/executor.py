@@ -478,8 +478,8 @@ class TurnExecutor:
                             branch_messages,
                             language=str(payload.get("language", "en") or "en"),
                         )
-                except Exception:  # noqa: BLE001 - the transcript file is best effort
-                    logger.debug("failed to serialize the session transcript", exc_info=True)
+                except Exception as exc:  # noqa: BLE001 - best effort
+                    logger.warning("failed to serialize the session transcript: %s", exc)
 
             inventory = await build_inventory(
                 self.store,
