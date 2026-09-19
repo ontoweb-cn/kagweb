@@ -588,8 +588,29 @@ async def submit_build(
 async def get_tasks(
     limit: int = 100, session_id: str = "", project_id: str = ""
 ) -> dict[str, Any]:
+    """推理任务列表（T2，M4-B 评审 M-7）：admin 全量；非 admin 仅其
+    membership 可见项目的任务（防跨项目窥探 question/answer/references）。"""
+    from kagweb.services.kag.access import _is_admin
+
     _require_read()
+    user = _current_user()
     rows = list_tasks(limit=limit, session_id=session_id, project_id=project_id)
+    if project_id:
+        # 显式 project 过滤：校验该项目的 membership（admin 恒过）
+        if not project_access_allowed(user, project_id, kag_configured=kag_enabled()):
+            raise HTTPException(status_code=403, detail="You do not have access to this KAG project.")
+        return {"tasks": rows, "count": len(rows)}
+    if not _is_admin(user):
+        # 无 project 过滤（全量浏览）：仅保留用户可见项目的任务
+        visible = {
+            str(p.get("projectId") or p.get("id") or "")
+            for p in filter_projects_by_access(
+                user,
+                await _client().list_projects(),
+                kag_configured=kag_enabled(),
+            )
+        }
+        rows = [r for r in rows if not r.get("project_id") or str(r.get("project_id")) in visible]
     return {"tasks": rows, "count": len(rows)}
 
 

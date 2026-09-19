@@ -81,11 +81,13 @@ def update_project_members(project_id: str, members: list[str]) -> dict[str, Any
         if not isinstance(entry, dict) or not entry.get("owner"):
             raise KeyError(f"project has no owner yet: {project_id}")
         owner = str(entry["owner"])
-        if owner in normalized:
-            normalized.remove(owner)
-        # owner 恒在列表首位；其余去重保序
+        # owner 恒在列表首位；其余去重保序（评审 M-8：原 ``not (u in seen or seen.add(u))`` 晦涩）
+        rest: list[str] = []
         seen = {owner}
-        rest = [u for u in normalized if not (u in seen or seen.add(u))]
+        for uid in normalized:
+            if uid not in seen:
+                seen.add(uid)
+                rest.append(uid)
         entry["members"] = [owner, *rest]
         entry["owner"] = owner
         data[project_id] = entry

@@ -63,12 +63,13 @@ def derive_user_no(user_id: str) -> str:
 
     KAGWeb user_id 形如 ``u_<32hex>``（34 字符），远超 OpenSPG userNo 的 6-20
     字符/字母数字下划线上限（M0-10 实测）。故确定性缩短：``kagweb_``(7) +
-    sha256(user_id) 前 8 hex（8 位）＝ 15 字符，唯一且稳定。归因语义：给定
-    user_id 恒得同一 userNo（可正向追溯）；KAGWeb 侧以同一函数登记，审计时
+    sha256(user_id) 前 12 hex（48bit）＝ 19 字符，唯一且稳定（48bit 的碰撞
+    上界远高于现实用户数——评审 M-10：原 8 hex/32bit 约 6.5 万用户即撞 50%）。
+    归因语义：给定 user_id 恒得同一 userNo；KAGWeb 侧以同一函数登记，审计时
     能定位到归属用户。
     """
     user_id = str(user_id or "")
-    suffix = hashlib.sha256(user_id.encode("utf-8")).hexdigest()[:8]
+    suffix = hashlib.sha256(user_id.encode("utf-8")).hexdigest()[:12]
     user_no = f"{_USERNO_PREFIX}{suffix}"
     assert _OPENSPG_USERNO_RE.match(user_no), f"derived userNo invalid: {user_no}"
     return user_no

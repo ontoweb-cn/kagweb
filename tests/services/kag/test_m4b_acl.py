@@ -38,6 +38,22 @@ def test_derive_user_no_distinguishes_users() -> None:
     )
 
 
+def test_derive_user_no_collision_resistance_review_m10() -> None:
+    """评审 M-10：48bit 后缀对 100k 用户规模零碰撞（原 8 hex/32bit 约 6.5 万
+    用户 50% 碰撞）。"""
+    suffix = None
+    user_nos = set()
+    for i in range(100_000):
+        uid = f"u_{i:032x}"
+        now = access.derive_user_no(uid)
+        assert now not in user_nos
+        user_nos.add(now)
+        if suffix is None:
+            suffix = now.split("_", 1)[1]
+    assert suffix is not None
+    assert len(suffix) == 12  # kagweb_ + 12 hex = 19 字符
+
+
 # —— member_store ——
 
 def test_ensure_owner_then_members(tmp_path, monkeypatch) -> None:
@@ -91,3 +107,56 @@ def test_filter_projects_by_access(tmp_path, monkeypatch) -> None:
     # admin 见全部（含无成员项目的 p3）
     assert [p["projectId"] for p in access.filter_projects_by_access(
         admin, projects, kag_configured=True)] == ["p1", "p2", "p3"]
+
+
+def test_get_tasks_filters_by_membership(tmp_path, monkeypatch) -> None:
+    """评审 M-7：非 admin 的 /api/kag/tasks 只返回其可见项目的任务。"""
+    import kagweb.multi_user.paths as paths_mod
+    import kagweb.services.kag.task_store as store_mod
+
+    monkeypatch.setattr(paths_mod, "SYSTEM_ROOT", tmp_path)
+    monkeypatch.setattr(store_mod, "_store_path", lambda: tmp_path / "kag_tasks.json")
+    from kagweb.services.kag.task_store import append_task
+
+    ensure_project_owner("p1", "alice")
+    ensure_project_owner("p2", "bob")
+    append_task({"task_id": "a1", "project_id": "p1", "question": "in my project"})
+    append_task({"task_id": "b2", "project_id": "p2", "question": "not mine"})
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from kagweb.api.routers.kag import router
+
+    app = FastAPI()
+    app.include_router(router, prefix="/api/kag")
+    client = TestClient(app)
+
+    # alice（非 admin）：p1 成员 → 只见 a1
+    def fake_current():
+        return SimpleNamespace(user_id="alice", role="user", is_admin=False)
+
+    monkeypatch.setattr("kagweb.api.routers.kag._current_user", fake_current)
+    monkeypatch.setattr("kagweb.api.routers.kag.kag_enabled", lambda: True)
+    from kagweb.services.kag import openspg_client
+
+    def fake_client():
+        return openspg_client.OpenSPGClient("http://spg.test", transport=_mock_transport())
+
+    monkeypatch.setattr("kagweb.api.routers.kag._client", fake_client)
+    resp = client.get("/api/kag/tasks")
+    assert resp.status_code == 200
+    task_ids = [t["task_id"] for t in resp.json()["tasks"]]
+    assert task_ids == ["a1"]
+
+
+def _mock_transport():
+    import httpx
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        # list_projects 返回 p1/p2
+        return httpx.Response(200, json=[
+            {"projectId": "p1", "name": "a"},
+            {"projectId": "p2", "name": "b"},
+        ])
+
+    return httpx.MockTransport(handler)
