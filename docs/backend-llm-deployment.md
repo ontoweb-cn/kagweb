@@ -1,10 +1,10 @@
 # KAGWeb 后端 LLM 部署机制分析与改进建议
 
 > 适用版本：KAGWeb 0.2.2（`kagweb/__version__.py`）
-> 核对基准：**tag `v0.2.2`**（版本号提交 `aad0eb1`，2026-09-20 实测）
+> 核对基准：**tag `v0.2.2`**（2026-09-20 实测）。测量在版本号提交 `aad0eb1` 上完成，该提交到 tag 之间**只有文档改动、代码逐字节相同**，故以下数字与行号对 tag 同样成立。
 > 关联文档：[`backend-architecture.md`](./backend-architecture.md)、[`kag-integration-design.md`](./kag-integration-design.md)、[`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 
-> **⚠ 阅读须知（2026-09-20）**：本文是**评审历史文档**，§一~§五的正文成文于 `c3ffe57`（2026-09-10），其后 KAGWeb 已推进约 140 个提交，**多条结论已被落地改动推翻**。为免误导，凡已失效者均已在原位置加注；**当前状态的权威摘要见文末「§八 基准漂移总复核（2026-09-20，`aad0eb1`）」**——先读那一节再读正文。
+> **⚠ 阅读须知（2026-09-20）**：本文是**评审历史文档**，§一~§五的正文成文于 `c3ffe57`（2026-09-10），其后 KAGWeb 已推进 **150 个提交**（`c3ffe57..v0.2.2`），**多条结论已被落地改动推翻**。为免误导，凡已失效者均已在原位置加注；**当前状态的权威摘要见文末「§八 基准漂移总复核（2026-09-20，tag `v0.2.2`）」**——先读那一节再读正文。
 >
 > **文档结构**：§一~§四为**现状分析**（基于代码实测，`c3ffe57` 口径）；**§五为产品决策安排**（8 条方向性决策及其落地分析）；§六为优先级建议；§七为多用户身份映射；§八为最新基准的漂移复核。
 > **基准说明**：§一~§四成文于 `c3ffe57`；§五决策 6-8 与「基准漂移复核」小节则在远端领先 20+ 提交后重新实测，Intellect 部分另经跨仓库核对（见决策 8）。
@@ -1203,7 +1203,7 @@ grep -n "def resolve_embedding_runtime_config\|def resolve_videogen_runtime_conf
   kagweb/services/config/provider_runtime.py         # 无输出，但 SERVICE_NAMES 含二者
 ```
 
-### `aad0eb1`（v0.2.2）的替代核验命令
+### tag `v0.2.2` 的替代核验命令（实测于 `aad0eb1`）
 
 ```bash
 # 已移除子系统的零残留断言（全部应为 0）
@@ -1229,7 +1229,7 @@ grep -rl "openai_codex_provider" --include="*.py" kagweb/ | wc -l   # 0
 # 残留的 catalog profile 仍安全：owner-bound = 永不可授予
 grep -n "OWNER_BOUND_BINDINGS" -A 3 kagweb/multi_user/model_access.py
 
-# KAG 管理面（新增于 aad0eb1）
+# KAG 管理面（新增于 v0.2.2）
 ls kagweb/services/kag/ kagweb/api/routers/kag.py
 grep -n "include_router(kag" kagweb/api/main.py   # /api/kag 与 /api/kag/bridge
 ```
@@ -1491,13 +1491,13 @@ profile 的 `identity_mode` 字段决定用哪种。默认 `off`，即与升级�
 
 ---
 
-## 八、基准漂移总复核（2026-09-20，`aad0eb1` / v0.2.2）
+## 八、基准漂移总复核（2026-09-20，tag `v0.2.2` / 实测于 `aad0eb1`）
 
-**本节目的**：本文正文成文于 `c3ffe57`（2026-09-10），此后仓库推进至 `aad0eb1`（139 个提交）。为避免「按正文操作却对不上代码」，这里把**所有已失效的结论一次性列清**，并给出当前状态的权威断言。**本节优先级高于正文任何与之冲突的表述。**
+**本节目的**：本文正文成文于 `c3ffe57`（2026-09-10），此后仓库推进了 **150 个提交**（至 tag `v0.2.2`）。为避免「按正文操作却对不上代码」，这里把**所有已失效的结论一次性列清**，并给出当前状态的权威断言。**本节优先级高于正文任何与之冲突的表述。**
 
 ### 8.1 批次执行结果（§六优先级表的最终态）
 
-> **本节成文于 `3bf3464`，随后更新到 `aad0eb1` 基准**（2026-09-20）。两处变化：KAGWeb 新增 KAG 管理面（`services/kag/` + `/api/kag`）；`services/codex_auth/` 与 `openai_codex` provider **退役**（提交 `ff761c7`）。后者又关闭了本文的一项建议（§四 #10 的凭据打通）。
+> **本节成文并实测于 `aad0eb1`，即 tag `v0.2.2` 的代码**（2026-09-20）。相对前一版基准（`3bf3464`）的两处变化：KAGWeb 新增 KAG 管理面（`services/kag/` + `/api/kag`）；`services/codex_auth/` 与 `openai_codex` provider **退役**（提交 `ff761c7`）。后者又关闭了本文的一项建议（§四 #10 的凭据打通）。
 
 | 批次 | 内容 | 结果 |
 |---|---|---|
@@ -1536,7 +1536,7 @@ profile 的 `identity_mode` 字段决定用哪种。默认 `off`，即与升级�
 
 ### 8.3 复测确认仍成立的结论
 
-以下在 `aad0eb1` 逐条复测通过，可放心引用：
+以下在 tag `v0.2.2` 的代码（实测于 `aad0eb1`）逐条复测通过，可放心引用：
 
 - **主对话路径对 LLM 层零依赖**（`capability.py` 中 `get_llm_config` 零命中）。
 - **`AgentLoopRequest` 仍无 `tools` 字段**——且这是**终态**：KAGWeb 不再持有工具实现。
@@ -1549,7 +1549,7 @@ profile 的 `identity_mode` 字段决定用哪种。默认 `off`，即与升级�
 
 ### 8.4 规模变化（供交叉参考）
 
-| 项 | `c3ffe57` | `ef8bbf5` | `aad0eb1`（v0.2.2） |
+| 项 | `c3ffe57` | `ef8bbf5` | tag `v0.2.2` |
 |---|---:|---:|---:|
 | 后端 Python 文件 | 412 | 340 | **323** |
 | 后端 Python 行数 | 98,169 | 72,217 | **69,860** |
@@ -1560,4 +1560,4 @@ profile 的 `identity_mode` 字段决定用哪种。默认 `off`，即与升级�
 
 > 详细口径与复现命令见 [`backend-architecture.md`](./backend-architecture.md) 的「规模实测」与「验证」两节。注意 **`services/agent_loop/` 是唯一逆势增长的模块**（ACP 族、身份桥接、opencode 续接），这与决策 1「KAGWeb 作 agent backend 门面」的方向一致：**裁剪的是 KAGWeb 自己实现 agent 的部分，增厚的是对接 agent 的部分。**
 >
-> HTTP 端点在 `aad0eb1` 回升到 121（较 `ef8bbf5` 的 126 只差 5）：新增的 KAG 管理面（`/api/kag` 14 个端点）抵消了大部分此前的移除量。
+> HTTP 端点在 tag `v0.2.2` 回升到 121（较 `ef8bbf5` 的 126 只差 5）：新增的 KAG 管理面（`/api/kag` 14 个端点）抵消了大部分此前的移除量。

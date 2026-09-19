@@ -2,12 +2,12 @@
 
 > 适用版本：KAGWeb 0.2.2（`kagweb/__version__.py`）· Python 3.11+
 > 代码根目录：`kagweb/`；本文所有路径均相对仓库根目录。
-> 核对基准：**tag `v0.2.2`**（版本号提交 `aad0eb1`，2026-09-20 实测）。**正文所有数字与行号均在该提交重测**。
+> 核对基准：**tag `v0.2.2`**（2026-09-20 实测）。测量在版本号提交 `aad0eb1` 上完成；该提交到 tag 之间**只有文档改动、代码逐字节相同**（`git diff --stat aad0eb1 v0.2.2 -- kagweb/ kagweb_cli/ kag-bridge/ web/ pyproject.toml` 为空），故**正文所有数字与行号对 tag 同样成立**。
 > 历史基准：`c3ffe57`（2026-09-10 初版）、`ef8bbf5`（2026-09-11 批次四/五移除后）。修正记录表中标注「初版」的数字即来自 `c3ffe57`。
 > **批次四/五移除已全部落地**（IM 通道合伙人、人格、学习者+监护人、内置工具包、MCP 客户端栈），且初版列出的三项待修项——`ARCHITECTURE.md` 的 WS 路径、技能资产打包、幽灵空目录——**均已修复**，见 §9。本版另新增 KAG 管理面（`services/kag/` + `/api/kag`）。
 > 关联文档：[`backend-llm-deployment.md`](./backend-llm-deployment.md)（LLM 部署机制与 8 条产品决策）、[`kag-integration-design.md`](./kag-integration-design.md)、[`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 >
-> **注意**：本文正文描述的是**现状**（`aad0eb1`）。§2 末的历史偏差小节、§9 中标注为历史记录的条目保留的是 `c3ffe57`/`ef8bbf5` 基线的结论，现状以 [`../ARCHITECTURE.md`](../ARCHITECTURE.md) 为准。`backend-llm-deployment.md` §五的 8 条产品决策中，决策 3/4/6/7 已全部落地。
+> **注意**：本文正文描述的是**现状**（代码等于 `aad0eb1`，即 tag `v0.2.2` 的代码）。§2 末的历史偏差小节、§9 中标注为历史记录的条目保留的是 `c3ffe57`/`ef8bbf5` 基线的结论，现状以 [`../ARCHITECTURE.md`](../ARCHITECTURE.md) 为准。`backend-llm-deployment.md` §五的 8 条产品决策中，决策 3/4/6/7 已全部落地。
 
 ## 评审修正记录（2026-09-10，逐条对照代码核实）
 
@@ -339,7 +339,7 @@ KAGWeb 解析尾指令 → 运行指定 profile（其事件以 `progress` 形式
 
 ### 与上游的差异
 
-仓库 **140 个提交**中，前 5 个即完成了从 DeepMentor 1.6.4 的裁剪：`74fdb51` 导入基线 → `a233d63` 剥离 agent loop / 卫星 / 学习层 → `cd4b815` 端到端移除 RAG 知识库层 → `af10330` 全局重命名 → `ee28b03` 品牌重写。移除清单（`ARCHITECTURE.md:232`）涵盖 agent loop + capability graph、RAG/知识库、以及记忆/技能/cron/沙箱/subagent/课程/阅读/笔记等卫星子系统。后续批次又移除了合伙人+IM 通道、人格、学习者+监护人、内置工具包与 MCP 客户端栈；最近一轮（2026-09-19）退役了 codex 凭据链路并新增 KAG 管理面。
+仓库至今 **200 个提交**（截至版本号提交 `aad0eb1`；tag `v0.2.2` 在其后仅增加文档提交）。其中前 5 个即完成了从 DeepMentor 1.6.4 的裁剪：`74fdb51` 导入基线 → `a233d63` 剥离 agent loop / 卫星 / 学习层 → `cd4b815` 端到端移除 RAG 知识库层 → `af10330` 全局重命名 → `ee28b03` 品牌重写。移除清单（`ARCHITECTURE.md:232`）涵盖 agent loop + capability graph、RAG/知识库、以及记忆/技能/cron/沙箱/subagent/课程/阅读/笔记等卫星子系统。后续批次又移除了合伙人+IM 通道、人格、学习者+监护人、内置工具包与 MCP 客户端栈；最近一轮（2026-09-19）退役了 codex 凭据链路并新增 KAG 管理面。
 
 **修正说明**：上述「技能」应理解为**技能运行时**；技能资产（`SKILL.md`）此后也已删除（见上）。
 
