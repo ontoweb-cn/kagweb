@@ -1,19 +1,28 @@
 # -*- coding: utf-8 -*-
-"""KAG Bridge — MCP Server（M1 MVP）。
+"""KAG Bridge — MCP Server（M1 stdio + M3.1 streamable-http）。
 
-设计文档：docs/kag-integration-design.md §5.1 + 附录 A。
+设计文档：docs/kag-integration-design.md §5.1 + 附录 A（D1：双 transport）。
 单项目 MVP：Bridge 实例经 KAG_PROJECT_DIR 绑定一个 KAG 项目；显式传入
 不同 project_id 返回结构化错误（多项目路由 M2 提供）。
 
-内建的 M0 实测结论（results/m0_1，勿改）：
+transport 选择（KAG_BRIDGE_TRANSPORT）：
+  - stdio（缺省）：Claude Code / Codex 子进程接入；
+  - http：FastMCP streamable-http（缺省 127.0.0.1:8890/mcp），供 Intellect
+    等带原生 MCP 客户端的 HTTP agent loop 接入；Bearer 鉴权强制——
+    未配置 KAG_BRIDGE_API_KEY 时拒绝启动（内网监听 + key 双防线）。
+
+内建的 M0/M3.0 实测结论（勿改）：
   1. 配置唯一来源 = KAG_PROJECT_DIR/kag_config.yaml；禁止运行时执行
      KAG_PROJECT_CONF.host_addr = <env>（会丢 all_config 的 llm 键）；
   2. reporter 生命周期必须 try/finally 包 reporter.stop()（do_cycle_report
      吞 CancelledError，异常路径不 stop 会死锁 asyncio 清理并掩盖 traceback）；
-  3. OpenSPGReporter(host_addr=None) 纯内存零网络，add_report_line 无副作用。
+  3. OpenSPGReporter(host_addr=None) 纯内存零网络，add_report_line 无副作用；
+  4. kag_config.yaml 必须含自定义 think_pipeline: 顶层键（do_qa_pipeline 用
+     kb 派生列表覆盖顶层 retrievers，模板路径检索恒空——M3.0 根因①）。
 """
 
 import asyncio
+import hmac
 import json
 import os
 import sys
@@ -23,10 +32,32 @@ import urllib.request
 from pathlib import Path
 
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 KAG_PROJECT_DIR = os.environ.get("KAG_PROJECT_DIR", "").strip()
 
-mcp = FastMCP("kag-bridge")
+# Host 头放行表：FastMCP 对 loopback 绑定自动开启 DNS-rebinding 防护（默认仅
+# 127.0.0.1/localhost/[::1]），容器化调用方（Intellect 等）以
+# host.docker.internal 访问宿主 Bridge 会被 421 拒绝。KAG_BRIDGE_EXTRA_HOSTS
+# 逗号分隔追加（如内网域名），绑定地址本身始终放行。
+_extra_hosts = [h.strip() for h in os.environ.get("KAG_BRIDGE_EXTRA_HOSTS", "").split(",") if h.strip()]
+_bind_host = os.environ.get("KAG_BRIDGE_HTTP_HOST", "127.0.0.1").strip()
+_allowed_hosts = ["127.0.0.1:*", "localhost:*", "[::1]:*", "host.docker.internal:*", f"{_bind_host}:*"]
+_allowed_hosts += [h if ":*" in h else f"{h}:*" for h in _extra_hosts]
+
+mcp = FastMCP(
+    "kag-bridge",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=_allowed_hosts,
+        allowed_origins=[
+            "http://127.0.0.1:*",
+            "http://localhost:*",
+            "http://[::1]:*",
+            "http://host.docker.internal:*",
+        ],
+    ),
+)
 
 # —— KAG 延迟加载（MCP 服务可先起，首个工具调用时加载 KAG）——
 _KAG_READY = False
@@ -277,11 +308,84 @@ def _report_task(payload: dict) -> None:
         print(f"WARN: kag task report failed: {exc!r}", file=sys.stderr)
 
 
+class _BearerAuthMiddleware:
+    """纯 ASGI 中间件：http transport 全端点 Bearer 鉴权（/healthz 豁免）。
+
+    不用 Starlette BaseHTTPMiddleware——它对流式响应（streamable-http 的
+    POST 返回为 SSE/流式 JSON）有缓冲副作用；纯 ASGI 包装对任意响应安全。
+    hmac.compare_digest 防时序侧信道。
+    """
+
+    def __init__(self, app, api_key: str):
+        self.app = app
+        self.api_key = api_key
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and not scope.get("path", "").startswith("/healthz"):
+            auth = ""
+            for k, v in scope.get("headers", []):
+                if k.decode("latin-1").lower() == "authorization":
+                    auth = v.decode("latin-1")
+                    break
+            expected = f"Bearer {self.api_key}"
+            if not hmac.compare_digest(auth, expected):
+                body = json.dumps(
+                    {"error": "unauthorized", "hint": "Authorization: Bearer <KAG_BRIDGE_API_KEY>"},
+                    ensure_ascii=False,
+                ).encode()
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 401,
+                        "headers": [
+                            (b"content-type", b"application/json"),
+                            (b"www-authenticate", b"Bearer"),
+                        ],
+                    }
+                )
+                await send({"type": "http.response.body", "body": body})
+                return
+        await self.app(scope, receive, send)
+
+
+def _run_http() -> None:
+    """streamable-http transport（附录 A.2，D1）。"""
+    api_key = os.environ.get("KAG_BRIDGE_API_KEY", "").strip()
+    if not api_key:
+        raise SystemExit("KAG_BRIDGE_TRANSPORT=http 时必须设置 KAG_BRIDGE_API_KEY（拒绝无鉴权启动）")
+    host = os.environ.get("KAG_BRIDGE_HTTP_HOST", "127.0.0.1")
+    port = int(os.environ.get("KAG_BRIDGE_HTTP_PORT", "8890"))
+    mcp.settings.host = host
+    mcp.settings.port = port
+    mcp.settings.streamable_http_path = os.environ.get("KAG_BRIDGE_HTTP_PATH", "/mcp")
+    # 无状态单发工具服务（kag_solve 单问单答），不依赖服务端会话保持
+    mcp.settings.stateless_http = True
+
+    app = _BearerAuthMiddleware(mcp.streamable_http_app(), api_key)
+
+    async def _healthz(request):
+        from starlette.responses import JSONResponse
+
+        return JSONResponse({"status": "ok", "transport": "streamable-http"})
+
+    from starlette.routing import Route
+
+    app.app.routes.append(Route("/healthz", _healthz, methods=["GET"]))
+
+    import uvicorn
+
+    uvicorn.run(app, host=host, port=port, log_level="info")
+
+
 def main() -> None:
     if not KAG_PROJECT_DIR:
         # stderr，绝不能 print 到 stdout——stdio transport 下 stdout 是协议通道
         print("WARN: KAG_PROJECT_DIR 未设置，KAG 工具将在调用时报错", file=sys.stderr, flush=True)
-    mcp.run()  # stdio transport
+    transport = os.environ.get("KAG_BRIDGE_TRANSPORT", "stdio").strip().lower()
+    if transport == "http":
+        _run_http()
+    else:
+        mcp.run()  # stdio transport
 
 
 if __name__ == "__main__":
