@@ -528,3 +528,48 @@ async def test_backend_model_stale_pick_degrades_to_the_backend_default(
     final = await store.get_turn(turn["id"])
     assert final is not None and final["status"] == "completed", final
     assert backend.requests and backend.requests[0].model == ""
+
+
+async def test_regenerate_restores_a_backend_native_selection(
+    store, stub_workspace, monkeypatch
+) -> None:
+    """Regenerating a turn whose snapshot holds the backend-native form
+    (`{"backend_model": …}`) must re-apply that model — routing the dict
+    through the strict llm_selection validation used to fail the whole
+    regenerate."""
+    from kagweb.services.agent_loop.protocol import AgentLoopEvent
+
+    backend = _FakeAgentBackend(AgentLoopEvent("content", text="ok"))
+    backend.models = [{"id": "picked-model", "name": "picked-model"}]
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "fake", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(
+        "kagweb.services.model_selection.runtime.activate_llm_selection",
+        lambda selection: (
+            SimpleNamespace(model="agent-loop", context_window=None, max_tokens=None),
+            None,
+        ),
+    )
+    monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
+
+    runtime = TurnRuntimeManager(store=store)
+    session, turn = await runtime.start_turn(
+        {**_stub_payload("hi"), "backend_model": "picked-model"}
+    )
+    execution = runtime._executions.get(turn["id"])
+    await execution.task
+    assert backend.requests and backend.requests[0].model == "picked-model"
+
+    # The regenerate path re-reads the user message's request snapshot.
+    _session2, turn2 = await runtime.regenerate_last_turn(session["id"])
+    execution2 = runtime._executions.get(turn2["id"])
+    assert execution2 is not None and execution2.task is not None
+    await execution2.task
+    assert len(backend.requests) == 2
+    assert backend.requests[1].model == "picked-model"  # snapshot restored verbatim

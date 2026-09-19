@@ -465,11 +465,6 @@ class TurnRequestPreparer:
             or preferences.get("capability")
             or "chat"
         )
-        tools = list(
-            overrides.get("tools")
-            if overrides.get("tools") is not None
-            else preferences.get("tools") or []
-        )
         language = str(overrides.get("language") or preferences.get("language") or "en")
 
         config: dict[str, Any] = dict(overrides.get("config") or {})
@@ -478,12 +473,20 @@ class TurnRequestPreparer:
             if overrides.get("llm_selection") is not None
             else snapshot.get("llmSelection") or preferences.get("llm_selection")
         )
+        # The snapshot may hold the backend-native form (`{"backend_model":
+        # …}`) from a turn whose model was picked from the agent backend's own
+        # vocabulary. Split it out BEFORE it reaches ``start_turn``: as an
+        # ``llm_selection`` it would fail the strict TurnRequest validation
+        # and every regenerate of such a turn would error instead of re-running.
+        backend_model = ""
+        if isinstance(llm_selection, dict) and isinstance(llm_selection.get("backend_model"), str):
+            backend_model = llm_selection["backend_model"].strip()
+            llm_selection = None
 
         payload: dict[str, Any] = {
             "session_id": session_id,
             "capability": capability,
             "content": str(last_user.get("content", "") or ""),
-            "tools": tools,
             "language": language,
             "attachments": list(last_user.get("attachments") or []),
             "history_references": list(
@@ -500,4 +503,6 @@ class TurnRequestPreparer:
             payload["superseded_turn_id"] = previous_turn_id
         if llm_selection:
             payload["llm_selection"] = llm_selection
+        if backend_model:
+            payload["backend_model"] = backend_model
         return await self.start_turn(payload)
