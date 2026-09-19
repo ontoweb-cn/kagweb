@@ -2,6 +2,7 @@ import type { StartTurnCommand } from "@/contracts/generated/turn-protocol";
 import { buildStartTurn } from "@/contracts/parse/turn-command";
 import { ApiError } from "@/shared/api/errors";
 
+import { isBackendModelSelection } from "@/features/chat/model/protocol";
 import type {
   LegacySendMessageArguments,
   StartTurnInput,
@@ -76,7 +77,17 @@ export function buildStartTurnInput(input: StartTurnInput): StartTurnCommand {
     book_references: input.bookReferences ?? [],
     reading_references: input.readingReferences ?? [],
     memory_references: input.memoryReferences ?? [],
-    llm_selection: input.llmSelection ?? null,
+    // Mutually exclusive forms: a catalog pair rides llm_selection (grant
+    // validation, conversation pinning); a backend-native id rides
+    // backend_model verbatim and is validated by the agent backend itself.
+    llm_selection:
+      input.llmSelection && !isBackendModelSelection(input.llmSelection)
+        ? input.llmSelection
+        : null,
+    backend_model:
+      input.llmSelection && isBackendModelSelection(input.llmSelection)
+        ? input.llmSelection.backend_model
+        : null,
     workspace_mode: input.workspaceMode ?? null,
     mastery_path_id: input.masteryPathId ?? null,
     mastery_path_lease_managed: input.masteryPathLeaseManaged ?? false,

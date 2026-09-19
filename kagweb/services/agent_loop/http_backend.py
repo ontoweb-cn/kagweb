@@ -215,6 +215,7 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         timeout_seconds: float,
         transport: httpx.AsyncBaseTransport | None = None,
         model: str = "",
+        models: list[dict[str, str]] | None = None,
         identity_mode: str = "off",
         tenant_id: str = "",
     ) -> None:
@@ -251,6 +252,9 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         #: deployment that never sets a model sees the exact request it did
         #: before this field existed.
         self.model = str(model or "").strip()
+        #: The operator-curated per-turn model vocabulary ([{id, name}]) — the
+        #: composer's option source and the ``filter_turn_model`` whitelist.
+        self.models = list(models or [])
         # Test/embedding hook: injected httpx transport (never set by the
         # settings-driven factory).
         self._transport = transport
@@ -610,6 +614,7 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         timeout_seconds: float,
         transport: httpx.AsyncBaseTransport | None = None,
         model: str = "",
+        models: list[dict[str, str]] | None = None,
         identity_mode: str = "off",
         tenant_id: str = "",
     ) -> None:
@@ -622,6 +627,7 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             timeout_seconds=timeout_seconds,
             transport=transport,
             model=model,
+            models=models,
             identity_mode=identity_mode,
             tenant_id=tenant_id,
         )

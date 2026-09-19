@@ -486,3 +486,27 @@ def test_tenant_id_survives_normalization_verbatim() -> None:
     assert by_id["a"]["tenant_id"] == "ab" * 16
     assert by_id["b"]["tenant_id"] == "AB" * 16  # casing preserved
     assert by_id["c"]["tenant_id"] == ""  # absent = the service's own default
+
+
+def test_models_list_normalizes() -> None:
+    """The curated vocabulary survives normalization as [{id, name}] rows —
+    strings are accepted, empties and duplicates dropped, order kept."""
+    block = _normalize_agent_loop(
+        {
+            "profiles": [
+                {"id": "a", "preset": "claude-code"},
+                {
+                    "id": "b",
+                    "preset": "hermes",
+                    "models": ["qwen-max", {"id": "sonnet", "name": "Sonnet"}, "", "qwen-max"],
+                },
+            ],
+        }
+    )
+    by_id = {profile["id"]: profile for profile in block["profiles"]}
+
+    assert by_id["a"]["models"] == []
+    assert by_id["b"]["models"] == [
+        {"id": "qwen-max", "name": "qwen-max"},
+        {"id": "sonnet", "name": "Sonnet"},
+    ]

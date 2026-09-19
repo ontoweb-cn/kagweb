@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
+from kagweb.services.agent_loop.builtin import normalize_profile_models
 from kagweb.services.agent_loop.workdir import normalize_workdir_roots
 from kagweb.services.file_io import atomic_write_json as _atomic_write_json
 from kagweb.services.path_service import get_path_service
@@ -1452,6 +1453,12 @@ class RuntimeSettingsService:
             # setting). CLI profiles reference it as `{model}` in `args`; HTTP
             # profiles send it in the request body.
             "model": _string(raw.get("model")).strip(),
+            # The operator-curated per-turn model vocabulary, normalized to
+            # [{id, name}] rows (plain strings accepted). Feeds the composer's
+            # option list and — for the HTTP-turn presets, where consumption
+            # of the body's `model` key is unknowable from here — doubles as
+            # the operator's opt-in that the service honors it.
+            "models": normalize_profile_models(raw.get("models")),
             # The backend's real context window, used for history budgeting
             # instead of the 16K fallback that applies when no model name is
             # known. 0 = not configured (the window is guessed).

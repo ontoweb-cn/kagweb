@@ -23,6 +23,7 @@ class FakeAgent:
         self.session_id = "fake-session-1"
         self.reused_session = False
         self.permission_option_id = ""
+        self.applied_model = ""
         self.results: dict = {}
 
     # -- connection ---------------------------------------------------------
@@ -30,6 +31,34 @@ class FakeAgent:
     def on_connect(self, conn) -> None:
         # The SDK calls this synchronously with the AgentSideConnection.
         self.conn = conn
+
+    def _model_config_options(self, current: str = "") -> list:
+        # Reproduce Intellect's model selector (acp_adapter/server.py
+        # `_build_model_config_options`): a select config option whose id is
+        # "model", with a current value and flat options. Only advertised when
+        # the scenario names "models".
+        if "models" not in self.scenario:
+            return []
+        current = current or "deepseek:deepseek-flash"
+        return [
+            schema.SessionConfigOptionSelect(
+                type="select",
+                id="model",
+                name="Model",
+                description="The model used for this session.",
+                current_value=current,
+                options=[
+                    schema.SessionConfigSelectOption(
+                        value="deepseek:deepseek-flash", name="deepseek-flash"
+                    ),
+                    schema.SessionConfigSelectOption(
+                        value="deepseek:deepseek-v4-pro",
+                        name="deepseek-v4-pro",
+                        description="Bigger context",
+                    ),
+                ],
+            )
+        ]
 
     def _record(self) -> None:
         if not self.result_path:
@@ -42,6 +71,7 @@ class FakeAgent:
                     "scenario": self.scenario,
                     "elicitation_action": getattr(self, "elicitation_action", ""),
                     "elicitation_answer": getattr(self, "elicitation_answer", ""),
+                    "applied_model": self.applied_model,
                 },
                 fh,
             )
@@ -55,7 +85,9 @@ class FakeAgent:
         )
 
     async def new_session(self, *args, **kwargs):
-        return schema.NewSessionResponse(session_id=self.session_id)
+        return schema.NewSessionResponse(
+            session_id=self.session_id, config_options=self._model_config_options()
+        )
 
     async def load_session(self, *args, **kwargs):
         if "reject-load" in self.scenario:
@@ -64,7 +96,16 @@ class FakeAgent:
             # new_session instead of failing every later turn.
             raise ValueError("unknown session")
         self.reused_session = True
-        return schema.LoadSessionResponse(session_id=self.session_id)
+        return schema.LoadSessionResponse(
+            session_id=self.session_id, config_options=self._model_config_options()
+        )
+
+    async def set_config_option(self, config_id: str, session_id: str, value: str, **kwargs):
+        if str(config_id) == "model":
+            self.applied_model = str(value or "")
+        return schema.SetSessionConfigOptionResponse(
+            config_options=self._model_config_options(current=self.applied_model)
+        )
 
     async def prompt(self, session_id, prompt, **kwargs):
         import traceback

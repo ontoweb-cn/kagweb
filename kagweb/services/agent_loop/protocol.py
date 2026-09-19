@@ -145,6 +145,67 @@ class AgentLoopBackend(ABC):
         """Yield :class:`AgentLoopEvent` objects for one turn."""
         raise NotImplementedError
 
+    def filter_turn_model(self, value: str, session_id: str = "") -> str:
+        """Validate one user-picked model against this backend's vocabulary.
+
+        The per-turn override is a client-supplied protocol field, so it is
+        checked against what this profile actually offers — the curated
+        ``models`` list and the profile's configured ``model`` — before it
+        reaches the backend. An empty result means "backend default": a stale
+        selection (picked before the operator edited the list) degrades to the
+        same behaviour as no selection instead of feeding the backend a name
+        it cannot resolve. A profile with no vocabulary at all passes the
+        value through: the override then rides the exact path the configured
+        profile model always has. ``session_id`` lets session-scoped backends
+        (ACP) check against that session's advertised selector.
+        """
+        candidate = str(value or "").strip()
+        if not candidate:
+            return ""
+        allowed = {
+            str(row.get("id") or "").strip()
+            for row in (getattr(self, "models", None) or [])
+            if isinstance(row, dict)
+        }
+        allowed.discard("")
+        configured = str(getattr(self, "model", "") or "").strip()
+        if configured:
+            allowed.add(configured)
+        if not allowed:
+            return candidate
+        return candidate if candidate in allowed else ""
+
+    async def list_model_options(self, session_id: str = "") -> list[dict[str, Any]] | None:
+        """The model options this backend can currently offer, or ``None``.
+
+        ``[{id, name, description?, is_current}]`` — the composer's option
+        list. ``None`` means "nothing beyond the profile configuration"; the
+        caller falls back to the profile's curated list. The default knows
+        nothing beyond that list, which is the honest answer for the CLI and
+        HTTP-turn families.
+        """
+        rows = getattr(self, "models", None) or []
+        if not rows:
+            return None
+        configured = str(getattr(self, "model", "") or "").strip()
+        options: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for row in rows:
+            option_id = str(row.get("id") or "").strip()
+            if not option_id or option_id in seen:
+                continue
+            seen.add(option_id)
+            entry: dict[str, Any] = {
+                "id": option_id,
+                "name": str(row.get("name") or option_id),
+                "is_current": bool(configured and option_id == configured),
+            }
+            description = str(row.get("description") or "").strip()
+            if description:
+                entry["description"] = description
+            options.append(entry)
+        return options
+
     async def respond_approval(self, request_id: str, choice: str) -> None:
         """Deliver the user's decision for one pending ``approval_request``.
 

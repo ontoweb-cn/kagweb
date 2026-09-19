@@ -785,6 +785,18 @@
           "default": null,
           "title": "Auto Route"
         },
+        "backend_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backend Model"
+        },
         "book_references": {
           "items": {
             "$ref": "#/$defs/BookReference"

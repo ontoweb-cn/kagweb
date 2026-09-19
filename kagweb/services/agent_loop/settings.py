@@ -82,14 +82,29 @@ def profile_family(profile: dict[str, Any] | None) -> str:
 
 
 def profile_per_turn_model(profile: dict[str, Any] | None) -> bool:
-    """Whether the per-turn model selection reaches this profile's backend."""
+    """Whether the per-turn model selection reaches this profile's backend.
+
+    Preset truth first (``per_turn_model_apply``), then the HTTP-turn opt-in:
+    a plain HTTP service's consumption of the body's ``model`` key is not
+    knowable to KAGWeb, so the operator curating a profile ``models`` list IS
+    the claim that the service honors it (see ARCHITECTURE.md's capability
+    matrix — "unknown services claim nothing"). An empty list keeps the picker
+    hidden for those presets.
+    """
     if not profile:
         return False
-    from kagweb.services.agent_loop.builtin import per_turn_model_apply
+    from kagweb.services.agent_loop.builtin import per_turn_model_apply, preset_family
 
-    return per_turn_model_apply(
-        str(profile.get("preset") or ""), str(profile.get("transport") or "")
-    )
+    preset = str(profile.get("preset") or "")
+    transport = str(profile.get("transport") or "")
+    if per_turn_model_apply(preset, transport):
+        return True
+    if not [m for m in profile.get("models") or [] if str(m)]:
+        return False
+    # HTTP-turn only: for the CLI family the {model} substitution is already
+    # preset-claimed, and the runs channel is claimed by the self-hosted
+    # services — the opt-in exists for the services nobody verified.
+    return preset_family(preset, transport) == "http"
 
 
 def profile_llm_settings_apply(profile: dict[str, Any] | None) -> bool:

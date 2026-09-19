@@ -607,6 +607,39 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
+  readonly "/api/settings/agent-loop/models": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    /**
+     * Get Agent Loop Models
+     * @description Options for the composer's per-turn agent-loop model picker.
+     *
+     *     One source per backend family (see the composer model-selector design):
+     *
+     *     - ``acp``     — the agent's advertised selector (live session's handshake
+     *                     answer, else a TTL-cached probe child);
+     *     - ``catalog`` — the conversation LLM catalog, which is the intended model
+     *                     configuration only for the self-hosted Intellect HTTP
+     *                     services; the frontend fetches ``/llm-options`` itself so
+     *                     grant filtering and ``active`` semantics stay in one place;
+     *     - ``profile`` — the operator-curated ``models`` list (plus the profile's
+     *                     configured ``model``), the honest fallback for the CLI
+     *                     family and the opt-in for plain HTTP-turn services;
+     *     - ``none``    — the backend consumes no per-turn model (picker hidden).
+     */
+    readonly get: operations["get_agent_loop_models_api_settings_agent_loop_models_get"];
+    readonly put?: never;
+    readonly post?: never;
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
   readonly "/api/settings/agent-loop/test": {
     readonly parameters: {
       readonly query?: never;
@@ -1921,6 +1954,8 @@ export interface components {
        * @default
        */
       readonly model: string;
+      /** Models */
+      readonly models?: readonly unknown[];
       /**
        * Name
        * @default
@@ -2749,6 +2784,11 @@ export interface components {
        * @default null
        */
       readonly auto_route: boolean | null;
+      /**
+       * Backend Model
+       * @default null
+       */
+      readonly backend_model: string | null;
       /** Book References */
       readonly book_references?: readonly components["schemas"]["BookReference"][];
       /**
@@ -4530,6 +4570,41 @@ export interface operations {
           readonly "application/json": {
             readonly [key: string]: unknown;
           };
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly get_agent_loop_models_api_settings_agent_loop_models_get: {
+    readonly parameters: {
+      readonly query?: {
+        readonly session_id?: string;
+      };
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path?: never;
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
         };
       };
       /** @description Validation Error */

@@ -55,6 +55,11 @@ import { useMeasuredHeight } from '@/hooks/useMeasuredHeight'
 import { useSetupSync } from '@/hooks/useSetupSync'
 import { consumePendingPrompt } from '@/lib/pending-prompt'
 import { useLLMOptions } from '@/hooks/useLLMOptions'
+import { useAgentLoopModels } from '@/hooks/useAgentLoopModels'
+import type { ModelPickerOption } from '@/components/chat/home/ModelSelector'
+import { formatContextWindow } from '@/components/chat/home/ModelSelector'
+import { llmSelectionKey } from '@/lib/llm-options'
+import type { LLMOption } from '@/lib/llm-options'
 import { getChatCapability } from '@/features/capabilities/presentation'
 import { useCapabilityCatalog } from '@/features/capabilities/useCapabilityCatalog'
 import { browserStorage } from '@/shared/storage'
@@ -289,9 +294,68 @@ export default function ChatWorkspace() {
     refresh: refreshLLMOptions,
   } = useLLMOptions()
   // The per-turn model picker only makes sense when the configured backend
-  // actually consumes a model (one-shot CLI family) — the backend decides,
-  // via /api/auth/status's model_selector_enabled.
+  // actually consumes a model — the backend decides, via /api/auth/status's
+  // model_selector_enabled; the option LIST comes per backend family
+  // (ACP handshake / operator-curated list / conversation catalog).
   const auth = useAuthStatus()
+  const {
+    source: agentModelsSource,
+    options: agentModelOptions,
+    backendLabel: agentModelsBackendLabel,
+    loading: agentModelsLoading,
+    error: agentModelsError,
+    refresh: refreshAgentModels,
+  } = useAgentLoopModels(state.sessionId, auth.modelSelectorEnabled)
+  // The catalog only drives the picker for the family it configures
+  // (self-hosted Intellect HTTP): every other family gets the backend's own
+  // vocabulary and never the catalog-derived options.
+  const useCatalogPicker = agentModelsSource === 'catalog'
+
+  const catalogPickerOptions: ModelPickerOption[] = useMemo(
+    () =>
+      llmOptions.map((option: LLMOption) => ({
+        key: llmSelectionKey(option),
+        label: option.model || option.model_name,
+        detail: option.provider_label || option.provider || option.profile_name || 'LLM',
+        title: `${option.model_name} | ${option.profile_name}`,
+        trailing: formatContextWindow(option.context_window),
+        badge: option.is_active_default ? t('Default') : undefined,
+        provider: option.provider,
+      })),
+    [llmOptions, t],
+  )
+
+  const modelPickerOptions: ModelPickerOption[] = useMemo(() => {
+    if (useCatalogPicker) return catalogPickerOptions
+    return agentModelOptions.map(option => ({
+      key: `backend:${option.id}`,
+      label: option.name,
+      detail: option.description,
+      title: option.description || option.name,
+      badge: option.is_current ? t('Current') : undefined,
+    }))
+  }, [useCatalogPicker, catalogPickerOptions, agentModelOptions, t])
+
+  const modelSelectedKey = llmSelectionKey(state.llmSelection)
+
+  const handleSelectModel = useCallback(
+    (key: string) => {
+      if (!key) {
+        setLLMSelection(null)
+        return
+      }
+      if (useCatalogPicker) {
+        const option = llmOptions.find(item => llmSelectionKey(item) === key)
+        if (option) {
+          setLLMSelection({ profile_id: option.profile_id, model_id: option.model_id })
+        }
+        return
+      }
+      const id = key.startsWith('backend:') ? key.slice('backend:'.length) : key
+      if (id) setLLMSelection({ backend_model: id })
+    },
+    [useCatalogPicker, llmOptions, setLLMSelection],
+  )
   // The tool set is the active capability's allow-list. There is no user-level
   // tool toggle any more: the chat capability delegates each turn to an
   // external agent backend, which owns its own tools, so a KAGWeb-side switch
@@ -825,14 +889,17 @@ export default function ChatWorkspace() {
   }, [state.sessionId, sessionIdParam, setActiveSessionId])
 
   useEffect(() => {
-    if (state.llmSelection || !activeLLMDefault) return
+    // Only the catalog family has an "active default" to pin; backend
+    // vocabularies default to the backend's own model (empty selection).
+    if (state.llmSelection || !useCatalogPicker || !activeLLMDefault) return
     setLLMSelection(activeLLMDefault)
-  }, [activeLLMDefault, setLLMSelection, state.llmSelection])
+  }, [activeLLMDefault, useCatalogPicker, setLLMSelection, state.llmSelection])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     const refresh = () => {
       void refreshLLMOptions({ force: true, background: true })
+      void refreshAgentModels({ force: true, background: true })
     }
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') refresh()
@@ -845,7 +912,7 @@ export default function ChatWorkspace() {
       window.removeEventListener('pageshow', refresh)
       document.removeEventListener('visibilitychange', refreshWhenVisible)
     }
-  }, [refreshLLMOptions])
+  }, [refreshLLMOptions, refreshAgentModels])
 
   /* Composer setup requested by the URL that opened this page. Runs once:
      from here on the composer is the user's to change. */
@@ -1374,20 +1441,34 @@ export default function ChatWorkspace() {
             attachments={attachments}
             attachmentError={attachmentError}
             activeCap={activeCap}
-            llmOptions={llmOptions}
+            modelPickerOptions={modelPickerOptions}
+            modelSelectedKey={modelSelectedKey}
+            modelDefaultLabel={t('Backend default')}
+            modelDefaultDetail={
+              useCatalogPicker
+                ? t('Use the active default model from Settings')
+                : t('The backend runs its own configured model')
+            }
+            modelHelperText={
+              !useCatalogPicker && agentModelsBackendLabel
+                ? t('{{backend}} picks its own default', { backend: agentModelsBackendLabel })
+                : undefined
+            }
+            modelPickerLoading={useCatalogPicker ? llmOptionsLoading : agentModelsLoading}
+            modelPickerError={useCatalogPicker ? llmOptionsError : agentModelsError}
+            onSelectModel={handleSelectModel}
+            onRefreshModels={
+              useCatalogPicker
+                ? () => void refreshLLMOptions({ force: true })
+                : () => void refreshAgentModels({ force: true })
+            }
             modelSelectorEnabled={auth.modelSelectorEnabled}
-            activeLLMDefault={activeLLMDefault}
-            llmSelection={state.llmSelection}
-            llmOptionsLoading={llmOptionsLoading}
-            llmOptionsError={llmOptionsError}
-            onRefreshLLMOptions={() => void refreshLLMOptions({ force: true })}
             contextBudget={contextBudget}
             selectedHistorySessions={selectedHistorySessions}
             isStreaming={state.isStreaming}
             capabilities={visibleCapabilities}
             onSetCapMenuOpen={setCapMenuOpen}
             onSetSpaceMenuOpen={setSpaceMenuOpen}
-            onSelectLLM={setLLMSelection}
             onSelectHistoryPicker={handleSelectHistoryPicker}
             onSend={handleSend}
             awaitingUserReply={awaitingUserReply}

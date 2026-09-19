@@ -494,7 +494,11 @@ class TurnExecutor:
                         config=request_config,
                         attachments=persisted_attachment_records,
                         history_references=history_references,
-                        llm_selection=payload.get("llm_selection"),
+                        llm_selection=(
+                            {"backend_model": payload["backend_model"]}
+                            if payload.get("backend_model")
+                            else payload.get("llm_selection")
+                        ),
                     ),
                     **parent_kwargs,
                 )
@@ -525,6 +529,11 @@ class TurnExecutor:
                     "selection_tutor_context": selection_tutor_context or {},
                     "history_references": history_references,
                     "llm_selection": payload.get("llm_selection") or {},
+                    # Backend-native per-turn model (an entry of the agent
+                    # backend's own vocabulary). Mutually exclusive with the
+                    # catalog-shaped llm_selection above; the chat capability
+                    # prefers it when both ever appear.
+                    "backend_model": str(payload.get("backend_model") or ""),
                     "llm_model": str(getattr(llm_config, "model", "") or ""),
                     "llm_provider": str(getattr(llm_config, "provider_name", "") or ""),
                     "llm_reasoning_effort": str(getattr(llm_config, "reasoning_effort", "") or ""),

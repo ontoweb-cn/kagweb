@@ -33,11 +33,9 @@ import {
 import { useTranslation } from "react-i18next";
 
 import type { SelectedHistorySession } from "@/components/chat/HistorySessionPicker";
-import type { LLMSelection } from "@/features/chat/model/protocol";
-import type { LLMOption } from "@/lib/llm-options";
 import ChatSpaceMenu from "@/components/chat/space/ChatSpaceMenu";
 import ContextBudgetChip, { type ContextBudget } from "./ContextBudgetChip";
-import ModelSelector from "./ModelSelector";
+import ModelSelector, { type ModelPickerOption } from "./ModelSelector";
 
 type SpaceSelectionCounts = {
   attachments: number;
@@ -145,13 +143,15 @@ export default memo(function ChatComposer({
   attachments,
   attachmentError,
   activeCap,
-  llmOptions,
+  modelPickerOptions,
   modelSelectorEnabled = true,
-  activeLLMDefault,
-  llmSelection,
-  llmOptionsLoading,
-  llmOptionsError,
-  onRefreshLLMOptions,
+  modelSelectedKey,
+  modelPickerLoading,
+  modelPickerError,
+  modelDefaultLabel,
+  modelDefaultDetail,
+  modelHelperText,
+  onRefreshModels,
   contextBudget = null,
   selectedHistorySessions,
   isStreaming,
@@ -159,7 +159,7 @@ export default memo(function ChatComposer({
   capabilities,
   onSetCapMenuOpen,
   onSetSpaceMenuOpen,
-  onSelectLLM,
+  onSelectModel,
   onSelectHistoryPicker,
   onSend,
   onRemoveAttachment,
@@ -191,13 +191,16 @@ export default memo(function ChatComposer({
   attachments: PendingAttachment[];
   attachmentError: string | null;
   activeCap: CapabilityDef;
-  llmOptions: LLMOption[];
+  modelPickerOptions: ModelPickerOption[];
   modelSelectorEnabled?: boolean;
-  activeLLMDefault: LLMSelection | null;
-  llmSelection: LLMSelection | null;
-  llmOptionsLoading: boolean;
-  llmOptionsError: boolean;
-  onRefreshLLMOptions?: () => void;
+  /** The selected option's key; "" = the backend default row. */
+  modelSelectedKey: string;
+  modelPickerLoading: boolean;
+  modelPickerError: boolean;
+  modelDefaultLabel?: string;
+  modelDefaultDetail?: string;
+  modelHelperText?: string;
+  onRefreshModels?: () => void;
   /**
    * Context-window breakdown measured on the last turn that reported one.
    * Null until the first turn completes — the chip is skipped entirely
@@ -211,7 +214,8 @@ export default memo(function ChatComposer({
   capabilities: CapabilityDef[];
   onSetCapMenuOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   onSetSpaceMenuOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
-  onSelectLLM: (selection: LLMSelection | null) => void;
+  /** Receives the picked option key ("" = backend default). */
+  onSelectModel: (key: string) => void;
   onSelectHistoryPicker: () => void;
   onSend: (content: string) => void;
   onRemoveAttachment: (index: number) => void;
@@ -813,13 +817,16 @@ export default memo(function ChatComposer({
               <div className="ml-auto flex shrink-0 items-center gap-1.5">
                 {modelSelectorEnabled ? (
                   <ModelSelector
-                    options={llmOptions}
-                    activeDefault={activeLLMDefault}
-                    value={llmSelection}
-                    loading={llmOptionsLoading}
-                    error={llmOptionsError}
-                    onChange={onSelectLLM}
-                    onRefresh={onRefreshLLMOptions}
+                    options={modelPickerOptions}
+                    selectedKey={modelSelectedKey}
+                    loading={modelPickerLoading}
+                    error={modelPickerError}
+                    allowSystemDefault
+                    systemDefaultLabel={modelDefaultLabel}
+                    systemDefaultDetail={modelDefaultDetail}
+                    helperText={modelHelperText}
+                    onChange={onSelectModel}
+                    onRefresh={onRefreshModels}
                   />
                 ) : null}
                 {contextBudget ? (

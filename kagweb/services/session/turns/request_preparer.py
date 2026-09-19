@@ -147,8 +147,14 @@ class TurnRequestPreparer:
             "requested_capability": requested_capability,
             "config": validated_public_config,
         }
+        # A backend-native selection (``backend_model``) is mutually exclusive
+        # with a catalog-shaped one: it names an entry in the agent backend's
+        # own vocabulary (an ACP option id or an operator-curated model name)
+        # and is validated by the backend, not the conversation catalog — so a
+        # stored catalog pin must not resurrect underneath it.
+        backend_model = str(payload.get("backend_model") or "").strip() or None
         raw_llm_selection = payload.get("llm_selection")
-        if raw_llm_selection is None:
+        if raw_llm_selection is None and backend_model is None:
             raw_llm_selection = preferences.get("llm_selection")
         try:
             llm_selection = _llm_selection_dict(raw_llm_selection)
@@ -225,21 +231,26 @@ class TurnRequestPreparer:
                 llm_selection = apply_allowed_llm_selection(llm_selection) or {}
             except PermissionError as exc:
                 raise RuntimeError(str(exc)) from exc
-        elif not current_user.is_admin:
-            # No pinned selection: pin the first granted-and-available model.
-            # With no LLM grant (agent-backend deployment) this stays empty and
-            # the turn runs without a scoped model, which is correct — the chat
-            # capability never touches KAGWeb's own LLM layer.
-            assigned_llms = [
-                item
-                for item in redacted_model_access(current_user.id).get("llm", [])
-                if item.get("available")
-            ]
-            if assigned_llms:
-                llm_selection = {
-                    "profile_id": assigned_llms[0].get("profile_id"),
-                    "model_id": assigned_llms[0].get("model_id"),
-                }
+        elif backend_model is None and not current_user.is_admin:
+            # No pinned selection: pin the first granted-and-available model —
+            # but only where the conversation LLM layer actually applies to
+            # this backend (a self-hosted HTTP service that takes its model
+            # config through KAGWeb). For a CLI/ACP backend the catalog
+            # vocabulary is meaningless, and pinning one here used to hand the
+            # child a `--model=…` name it could not resolve.
+            from kagweb.services.agent_loop.settings import profile_llm_settings_apply
+
+            if profile_llm_settings_apply(primary_profile):
+                assigned_llms = [
+                    item
+                    for item in redacted_model_access(current_user.id).get("llm", [])
+                    if item.get("available")
+                ]
+                if assigned_llms:
+                    llm_selection = {
+                        "profile_id": assigned_llms[0].get("profile_id"),
+                        "model_id": assigned_llms[0].get("model_id"),
+                    }
         if llm_selection:
             from kagweb.multi_user.personal_models import merge_personal_llm_profiles
             from kagweb.services.config import get_model_catalog_service
@@ -259,7 +270,13 @@ class TurnRequestPreparer:
                 )
             except ValueError as exc:
                 raise RuntimeError(str(exc)) from exc
-        payload = {**payload, "llm_selection": llm_selection}
+        payload = {
+            **payload,
+            "llm_selection": llm_selection,
+            # Normalized; None when the turn carries no backend-native
+            # selection. Executor + snapshot read this key.
+            "backend_model": backend_model,
+        }
         lease = None
         if self.coordinator is not None:
             turn_id = f"turn_{int(time.time() * 1000)}_{uuid.uuid4().hex[:10]}"

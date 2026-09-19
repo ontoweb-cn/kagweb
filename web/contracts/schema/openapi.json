@@ -113,6 +113,11 @@
             "title": "Model",
             "type": "string"
           },
+          "models": {
+            "items": {},
+            "title": "Models",
+            "type": "array"
+          },
           "name": {
             "default": "",
             "title": "Name",
@@ -1784,6 +1789,18 @@
             ],
             "default": null,
             "title": "Auto Route"
+          },
+          "backend_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Backend Model"
           },
           "book_references": {
             "items": {
@@ -5213,6 +5230,80 @@
           }
         },
         "summary": "Link Agent Loop Identity",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/agent-loop/models": {
+      "get": {
+        "description": "Options for the composer's per-turn agent-loop model picker.\n\nOne source per backend family (see the composer model-selector design):\n\n- ``acp``     — the agent's advertised selector (live session's handshake\n                answer, else a TTL-cached probe child);\n- ``catalog`` — the conversation LLM catalog, which is the intended model\n                configuration only for the self-hosted Intellect HTTP\n                services; the frontend fetches ``/llm-options`` itself so\n                grant filtering and ``active`` semantics stay in one place;\n- ``profile`` — the operator-curated ``models`` list (plus the profile's\n                configured ``model``), the honest fallback for the CLI\n                family and the opt-in for plain HTTP-turn services;\n- ``none``    — the backend consumes no per-turn model (picker hidden).",
+        "operationId": "get_agent_loop_models_api_settings_agent_loop_models_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Agent Loop Models",
         "tags": [
           "settings"
         ]

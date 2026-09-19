@@ -454,7 +454,7 @@ def _per_turn_model_enabled() -> bool:
         )
         from kagweb.services.config.runtime_settings import get_runtime_settings_service
 
-        block = get_runtime_settings_service().load().get("agent_loop") or {}
+        block = get_runtime_settings_service().load_system().get("agent_loop") or {}
         resolved = resolve_primary_profile(block)
         # Per-profile, not per-preset: the community Intellect preset serves a
         # per-turn model only over its HTTP transport.

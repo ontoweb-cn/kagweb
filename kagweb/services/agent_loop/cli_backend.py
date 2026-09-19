@@ -528,6 +528,7 @@ class CliAgentLoopBackend(AgentLoopBackend):
         translator: Translator,
         text_output: bool = False,
         model: str = "",
+        models: list[dict[str, str]] | None = None,
     ) -> None:
         self.name = name
         self.command = command
@@ -543,6 +544,9 @@ class CliAgentLoopBackend(AgentLoopBackend):
         #: The operator's chosen model, substituted into `{model}` in
         #: ``extra_args``. Empty = leave the CLI on its own configured default.
         self.model = str(model or "").strip()
+        #: The operator-curated per-turn model vocabulary ([{id, name}]) — the
+        #: composer's option source and the ``filter_turn_model`` whitelist.
+        self.models = list(models or [])
 
     @staticmethod
     def _prompt_with_history(request: AgentLoopRequest) -> str:

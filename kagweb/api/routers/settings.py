@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 from kagweb.multi_user.context import get_current_user
 from kagweb.multi_user.model_access import allowed_llm_options
 from kagweb.multi_user.paths import get_admin_path_service
+from kagweb.services.agent_loop.builtin import normalize_profile_models
 from kagweb.services.agent_loop.workdir import (
     normalize_workdir_roots,
     resolve_allowed_workdir,
@@ -278,6 +279,11 @@ class AgentLoopProfileUpdate(BaseModel):
     #: CLI profiles reference it as ``{model}`` in ``args``; HTTP profiles send
     #: it in the request body.
     model: str = ""
+    #: Operator-curated per-turn model vocabulary (``[{id, name}]`` or plain
+    #: strings, normalized on save). Option source for the composer's model
+    #: picker; for the plain HTTP-turn presets a non-empty list also opts the
+    #: profile into per-turn model support.
+    models: List[Any] = Field(default_factory=list)
     #: The backend's real context window, used for history budgeting. 0 = not
     #: configured (the budget planner falls back to its model-name heuristics).
     context_window: int = Field(default=0, ge=0, le=AGENT_LOOP_CONTEXT_WINDOW_RANGE[1])
@@ -1173,6 +1179,7 @@ def _agent_loop_profile_block(
         "approval_timeout_seconds": profile.approval_timeout_seconds,
         "approval_default": profile.approval_default,
         "model": profile.model.strip(),
+        "models": normalize_profile_models(profile.models),
         "context_window": profile.context_window,
         "identity_mode": profile.identity_mode.strip(),
         "tenant_id": profile.tenant_id.strip(),
@@ -1929,6 +1936,107 @@ async def get_llm_options():
     if not get_current_user().is_admin:
         return allowed_llm_options()
     return list_llm_options(get_model_catalog_service().load())
+
+
+@router.get("/agent-loop/models")
+async def get_agent_loop_models(session_id: str = ""):
+    """Options for the composer's per-turn agent-loop model picker.
+
+    One source per backend family (see the composer model-selector design):
+
+    - ``acp``     — the agent's advertised selector (live session's handshake
+                    answer, else a TTL-cached probe child);
+    - ``catalog`` — the conversation LLM catalog, which is the intended model
+                    configuration only for the self-hosted Intellect HTTP
+                    services; the frontend fetches ``/llm-options`` itself so
+                    grant filtering and ``active`` semantics stay in one place;
+    - ``profile`` — the operator-curated ``models`` list (plus the profile's
+                    configured ``model``), the honest fallback for the CLI
+                    family and the opt-in for plain HTTP-turn services;
+    - ``none``    — the backend consumes no per-turn model (picker hidden).
+    """
+    from kagweb.services.agent_loop.builtin import (
+        is_intellect_preset,
+        normalize_profile_models,
+        preset_family,
+    )
+    from kagweb.services.agent_loop.settings import (
+        profile_per_turn_model,
+        resolve_primary_profile,
+    )
+
+    # Through the module accessor (not agent_loop.settings's own reader) so
+    # the same RuntimeSettingsService every other endpoint here uses is
+    # consulted — including the one tests install.
+    block = get_runtime_settings_service().load_system().get("agent_loop") or {}
+    profile = resolve_primary_profile(block)
+    if profile is None:
+        return {"per_turn_model": False, "source": "none", "backend_label": "", "options": []}
+    preset = str(profile.get("preset") or "")
+    transport = str(profile.get("transport") or "")
+    family = preset_family(preset, transport)
+    backend_label = str(profile.get("name") or preset)
+    if not profile_per_turn_model(profile):
+        return {
+            "per_turn_model": False,
+            "source": "none",
+            "backend_label": backend_label,
+            "options": [],
+        }
+
+    # 1) ACP: the agent's own selector is the truthful list.
+    if family == "cli" and transport == "acp":
+        options: list[dict[str, Any]] | None = None
+        try:
+            from kagweb.services.agent_loop import build_agent_loop_backend
+
+            backend = build_agent_loop_backend(profile)
+            if backend is not None:
+                options = await backend.list_model_options(session_id)
+        except Exception:  # noqa: BLE001 — listing degrades to the profile list
+            logger.debug("agent-loop models: ACP listing failed", exc_info=True)
+        if options:
+            return {
+                "per_turn_model": True,
+                "source": "acp",
+                "backend_label": backend_label,
+                "options": options,
+            }
+
+    # 2) Catalog: only the family the conversation LLM settings actually
+    # configure (self-hosted Intellect HTTP). Non-empty, or the profile list
+    # answers instead.
+    if is_intellect_preset(preset) and family == "http":
+        try:
+            if allowed_llm_options().get("options"):
+                return {
+                    "per_turn_model": True,
+                    "source": "catalog",
+                    "backend_label": backend_label,
+                    "options": [],
+                }
+        except Exception:  # noqa: BLE001 — a broken catalog degrades, never fails
+            logger.debug("agent-loop models: catalog listing failed", exc_info=True)
+
+    # 3) Profile vocabulary: curated list plus the configured model itself.
+    configured = str(profile.get("model") or "").strip()
+    options = []
+    for row in normalize_profile_models(profile.get("models")):
+        options.append(
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "is_current": bool(configured) and row["id"] == configured,
+            }
+        )
+    if configured and all(row["id"] != configured for row in options):
+        options.append({"id": configured, "name": configured, "is_current": True})
+    return {
+        "per_turn_model": True,
+        "source": "profile",
+        "backend_label": backend_label,
+        "options": options,
+    }
 
 
 @router.put("/catalog")

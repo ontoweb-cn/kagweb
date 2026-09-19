@@ -551,3 +551,198 @@ def test_the_profiles_turn_path_takes_the_presets_endpoint(client: TestClient) -
     )
     paths = sorted(p["turn_path"] for p in data["settings"]["profiles"])
     assert paths == ["/agent/turn", "/v1/runs"]
+
+
+# ---------------------------------------------------------------------------
+# GET /api/settings/agent-loop/models — the composer picker's option source
+# ---------------------------------------------------------------------------
+
+
+def test_models_endpoint_hides_the_picker_without_a_backend(client: TestClient) -> None:
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data == {
+        "per_turn_model": False,
+        "source": "none",
+        "backend_label": "",
+        "options": [],
+    }
+
+
+def test_models_endpoint_lists_profile_vocabulary_for_cli(
+    client: TestClient, settings_dir: Path
+) -> None:
+    _put(
+        client,
+        [
+            _profile(
+                id="cc",
+                name="Claude Code CLI",
+                preset="claude-code",
+                model="opus",
+                models=["sonnet", {"id": "ghost", "name": "Ghost"}],
+            )
+        ],
+        primary="cc",
+    )
+    data = client.get("/api/settings/agent-loop/models").json()
+
+    assert data["per_turn_model"] is True
+    assert data["source"] == "profile"
+    assert data["backend_label"] == "Claude Code CLI"
+    assert data["options"] == [
+        {"id": "sonnet", "name": "sonnet", "is_current": False},
+        {"id": "ghost", "name": "Ghost", "is_current": False},
+        {"id": "opus", "name": "opus", "is_current": True},
+    ]
+
+
+def test_models_endpoint_opts_http_turn_in_via_the_models_list(
+    client: TestClient, settings_dir: Path
+) -> None:
+    """A plain HTTP service: no list → picker hidden; a list → profile source."""
+    _put(
+        client, [_profile(id="h1", name="Hermes", preset="hermes", url="http://h:1")], primary="h1"
+    )
+    assert client.get("/api/settings/agent-loop/models").json()["per_turn_model"] is False
+
+    _put(
+        client,
+        [
+            _profile(
+                id="h2",
+                name="Hermes",
+                preset="hermes",
+                url="http://h:1",
+                models=["qwen-max"],
+            )
+        ],
+        primary="h2",
+    )
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["per_turn_model"] is True
+    assert data["source"] == "profile"
+    assert data["options"] == [{"id": "qwen-max", "name": "qwen-max", "is_current": False}]
+
+
+def test_models_endpoint_defers_to_the_catalog_for_intellect_http(
+    client: TestClient, settings_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The conversation catalog is the intended configuration for the
+    self-hosted Intellect HTTP services; when it has options the endpoint says
+    so and the frontend fetches /llm-options (grants stay in one place)."""
+    _put(
+        client,
+        [
+            _profile(
+                id="team",
+                name="Intellect Team",
+                preset="intellect-team",
+                url="http://r:1",
+                models=["fallback-model"],
+            )
+        ],
+        primary="team",
+    )
+    monkeypatch.setattr(
+        settings_router,
+        "allowed_llm_options",
+        lambda: {
+            "active": {"profile_id": "p", "model_id": "m"},
+            "options": [{"profile_id": "p", "model_id": "m"}],
+        },
+    )
+
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["per_turn_model"] is True
+    assert data["source"] == "catalog"
+    assert data["options"] == []
+
+    # An empty catalog falls back to the profile vocabulary.
+    monkeypatch.setattr(
+        settings_router, "allowed_llm_options", lambda: {"active": None, "options": []}
+    )
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["source"] == "profile"
+    assert data["options"] == [
+        {"id": "fallback-model", "name": "fallback-model", "is_current": False}
+    ]
+
+
+def test_models_endpoint_acp_reports_real_options_or_profile_fallback(
+    client: TestClient, settings_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ACP lists the agent's advertised selector when the probe succeeds and
+    falls back to the profile vocabulary when it does not."""
+    _put(
+        client,
+        [
+            _profile(
+                id="intellect",
+                name="Intellect 社区版",
+                preset="intellect",
+                transport="acp",
+                model="deepseek-flash",
+                models=["deepseek:deepseek-flash", "deepseek-flash"],
+            )
+        ],
+        primary="intellect",
+    )
+
+    class _FakeBackend:
+        def __init__(self, options) -> None:
+            self._options = options
+
+        async def list_model_options(self, session_id: str = ""):
+            return self._options
+
+    import kagweb.services.agent_loop as agent_loop_package
+
+    monkeypatch.setattr(
+        agent_loop_package,
+        "build_agent_loop_backend",
+        lambda profile: _FakeBackend(
+            [{"id": "deepseek:deepseek-flash", "name": "deepseek-flash", "is_current": True}]
+        ),
+    )
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["per_turn_model"] is True
+    assert data["source"] == "acp"
+    assert data["options"][0]["id"] == "deepseek:deepseek-flash"
+
+    # Probe failure (factory raises / backend None / listing error) → profile list.
+    monkeypatch.setattr(agent_loop_package, "build_agent_loop_backend", lambda profile: None)
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["source"] == "profile"
+    assert data["options"] == [
+        {"id": "deepseek:deepseek-flash", "name": "deepseek:deepseek-flash", "is_current": False},
+        {"id": "deepseek-flash", "name": "deepseek-flash", "is_current": True},
+    ]
+
+
+def test_models_endpoint_survives_a_broken_catalog(
+    client: TestClient, settings_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A catalog error must degrade to the profile list, never fail the fetch."""
+    _put(
+        client,
+        [
+            _profile(
+                id="team",
+                name="Intellect Team",
+                preset="intellect-team",
+                url="http://r:1",
+                models=["fallback-model"],
+            )
+        ],
+        primary="team",
+    )
+
+    def _boom():
+        raise RuntimeError("catalog unavailable")
+
+    monkeypatch.setattr(settings_router, "allowed_llm_options", _boom)
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["source"] == "profile"
+    assert data["options"] == [
+        {"id": "fallback-model", "name": "fallback-model", "is_current": False}
+    ]

@@ -95,7 +95,9 @@ POST {url}{turn_path}                      # default path /agent/turn
 Authorization: Bearer <api_key>            # when set
 {"session_id": "…", "language": "en",
  "prompt": "user turn text",
- "history": [{"role": "user"|"assistant", "content": "…"}, …]}
+ "history": [{"role": "user"|"assistant", "content": "…"}, …],
+ "model": "…"}                           # only when a model is configured or
+                                         # picked for the turn; omitted otherwise
 
 → 200: SSE (text/event-stream) or NDJSON, one JSON object per event:
   {"kind": "content"|"thinking"|"tool_call"|"tool_result"|"progress"|"usage"|"error",
@@ -318,13 +320,26 @@ concrete model name on `AgentLoopRequest.model`; family support varies:
 | --- | --- | --- |
 | CLI (one-shot) | ✅ | `{model}` substitution uses the turn override, else the profile's `model`, else the arg drops |
 | HTTP runs (`intellect-team` / `intellect` with the `http` transport) | ✅ | sent as `model` in the `POST /v1/runs` body, which both implementations read. The Python adapter validates it against its model catalog, so a name it does not know is rejected with `model_not_found` rather than ignored |
-| HTTP turn (`hermes` / `agentscope` / `custom-http`) | ⬜ body carries `model` | honored where the service reads it; unknown services claim nothing |
-| ACP | ❌ | no per-turn model field in the protocol; picker hidden |
+| HTTP turn (`hermes` / `agentscope` / `custom-http`) | ⬜ opt-in | the body carries `model`; a profile with a non-empty curated `models` list claims the service honors it |
+| ACP | ✅ | no per-request field — the model is a session config option (`id="model"`), advertised by the agent in the handshake and applied via `session/set_config_option` before the prompt; Intellect implements both sides |
 
-`AgentLoopPreset.per_turn_model` declares support; `/api/auth/status` exposes
-it as `model_selector_enabled` so the composer hides the picker when the
-configured backend cannot honor it. Precedence: **turn selection >
-profile `model` > backend default**.
+`AgentLoopPreset.per_turn_model` declares the preset truth;
+`profile_per_turn_model` derives the effective answer — for the HTTP-turn
+presets, a non-empty profile `models` list is the operator's opt-in that the
+service consumes the key ("unknown services claim nothing").
+`/api/auth/status` exposes it as `model_selector_enabled` so the composer
+hides the picker when the configured backend cannot honor it. Precedence:
+**turn selection > profile `model` > backend default**.
+
+The composer's option list is family-specific (`GET
+/api/settings/agent-loop/models`): the agent's advertised selector for ACP
+(the live session's answer, else a TTL-cached probe), the conversation LLM
+catalog for the self-hosted Intellect HTTP services (the one family the
+catalog actually configures), and the operator-curated profile `models` list
+for everything else. A backend-native pick travels as `TurnRequest.backend_model`
+and is validated against the backend's vocabulary (`AgentLoopBackend.filter_turn_model`);
+a stale pick degrades to the backend default, never to a name the backend cannot
+resolve.
 
 ## Consultation (multi agent-loop)
 

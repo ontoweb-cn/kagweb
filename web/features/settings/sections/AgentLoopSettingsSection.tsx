@@ -61,6 +61,8 @@ type StoredProfile = {
   workdir: string;
   /** The model this backend should run; "" = the backend's own default. */
   model: string;
+  /** Operator-curated per-turn model vocabulary (composer option source). */
+  models?: Array<{ id: string; name: string }>;
   /** The backend's real context window for history budgeting; 0 = unknown. */
   context_window: number;
   /**
@@ -121,6 +123,8 @@ type DraftProfile = StoredProfile & {
   envText: string;
   headersText: string;
   apiKey: string | null;
+  /** One curated model per line: `id` or `id | display name`. */
+  modelsText: string;
 };
 
 type Lang = "zh" | "en";
@@ -240,7 +244,28 @@ function toDraft(profile: StoredProfile): DraftProfile {
     envText: formatKeyValueLines(profile.env),
     headersText: formatKeyValueLines(profile.headers),
     apiKey: null,
+    modelsText: (profile.models || [])
+      .map((row) => (row.name && row.name !== row.id ? `${row.id} | ${row.name}` : row.id))
+      .join("\n"),
   };
+}
+
+/** Parse the curated-model textarea: one entry per line, `id` or
+ *  `id | display name`; empties and blank lines are dropped. */
+function parseModelLines(text: string): Array<{ id: string; name: string }> {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const sep = line.indexOf("|");
+      if (sep > 0) {
+        const id = line.slice(0, sep).trim();
+        const name = line.slice(sep + 1).trim();
+        if (id) return { id, name: name || id };
+      }
+      return { id: line, name: line };
+    });
 }
 
 function draftToRequest(draft: DraftProfile) {
@@ -262,6 +287,7 @@ function draftToRequest(draft: DraftProfile) {
     consult_enabled: draft.consult_enabled,
     workdir: draft.workdir,
     model: draft.model,
+    models: parseModelLines(draft.modelsText),
     context_window: draft.context_window,
     // Echoed so a save keeps whatever policy is stored. This form has no
     // approval controls, and the PUT replaces the whole profile list — sending
@@ -1018,6 +1044,24 @@ export default function AgentLoopSettingsPage() {
                                 />
                               }
                             />
+                            <div className="py-3">
+                              <div className="text-[13.5px] font-medium text-[var(--foreground)]">
+                                {t("Per-turn models")}
+                              </div>
+                              <p className="mb-2 mt-1 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
+                                {t(
+                                  "Optional. One per line, offered in the composer's model picker for individual turns — format: model, or model | label. The service must accept the body's model field; a non-empty list is what turns the picker on for this service.",
+                                )}
+                              </p>
+                              <textarea
+                                className={`${inputClass} min-h-20 resize-y font-mono text-[12.5px] leading-relaxed`}
+                                placeholder={"qwen-max\ndeepseek-chat | DeepSeek Chat"}
+                                value={draft.modelsText}
+                                onChange={(event) =>
+                                  update(draft.id, { modelsText: event.target.value })
+                                }
+                              />
+                            </div>
                             <SettingRow
                               title={t("Tenant id")}
                               description={t(
@@ -1110,6 +1154,24 @@ export default function AgentLoopSettingsPage() {
                                 />
                               }
                             />
+                            <div className="py-3">
+                              <div className="text-[13.5px] font-medium text-[var(--foreground)]">
+                                {t("Per-turn models")}
+                              </div>
+                              <p className="mb-2 mt-1 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
+                                {t(
+                                  "Optional. One per line, offered in the composer's model picker for individual turns — format: model, or model | label. Names must be ones the CLI itself accepts (it carries its own login); the profile's args must reference {model} for these to take effect.",
+                                )}
+                              </p>
+                              <textarea
+                                className={`${inputClass} min-h-20 resize-y font-mono text-[12.5px] leading-relaxed`}
+                                placeholder={"sonnet\nclaude-sonnet-4-5 | Claude Sonnet 4.5"}
+                                value={draft.modelsText}
+                                onChange={(event) =>
+                                  update(draft.id, { modelsText: event.target.value })
+                                }
+                              />
+                            </div>
                             <div className="py-3">
                               <div className="text-[13.5px] font-medium text-[var(--foreground)]">
                                 {t("Extra arguments")}

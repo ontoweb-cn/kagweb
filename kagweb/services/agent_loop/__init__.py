@@ -15,7 +15,7 @@ import logging
 
 from kagweb.services.i18n import t
 
-from .builtin import PRESETS, resolve_transport
+from .builtin import PRESETS, normalize_profile_models, resolve_transport
 from .cli_backend import TRANSLATORS, CliAgentLoopBackend, translate_generic
 from .http_backend import HttpAgentLoopBackend
 from .protocol import (
@@ -63,6 +63,9 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
     #: The operator's chosen model, if any. Empty means "use the backend's own
     #: default" and leaves every code path exactly as it was without this field.
     model = str(resolved.get("model") or "").strip()
+    #: The operator-curated per-turn model vocabulary ([{id, name}]). Normalized
+    #: here so the backends see one shape whatever the settings file carried.
+    models = normalize_profile_models(resolved.get("models"))
     if transport.family == "cli":
         command = str(resolved.get("command") or "").strip() or transport.command
         if not command:
@@ -81,6 +84,7 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
                 env=env,
                 timeout_seconds=timeout,
                 model=model,
+                models=models,
             )
         return CliAgentLoopBackend(
             name=name,
@@ -92,6 +96,7 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
             translator=TRANSLATORS.get(transport.translator, translate_generic),
             text_output=bool(resolved.get("text_output")),
             model=model,
+            models=models,
         )
 
     url = str(resolved.get("url") or "").strip()
@@ -123,6 +128,7 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
             headers=headers,
             timeout_seconds=timeout,
             model=model,
+            models=models,
             identity_mode=identity_mode,
             tenant_id=tenant_id,
         )
@@ -134,6 +140,7 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
         headers=headers,
         timeout_seconds=timeout,
         model=model,
+        models=models,
         identity_mode=identity_mode,
         tenant_id=tenant_id,
     )

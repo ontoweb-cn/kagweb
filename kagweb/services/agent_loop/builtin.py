@@ -28,6 +28,7 @@ than through the preset name alone.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -60,9 +61,13 @@ class AgentLoopTransport:
     # Optional preset-level reachability probe target (local health URL).
     probe_url: str = ""
     # Whether the user's per-turn model selection reaches this backend. True
-    # only for one-shot CLI presets ({model} substitution is local); ACP has
-    # no per-turn model field, and the HTTP presets stay False until their
-    # services consume the body's ``model`` key.
+    # for one-shot CLI presets ({model} substitution is local and verifiable),
+    # the self-hosted Intellect HTTP services (the runs body carries a
+    # validated ``model`` key), and the ACP transport (the model is a session
+    # config option applied via ``session/set_config_option`` before the
+    # prompt). Plain HTTP-turn presets stay False until their services consume
+    # the body's ``model`` key — an operator-curated per-profile ``models``
+    # list opts one in (see ``profile_per_turn_model``).
     per_turn_model: bool = False
 
 
@@ -88,9 +93,13 @@ class AgentLoopPreset:
     # Optional preset-level reachability probe target (local health URL).
     probe_url: str = ""
     # Whether the user's per-turn model selection reaches this backend. True
-    # only for one-shot CLI presets ({model} substitution is local); ACP has
-    # no per-turn model field, and the HTTP presets stay False until their
-    # services consume the body's ``model`` key.
+    # for one-shot CLI presets ({model} substitution is local and verifiable),
+    # the self-hosted Intellect HTTP services (the runs body carries a
+    # validated ``model`` key), and the ACP transport (the model is a session
+    # config option applied via ``session/set_config_option`` before the
+    # prompt). Plain HTTP-turn presets stay False until their services consume
+    # the body's ``model`` key — an operator-curated per-profile ``models``
+    # list opts one in (see ``profile_per_turn_model``).
     per_turn_model: bool = False
     # Several transports for one product; empty = the preset fields above
     # describe its only transport.
@@ -157,6 +166,11 @@ PRESETS: dict[str, AgentLoopPreset] = {
                     base_args=("acp",),
                     translator="",  # the ACP transport translates, not a line parser
                     cli_transport="acp",
+                    # The model is a session config option: the agent
+                    # advertises its model selector (id "model") in the
+                    # handshake, and the backend applies a per-turn selection
+                    # through session/set_config_option before the prompt.
+                    per_turn_model=True,
                 ),
                 AgentLoopTransport(
                     id="http",
@@ -232,6 +246,36 @@ PRESETS: dict[str, AgentLoopPreset] = {
 #: without another edit here (an enumerated set is what let `intellect-runs`
 #: be missed when it was added).
 _INTELLECT_PRESET_PREFIX = "intellect"
+
+#: Upper bound on the per-profile curated model list. A composer dropdown
+#: beyond this stops being a picker; anything longer is a catalog problem.
+MAX_PROFILE_MODELS = 32
+
+
+def normalize_profile_models(value: Any) -> list[dict[str, str]]:
+    """Normalize a profile's curated model rows to ``[{id, name}]``.
+
+    Accepts what hand-edited settings, the settings API and older files may
+    carry: plain strings, ``{"id": …, "name": …}`` rows (``model`` accepted as
+    an id alias). Empty and duplicate ids are dropped, order preserved.
+    """
+    rows: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for item in value if isinstance(value, list) else []:
+        raw_id = ""
+        raw_name = ""
+        if isinstance(item, dict):
+            raw_id = str(item.get("id") or item.get("model") or "").strip()
+            raw_name = str(item.get("name") or "").strip()
+        else:
+            raw_id = str(item or "").strip()
+        if not raw_id or raw_id in seen:
+            continue
+        seen.add(raw_id)
+        rows.append({"id": raw_id, "name": raw_name or raw_id})
+        if len(rows) >= MAX_PROFILE_MODELS:
+            break
+    return rows
 
 
 def _transport_from_preset(preset: AgentLoopPreset) -> AgentLoopTransport:
@@ -404,10 +448,12 @@ def llm_settings_apply(preset: str, transport: str = "") -> bool:
 __all__ = [
     "AgentLoopPreset",
     "AgentLoopTransport",
+    "MAX_PROFILE_MODELS",
     "PRESETS",
     "default_identity_mode",
     "is_intellect_preset",
     "llm_settings_apply",
+    "normalize_profile_models",
     "per_turn_model_apply",
     "preset_family",
     "preset_transports",

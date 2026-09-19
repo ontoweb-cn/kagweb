@@ -76,6 +76,12 @@ class TurnRequest(BaseModel):
     attachments: list[OutgoingAttachment] = Field(default_factory=list)
 
     llm_selection: LLMSelection | None = None
+    #: A backend-native per-turn model: an entry of the agent backend's own
+    #: vocabulary (an ACP option id, an operator-curated model name), sent
+    #: verbatim to the backend and validated there. Mutually exclusive with
+    #: ``llm_selection`` — the request preparer drops any stored catalog pin
+    #: when this is set. ``None``/"" = no backend-native override.
+    backend_model: str | None = None
     workspace_mode: str | None = None
     mastery_path_id: str | None = None
     mastery_path_lease_managed: bool = False

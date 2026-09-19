@@ -24,6 +24,7 @@ from typing import Any
 import pytest
 
 from kagweb.core.stream import StreamEvent, StreamEventType
+from kagweb.services.agent_loop.protocol import AgentLoopBackend
 from kagweb.services.llm.exceptions import LLMConfigError, NoModelConfiguredError
 from kagweb.services.session.sqlite_store import SQLiteSessionStore
 from kagweb.services.session.turn_runtime import TurnRuntimeManager
@@ -42,8 +43,11 @@ class _ScriptedEngine:
             yield event
 
 
-class _FakeAgentBackend:
-    """Minimal agent-loop backend for the full-pipeline delegation test."""
+class _FakeAgentBackend(AgentLoopBackend):
+    """Minimal agent-loop backend for the full-pipeline delegation test.
+
+    Subclasses the ABC (duck-typing would do) so its default
+    ``filter_turn_model`` participates, exactly as a real backend's would."""
 
     name = "fake"
 
@@ -436,3 +440,91 @@ async def test_clean_turn_has_no_incomplete_marker(store, stub_workspace, monkey
     done = [e for e in execution.events if e["type"] == "done"][-1]
     assert "incomplete" not in done["metadata"]
     assert "incomplete_reason" not in done["metadata"]
+
+
+async def test_backend_model_reaches_the_agent_request_and_snapshot(
+    store, stub_workspace, monkeypatch
+) -> None:
+    """The backend-native per-turn model: TurnRequest → payload → metadata →
+    ``AgentLoopRequest.model`` (validated by the backend), and the persisted
+    snapshot carries the ``{"backend_model": …}`` form so a reload restores it.
+
+    Regression guard for the auto-pin: a backend-native selection must not be
+    overwritten by (or trigger) the conversation-catalog pinning either.
+    """
+    from kagweb.services.agent_loop.protocol import AgentLoopEvent
+
+    backend = _FakeAgentBackend(AgentLoopEvent("content", text="ok"))
+    backend.models = [{"id": "picked-model", "name": "picked-model"}]
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "fake", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+
+    def _no_catalog_activation(selection):
+        # The executor calls the resolver unconditionally; with a
+        # backend-native selection the argument must be None.
+        assert selection is None, "a backend-model turn must not activate a catalog model"
+        return SimpleNamespace(model="agent-loop", context_window=None, max_tokens=None), None
+
+    monkeypatch.setattr(
+        "kagweb.services.model_selection.runtime.activate_llm_selection",
+        _no_catalog_activation,
+    )
+    monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
+
+    runtime = TurnRuntimeManager(store=store)
+    session, turn = await runtime.start_turn(
+        {**_stub_payload("hi"), "backend_model": "picked-model"}
+    )
+    execution = runtime._executions.get(turn["id"])
+    await execution.task
+
+    final = await store.get_turn(turn["id"])
+    assert final is not None and final["status"] == "completed", final
+    assert backend.requests and backend.requests[0].model == "picked-model"
+
+    messages = await store.get_messages(session["id"])
+    user = next(m for m in messages if m["role"] == "user")
+    snapshot = (user.get("metadata") or {}).get("request_snapshot") or {}
+    assert snapshot.get("llmSelection") == {"backend_model": "picked-model"}
+
+
+async def test_backend_model_stale_pick_degrades_to_the_backend_default(
+    store, stub_workspace, monkeypatch
+) -> None:
+    """A value outside the backend's vocabulary filters to "": the turn runs
+    on the backend default instead of feeding it a name it cannot resolve."""
+    from kagweb.services.agent_loop.protocol import AgentLoopEvent
+
+    backend = _FakeAgentBackend(AgentLoopEvent("content", text="ok"))
+    backend.models = [{"id": "picked-model", "name": "picked-model"}]
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.get_agent_loop_settings",
+        lambda: {"backend": "fake", "session_workspace": False},
+    )
+    monkeypatch.setattr(
+        "kagweb.capabilities.chat.capability.build_agent_loop_backend",
+        lambda settings: backend,
+    )
+    monkeypatch.setattr(
+        "kagweb.services.model_selection.runtime.activate_llm_selection",
+        lambda selection: (
+            SimpleNamespace(model="agent-loop", context_window=None, max_tokens=None),
+            None,
+        ),
+    )
+    monkeypatch.setattr("kagweb.services.llm.config.has_configured_llm", lambda: False)
+
+    runtime = TurnRuntimeManager(store=store)
+    session, turn = await runtime.start_turn({**_stub_payload("hi"), "backend_model": "stale-pick"})
+    execution = runtime._executions.get(turn["id"])
+    await execution.task
+
+    final = await store.get_turn(turn["id"])
+    assert final is not None and final["status"] == "completed", final
+    assert backend.requests and backend.requests[0].model == ""

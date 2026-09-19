@@ -21,7 +21,13 @@ export interface LLMOptionsResponse {
   options: LLMOption[];
 }
 
-export function llmSelectionKey(selection: LLMSelection | null | undefined) {
+export function llmSelectionKey(
+  selection: LLMSelection | { backend_model: string } | null | undefined,
+) {
+  if (!selection) return "";
+  if ("backend_model" in selection) {
+    return selection.backend_model ? `backend:${selection.backend_model}` : "";
+  }
   if (!selection?.profile_id || !selection.model_id) return "";
   return `${selection.profile_id}:${selection.model_id}`;
 }

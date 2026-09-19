@@ -233,6 +233,7 @@ class ChatCapability(TurnCapability):
             )
         request = _build_request(
             context,
+            backend=backend,
             session_workspace=bool(primary.get("session_workspace")),
             workdir=workdir,
             consult_manifest=(
@@ -695,6 +696,7 @@ async def _prepare_workdir(
 def _build_request(
     context: UnifiedContext,
     *,
+    backend: Any,
     session_workspace: bool,
     workdir: str = "",
     consult_manifest: str | None = None,
@@ -751,6 +753,19 @@ def _build_request(
             turn_model = resolve_agent_model_for_selection(selection)
         except Exception:
             turn_model = ""
+    # The backend-native selection (``backend_model``) takes precedence: it
+    # names an entry in the backend's own vocabulary verbatim (an ACP option
+    # id or an operator-curated model name), so it is validated by the backend
+    # rather than resolved through the conversation catalog. A stale pick —
+    # the operator edited the list meanwhile — filters to "" and degrades to
+    # the backend default, exactly like no selection.
+    backend_model = str(context.metadata.get("backend_model") or "").strip()
+    if backend_model:
+        filter_turn_model = getattr(backend, "filter_turn_model", None)
+        if callable(filter_turn_model):
+            turn_model = filter_turn_model(backend_model, context.session_id or "")
+        else:
+            turn_model = backend_model
     return AgentLoopRequest(
         prompt=prompt,
         history=history,

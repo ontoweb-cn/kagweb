@@ -55,10 +55,61 @@ logger = logging.getLogger(__name__)
 #: selection is applied as a session config option before the prompt.
 _MODEL_CONFIG_ID = "model"
 
+#: TTL for the probe-derived model-option cache, keyed by backend config.
+#: Listing models costs one throwaway child spawn (a full agent runtime),
+#: so the composer's repeated fetches must not each pay for one.
+_MODEL_OPTIONS_TTL_SECONDS = 60.0
+
+#: Successful probe results (including "agent advertises no model option")
+#: cached per backend config key as ``(expires_at, options_or_None)``. Failed
+#: probes are not cached — the next fetch retries.
+_MODEL_OPTIONS_CACHE: dict[str, tuple[float, list[dict[str, Any]] | None]] = {}
+
 #: Reap a child after this much idle time (no turn touched it). Lazy: the
 #: check runs whenever a handle is acquired, so no background task, no
 #: shutdown hook.
 REAP_AFTER_SECONDS = 600.0
+
+
+def _extract_model_options(response: Any) -> list[dict[str, Any]] | None:
+    """Pull the agent's model selector out of an ACP handshake response.
+
+    ``newSession`` / ``loadSession`` / ``set_config_option`` responses carry
+    ``config_options``; the model one is a select whose id is
+    ``_MODEL_CONFIG_ID`` (Intellect does not set the semantic ``category``,
+    so the id is the primary match). ``None`` = the agent advertised no model
+    option, which is a valid shape — the composer then falls back to the
+    profile's curated list.
+    """
+    config_options = getattr(response, "config_options", None)
+    if not isinstance(config_options, list):
+        return None
+    for option in config_options:
+        if str(getattr(option, "id", "") or "") != _MODEL_CONFIG_ID:
+            continue
+        if str(getattr(option, "type", "") or "") != "select":
+            return None
+        current_value = str(getattr(option, "current_value", "") or "")
+        rows: list[dict[str, Any]] = []
+        for entry in getattr(option, "options", None) or []:
+            # Options may arrive flat or grouped; flatten groups in order.
+            grouped = getattr(entry, "options", None)
+            for choice in grouped if isinstance(grouped, list) else [entry]:
+                value = str(getattr(choice, "value", "") or "").strip()
+                if not value:
+                    continue
+                row: dict[str, Any] = {
+                    "id": value,
+                    "name": str(getattr(choice, "name", "") or value),
+                    "is_current": bool(current_value) and value == current_value,
+                }
+                description = str(getattr(choice, "description", "") or "").strip()
+                if description:
+                    row["description"] = description
+                rows.append(row)
+        return rows
+    return None
+
 
 #: Upper bound on live ACP children per manager. Each child is a full agent
 #: runtime (hundreds of MB); without a cap the count tracks the number of
@@ -539,6 +590,11 @@ class AcpSessionHandle:
     cwd: str = ""
     init_response: Any = None
     last_used: float = field(default_factory=time.monotonic)
+    #: The model selector the agent advertised in the handshake (newSession /
+    #: loadSession / set_config_option responses), as plain
+    #: ``[{id, name, description?, current}]`` rows. ``None`` = the agent
+    #: advertised no model option; ``[]`` = advertised an empty one.
+    model_options: list[dict[str, Any]] | None = None
 
     def touch(self) -> None:
         self.last_used = time.monotonic()
@@ -738,19 +794,25 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         env: dict[str, str],
         timeout_seconds: float,
         model: str = "",
+        models: list[dict[str, str]] | None = None,
     ) -> None:
         self.name = name
         self.command = command
         self.base_args = list(base_args)
         self.env = {str(key): str(value) for key, value in (env or {}).items()}
         self.timeout_seconds = float(timeout_seconds) if timeout_seconds else 0.0
-        #: The profile's chosen model. The ACP surface has no argv placeholder
-        #: to substitute it into (the handshake negotiates the agent's session),
-        #: so it is recorded for diagnostics; a future ACP model-select request
-        #: would read it here. Per-turn overrides (``AgentLoopRequest.model``)
-        #: have no ACP transport either — ``per_turn_model`` presets never
-        #: include this family, so the picker stays hidden for ACP backends.
+        #: The profile's chosen model. There is no argv placeholder on the ACP
+        #: surface — the handshake negotiates the agent's session, and a
+        #: per-turn selection (``AgentLoopRequest.model``) is applied through
+        #: ``session/set_config_option`` before the prompt (see
+        #: :meth:`_apply_turn_model`); this value is the profile-level default
+        #: that applies when the user picked nothing.
         self.model = str(model or "").strip()
+        #: The operator-curated model vocabulary from the profile's ``models``
+        #: list (``[{id, name}]``). Feeds the composer's option list when the
+        #: agent's own advertised selector is unavailable, and the whitelist
+        #: that filters stale selections (``filter_turn_model``).
+        self.models = list(models or [])
         # Hash the config into the manager key: the operator env block may
         # carry credentials, and they must not sit in plaintext dict keys.
         import hashlib
@@ -832,7 +894,7 @@ class AcpAgentLoopBackend(AgentLoopBackend):
                 # KAGWeb restart: re-attach the recorded agent session so
                 # history and compression chains survive.
                 try:
-                    await connection.load_session(
+                    response = await connection.load_session(
                         cwd=handle.cwd or "", session_id=handle.acp_session_id
                     )
                 except Exception:  # noqa: BLE001 - stale id: start a fresh one
@@ -841,6 +903,10 @@ class AcpAgentLoopBackend(AgentLoopBackend):
             else:
                 response = await connection.new_session(cwd=handle.cwd or "")
                 handle.acp_session_id = str(response.session_id)
+            # The model selector (when the agent advertises one) rides the same
+            # response; recorded here so the composer and the turn-model filter
+            # can read it without another handshake.
+            handle.model_options = _extract_model_options(response)
             # Record it so the next process can re-attach too. Probe children
             # are throwaway readiness checks whose key dies with the request,
             # so recording them would only litter the store.
@@ -882,11 +948,17 @@ class AcpAgentLoopBackend(AgentLoopBackend):
         if connection is None:
             return
         try:
-            await connection.set_config_option(
+            result = await connection.set_config_option(
                 config_id=_MODEL_CONFIG_ID,
                 session_id=handle.acp_session_id,
                 value=model,
             )
+            # The response carries the refreshed selector (current value moved
+            # to the model just applied); keep the handle's copy in step so the
+            # composer shows the session's real state on the next fetch.
+            refreshed = _extract_model_options(result)
+            if refreshed is not None:
+                handle.model_options = refreshed
         except Exception:  # noqa: BLE001 - the agent's own default is a valid outcome
             logger.debug(
                 "agent-loop %s: could not select model %r; using the agent's default",
@@ -1037,6 +1109,68 @@ class AcpAgentLoopBackend(AgentLoopBackend):
             )
         await self._manager.discard(key)
         return True, detail
+
+    async def _probe_model_options(self) -> tuple[bool, list[dict[str, Any]] | None]:
+        """Spawn a throwaway child just to read the advertised model selector.
+
+        Mirrors :meth:`probe`'s bounded-spawn structure. ``(True, None)`` = the
+        handshake worked but the agent advertises no model option (a real
+        answer worth caching); ``(False, None)`` = the probe itself failed
+        (never cached — the next fetch retries).
+        """
+        key = f"probe-{time.monotonic_ns()}"
+        try:
+            handle = await asyncio.wait_for(
+                self._manager.ensure(key, ""), timeout=_PROBE_TIMEOUT_SECONDS
+            )
+        except Exception:  # noqa: BLE001 - listing must never fail a fetch
+            logger.debug("agent-loop %s: model-options probe failed", self.name, exc_info=True)
+            return False, None
+        try:
+            return True, handle.model_options
+        finally:
+            await self._manager.discard(key)
+
+    async def list_model_options(self, session_id: str = "") -> list[dict[str, Any]] | None:
+        """The agent's advertised model options, per the design's ACP source.
+
+        A live session's own handshake answer wins — its ``current_value`` is
+        that session's real model. Without one, a probe (TTL-cached per
+        backend configuration) fills the gap so the composer can list options
+        with no turn in flight.
+        """
+        handle = self._manager._handles.get(session_id or "default")
+        if handle is not None and handle.alive and handle.model_options is not None:
+            return handle.model_options
+        cached = _MODEL_OPTIONS_CACHE.get(self._config_key)
+        if cached is not None and cached[0] > time.monotonic():
+            return cached[1]
+        probed, options = await self._probe_model_options()
+        if probed:
+            _MODEL_OPTIONS_CACHE[self._config_key] = (
+                time.monotonic() + _MODEL_OPTIONS_TTL_SECONDS,
+                options,
+            )
+        return options
+
+    def filter_turn_model(self, value: str, session_id: str = "") -> str:
+        """ACP whitelist: the advertised selector when one is available.
+
+        Without an advertised selector (nothing probed, agent offers none)
+        the value passes through — ``set_config_option`` fail-softs on a name
+        the agent does not know, which is exactly the no-selector behaviour.
+        """
+        candidate = str(value or "").strip()
+        if not candidate:
+            return ""
+        handle = self._manager._handles.get(session_id or "default")
+        if handle is None or handle.model_options is None:
+            return candidate
+        allowed = {str(row.get("id") or "") for row in handle.model_options}
+        configured = self.model
+        if configured:
+            allowed.add(configured)
+        return candidate if candidate in allowed else ""
 
     async def respond_approval(self, request_id: str, choice: str) -> None:
         handle = self._manager._handles.get(self._current_key)

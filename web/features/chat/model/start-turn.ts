@@ -7,6 +7,7 @@ import type {
   ReadingViewport,
   TimedMediaViewport,
 } from "@/contracts/generated/turn-protocol";
+import type { TurnModelSelection } from "@/features/chat/model/protocol";
 
 export interface StartTurnInput {
   content: string;
@@ -21,7 +22,7 @@ export interface StartTurnInput {
   bookReferences?: BookReference[];
   readingReferences?: ReadingReference[];
   memoryReferences?: MemoryReferences;
-  llmSelection?: LLMSelection | null;
+  llmSelection?: TurnModelSelection | null;
   workspaceMode?: string | null;
   masteryPathId?: string | null;
   masteryPathLeaseManaged?: boolean;
