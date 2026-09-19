@@ -588,6 +588,22 @@ async def test_long_session_transcript_becomes_a_workspace_file(
     # data tree (and fail on CI, where that tree does not exist).
     path_service = PathService(workspace_root=tmp_path)
     monkeypatch.setattr("kagweb.services.path_service.get_path_service", lambda: path_service)
+    # The request preparer stamps the profile family from the REAL settings
+    # service; without a cli-family primary here the executor skips the whole
+    # workspace-materialization branch (and this test) — on CI there is no
+    # developer settings file to accidentally supply one.
+    import kagweb.services.agent_loop.settings as al_settings
+
+    monkeypatch.setattr(
+        al_settings,
+        "get_agent_loop_settings",
+        lambda: {
+            "profiles": [
+                {"id": "p", "preset": "claude-code", "enabled": True, "session_workspace": False}
+            ],
+            "primary": "p",
+        },
+    )
 
     backend = _FakeAgentBackend(AgentLoopEvent("content", text="ok"))
     monkeypatch.setattr(
