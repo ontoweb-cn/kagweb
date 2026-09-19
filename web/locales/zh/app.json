@@ -4903,5 +4903,13 @@
   "Pending": "排队中",
   "Unknown": "未知",
   "No task nodes reported": "暂无任务节点",
+  "Data import": "数据导入",
+  "Submit a KAG_COMMAND data import. This locally accepts the job; execution requires a remote executor, and data must be reachable from it (this panel does not upload files).": "提交一个 KAG_COMMAND 数据导入。本操作仅受理任务；执行需要远程 executor，数据须放在其可达位置（本面板不上传文件）。",
+  "Structured data (Git repo)": "结构化数据（Git 仓库）",
+  "Build entities from tabular data hosted in a repository.": "从仓库中的表格数据构建实体。",
+  "Documents (Git repo + entry script)": "文档（Git 仓库 + 入口脚本）",
+  "Ingest unstructured documents through an entry script.": "通过入口脚本接入非结构化文档。",
+  "Submit import": "提交导入",
+  "Replace the <…> placeholders in the command before submitting.": "请先替换命令中的模板占位符（<…>）再提交。",
   "Members: {{n}}": "成员：{{n}}"
 }

@@ -425,6 +425,16 @@ export function parseKagBuildDetail(raw: unknown): KagBuildDetail | null {
   };
 }
 
+// —— 构建命令占位符校验（阶段 B-1 评审 P2）——
+// 导入模板含 <data-repo-url>/<commit-id> 等占位符，未替换即提交会送出
+// 字面占位命令——提交前用该谓词拦截。占位符形如 <word>（内部无空白）；
+// shell 重定向 `cat < input.txt > output.txt` 因尖括号间含空白不命中。
+
+/** 命令中是否仍含未替换的模板占位符（<…>，内部无空白）。 */
+export function hasKagCommandPlaceholder(command: string): boolean {
+  return /<[^>\s]+>/.test(command);
+}
+
 // —— kag settings 域（GET/PUT /api/settings/kag；bridge_api_key write-only）——
 
 export interface KagSettings {

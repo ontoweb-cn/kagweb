@@ -159,14 +159,56 @@
    不受影响**、不 500（评审 P2-4）。
 4. 权限：非 admin 跨项目访问新端点返回 403。
 
-## 4. 阶段 B — 数据导入（应补齐，受理层先行，排期未定）
+## 4. 阶段 B — 数据导入（B-1 引导式 KAG_COMMAND 导入，受理层）
 
-- 现状：kagweb 无任何数据上传/导入入口。
-- 约束：实际导入执行依赖 builder 链 + executor（同 P0b），本阶段仅交付
-  「提交 + 状态跟踪」受理层，复用阶段 A 的可观测性基础设施，UI 标注
-  「执行依赖 executor 配置」。
-- **前置核实**：openspgapp 数据导入走 `/asyncSubmit`（非 `/public/v1/*`
-  公开路径），排期前先以 knext 客户端契约为权威确认 wire（合规要求）。
+状态：**已评审**（2026-09-19 范围决策：B-1；前置核实见下）。
+
+### B-0 前置核实（2026-09-19 完成）
+
+- openspgapp `DatasController` 为 `v1/datas` 内部路径——**无公开文件上传端点**。
+- knext 客户端 `BuilderClient.submit()` 是**未实现 stub**（`pass`）——"以 knext
+  为权威"的导入提交契约不存在；`write_graph` 是写图接口，非数据接入。
+- 数据接入公开契约仅两条路：**KAG_COMMAND**（`/public/v1/builder/kag/submit`，
+  阶段 A 已实现提交+可观测）与完整 `BuilderJob` submit（`/public/v1/builder/job/
+  submit`，需 pipeline+extension.extractConfig+fileUrl，重契约、无 knext 支撑）。
+- **结论**：本阶段做 B-1（引导式 KAG_COMMAND 导入受理层），不做 B-2 完整
+  BuilderJob（契约重、执行同样依赖 executor）；文件上传明确排除（无公开端点）。
+
+### B-1 任务拆解（前端为主，后端零改动）
+
+目标：项目详情页新增「数据导入」卡片——常见 KAG builder 命令模板预设 +
+自由编辑 + 提交（复用 `POST /projects/{id}/build`）+ 受理回显与任务列表入口
+（复用阶段 A 可观测）。UI 明确标注：受理层、执行依赖远程 executor、数据须
+放在 executor 可达位置（本面板不承载文件上传）。
+
+- [x] **B1.1 模板预设与命令生成**
+  `web/features/kag/`：定义导入模板常量（基于本 fork `kag builder` CLI 真实
+  语法，[KAG/kag/bin/commands/builder.py](../../../KAG/kag/bin/commands/builder.py)）：
+  - 结构化数据（Git 仓库）：`kag builder --project_id {projectId} --git_url
+    <data-repo-url> --commit_id <commit-id>`
+  - 非结构化文档（Git 仓库 + 入口脚本）：`kag builder --project_id {projectId}
+    --git_url <data-repo-url> --commit_id <commit-id> --entry_script <run-import.py>`
+  - 模板标注「示例，请按环境调整」；`{projectId}` 自动填充，`<...>` 占位待填。
+- [x] **B1.2 前端「数据导入」卡片 `KagImportPanel.tsx`**
+  `web/features/kag/components/KagImportPanel.tsx`：说明文案（受理层/无上传/
+  executor 依赖）+ 模板 chips（点击填入命令输入框）+ 可编辑命令输入 +
+  提交按钮（复用 `submitKagBuild`）+ 成功回显 taskId + 「在任务列表查看」；
+  与构建卡片语义区分（构建=任意命令，导入=引导模板），共享提交实现不重复。
+  `KagProjectDetailPage.tsx` 在 `<MemberBuildPanel/>` 后渲染。
+- [x] **B1.3 i18n**：新增导入相关 key（zh/en，约 6–8 个），沿用英文原文即键。
+- [x] **B1.4 前端测试与构建**：`web/tests/kag-model.test.ts` 无新解析（不新增
+  后端解析）；跑 `check:fast` + 完整 `npm run build`（项目惯例）。
+- [x] **B1.5 E2E 冒烟**：项目详情选模板 → 提交 → 任务页见 build 行 + 状态 badge。
+
+### B 验收
+
+1. 后端零改动 → 既有 1757 测试基线不受影响（实测 `tests/services/kag/` 全绿）。
+2. `check:fast` exit 0；前端 build exit 0（2026-09-19 实测）。
+3. E2E（2026-09-19 完成，浏览器实测）：选「结构化数据（Git 仓库）」模板 →
+   命令自动填充 `kag builder --project_id 3 --git_url <data-repo-url> --commit_id
+   <commit-id>` → 提交受理 → 任务页 build 行「失败」badge + 展开可观测
+   （复用 P0a，本实例 executor 缺失预期失败可见）。
+4. 权限：提交走既有 build 端点（same-origin + membership），无新攻击面。
 
 ## 5. 阶段 C — 后续增强（MVP 边界 / 产品决策项，不默认投入）
 

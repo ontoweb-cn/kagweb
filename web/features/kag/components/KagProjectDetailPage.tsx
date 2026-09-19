@@ -24,6 +24,7 @@ import {
 import { KagBackLink, KagPageBody, KagPageHeader, KagStateView } from "./KagPageFrame";
 import { GraphExplorerSection } from "./GraphExplorerSection";
 import { MemberBuildPanel } from "./MemberBuildPanel";
+import { KagImportPanel } from "./KagImportPanel";
 import { SchemaEditPanel } from "./SchemaEditPanel";
 
 /**
@@ -400,6 +401,8 @@ export default function KagProjectDetailPage({
       ) : null}
 
       <MemberBuildPanel projectId={projectId} />
+
+      <KagImportPanel projectId={projectId} />
 
       <section>
         <h2 className="mb-2 text-[15px] font-semibold tracking-tight text-[var(--foreground)]">

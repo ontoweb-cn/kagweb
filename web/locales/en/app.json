@@ -252,5 +252,13 @@
   "Pending": "Pending",
   "Unknown": "Unknown",
   "No task nodes reported": "No task nodes reported",
+  "Data import": "Data import",
+  "Submit a KAG_COMMAND data import. This locally accepts the job; execution requires a remote executor, and data must be reachable from it (this panel does not upload files).": "Submit a KAG_COMMAND data import. This locally accepts the job; execution requires a remote executor, and data must be reachable from it (this panel does not upload files).",
+  "Structured data (Git repo)": "Structured data (Git repo)",
+  "Build entities from tabular data hosted in a repository.": "Build entities from tabular data hosted in a repository.",
+  "Documents (Git repo + entry script)": "Documents (Git repo + entry script)",
+  "Ingest unstructured documents through an entry script.": "Ingest unstructured documents through an entry script.",
+  "Submit import": "Submit import",
+  "Replace the <…> placeholders in the command before submitting.": "Replace the <…> placeholders in the command before submitting.",
   "Members: {{n}}": "Members: {{n}}"
 }

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildSpgTypeTree,
+  hasKagCommandPlaceholder,
   kagDraftToRequest,
   kagSettingsToDraft,
   ownProperties,
@@ -271,6 +272,22 @@ test("parseKagBuildDetail maps nodes and truncates tolerant raw shapes", () => {
   const degraded = parseKagBuildDetail({ job: { id: 1 }, live_status: "success", nodes: "nope" });
   assert.ok(degraded);
   assert.deepEqual(degraded.nodes, []);
+});
+
+// —— 构建命令占位符校验（阶段 B-1 评审 P2）——
+
+test("hasKagCommandPlaceholder flags unfilled template placeholders", () => {
+  assert.equal(
+    hasKagCommandPlaceholder("kag builder --project_id 3 --git_url <data-repo-url> --commit_id <commit-id>"),
+    true,
+  );
+  assert.equal(
+    hasKagCommandPlaceholder("kag builder --project_id 3 --git_url https://repo --commit_id abc123"),
+    false,
+  );
+  // shell 重定向单字符 < / > 不误伤；空串/普通命令为 false
+  assert.equal(hasKagCommandPlaceholder("cat < input.txt > output.txt"), false);
+  assert.equal(hasKagCommandPlaceholder(""), false);
 });
 
 // —— kag settings 域（bridge_api_key write-only）——
