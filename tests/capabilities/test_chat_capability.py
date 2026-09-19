@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from types import SimpleNamespace
 from typing import Any
 
@@ -277,6 +278,107 @@ async def test_tool_results_emit_a_truncated_observation_excerpt(monkeypatch) ->
     assert observation.metadata["trace_group"] == "tool_call"
     assert observation.metadata["tool_name"] == "exec"
     assert observation.metadata["call_state"] == "complete"
+
+
+async def test_kag_solve_result_injects_trace_graph_metadata(monkeypatch) -> None:
+    """M3.2：kag_solve 的 JSON 结果在桥接层归一为活动面板契约——
+    tool_result 事件携带 tool_metadata.graph / sources / query，观察摘录用
+    answer 而非原始 JSON 文本。"""
+    bridge_result = json.dumps(
+        {
+            "answer": "张三任职于开元大学。",
+            "reference": [
+                {
+                    "id": "reference_ref_format",
+                    "type": "chunk",
+                    "info": [
+                        {
+                            "id": "chunk:0_1",
+                            "content": "开元大学简介……",
+                            "document_id": "doc1",
+                            "document_name": "开元大学简介",
+                            "url": None,
+                        }
+                    ],
+                }
+            ],
+            "subgraph": [
+                {
+                    "class_name": "graph_genIYb",
+                    "result_nodes": [
+                        {
+                            "id": '人物["张三"]',
+                            "label": "人物",
+                            "name": '"张三"',
+                            "properties": {"name": '"张三"', "id": "张三"},
+                        },
+                        {
+                            "id": '组织机构["开元大学"]',
+                            "label": "组织机构",
+                            "name": '"开元大学"',
+                            "properties": {"id": "开元大学"},
+                        },
+                    ],
+                    "result_edges": [
+                        {
+                            "id": "spo-1",
+                            "_from": '人物["张三"]',
+                            "from_type": "人物",
+                            "to": '组织机构["开元大学"]',
+                            "to_type": "组织机构",
+                            "label": "任职于",
+                            "properties": {},
+                        }
+                    ],
+                }
+            ],
+            "cost_ms": 4057,
+            "namespace": "m0ProbeLive",
+        },
+        ensure_ascii=False,
+    )
+    backend = _RecordingBackend(
+        [
+            AgentLoopEvent(
+                "tool_call",
+                # CLI 后端按 MCP 约定上报命名空间形式（live E2E 实测 claude-code
+                # 的真实形态），注入逻辑必须识别它而非只认裸名 kag_solve。
+                name="mcp__kag-bridge__kag_solve",
+                data={"args": {"question": "张三任职于哪个组织机构？"}, "id": "k1"},
+            ),
+            AgentLoopEvent(
+                "tool_result",
+                name="mcp__kag-bridge__kag_solve",
+                # claude-code 的 stream-json 会把 MCP 工具结果包一层
+                # {"result": "<原始文本>"}（live E2E 实测），注入逻辑需剥层。
+                text=json.dumps({"result": bridge_result}, ensure_ascii=False),
+                data={"id": "k1"},
+            ),
+        ]
+    )
+    _configure(monkeypatch, backend)
+    context = UnifiedContext(session_id="s", user_message="hi", language="en")
+    events = await _run_capability_events(context, StreamBus())
+
+    results = [event for event in events if event.type.value == "tool_result"]
+    assert len(results) == 1
+    meta = results[0].metadata
+    assert meta["query"] == "张三任职于哪个组织机构？"
+    assert meta["sources"] == [{"type": "chunk", "title": "开元大学简介"}]
+    tool_metadata = meta["tool_metadata"]
+    assert tool_metadata["provider"] == "kag"
+    graph = tool_metadata["graph"]
+    assert {n["id"] for n in graph["nodes"]} == {
+        '人物["张三"]',
+        '组织机构["开元大学"]',
+    }
+    assert graph["edges"][0]["source"] == '人物["张三"]'
+    assert graph["edges"][0]["target"] == '组织机构["开元大学"]'
+    assert graph["edges"][0]["description"] == "任职于"
+
+    observations = [event for event in events if event.type.value == "observation"]
+    assert len(observations) == 1
+    assert observations[0].content.startswith("张三任职于开元大学")
 
 
 async def test_a_result_id_that_names_no_call_pairs_with_the_minted_one(monkeypatch) -> None:

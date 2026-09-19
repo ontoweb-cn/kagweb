@@ -348,6 +348,73 @@ test('keeps trace provenance on retrieved files and graphs', () => {
   assert.ok(terms.includes('Meta-Ctrl.pdf'))
 })
 
+test('folds a kag_solve trace into the KAG provider row, graph, and sources', () => {
+  // M3.2：后端 _AgentLoopRoundBridge 注入的 kag_solve 轨迹元数据
+  // （tool_metadata.graph 归一自 Bridge 的 result_nodes/result_edges，
+  // sources 来自 RefDocSet，query 来自工具入参 question）。
+  const kagGraph = {
+    nodes: [
+      { id: '人物["张三"]', label: '张三', type: '人物', description: '', degree: 1 },
+      {
+        id: '组织机构["开元大学"]',
+        label: '开元大学',
+        type: '组织机构',
+        description: '开元大学简介 张三是开元大学的教授……',
+        degree: 1,
+      },
+    ],
+    edges: [
+      {
+        source: '人物["张三"]',
+        target: '组织机构["开元大学"]',
+        description: '任职于',
+        weight: 1,
+      },
+    ],
+  }
+  const activity = buildSessionActivity(
+    messages({
+      role: 'assistant',
+      events: [
+        event('tool_call', {
+          call_id: 'kag-1',
+          tool: 'kag_solve',
+          args: { question: '张三任职于哪个组织机构？' },
+        }),
+        event('tool_result', {
+          call_id: 'kag-1',
+          tool: 'kag_solve',
+          query: '张三任职于哪个组织机构？',
+          tool_metadata: { provider: 'kag', graph: kagGraph },
+          sources: [{ type: 'chunk', title: '开元大学简介' }],
+        }),
+      ],
+    })
+  )
+
+  const kagTool = activity.tools.find(tool => tool.name === 'kag_solve')
+  assert.ok(kagTool, 'kag_solve tool usage row exists')
+  assert.equal(kagTool.provider, 'kag')
+  assert.equal(kagTool.count, 1)
+
+  const graphs = collectSessionGraphs(activity)
+  assert.equal(graphs.length, 1)
+  assert.equal(graphs[0].provider, 'kag')
+  assert.equal(graphs[0].query, '张三任职于哪个组织机构？')
+  assert.equal(graphs[0].graph.nodes.length, 2)
+  assert.equal(graphs[0].graph.edges[0].description, '任职于')
+
+  const files = collectSessionSources(activity)
+  assert.equal(files.length, 1)
+  assert.equal(files[0].label, '开元大学简介')
+  assert.equal(files[0].query, '张三任职于哪个组织机构？')
+
+  // 图节点标签进入回溯锚点（answer 定位用）。
+  const terms = buildToolTraceTerms({ query: graphs[0].query, graph: kagGraph })
+  assert.ok(terms.includes('张三'))
+  assert.ok(terms.includes('开元大学'))
+})
+
 test('drops malformed or disconnected graph payloads', () => {
   const activity = buildSessionActivity(
     messages({

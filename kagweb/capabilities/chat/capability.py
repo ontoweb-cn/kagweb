@@ -58,6 +58,7 @@ from kagweb.services.agent_loop.settings import (
     resolve_primary_profile,
 )
 from kagweb.services.i18n import t
+from kagweb.services.kag.trace import kag_trace_metadata
 from kagweb.services.llm.usage_tracker import UsageTracker
 from kagweb.services.settings.interface_settings import get_response_language
 from kagweb.utils.text_display import first_line_label, untruncated_stem
@@ -820,6 +821,10 @@ class _AgentLoopRoundBridge:
         # (minted id, tool name) for calls the backend sent without an id.
         self._pending_ids: deque[tuple[str, str]] = deque()
         self._tool_names: dict[str, str] = {}
+        # Call args by id, kept only until the paired result consumes them:
+        # KAG 轨迹归一需要 kag_solve 的 question 作 query（fold 层读
+        # result 的 metadata.query），不进持久化事件。
+        self._tool_args: dict[str, dict[str, Any]] = {}
         # Monotonic start per open tool call, for the backend-authoritative
         # ``elapsed_ms`` the trace and DSL prefer over timestamp spans.
         self._tool_started: dict[str, float] = {}
@@ -998,6 +1003,8 @@ class _AgentLoopRoundBridge:
             call_id = new_call_id("chat-tool")
             self._pending_ids.append((call_id, name))
         self._tool_names[call_id] = name
+        if isinstance(args, dict) and args:
+            self._tool_args[call_id] = args
         self._tool_started[call_id] = time.monotonic()
         metadata = self._tool_trace(call_id, name, "tool_call", "running")
         if event.text:
@@ -1031,6 +1038,20 @@ class _AgentLoopRoundBridge:
         )
         if is_error is not None:
             metadata["is_error"] = bool(is_error)
+        # KAG 轨迹归一（M3.2）：kag_solve 的 JSON 结果 → 前端活动面板的
+        # graph/sources/query 元数据（services/kag/trace.py 完成形态转换；
+        # 兼容 CLI 后端的 ``mcp__<server>__kag_solve`` 命名空间前缀，非 KAG
+        # 工具或不可解析时零副作用）。
+        kag_meta = kag_trace_metadata(
+            name, self._tool_args.pop(call_id, None), event.text
+        )
+        if kag_meta:
+            if kag_meta.get("query"):
+                metadata["query"] = kag_meta["query"]
+            if kag_meta.get("sources"):
+                metadata["sources"] = kag_meta["sources"]
+            if kag_meta.get("tool_metadata"):
+                metadata["tool_metadata"] = kag_meta["tool_metadata"]
         started = self._tool_started.pop(call_id, None)
         if isinstance(started, float):
             # Backend-authoritative duration: the client's timestamp span is
@@ -1047,7 +1068,7 @@ class _AgentLoopRoundBridge:
         # event so the collapsed row can show it without expanding the result.
         # Mechanically derived and truncated — never an LLM-style summary, and
         # skipped entirely when the result is empty.
-        excerpt = event.text.strip()
+        excerpt = (kag_meta or {}).get("excerpt") or event.text.strip()
         if excerpt:
             if len(excerpt) > _OBSERVATION_EXCERPT_LIMIT:
                 excerpt = excerpt[:_OBSERVATION_EXCERPT_LIMIT].rstrip() + "…"
