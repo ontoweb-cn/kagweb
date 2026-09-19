@@ -259,6 +259,67 @@ export function parseRelations(raw: unknown): SpgRelationRow[] {
     .filter((rel) => rel.name !== "");
 }
 
+// —— 图浏览（M3.4：reason DSL rows → 节点/边，2 列 id 查询即边）——
+
+export interface GraphExplorerEdge {
+  source: string;
+  target: string;
+}
+
+export interface GraphExplorerData {
+  nodes: string[];
+  edges: GraphExplorerEdge[];
+}
+
+/** 2 列 id 的 rows → 去重节点 + 边（M3.3 实测：结果在 resultTableResult.rows）。 */
+export function rowsToGraph(rows: unknown, limit = 200): GraphExplorerData {
+  const nodes: string[] = [];
+  const seen = new Set<string>();
+  const edges: GraphExplorerEdge[] = [];
+  const edgeKeys = new Set<string>();
+  if (!Array.isArray(rows)) return { nodes, edges };
+  for (const row of rows.slice(0, limit)) {
+    if (!Array.isArray(row) || row.length < 2) continue;
+    const source = text(row[0]);
+    const target = text(row[1]);
+    if (!source || !target) continue;
+    for (const id of [source, target]) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        if (nodes.length < limit) nodes.push(id);
+      }
+    }
+    const key = `${source}\u0000${target}`;
+    if (!edgeKeys.has(key) && edges.length < limit) {
+      edgeKeys.add(key);
+      edges.push({ source, target });
+    }
+  }
+  return { nodes, edges };
+}
+
+/** 图浏览查询结果（GET 无 body，POST 返回结构）。 */
+export interface KagGraphQueryResult {
+  status: string;
+  header: string[];
+  rows: unknown[];
+  rowCount: number;
+  truncated: boolean;
+  error: string;
+}
+
+export function parseGraphQueryResult(raw: unknown): KagGraphQueryResult {
+  const payload = record(raw);
+  return {
+    status: text(payload.status) || "UNKNOWN",
+    header: Array.isArray(payload.header) ? payload.header.map((h) => text(h)) : [],
+    rows: Array.isArray(payload.rows) ? payload.rows : [],
+    rowCount: Number(payload.row_count ?? 0) || 0,
+    truncated: payload.truncated === true,
+    error: text(payload.error),
+  };
+}
+
 // —— 推理任务（GET /api/kag/tasks，A.3 契约）——
 
 export interface KagTaskRow {

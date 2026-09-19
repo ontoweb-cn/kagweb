@@ -165,3 +165,29 @@ class OpenSPGClient:
         return await self._request(
             "GET", "/public/v1/graph/allLabels", params={"projectId": int(project_id)}
         )
+
+    async def reason_run(
+        self,
+        project_id: str | int,
+        dsl: str,
+        params: dict[str, str] | None = None,
+        *,
+        timeout: float = 60.0,
+    ) -> dict[str, Any]:
+        """DSL 图查询（M3.4，经 reason/run——graph 控制器无子图查询端点）。
+
+        M3.0/M3.3 实测契约：节点类型须 namespace 全名、关系 label 裸名；
+        结果在 ``task.resultTableResult.rows``（``resultNodes``/``resultEdges``
+        恒空）；错误详情在 ``task.resultMessage``。同步执行，超时较长。
+        """
+        result = await self._request(
+            "POST",
+            "/public/v1/reason/run",
+            json_body={
+                "projectId": int(project_id),
+                "dsl": dsl,
+                "params": params or {},
+            },
+            timeout=timeout,
+        )
+        return result if isinstance(result, dict) else {}

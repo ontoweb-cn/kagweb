@@ -2684,6 +2684,28 @@
     ],
     "title": "KagSchemaEditRequest",
     "type": "object"
+   },
+   "KagGraphQueryRequest": {
+    "description": "Graph-browsing DSL query (M3.4, via /public/v1/reason/run): node types must use the namespace-qualified full name; relation labels are bare.",
+    "properties": {
+     "dsl": {
+      "title": "Dsl",
+      "type": "string"
+     },
+     "params": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "default": {},
+      "title": "Params",
+      "type": "object"
+     }
+    },
+    "required": [
+     "dsl"
+    ],
+    "title": "KagGraphQueryRequest",
+    "type": "object"
    }
   }
  },
@@ -11861,6 +11883,89 @@
      "kag"
     ],
     "description": "Submit a schema change (admin + same-origin). Deletion is not omission: removals keep the entry with an element-level DELETE operation; additions use the CREATE template. The server re-queries after the alter so a cached read cannot mask a failed change."
+   }
+  },
+  "/api/kag/projects/{project_id}/graph/query": {
+   "post": {
+    "operationId": "query_project_graph_api_kag_projects__project_id__graph_query_post",
+    "parameters": [
+     {
+      "in": "header",
+      "name": "Authorization",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Authorization"
+      }
+     },
+     {
+      "in": "cookie",
+      "name": "dt_token",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Dt Token"
+      }
+     },
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/KagGraphQueryRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Query Kag Project Graph",
+    "tags": [
+     "kag"
+    ],
+    "description": "Run a read-only reason DSL query for graph browsing; rows are capped at 200 with a truncated flag, and upstream errors come back as a structured error field."
    }
   }
  },

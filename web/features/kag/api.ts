@@ -8,12 +8,14 @@
 import { requestJson } from "@/shared/api/client";
 import {
   parseEmbeddingProfiles,
+  parseGraphQueryResult,
   parseKagProject,
   parseKagProjectDetail,
   parseKagProjects,
   parseKagTasks,
   parseSpgSchema,
   type KagEmbeddingProfile,
+  type KagGraphQueryResult,
   type KagProject,
   type KagProjectDetail,
   type KagTaskRow,
@@ -103,6 +105,23 @@ export async function alterKagProjectSchema(
       scope: "kag",
     },
   );
+}
+
+/** M3.4 图浏览：reason DSL 查询（rows ≤200，服务端裁剪）。 */
+export async function queryKagGraph(
+  projectId: string,
+  body: { dsl: string; params?: Record<string, string> },
+): Promise<KagGraphQueryResult> {
+  const payload = await requestJson<unknown>(
+    `/api/kag/projects/${encodeURIComponent(projectId)}/graph/query`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      scope: "kag",
+    },
+  );
+  return parseGraphQueryResult(payload);
 }
 
 export async function fetchKagTasks(

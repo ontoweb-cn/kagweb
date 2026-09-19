@@ -391,6 +391,26 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
+  readonly "/api/kag/projects/{project_id}/graph/query": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    readonly get?: never;
+    readonly put?: never;
+    /**
+     * Query Kag Project Graph
+     * @description Run a read-only reason DSL query for graph browsing; rows are capped at 200 with a truncated flag, and upstream errors come back as a structured error field.
+     */
+    readonly post: operations["query_project_graph_api_kag_projects__project_id__graph_query_post"];
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
   readonly "/api/kag/projects/{project_id}/schema": {
     readonly parameters: {
       readonly query?: never;
@@ -2567,6 +2587,21 @@ export interface components {
       };
     };
     /**
+     * KagGraphQueryRequest
+     * @description Graph-browsing DSL query (M3.4, via /public/v1/reason/run): node types must use the namespace-qualified full name; relation labels are bare.
+     */
+    readonly KagGraphQueryRequest: {
+      /** Dsl */
+      readonly dsl: string;
+      /**
+       * Params
+       * @default {}
+       */
+      readonly params: {
+        readonly [key: string]: string;
+      };
+    };
+    /**
      * KagProjectCreateRequest
      * @description Create-project request. embedding_model_id names an embedding profile in the model catalog (services.embedding.profiles); the server assembles the vectorizer and probes dimensions when vector_dimensions is omitted.
      */
@@ -3552,6 +3587,8 @@ export type SchemaHttpValidationError =
 export type SchemaImportedMessage = components["schemas"]["ImportedMessage"];
 export type SchemaImportedSession = components["schemas"]["ImportedSession"];
 export type SchemaInstallPayload = components["schemas"]["InstallPayload"];
+export type SchemaKagGraphQueryRequest =
+  components["schemas"]["KagGraphQueryRequest"];
 export type SchemaKagProjectCreateRequest =
   components["schemas"]["KagProjectCreateRequest"];
 export type SchemaKagSchemaEditRequest =
@@ -4421,6 +4458,45 @@ export interface operations {
       };
     };
     readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly query_project_graph_api_kag_projects__project_id__graph_query_post: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path: {
+        readonly project_id: string;
+      };
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody: {
+      readonly content: {
+        readonly "application/json": components["schemas"]["KagGraphQueryRequest"];
+      };
+    };
     readonly responses: {
       /** @description Successful Response */
       readonly 200: {

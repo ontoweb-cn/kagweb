@@ -215,5 +215,19 @@
   "Relation name and object type are required": "Relation name and object type are required",
   "The schema change was rejected": "The schema change was rejected",
   "Submitting…": "Submitting…",
-  "SPG type tree. Expand a business type to add or remove its relations; deletions submit explicitly and are applied server-side.": "SPG type tree. Expand a business type to add or remove its relations; deletions submit explicitly and are applied server-side."
+  "SPG type tree. Expand a business type to add or remove its relations; deletions submit explicitly and are applied server-side.": "SPG type tree. Expand a business type to add or remove its relations; deletions submit explicitly and are applied server-side.",
+  "Graph explorer": "Graph explorer",
+  "Run a read-only reason DSL query. Node types must use the namespace-qualified full name; relation labels are bare. Two-column id results render as a graph.": "Run a read-only reason DSL query. Node types must use the namespace-qualified full name; relation labels are bare. Two-column id results render as a graph.",
+  "Node template": "Node template",
+  "Relation template": "Relation template",
+  "Enter a DSL query first": "Enter a DSL query first",
+  "The graph query was rejected": "The graph query was rejected",
+  "Running…": "Running…",
+  "Run query": "Run query",
+  "Results were truncated to the first 200 rows": "Results were truncated to the first 200 rows",
+  "{{nodes}} nodes, {{edges}} edges": "{{nodes}} nodes, {{edges}} edges",
+  "Drag to pan, scroll to zoom": "Drag to pan, scroll to zoom",
+  "Too many nodes to render ({{count}}); refine the query": "Too many nodes to render ({{count}}); refine the query",
+  "{{count}} row(s) returned": "{{count}} row(s) returned",
+  "Graph canvas": "Graph canvas"
 }

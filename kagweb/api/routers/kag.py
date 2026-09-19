@@ -426,6 +426,51 @@ async def alter_project_schema(
     return {"result": result, "schema_after": after}
 
 
+class KagGraphQueryRequest(BaseModel):
+    """图浏览 DSL 查询（M3.4，经 /public/v1/reason/run）。
+
+    dsl 契约（M3.0/M3.3 实测）：节点类型须 namespace 全名（如
+    m0ProbeLive.Person），关系 label 裸名（如 workFor）；params 值须
+    字符串化列表。
+    """
+
+    dsl: str
+    params: dict[str, str] = {}
+
+
+_MAX_GRAPH_ROWS = 200
+
+
+@router.post("/projects/{project_id}/graph/query")
+async def query_project_graph(
+    project_id: str, payload: KagGraphQueryRequest
+) -> dict[str, Any]:
+    """图浏览 DSL 查询（read 权限；M3.4）——rows ≤200 裁剪 + 结构化错误。"""
+    _require_read()
+    dsl = str(payload.dsl or "").strip()
+    if not dsl:
+        raise HTTPException(status_code=400, detail="dsl is required")
+    try:
+        resp = await _client().reason_run(project_id, dsl, payload.params)
+    except OpenSPGError as exc:
+        raise _upstream_error(exc) from exc
+    task = resp.get("task") or {}
+    status = str(task.get("status") or "")
+    table = task.get("resultTableResult") or {}
+    rows = table.get("rows") or []
+    out: dict[str, Any] = {
+        "status": status or "UNKNOWN",
+        "header": list(table.get("header") or []),
+        "rows": rows[:_MAX_GRAPH_ROWS],
+        "row_count": int(table.get("total") or len(rows)),
+        "truncated": len(rows) > _MAX_GRAPH_ROWS,
+    }
+    if status != "FINISH":
+        detail = str(task.get("resultMessage") or f"task not finished: {status}")
+        out["error"] = detail[:600]
+    return out
+
+
 # ---------------------------------------------------------------------------
 # 推理任务（自有存储；Bridge 上报见 bridge_router）
 # ---------------------------------------------------------------------------

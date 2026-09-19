@@ -4133,7 +4133,6 @@
   "Verify the backend is running and NEXT_PUBLIC_API_BASE points to a reachable host. For Docker, see data/user/settings/system.json.": "请确认后端正在运行，且 NEXT_PUBLIC_API_BASE 指向可访问的主机。Docker 部署请参考 data/user/settings/system.json。",
   "Version checks are cached for 24 hours. KAGWeb never installs an update without confirmation.": "版本检查结果缓存 24 小时；未经确认，KAGWeb 绝不会自行安装更新。",
   "Version checks are disabled.": "版本检查已关闭。",
-  "Vertex labels present in the graph store. Browsing subgraphs is planned for a later milestone.": "图存储中现有的顶点标签。子图浏览将随后续里程碑提供。",
   "Video": "视频",
   "Video Generation": "文生视频",
   "Video Learning": "视频学习",
@@ -4866,5 +4865,19 @@
   "Relation name and object type are required": "关系名与目标类型为必填项",
   "The schema change was rejected": "Schema 变更被拒绝",
   "Submitting…": "提交中…",
-  "SPG type tree. Expand a business type to add or remove its relations; deletions submit explicitly and are applied server-side.": "SPG 类型树。展开业务类型可增删其关系；删除为显式提交、由服务端落库。"
+  "SPG type tree. Expand a business type to add or remove its relations; deletions submit explicitly and are applied server-side.": "SPG 类型树。展开业务类型可增删其关系；删除为显式提交、由服务端落库。",
+  "Graph explorer": "图浏览",
+  "Run a read-only reason DSL query. Node types must use the namespace-qualified full name; relation labels are bare. Two-column id results render as a graph.": "执行只读 reason DSL 查询。节点类型须用带 namespace 的全名，关系 label 用裸名；两列 id 的结果渲染为图。",
+  "Node template": "节点查询模板",
+  "Relation template": "关系查询模板",
+  "Enter a DSL query first": "请先输入 DSL 查询",
+  "The graph query was rejected": "图查询被拒绝",
+  "Running…": "查询中…",
+  "Run query": "执行查询",
+  "Results were truncated to the first 200 rows": "结果已截断为前 200 行",
+  "{{nodes}} nodes, {{edges}} edges": "{{nodes}} 个节点，{{edges}} 条边",
+  "Drag to pan, scroll to zoom": "拖拽平移，滚轮缩放",
+  "Too many nodes to render ({{count}}); refine the query": "节点过多（{{count}}），无法渲染——请缩小查询范围",
+  "{{count}} row(s) returned": "返回 {{count}} 行",
+  "Graph canvas": "图画布"
 }

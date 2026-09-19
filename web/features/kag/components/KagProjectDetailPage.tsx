@@ -22,6 +22,7 @@ import {
   type SpgTypeRow,
 } from "../model";
 import { KagBackLink, KagPageBody, KagPageHeader, KagStateView } from "./KagPageFrame";
+import { GraphExplorerSection } from "./GraphExplorerSection";
 import { SchemaEditPanel } from "./SchemaEditPanel";
 
 /**
@@ -391,6 +392,10 @@ export default function KagProjectDetailPage({
             ))}
           </div>
         </section>
+      ) : null}
+
+      {rows.length > 0 ? (
+        <GraphExplorerSection projectId={projectId} types={rows} />
       ) : null}
 
       <section>
