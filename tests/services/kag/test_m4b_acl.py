@@ -149,6 +149,40 @@ def test_get_tasks_filters_by_membership(tmp_path, monkeypatch) -> None:
     assert task_ids == ["a1"]
 
 
+def test_members_write_requires_admin_even_if_member(tmp_path, monkeypatch) -> None:
+    """评审（A）：前端 can_edit 只控 UX，后端 PUT /members 必须 admin——
+    owner（成员）也不能改，防横向越权改其他成员关系。"""
+    monkeypatch.setattr("kagweb.multi_user.paths.SYSTEM_ROOT", tmp_path)
+    ensure_project_owner("p1", "bob")
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from kagweb.api.routers.kag import router
+
+    app = FastAPI()
+    app.include_router(router, prefix="/api/kag")
+    client = TestClient(app)
+
+    def non_admin():
+        return SimpleNamespace(user_id="bob", role="user", is_admin=False)
+
+    monkeypatch.setattr("kagweb.api.routers.kag._current_user", non_admin)
+    monkeypatch.setattr("kagweb.api.routers.kag.kag_enabled", lambda: True)
+    from kagweb.services.kag import openspg_client
+
+    def fake_client():
+        return openspg_client.OpenSPGClient("http://spg.test", transport=_mock_transport())
+
+    monkeypatch.setattr("kagweb.api.routers.kag._client", fake_client)
+    # bob 是 owner（成员），但仍不可改成员
+    resp = client.put("/api/kag/projects/p1/members", json={"members": ["alice"]})
+    assert resp.status_code == 403
+    # 成员 GET 可读（owner/members 门禁通过），且 can_edit=false
+    resp = client.get("/api/kag/projects/p1/members")
+    assert resp.status_code == 200
+    assert resp.json()["can_edit"] is False
+
+
 def _mock_transport():
     import httpx
 

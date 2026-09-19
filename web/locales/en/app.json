@@ -237,12 +237,12 @@
   "Member user ids (comma-separated)": "Member user ids (comma-separated)",
   "Save members": "Save members",
   "Saving…": "Saving…",
-  "Members: {{count}}": "Members: {{count}}",
   "The project members could not be loaded": "The project members could not be loaded",
   "The member update was rejected": "The member update was rejected",
   "Build pipeline": "Build pipeline",
   "Submit a KAG_COMMAND build. This locally accepts the job; the remote executor must be configured for it to actually run.": "Submit a KAG_COMMAND build. This locally accepts the job; the remote executor must be configured for it to actually run.",
   "Enter a build command first": "Enter a build command first",
   "Submit build": "Submit build",
-  "The build submission was rejected": "The build submission was rejected"
+  "The build submission was rejected": "The build submission was rejected",
+  "Members: {{n}}": "Members: {{n}}"
 }

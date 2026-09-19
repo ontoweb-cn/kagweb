@@ -4886,12 +4886,12 @@
   "OpenSPG userNo": "OpenSPG 归因 userNo",
   "Member user ids (comma-separated)": "成员用户 ID（逗号分隔）",
   "Save members": "保存成员",
-  "Members: {{count}}": "成员：{{count}}",
   "The project members could not be loaded": "无法加载项目成员",
   "The member update was rejected": "成员更新被拒绝",
   "Build pipeline": "构建流水线",
   "Submit a KAG_COMMAND build. This locally accepts the job; the remote executor must be configured for it to actually run.": "提交一个 KAG_COMMAND 构建。本操作仅受理任务；远程 executor 需配置后才能真正执行。",
   "Enter a build command first": "请先输入构建命令",
   "Submit build": "提交构建",
-  "The build submission was rejected": "构建提交被拒绝"
+  "The build submission was rejected": "构建提交被拒绝",
+  "Members: {{n}}": "成员：{{n}}"
 }

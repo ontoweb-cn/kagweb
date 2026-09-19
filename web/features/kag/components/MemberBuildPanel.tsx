@@ -153,7 +153,11 @@ export function MemberBuildPanel({ projectId }: { projectId: string }) {
               </div>
             ) : (
               <p className="mt-3 text-[11px] text-[var(--muted-foreground)]">
-                {t("Members: {{count}}", { count: members.members.length })}
+                {t("Members: {{n}}", {
+                  // 评审：不用 ``count`` 变量（它触发 i18next 复数 key 查找，
+                  // 缺 *_other 后缀）——改用非保留变量 ``n`` 纯计数插值。
+                  n: members.members.length,
+                })}
               </p>
             )}
           </>
