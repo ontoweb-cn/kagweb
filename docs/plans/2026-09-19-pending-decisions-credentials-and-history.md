@@ -82,5 +82,13 @@ fixture)全部复用附件的既有机制。
 
 | 项 | 状态 | 复评条件 |
 | --- | --- | --- |
-| 凭据打通定位 | **待拍板**(建议 A/B) | 用户选定后:选 A → 出退役清理实施方案;选 C → 先做 1.3 的三项验证 |
-| history 文件化 | **已被吸收**(2026-09-19):升格为 agent-loop 历史改进方案的 L0 层,触发条件放宽——见 `docs/plans/2026-09-19-agent-loop-history-design.md` §6 | 方案评审通过后随 M3 实施 |
+| 凭据打通定位 | **待拍板**(建议 A/B,2026-09-19 复核理由增强:opencode 已示范"操作员把 key 配进 agent 自身配置"的生态常态) | 用户选定后:选 A → 出退役清理实施方案(§1.4 清理面);选 C → 先做 1.3 的三项验证 |
+| history 文件化 | **已实施**(2026-09-19 随历史方案 M3,提交 e820e72):当前会话转录 → 工作区 `session-transcript.md` + manifest path 行,真机验证 4999 字符落盘。**残余**:被引用会话(references)的转录仍只以 2k 预览内联(§2.4),文件化机制现成,待真实痛点触发 | 引用大会话出现可读性/上下文挤压问题 |
+
+### 2.4 残余(2026-09-19 实施后盘点)
+
+M3 的 L0 覆盖了**当前会话**的转录;backlog 原始条目所指的**被引用会话**
+(`history_references`,composer 的历史选择器)仍是旧机制:整段序列化文本进
+`SourceEntry.full_text`,manifest 只渲染 2k 预览(`MANIFEST_PREVIEW_CHARS_FRESH`),
+无 path 行——模型实际只能看到预览。若要补齐:materialize 回调已 threaded 进
+`_add_historical`,对 history 条目按同样阈值落盘即可(半天级,机制零新增)。
