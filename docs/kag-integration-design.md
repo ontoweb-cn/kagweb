@@ -133,10 +133,17 @@ flowchart TB
 2. **reporter 生命周期必须 try/finally**：`ReporterABC.do_cycle_report` 在 while 循环内吞 `CancelledError`——pipeline 抛异常时 `asyncio.run` 清理阶段死锁、真实 traceback 被掩盖。Bridge 以 try/finally 保证 `reporter.stop()`；该 bug 与上一条均为 M5 上游化时的候选修复项。
    （验证环境：deepseek-flash + Qwen3-Embedding-8B@GPUStack，探针 6 事件 / 8 快照 / 9.7s 出答案，StreamData 五字段产物齐全——详见 `results/m0_1`。）
 
-**双协议**：
+**实装注意二（M3.0 实测发现，检索链四个契约/陷阱）**——Bridge 生成 kag_config.yaml 时的硬性要求与 KAG 侧脆弱点（实测环境：m0ProbeLive 项目 + 27 节点种子图 + builder 语料，`scripts/kag_m3/`，结果归档 `results/m3_0/`）：
 
-- **MCP Server**：Claude Code（session workdir `.mcp.json` 自动发现 / `--mcp-config`）、Codex（config.toml）原生支持；
-- **HTTP 工具端点**：KAGWeb `custom-http` 风格中立帧（SSE/NDJSON，`{kind, text, name, data}`），供 Intellect/Hermes 在自身工具体系注册。
+1. **solver 检索链必须以自定义 `think_pipeline:` 顶层键显式声明**：`do_qa_pipeline`（`kag/solver/main_solver.py`）会用 `kb` 派生的 `retriever_configs` **无条件覆盖** `qa_config["retrievers"]`（无 `kb` 配置时恒为 `[]`），因此 `deep_thought.yaml` 模板路径下顶层 `retrievers:` 键永远失效、kg 检索恒空。唯一出路是定义与 `use_pipeline` 同名的顶层键（`think_pipeline:`，与 AffairQA 的 `kag_solver_pipeline:` 同模式，结构平铺 = 模板 `solver_pipeline` 子块内容 + 显式 retrievers/llm 引用）——Bridge 的配置模板必须内建该键；
+2. **alterSchema 必须 `update_type()` 登记**：`SchemaSession.commit()` 只提交 `_alter_spg_types` 列表（`create_type`/`update_type` 登记）——`session.get()` 取得对象就地 `add_relation` 后不登记则 **alter 根本不会发往服务端**；且 `create_session()` 按 project_id **进程内缓存**，同进程回读是假阳性，验证必须跨进程。M2 管理面的 Schema 编辑（M3.5）同受此约束；
+3. **chunk 检索阈值**：`rc_open_spg` 内部实例化的 `VectorChunkRetriever`（非 legacy，`invoke(task)` 签名）默认 `score_threshold=0.85`——Qwen3-Embedding 相似度典型 0.66-0.72 时 chunk 全被滤掉、退化为"纯 KG 检索 + LLM 幻觉摘要"。Bridge 配置模板需显式 `score_threshold`（探针环境 0.5）；
+4. **planner o 侧定型脆弱（KAG 侧，Bridge 不可修）**：lf_planner 对"o 为未知答案变量"的问题（"张三任职于哪个组织？"）常输出 `o1:Entity`——`generate_label` 回退 `\`Entity\`` 尾标签后，reasoner 对 `typed p + o:\`Entity\`` 组合抛 `SchemaException`（kg_cs 一跳归零，错误帧被 `run_gql` DEBUG 级吞掉）。问题措辞带类型中文名（"组织机构"）或更强 planner 模型可规避；**M3.2 轨迹可视化不能假设 SPO 边恒在**——subgraph 节点（chunk 实体）恒有，边依赖 kg_cs 命中。
+
+**双 transport（M3.0 决策 D1 修订）**：
+
+- **MCP stdio**：Claude Code（session workdir `.mcp.json` 自动发现 / `--mcp-config`）、Codex（config.toml）原生支持；
+- **MCP streamable-http**：Bridge 同时以 FastMCP streamable-http 监听（`KAG_BRIDGE_HTTP_URL`，默认 `127.0.0.1:8890/mcp`），`Authorization: Bearer <KAG_BRIDGE_API_KEY>` 鉴权——Intellect 经其原生 MCP 客户端接入（`intellect-rag/common/mcp_tool_call_conn.py` 实测支持 SSE + streamable-http 双 transport 与 Bearer header 模板），Hermes/AgentScope 同路径。原设计的"KAGWeb custom-http 中立帧端点"取消（A.2 修订）：Intellect 不需要自定义 HTTP 工具协议，统一收敛到 MCP 降低桥接面。
 
 **并发与超时（评审修正 R3）**：Bridge 内设并发信号量（超限排队，排队/执行超时返回结构化 `error` 帧向上传导）；agent loop 的 turn `timeout_seconds`（默认 900s）覆盖全链路；取消 = 取消 `ainvoke` 任务。
 
@@ -152,7 +159,7 @@ flowchart TB
 | Schema 查看/编辑 | `/public/v1/schema`（`alterSchema`/`queryProjectSchema`） | 首版只读 Schema 树 + 表单式编辑；图可视化用现成渲染库，画布式编辑后置 |
 | 图概览 | `/public/v1/graph/allLabels` | **M2 侦察修正**：graph 控制器无子图查询端点（仅写端点+allLabels+pageRank），原"子图查询"假设证伪——图浏览（经 reason DSL 或直连）与轨迹可视化同推 M3 |
 | 知识构建任务 | `/public/v1/builder/kag/submit` + 任务查询 | M4 |
-| DSL/规则推理（可选） | `/public/v1/reason` | 与 kag_solve 互补 |
+| DSL/规则推理（可选） | `/public/v1/reason` | 与 kag_solve 互补；**M3.0 契约实测**：关系 label 直配可用（前提 schema 关系已持久化——未持久化时报 `Cannot find` 类错误，症状易误判为"DSL 不支持 label 直配"）；`typed p + o:\`Entity\`` 组合抛 SchemaException；`rdf_expand()` 稳定可用；响应 `resultNodes`/`resultEdges` 恒空、数据在 `resultTableResult.rows`；params 值必须为字符串化列表（真数组 400）——图浏览（M3.4）以 rows 为准 |
 
 **实现落点**：
 
@@ -350,7 +357,7 @@ flowchart LR
 | **M0 验证** | ① 继承 `OpenSPGReporter` 的 reporter + `do_qa_pipeline` 本地跑通，事件流完整（planner/executor/generator 各 segment 可还原）；② knext 客户端直连 OpenSPG server，逐端点记录 `/public/v1` 请求/响应形状；③ 确认 server 鉴权现状、tenant 字段语义、图存储后端部署形态 | 事件样本 + API 契约笔记归档 |
 | **M1 端到端** | Bridge MVP（`kag_solve` + `kag_schema` + MCP）；Claude Code 经 workdir `.mcp.json` 接入；`kag` settings 域（T1 单租户） | KAGWeb 聊天中完成一次 KAG 增强问答，轨迹以工具卡片呈现——**已完成**（`kag-bridge/` 包 + `kag` settings 域 + ChatCapability 接线；E2E 实测：`kagweb run chat` → claude-code → `kag_solve` → 答案+引用回流，commits 24a4306/0049767） |
 | **M2 管理面** | OpenSPG REST 客户端 + 项目/Schema（只读树+表单编辑）/图浏览/推理任务列表（自有存储）页（前端按 §5.4 接入）；`kag` grants | 管理面全流程可用，鉴权链路按 §6 落地——**后端已交付**（ffbd123：客户端/API/任务存储/grants/settings 域，live 实测 6/6；范围修正：图浏览推 M3、Schema 编辑推 M3、任务存储用 JSON 文件——偏差已记录）；**前端（M2.4）已完成**（contracts 扩展 5 端点 + `features/kag` 域 + `/kag` 三页（列表/详情含 Schema 只读树/graph labels）+ `/settings/kag` 区块（adminOnly）+ Space 入口 tile + GrantEditor `kag_projects` 三态行 + i18n en/zh；`check:fast` 全绿，live 冒烟 5 页面 + 5 API 全通；**冒烟发现并修复 F7**：管理面 list/get/create 响应对 `project.config`（序列化 JSON 字符串）内的 vectorizer `api_key` 与图存储 `password` 递归掩码——凭据不出服务端）；**评审修复轮（F1-F8）已完成**——前端：通用错误态/类型计数取后端真实数/死代码清理/路由预算（`/kag`* + `/settings/kag` 进 perf:check，实测 183/243KB）；后端：脱敏键变体防御（归一 + `_key` 等后缀，对齐 grants 规则）；**F-8 实测暴露两个后端缺陷并修复**：① `update_kag_domain` 引用未 import 的 `load_system_settings`（PUT 500）；② same-origin guard 以后端 `Host` 与浏览器 `Origin` 比较，经前端 `/api` rewrite（Host=后端端口、X-Forwarded-Host=浏览器原始 authority）时**所有带 guard 的变更端点**（agent-loop identity/settings PUT/kag create）拒绝合法同源请求——修复：同源判定经 `origins.request_authority` 优先 `X-Forwarded-Host`（伪造它需非浏览器客户端，本就落在 guard "无 Origin 放行"的既有模型内），live 双向验证（同源 200/400、跨站 403） |
-| **M3 广度** | Intellect（HTTP 工具注册）；推理轨迹图可视化（SubGraph/RefDocSet 渲染）；`kag_reason` 可选工具 | 第二类 agent loop 接入 |
+| **M3 广度** | Intellect 接入（streamable-http MCP）；推理轨迹图可视化（SubGraph/RefDocSet 渲染）；`kag_reason` 可选工具 | 第二类 agent loop 接入——**M3.0 契约/数据实测已完成**（`scripts/kag_m3/`：检索链四根因修复后 E2E 打通，subgraph 4 graphs/29 nodes/12 edges + reference 实测形态归档 `results/m3_0/`；reason DSL 契约修正——关系 label 直配可用（前提 schema 关系已持久化），`o:\`Entity\``+typed p 抛 SchemaException，`resultNodes/resultEdges` 恒空（数据在 `resultTableResult.rows`），params 值须字符串化列表；D1 已采纳：Bridge 双 MCP transport，A.2 已修订；详证 §5.1 实装注意二 + 附录 A.2）；**M3.1 已完成**（`kag_bridge/server.py` 双 transport：stdio + streamable-http（FastMCP stateless，`KAG_BRIDGE_TRANSPORT` 分发，默认 127.0.0.1:8890/mcp）；纯 ASGI Bearer 中间件（hmac.compare_digest，/healthz 豁免）；mcp SDK 1.6→1.30；DNS-rebinding 421 修复：`TransportSecuritySettings.allowed_hosts` 显式含 `host.docker.internal:*`，`KAG_BRIDGE_EXTRA_HOSTS` 可扩展；裸 MCP 客户端 E2E 4/29/12 与探针一致；**范围修订（用户裁定）**：Intellect 侧 Docker 部署（原 R-1）与 M3 验证无关，已从清单移除、栈已停止，不加载相关镜像）；**M3.2 已完成**（推理轨迹可视化：`services/kag/trace.py` 把 kag_solve JSON 归一为活动面板契约（subgraph→nodes/edges 去重合并 ≤60/≤120、reference[0].info→sources、question→query、answer→observation 摘录），`_AgentLoopRoundBridge._tool_result` 对所有 agent loop 后端注入；前端零新组件——复用 GraphRAG 消费链（`session-activity.ts` `readGraphSubgraph`/`collectSessionGraphs` → ActivityDock Graph 签 → cytoscape 画布），PROVIDER_LABELS 加 `kag`；**两个 live 形态适配**（live E2E 实测）：① claude-code 上报 MCP 工具名为 `mcp__kag-bridge__kag_solve`（命名空间前缀，`is_kag_trace_tool` 兼容裸名与前缀形式）；② claude-code stream-json 把 MCP 工具结果再包一层 `{"result": "<原始文本>"}`（`_parse_result` 剥层）；live E2E 持久化验证：messages 表 tool_result 事件携带 tool_metadata.graph（8 nodes/3 edges）+ sources + query，observation 摘录用 answer；后端 1693 + 前端 node 705 测试全绿） |
 | **M4 构建+多用户** | 文档上传 → `/public/v1/builder/kag/submit` 构建流水线与监控；T2 项目 ACL（membership + `kagweb_<uid>` 归因） | 非/admin 用户按 membership 受控访问 |
 | **M5 上游化** | 契约冻结评审、`kag[mcp]` extra、KAG CI 接入（§8 门槛） | Bridge 进入 KAG 仓库 |
 
@@ -417,17 +424,18 @@ flowchart LR
 
 MCP 通道：推理过程经 progress notification 上报（ReporterABC 事件桥接，帧结构同 A.2 的 `progress` 帧）；终态经 `tool_result` 返回 `{"content": [{"type": "text", "text": "<answer>"}], "isError": false}`，结构化扩展在 content 数组追加一段 references JSON（与 A.2 终态帧的 `reference` 字段同构）。`kag_schema`/`kag_status` 为同风格的只读工具。
 
-### A.2 HTTP 工具端点：`POST /tools/kag_solve`（SSE）
+### A.2 streamable-http transport：`POST <KAG_BRIDGE_HTTP_URL>/mcp`（M3.0 决策 D1 修订）
 
-请求：`Authorization: Bearer <bridge api_key>`，body 即 A.1 的 properties；响应 `text/event-stream`，每帧一条 `data:` JSON：
+原设计的自定义 HTTP 工具端点（SSE 中立帧）**取消**——Intellect 实测带原生 MCP 客户端（SSE + streamable-http 双 transport，`Authorization` header 模板），无需自定义工具协议。Bridge 以 FastMCP 同时暴露 stdio 与 streamable-http 两个 transport，工具面/帧语义完全同 A.1（MCP 协议内 progress notification + tool_result）：
 
-```
-data: {"kind": "progress", "text": "SPG知识层检索中…", "name": "kag_solve", "data": {"segment": "thinker", "tag": "kg_cs", "status": "RUNNING"}}
+- 监听：`KAG_BRIDGE_HTTP_URL`（默认 `127.0.0.1:8890`，路径 `/mcp`），仅内网；
+- 鉴权：`Authorization: Bearer <KAG_BRIDGE_API_KEY>`（FastMCP transport header 中间件，401 结构化错误帧）；
+- 终态 `tool_result` 的 content 扩展段（references/subgraph JSON）与 M0/M3.0 归档的实测形态对齐：
+  - `reference`：`[{"id": "reference_ref_format", "type": "chunk", "info": [{"id": "chunk:0_1", "content": "…", "document_id": "doc1", "document_name": "开元大学简介", "url": null}]}]`；
+  - `subgraph`：图数组，每图 `{"class_name", "result_nodes", "result_edges"}`；节点 `{"id": "人物[\"张三\"]", "label": "人物", "name": "…", "properties": {…}}`，边 `{"id": "… 任职于 …", "_from": "…", "from_type": "人物", "to": "…", "to_type": "组织机构", "label": "任职于", "properties": {}}`——节点/边分别在 `result_nodes`/`result_edges` 键下（非 `nodes`/`edges`），`_from`/`to` 即节点 id，cytoscape elements 可直接映射；**边依赖 kg_cs 命中（§5.1 实装注意二第 4 条），节点（chunk 实体）恒在**；
+  - `cost_ms` + `metrics`。
 
-data: {"kind": "tool_result", "name": "kag_solve", "data": {"answer": "…", "reference": [{"id": "…", "type": "chunk", "info": []}], "subgraph": {"nodes": [], "edges": []}, "cost_ms": 12345}}
-```
-
-帧语义对齐 KAGWeb 中立事件（`EVENT_KINDS` 子集：`progress`/`tool_result`/`error`）；`reference`/`subgraph` 结构沿用 `OpenSPGReporter` 的 RefDocSet/SubGraph 数据模型（M0-1 快照验证其组装）。
+（M3.0 实测：4 graphs / 29 nodes / 12 edges 端到端产出，事件流 22 帧——planner→kg_cs/kg_rc 并行检索→merger→summary→generator，`spo_graph` 事件即 subgraph 数据源；归档 `scripts/kag_m3/results/m3_0/trajectory_probe.json`。）
 
 ### A.3 凭证演进与任务上报（评审 A2 方案①的落地口径）
 
