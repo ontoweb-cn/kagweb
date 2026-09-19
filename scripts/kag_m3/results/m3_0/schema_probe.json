@@ -1,0 +1,151 @@
+{
+  "s1_schema_mapping": {
+    "prefix": "",
+    "get_label_within_prefix": {
+      "Person": "m0ProbeLive.Person",
+      "人物": "m0ProbeLive.Person",
+      "Organization": "m0ProbeLive.Organization",
+      "Geo": "Geo",
+      "m0ProbeLive.Person": "m0ProbeLive.Person",
+      "Entity": "Entity"
+    },
+    "node_en_2_full_name": {
+      "Creature": "m0ProbeLive.Creature",
+      "SemanticConcept": "m0ProbeLive.SemanticConcept",
+      "Transport": "m0ProbeLive.Transport",
+      "Others": "m0ProbeLive.Others",
+      "Chunk": "m0ProbeLive.Chunk",
+      "Person": "m0ProbeLive.Person",
+      "Date": "m0ProbeLive.Date",
+      "Works": "m0ProbeLive.Works",
+      "GeographicLocation": "m0ProbeLive.GeographicLocation",
+      "Event": "m0ProbeLive.Event",
+      "Keyword": "m0ProbeLive.Keyword",
+      "ArtificialObject": "m0ProbeLive.ArtificialObject",
+      "NaturalScience": "m0ProbeLive.NaturalScience",
+      "Building": "m0ProbeLive.Building",
+      "Medicine": "m0ProbeLive.Medicine",
+      "Organization": "m0ProbeLive.Organization",
+      "Astronomy": "m0ProbeLive.Astronomy",
+      "Concept": "m0ProbeLive.Concept",
+      "Entity": "Entity"
+    },
+    "node_zh_2_full_name": {
+      "生物": "m0ProbeLive.Creature",
+      "语义概念": "m0ProbeLive.SemanticConcept",
+      "运输": "m0ProbeLive.Transport",
+      "其他": "m0ProbeLive.Others",
+      "文本块": "m0ProbeLive.Chunk",
+      "人物": "m0ProbeLive.Person",
+      "日期": "m0ProbeLive.Date",
+      "作品": "m0ProbeLive.Works",
+      "地理位置": "m0ProbeLive.GeographicLocation",
+      "事件": "m0ProbeLive.Event",
+      "关键词": "m0ProbeLive.Keyword",
+      "人造物体": "m0ProbeLive.ArtificialObject",
+      "自然科学": "m0ProbeLive.NaturalScience",
+      "建筑": "m0ProbeLive.Building",
+      "药物": "m0ProbeLive.Medicine",
+      "组织机构": "m0ProbeLive.Organization",
+      "天文学": "m0ProbeLive.Astronomy",
+      "概念": "m0ProbeLive.Concept",
+      "null": "Entity"
+    }
+  },
+  "s2_vector_fallbacks": {
+    "vector_label_full": [
+      {
+        "labels": [
+          "m0ProbeLive.Person"
+        ],
+        "name": "\"张三\"",
+        "score": 0.9987
+      },
+      {
+        "labels": [
+          "m0ProbeLive.Person"
+        ],
+        "name": "\"李四\"",
+        "score": 0.9294
+      },
+      {
+        "labels": [
+          "m0ProbeLive.Person"
+        ],
+        "name": "\"王五\"",
+        "score": 0.8997
+      }
+    ],
+    "vector_label_short": [],
+    "vector_label_entity_fallback": [
+      {
+        "labels": [
+          "m0ProbeLive.Person"
+        ],
+        "name": "\"张三\"",
+        "score": 0.9987
+      },
+      {
+        "labels": [
+          "m0ProbeLive.Person"
+        ],
+        "name": "\"李四\"",
+        "score": 0.9294
+      },
+      {
+        "labels": [
+          "m0ProbeLive.Person"
+        ],
+        "name": "\"王五\"",
+        "score": 0.8997
+      },
+      {
+        "labels": [
+          "m0ProbeLive.Chunk"
+        ],
+        "name": "\"王五简介\"",
+        "score": 0.7917
+      },
+      {
+        "labels": [
+          "m0ProbeLive.Organization"
+        ],
+        "name": "\"智谱科技\"",
+        "score": 0.7769
+      }
+    ],
+    "vector_label_entity_desc": []
+  },
+  "s3_text_fallback": {
+    "search_text_no_constraints": [
+      {
+        "labels": [
+          "m0ProbeLive.Person"
+        ],
+        "name": "张三",
+        "score": 2.761
+      },
+      {
+        "labels": [
+          "m0ProbeLive.Person"
+        ],
+        "name": "\"张三\"",
+        "score": 2.761
+      },
+      {
+        "labels": [
+          "m0ProbeLive.Chunk"
+        ],
+        "name": "\"开元大学简介\"",
+        "score": 0.5453
+      },
+      {
+        "labels": [
+          "m0ProbeLive.Chunk"
+        ],
+        "name": "\"王五简介\"",
+        "score": 0.476
+      }
+    ]
+  }
+}

@@ -1,0 +1,638 @@
+{
+ "question": "张三任职于哪个组织机构？",
+ "project": {
+  "id": "3",
+  "namespace": "m0ProbeLive"
+ },
+ "cost_ms": 4572,
+ "answer": "根据检索到的资料，张三是开元大学的教授，所以张三任职的组织机构是开元大学<reference id=\"chunk:0_1\"></reference>。",
+ "event_count": 22,
+ "events": [
+  {
+   "segment": "thinker",
+   "tag": "Static planning 0",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 152
+  },
+  {
+   "segment": "thinker",
+   "tag": "张三任职于哪个组织机构？_begin_task",
+   "status": "INIT",
+   "content_kind": "str",
+   "content_len": 0
+  },
+  {
+   "segment": "张三任职于哪个组织机构？_begin_task",
+   "tag": "begin_sub_kag_retriever_kg_cs_retriever",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 14
+  },
+  {
+   "segment": "张三任职于哪个组织机构？_begin_task",
+   "tag": "begin_sub_kag_retriever_kg_rc_retriever",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 14
+  },
+  {
+   "segment": "张三任职于哪个组织机构？_begin_task",
+   "tag": "begin_sub_kag_retriever_kg_cs_retriever",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 21
+  },
+  {
+   "segment": "begin_sub_kag_retriever_kg_cs_retriever",
+   "tag": "spo_graph",
+   "status": "FINISH",
+   "content_kind": "list",
+   "content_len": 3
+  },
+  {
+   "segment": "张三任职于哪个组织机构？_begin_task",
+   "tag": "end_sub_kag_retriever_kg_cs_retriever",
+   "status": "FINISH",
+   "content_kind": "list",
+   "content_len": 3
+  },
+  {
+   "segment": "张三任职于哪个组织机构？_begin_task",
+   "tag": "begin_sub_kag_retriever_kg_rc_retriever",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 21
+  },
+  {
+   "segment": "begin_sub_kag_retriever_kg_rc_retriever",
+   "tag": "spo_graph",
+   "status": "FINISH",
+   "content_kind": "list",
+   "content_len": 3
+  },
+  {
+   "segment": "张三任职于哪个组织机构？_begin_task",
+   "tag": "kag_merger",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 17
+  },
+  {
+   "segment": "kag_merger",
+   "tag": "spo_graph",
+   "status": "FINISH",
+   "content_kind": "list",
+   "content_len": 6
+  },
+  {
+   "segment": "张三任职于哪个组织机构？_begin_task",
+   "tag": "begin_summary_张三任职于哪个组织机构？",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 85
+  },
+  {
+   "segment": "reference",
+   "tag": "张三任职于哪个组织机构？_kag_retriever_result",
+   "status": "FINISH",
+   "content_kind": "RetrieverOutput",
+   "content_len": -1
+  },
+  {
+   "segment": "thinker",
+   "tag": "张三任职于哪个组织机构？_begin_task",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 0
+  },
+  {
+   "segment": "thinker",
+   "tag": "输出o1_begin_task",
+   "status": "INIT",
+   "content_kind": "str",
+   "content_len": 5
+  },
+  {
+   "segment": "thinker",
+   "tag": "输出o1_begin_task",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 0
+  },
+  {
+   "segment": "generator",
+   "tag": "task_process",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 468
+  },
+  {
+   "segment": "generator",
+   "tag": "final_generator_input",
+   "status": "FINISH",
+   "content_kind": "dict",
+   "content_len": 1
+  },
+  {
+   "segment": "generator_reference",
+   "tag": "reference_chunk",
+   "status": "FINISH",
+   "content_kind": "list",
+   "content_len": 3
+  },
+  {
+   "segment": "generator_reference_all",
+   "tag": "reference_ref_format",
+   "status": "FINISH",
+   "content_kind": "list",
+   "content_len": 3
+  },
+  {
+   "segment": "generator_reference_graphs",
+   "tag": "reference_graph",
+   "status": "FINISH",
+   "content_kind": "KgGraph",
+   "content_len": -1
+  },
+  {
+   "segment": "answer",
+   "tag": "Final Answer",
+   "status": "FINISH",
+   "content_kind": "str",
+   "content_len": 75
+  }
+ ],
+ "object_events": [
+  {
+   "segment": "reference",
+   "tag": "张三任职于哪个组织机构？_kag_retriever_result",
+   "kind": "RetrieverOutput",
+   "dump": {
+    "graphs": [
+     "[(\"李四\" workFor \"智谱科技\"), (\"张三\" workFor \"开元大学\"), (\"王五\" workFor \"开元大学\")]"
+    ],
+    "chunks": [
+     {
+      "content": "\"智谱科技简介\\n李四是智谱科技的算法工程师。\\n智谱科技位于北京，专注于大模型研发。\\n李四负责推理框架的优化工作。\"",
+      "title": "\"智谱科技简介\"",
+      "chunk_id": "doc2",
+      "score": "1.0"
+     },
+     {
+      "content": "\"开元大学简介\\n张三是开元大学的教授，研究方向为知识图谱。\\n开元大学位于杭州，是一所以人工智能见长的研究型大学。\\n张三负责知识图谱实验室的日常工作。\"",
+      "title": "\"开元大学简介\"",
+      "chunk_id": "doc1",
+      "score": "0.5"
+     },
+     {
+      "content": "\"王五简介\\n王五也是开元大学的教师，与张三是同事。\\n王五主讲数据库课程，研究方向为图数据库。\"",
+      "title": "\"王五简介\"",
+      "chunk_id": "doc3",
+      "score": "0.3333333333333333"
+     }
+    ],
+    "docs": [],
+    "retriever_method": "kag_merger",
+    "summary": "思考: 根据提供的文档，“张三” workFor “开元大学”，并且开元大学简介中也写明“张三是开元大学的教授”。因此可直接得出张三任职的组织机构。  \n结论: 开元大学",
+    "err_msg": "",
+    "task": ""
+   }
+  },
+  {
+   "segment": "generator_reference_graphs",
+   "tag": "reference_graph",
+   "kind": "KgGraph",
+   "dump": {
+    "query_graph": {},
+    "nodes_alias": [],
+    "edge_alias": [],
+    "start_node_alias_name": [],
+    "start_node_name": [],
+    "entity_map": {},
+    "edge_map": {}
+   }
+  }
+ ],
+ "stream_data_summary": {
+  "answer_len": 75,
+  "think_len": 682,
+  "reference_count": 1,
+  "subgraph_count": 4
+ },
+ "reference": [
+  {
+   "id": "reference_ref_format",
+   "type": "chunk",
+   "info": [
+    {
+     "id": "chunk:0_1",
+     "content": "开元大学简介\n张三是开元大学的教授，研究方向为知识图谱。\n开元大学位于杭州，是一所以人工智能见长的研究型大学。\n张三负责知识图谱实验室的日常工作。",
+     "document_id": "doc1",
+     "document_name": "开元大学简介",
+     "url": null
+    }
+   ]
+  }
+ ],
+ "subgraph": [
+  {
+   "class_name": "graph_genD0R",
+   "nodes": [
+    {
+     "id": "人物[\"李四\"]",
+     "label": "人物",
+     "name": "\"李四\"",
+     "properties": {
+      "name": "\"李四\"",
+      "id": "李四"
+     }
+    },
+    {
+     "id": "组织机构[\"智谱科技\"]",
+     "label": "组织机构",
+     "name": "\"智谱科技\"",
+     "properties": {
+      "name": "\"智谱科技\"",
+      "id": "智谱科技"
+     }
+    },
+    {
+     "id": "人物[\"张三\"]",
+     "label": "人物",
+     "name": "\"张三\"",
+     "properties": {
+      "name": "\"张三\"",
+      "id": "张三"
+     }
+    },
+    {
+     "id": "组织机构[\"开元大学\"]",
+     "label": "组织机构",
+     "name": "\"开元大学\"",
+     "properties": {
+      "name": "\"开元大学\"",
+      "id": "开元大学"
+     }
+    },
+    {
+     "id": "人物[\"王五\"]",
+     "label": "人物",
+     "name": "\"王五\"",
+     "properties": {
+      "name": "\"王五\"",
+      "id": "王五"
+     }
+    },
+    {
+     "id": "None[\"智谱科技简介\"]",
+     "label": "Entity",
+     "name": "\"智谱科技简介\"",
+     "properties": {
+      "content": "\"智谱科技简介\\n李...",
+      "score": 1.0
+     }
+    },
+    {
+     "id": "None[\"开元大学简介\"]",
+     "label": "Entity",
+     "name": "\"开元大学简介\"",
+     "properties": {
+      "content": "\"开元大学简介\\n张...",
+      "score": 0.5
+     }
+    },
+    {
+     "id": "None[\"王五简介\"]",
+     "label": "Entity",
+     "name": "\"王五简介\"",
+     "properties": {
+      "content": "\"王五简介\\n王五也...",
+      "score": 0.3333333333333333
+     }
+    }
+   ],
+   "edges": [
+    {
+     "id": "人物[\"李四\"] 任职于 组织机构[\"智谱科技\"]",
+     "_from": "人物[\"李四\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"智谱科技\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    },
+    {
+     "id": "人物[\"张三\"] 任职于 组织机构[\"开元大学\"]",
+     "_from": "人物[\"张三\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"开元大学\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    },
+    {
+     "id": "人物[\"王五\"] 任职于 组织机构[\"开元大学\"]",
+     "_from": "人物[\"王五\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"开元大学\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    }
+   ]
+  },
+  {
+   "class_name": "graph_gengoD",
+   "nodes": [
+    {
+     "id": "人物[\"李四\"]",
+     "label": "人物",
+     "name": "\"李四\"",
+     "properties": {
+      "name": "\"李四\"",
+      "id": "李四"
+     }
+    },
+    {
+     "id": "组织机构[\"智谱科技\"]",
+     "label": "组织机构",
+     "name": "\"智谱科技\"",
+     "properties": {
+      "name": "\"智谱科技\"",
+      "id": "智谱科技"
+     }
+    },
+    {
+     "id": "人物[\"张三\"]",
+     "label": "人物",
+     "name": "\"张三\"",
+     "properties": {
+      "name": "\"张三\"",
+      "id": "张三"
+     }
+    },
+    {
+     "id": "组织机构[\"开元大学\"]",
+     "label": "组织机构",
+     "name": "\"开元大学\"",
+     "properties": {
+      "name": "\"开元大学\"",
+      "id": "开元大学"
+     }
+    },
+    {
+     "id": "人物[\"王五\"]",
+     "label": "人物",
+     "name": "\"王五\"",
+     "properties": {
+      "name": "\"王五\"",
+      "id": "王五"
+     }
+    },
+    {
+     "id": "None[\"智谱科技简介\"]",
+     "label": "Entity",
+     "name": "\"智谱科技简介\"",
+     "properties": {
+      "content": "\"智谱科技简介\\n李...",
+      "score": 1.0
+     }
+    },
+    {
+     "id": "None[\"开元大学简介\"]",
+     "label": "Entity",
+     "name": "\"开元大学简介\"",
+     "properties": {
+      "content": "\"开元大学简介\\n张...",
+      "score": 0.5
+     }
+    },
+    {
+     "id": "None[\"王五简介\"]",
+     "label": "Entity",
+     "name": "\"王五简介\"",
+     "properties": {
+      "content": "\"王五简介\\n王五也...",
+      "score": 0.3333333333333333
+     }
+    }
+   ],
+   "edges": [
+    {
+     "id": "人物[\"李四\"] 任职于 组织机构[\"智谱科技\"]",
+     "_from": "人物[\"李四\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"智谱科技\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    },
+    {
+     "id": "人物[\"张三\"] 任职于 组织机构[\"开元大学\"]",
+     "_from": "人物[\"张三\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"开元大学\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    },
+    {
+     "id": "人物[\"王五\"] 任职于 组织机构[\"开元大学\"]",
+     "_from": "人物[\"王五\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"开元大学\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    }
+   ]
+  },
+  {
+   "class_name": "graph_genEsy",
+   "nodes": [
+    {
+     "id": "人物[\"李四\"]",
+     "label": "人物",
+     "name": "\"李四\"",
+     "properties": {
+      "name": "\"李四\"",
+      "id": "李四"
+     }
+    },
+    {
+     "id": "组织机构[\"智谱科技\"]",
+     "label": "组织机构",
+     "name": "\"智谱科技\"",
+     "properties": {
+      "name": "\"智谱科技\"",
+      "id": "智谱科技"
+     }
+    },
+    {
+     "id": "人物[\"张三\"]",
+     "label": "人物",
+     "name": "\"张三\"",
+     "properties": {
+      "name": "\"张三\"",
+      "id": "张三"
+     }
+    },
+    {
+     "id": "组织机构[\"开元大学\"]",
+     "label": "组织机构",
+     "name": "\"开元大学\"",
+     "properties": {
+      "name": "\"开元大学\"",
+      "id": "开元大学"
+     }
+    },
+    {
+     "id": "人物[\"王五\"]",
+     "label": "人物",
+     "name": "\"王五\"",
+     "properties": {
+      "name": "\"王五\"",
+      "id": "王五"
+     }
+    }
+   ],
+   "edges": [
+    {
+     "id": "人物[\"李四\"] 任职于 组织机构[\"智谱科技\"]",
+     "_from": "人物[\"李四\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"智谱科技\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    },
+    {
+     "id": "人物[\"张三\"] 任职于 组织机构[\"开元大学\"]",
+     "_from": "人物[\"张三\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"开元大学\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    },
+    {
+     "id": "人物[\"王五\"] 任职于 组织机构[\"开元大学\"]",
+     "_from": "人物[\"王五\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"开元大学\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    }
+   ]
+  },
+  {
+   "class_name": "graph_genLCp",
+   "nodes": [
+    {
+     "id": "人物[\"李四\"]",
+     "label": "人物",
+     "name": "\"李四\"",
+     "properties": {
+      "name": "\"李四\"",
+      "id": "李四"
+     }
+    },
+    {
+     "id": "组织机构[\"智谱科技\"]",
+     "label": "组织机构",
+     "name": "\"智谱科技\"",
+     "properties": {
+      "name": "\"智谱科技\"",
+      "id": "智谱科技"
+     }
+    },
+    {
+     "id": "人物[\"张三\"]",
+     "label": "人物",
+     "name": "\"张三\"",
+     "properties": {
+      "name": "\"张三\"",
+      "id": "张三"
+     }
+    },
+    {
+     "id": "组织机构[\"开元大学\"]",
+     "label": "组织机构",
+     "name": "\"开元大学\"",
+     "properties": {
+      "name": "\"开元大学\"",
+      "id": "开元大学"
+     }
+    },
+    {
+     "id": "人物[\"王五\"]",
+     "label": "人物",
+     "name": "\"王五\"",
+     "properties": {
+      "name": "\"王五\"",
+      "id": "王五"
+     }
+    },
+    {
+     "id": "None[\"智谱科技简介\"]",
+     "label": "Entity",
+     "name": "\"智谱科技简介\"",
+     "properties": {
+      "content": "\"智谱科技简介\\n李...",
+      "score": 1.0
+     }
+    },
+    {
+     "id": "None[\"开元大学简介\"]",
+     "label": "Entity",
+     "name": "\"开元大学简介\"",
+     "properties": {
+      "content": "\"开元大学简介\\n张...",
+      "score": 0.5
+     }
+    },
+    {
+     "id": "None[\"王五简介\"]",
+     "label": "Entity",
+     "name": "\"王五简介\"",
+     "properties": {
+      "content": "\"王五简介\\n王五也...",
+      "score": 0.3333333333333333
+     }
+    }
+   ],
+   "edges": [
+    {
+     "id": "人物[\"李四\"] 任职于 组织机构[\"智谱科技\"]",
+     "_from": "人物[\"李四\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"智谱科技\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    },
+    {
+     "id": "人物[\"张三\"] 任职于 组织机构[\"开元大学\"]",
+     "_from": "人物[\"张三\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"开元大学\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    },
+    {
+     "id": "人物[\"王五\"] 任职于 组织机构[\"开元大学\"]",
+     "_from": "人物[\"王五\"]",
+     "from_type": "人物",
+     "to": "组织机构[\"开元大学\"]",
+     "to_type": "组织机构",
+     "label": "任职于",
+     "properties": {}
+    }
+   ]
+  }
+ ],
+ "ok": true
+}

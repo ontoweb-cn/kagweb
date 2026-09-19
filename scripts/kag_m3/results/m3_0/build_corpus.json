@@ -1,0 +1,17 @@
+{
+ "wrote": [
+  {
+   "doc": "doc1",
+   "output_len": 1
+  },
+  {
+   "doc": "doc2",
+   "output_len": 1
+  },
+  {
+   "doc": "doc3",
+   "output_len": 1
+  }
+ ],
+ "ok": true
+}

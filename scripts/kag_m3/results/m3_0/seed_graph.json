@@ -1,0 +1,39 @@
+{
+ "steps": [
+  {
+   "step": "cleanup stale vertices",
+   "ok": true,
+   "detail": "ids=['ZhangSan', 'LiSi', 'WangWu', 'KaiYuanUniv', 'ZhiPuTech', 'Hangzhou', 'Beijing', 'ProbeOrg']"
+  },
+  {
+   "step": "alterSchema: submit",
+   "ok": true,
+   "detail": "before=[] (update_type + commit)"
+  },
+  {
+   "step": "graph upsert vertices",
+   "ok": true,
+   "detail": "7 nodes (3 type groups)"
+  },
+  {
+   "step": "graph upsert edges",
+   "ok": true,
+   "detail": "6 edges"
+  },
+  {
+   "step": "DSL person count",
+   "ok": true,
+   "detail": "rows=[[\"张三\", \"\\\"张三\\\"\"], [\"ZhangSan\", \"张三\"], [\"LiSi\", \"李四\"], [\"WangWu\", \"王五\"], [\"李四\", \"\\\"李四\\\"\"], [\"王五\", \"\\\"王五\\\"\"]]"
+  },
+  {
+   "step": "DSL workFor edges",
+   "ok": true,
+   "detail": "rows=[[\"ZhangSan\", \"KaiYuanUniv\"], [\"LiSi\", \"ZhiPuTech\"], [\"WangWu\", \"KaiYuanUniv\"]]"
+  },
+  {
+   "step": "alterSchema: cross-process verify",
+   "ok": true,
+   "detail": "relations=[locateAt_m0ProbeLive.GeographicLocation,workFor_m0ProbeLive.Organization]"
+  }
+ ]
+}
