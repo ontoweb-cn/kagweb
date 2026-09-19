@@ -538,6 +538,47 @@ async def query_project_graph(
     return out
 
 
+class KagBuildRequest(BaseModel):
+    """触发 KAG_COMMAND 构建（M4-A）。command 为 server 侧执行的构建命令。"""
+
+    command: str
+    worker_num: int = 1
+
+
+@router.post("/projects/{project_id}/build")
+async def submit_build(
+    request: Request, project_id: str, payload: KagBuildRequest
+) -> dict[str, Any]:
+    """提交构建任务（项目成员 + same-origin；M4-A）。
+
+    受理层交付：经 ``/public/v1/builder/kag/submit`` 提交并登记 task_store
+    （kind=build）。奇偶性：本地 compose 的 computing engine 未配置，任务
+    受理 RUNNING 但执行会失败（设计风险 #5）——端到端执行依赖 M5 上游化。
+    """
+    _require_project_access(project_id)
+    _require_same_origin(request)
+    command = str(payload.command or "").strip()
+    if not command:
+        raise HTTPException(status_code=400, detail="command is required")
+    try:
+        resp = await _client().submit_builder(project_id, command, payload.worker_num)
+    except OpenSPGError as exc:
+        raise _upstream_error(exc) from exc
+    result = resp.get("result") or {}
+    job_id = str(result.get("id") or "") or str(result.get("jobName") or "")
+    record = append_task(
+        {
+            "task_id": job_id or f"build_{int(__import__('time').time() * 1000)}",
+            "kind": "build",
+            "project_id": project_id,
+            "question": command[:2000],
+            "answer_digest": f"status={result.get('status') or 'UNKNOWN'}",
+            "cost_ms": 0,
+        }
+    )
+    return {"build_job": result, "task": record}
+
+
 # ---------------------------------------------------------------------------
 # 推理任务（自有存储；Bridge 上报见 bridge_router）
 # ---------------------------------------------------------------------------

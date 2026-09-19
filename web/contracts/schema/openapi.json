@@ -2706,6 +2706,40 @@
         ],
         "title": "KagGraphQueryRequest",
         "type": "object"
+      },
+      "KagMembersUpdateRequest": {
+        "description": "Project member set (T2, M4-B): owner is pinned; members is the uid list.",
+        "properties": {
+          "members": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "title": "KagMembersUpdateRequest",
+        "type": "object"
+      },
+      "KagBuildRequest": {
+        "description": "Trigger a KAG_COMMAND build (M4-A). command runs server-side.",
+        "properties": {
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "worker_num": {
+            "default": 1,
+            "title": "Worker Num",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "title": "KagBuildRequest",
+        "type": "object"
       }
     }
   },
@@ -11966,6 +12000,243 @@
           "kag"
         ],
         "description": "Run a read-only reason DSL query for graph browsing; rows are capped at 200 with a truncated flag, and upstream errors come back as a structured error field."
+      }
+    },
+    "/api/kag/projects/{project_id}/members": {
+      "get": {
+        "operationId": "get_project_members_api_kag_projects__project_id__members_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Kag Project Members",
+        "tags": [
+          "kag"
+        ],
+        "description": "Project owner + member uids (project access required)."
+      },
+      "put": {
+        "operationId": "put_project_members_api_kag_projects__project_id__members_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KagMembersUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Kag Project Members",
+        "tags": [
+          "kag"
+        ],
+        "description": "Set the member uids (admin + same-origin; T2)."
+      }
+    },
+    "/api/kag/projects/{project_id}/build": {
+      "post": {
+        "operationId": "submit_build_api_kag_projects__project_id__build_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KagBuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Kag Build",
+        "tags": [
+          "kag"
+        ],
+        "description": "Accept a KAG_COMMAND build (project member + same-origin; M4-A)."
       }
     }
   },

@@ -36,6 +36,7 @@ def _normalize(record: dict[str, Any]) -> dict[str, Any]:
     """A.3 契约字段的宽松归一（bridge 侧字段缺失不崩，列表页能渲染）。"""
     return {
         "task_id": str(record.get("task_id") or ""),
+        "kind": str(record.get("kind") or "inference"),
         "session_id": str(record.get("session_id") or ""),
         "project_id": str(record.get("project_id") or ""),
         "namespace": str(record.get("namespace") or ""),

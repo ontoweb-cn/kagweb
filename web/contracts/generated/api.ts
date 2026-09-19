@@ -391,6 +391,26 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
+  readonly "/api/kag/projects/{project_id}/build": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    readonly get?: never;
+    readonly put?: never;
+    /**
+     * Submit Kag Build
+     * @description Accept a KAG_COMMAND build (project member + same-origin; M4-A).
+     */
+    readonly post: operations["submit_build_api_kag_projects__project_id__build_post"];
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
   readonly "/api/kag/projects/{project_id}/graph/query": {
     readonly parameters: {
       readonly query?: never;
@@ -405,6 +425,30 @@ export interface paths {
      * @description Run a read-only reason DSL query for graph browsing; rows are capped at 200 with a truncated flag, and upstream errors come back as a structured error field.
      */
     readonly post: operations["query_project_graph_api_kag_projects__project_id__graph_query_post"];
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
+  readonly "/api/kag/projects/{project_id}/members": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    /**
+     * Get Kag Project Members
+     * @description Project owner + member uids (project access required).
+     */
+    readonly get: operations["get_project_members_api_kag_projects__project_id__members_get"];
+    /**
+     * Put Kag Project Members
+     * @description Set the member uids (admin + same-origin; T2).
+     */
+    readonly put: operations["put_project_members_api_kag_projects__project_id__members_put"];
+    readonly post?: never;
     readonly delete?: never;
     readonly options?: never;
     readonly head?: never;
@@ -2587,6 +2631,19 @@ export interface components {
       };
     };
     /**
+     * KagBuildRequest
+     * @description Trigger a KAG_COMMAND build (M4-A). command runs server-side.
+     */
+    readonly KagBuildRequest: {
+      /** Command */
+      readonly command: string;
+      /**
+       * Worker Num
+       * @default 1
+       */
+      readonly worker_num: number;
+    };
+    /**
      * KagGraphQueryRequest
      * @description Graph-browsing DSL query (M3.4, via /public/v1/reason/run): node types must use the namespace-qualified full name; relation labels are bare.
      */
@@ -2600,6 +2657,17 @@ export interface components {
       readonly params: {
         readonly [key: string]: string;
       };
+    };
+    /**
+     * KagMembersUpdateRequest
+     * @description Project member set (T2, M4-B): owner is pinned; members is the uid list.
+     */
+    readonly KagMembersUpdateRequest: {
+      /**
+       * Members
+       * @default []
+       */
+      readonly members: readonly string[];
     };
     /**
      * KagProjectCreateRequest
@@ -3587,8 +3655,11 @@ export type SchemaHttpValidationError =
 export type SchemaImportedMessage = components["schemas"]["ImportedMessage"];
 export type SchemaImportedSession = components["schemas"]["ImportedSession"];
 export type SchemaInstallPayload = components["schemas"]["InstallPayload"];
+export type SchemaKagBuildRequest = components["schemas"]["KagBuildRequest"];
 export type SchemaKagGraphQueryRequest =
   components["schemas"]["KagGraphQueryRequest"];
+export type SchemaKagMembersUpdateRequest =
+  components["schemas"]["KagMembersUpdateRequest"];
 export type SchemaKagProjectCreateRequest =
   components["schemas"]["KagProjectCreateRequest"];
 export type SchemaKagSchemaEditRequest =
@@ -4479,6 +4550,45 @@ export interface operations {
       };
     };
   };
+  readonly submit_build_api_kag_projects__project_id__build_post: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path: {
+        readonly project_id: string;
+      };
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody: {
+      readonly content: {
+        readonly "application/json": components["schemas"]["KagBuildRequest"];
+      };
+    };
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   readonly query_project_graph_api_kag_projects__project_id__graph_query_post: {
     readonly parameters: {
       readonly query?: never;
@@ -4495,6 +4605,80 @@ export interface operations {
     readonly requestBody: {
       readonly content: {
         readonly "application/json": components["schemas"]["KagGraphQueryRequest"];
+      };
+    };
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly get_project_members_api_kag_projects__project_id__members_get: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path: {
+        readonly project_id: string;
+      };
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  readonly put_project_members_api_kag_projects__project_id__members_put: {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path: {
+        readonly project_id: string;
+      };
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody: {
+      readonly content: {
+        readonly "application/json": components["schemas"]["KagMembersUpdateRequest"];
       };
     };
     readonly responses: {

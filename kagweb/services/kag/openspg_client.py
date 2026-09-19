@@ -191,3 +191,27 @@ class OpenSPGClient:
             timeout=timeout,
         )
         return result if isinstance(result, dict) else {}
+
+    async def submit_builder(
+        self,
+        project_id: str | int,
+        command: str,
+        worker_num: int = 1,
+    ) -> dict[str, Any]:
+        """提交 KAG_COMMAND 构建任务（M4-A）。
+
+        Wire 契约（M0-4 实测）：POST /public/v1/builder/kag/submit，
+        body ``{"projectId", "workerNum", "command"}``，受理返回 200 +
+        ``result{id, jobName, status=RUNNING}``。
+
+        可用性声明（设计风险 #5）：本地 compose 的 computing engine driver
+        未配置，任务受理成功但**执行会失败**（``cannot find driver for``）——
+        本端点交付"受理层"，端到端执行依赖 M5 上游化后配置 executor。
+        """
+        result = await self._request(
+            "POST",
+            "/public/v1/builder/kag/submit",
+            json_body={"projectId": int(project_id), "workerNum": worker_num, "command": command},
+            timeout=120.0,
+        )
+        return result if isinstance(result, dict) else {}
