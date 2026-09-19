@@ -270,7 +270,7 @@ flowchart LR
 > 字段以实装为准：见 `runtime_settings.py` 的 `_normalize_kag`。下方注释差异项：
 > - `bridge_url` 实装为 **`bridge_http_url`**；
 > - `tenant_id`、`default_project_id` **未实现**（T1 单租户以 `spg_server_url` 直连，项目绑定用 `project_id`/`namespace`）；
-> - `service_user_no` 参与 `_normalize_kag` 归一化（v1.4 起 settings 域可配）——`create_project` 的归因回退为 `payload.service_user_no` → settings 域 → 默认 `"kagweb"`（见 `kag.py`、`runtime_settings.py`）。
+> - `service_user_no` 参与 `_normalize_kag` 归一化（v1.4 起 settings 域可配）——`create_project` 的归因回退为 `payload.service_user_no` → settings 域 → 默认 `"kagweb"`（见 `kag.py`、`runtime_settings.py`）。**UI 冒烟已通过**（2026-09-19，重建前端+重启后）：KAG 设置页「服务用户号」字段渲染、输入/保存/回显、置空清理均验证。
 
 ```json
 // data/user/settings/system.json 新增 "kag" 块（admin-only；字段以 _normalize_kag 为准）
