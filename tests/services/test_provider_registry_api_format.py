@@ -20,7 +20,6 @@ def test_api_formats_follow_the_backend() -> None:
     assert find_by_name("anthropic").api_formats == ("anthropic",)
     # Fixed by the backend: nothing for a profile to choose.
     assert find_by_name("azure_openai").api_formats == ()
-    assert find_by_name("openai_codex").api_formats == ()
     assert find_by_name("codebuddy").api_formats == ()
 
 

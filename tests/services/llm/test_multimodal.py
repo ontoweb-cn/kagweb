@@ -162,7 +162,6 @@ def test_should_degrade_only_for_non_vision_model_with_images() -> None:
     # Known vision-capable model → keep images, surface the real error.
     assert should_degrade_to_text("openai", "gpt-4o", msgs) is False
     # Codex uses the Responses API and must not silently retry without its image.
-    assert should_degrade_to_text("openai_codex", "gpt-5.6-sol", msgs) is False
     # Qwen3.8-Max is multimodal even though its model ID has no ``-vl`` suffix.
     assert should_degrade_to_text("dashscope", "qwen3.8-max", msgs) is False
     # An allowlisted provider (VolcEngine) is trusted even for a model we have

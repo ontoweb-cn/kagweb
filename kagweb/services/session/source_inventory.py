@@ -123,6 +123,29 @@ class SourceInventory:
 TRANSCRIPT_FILE_MIN_CHARS = 2_000
 
 
+async def _transcript_path_for(
+    session_id: str,
+    stem: str,
+    text: str,
+    materialize: MaterializeCallback | None,
+) -> str:
+    """Write *text* as a workspace transcript file for workspace-running
+    backends; ``""`` when there is no filesystem workspace, the transcript
+    is too small to be worth a row, or the write fails. The file name keeps
+    the source session id so concurrent references cannot collide."""
+    if materialize is None or len(text) < TRANSCRIPT_FILE_MIN_CHARS:
+        return ""
+    try:
+        import re as _re
+
+        from kagweb.services.session.attachment_workspace import write_session_transcript
+
+        safe_stem = _re.sub(r"[^A-Za-z0-9_.-]", "_", stem)[:80]
+        return await write_session_transcript(session_id, text, filename=f"{safe_stem}.md")
+    except Exception:  # noqa: BLE001 - the transcript file is best effort
+        return ""
+
+
 async def build_inventory(
     store: SessionStoreProtocol,
     *,
@@ -162,9 +185,11 @@ async def build_inventory(
     await _add_fresh_history(
         inv,
         store=store,
+        session_id=session_id,
         history_session_ids=fresh_history_session_ids,
         current_turn_ordinal=current_turn_ordinal,
         language=language,
+        materialize=materialize,
     )
     await _add_historical(
         inv,
@@ -311,9 +336,11 @@ async def _add_fresh_history(
     inv: SourceInventory,
     *,
     store: SessionStoreProtocol,
+    session_id: str,
     history_session_ids: Sequence[Any],
     current_turn_ordinal: int,
     language: str = "en",
+    materialize: MaterializeCallback | None = None,
 ) -> None:
     for raw in history_session_ids:
         hs_id = str(raw or "").strip()
@@ -322,6 +349,7 @@ async def _add_fresh_history(
         text, name = await _load_history_session(store, hs_id, language=language)
         if not text:
             continue
+        path = await _transcript_path_for(session_id, f"referenced-{hs_id}", text, materialize)
         inv.add(
             SourceEntry(
                 sid=f"hs-{hs_id}",
@@ -330,6 +358,7 @@ async def _add_fresh_history(
                 full_text=text,
                 fresh=True,
                 first_seen_turn=current_turn_ordinal,
+                path=path,
             )
         )
 
@@ -365,10 +394,12 @@ async def _add_historical(
         await _collect_from_user_message(
             inv,
             store=store,
+            session_id=session_id,
             msg=msg,
             turn_ordinal=user_turn_ordinal,
             language=language,
             pending_attachments=pending,
+            materialize=materialize,
         )
     paths = dict(attachment_paths)
     if pending and materialize is not None:
@@ -424,10 +455,12 @@ async def _collect_from_user_message(
     inv: SourceInventory,
     *,
     store: SessionStoreProtocol,
+    session_id: str,
     msg: dict[str, Any],
     turn_ordinal: int,
     language: str = "en",
     pending_attachments: list[tuple[int, dict[str, Any]]],
+    materialize: MaterializeCallback | None = None,
 ) -> None:
     """Drain one prior user message into the inventory as historical
     entries. Attachments are pulled from the persisted ``attachments``
@@ -459,6 +492,7 @@ async def _collect_from_user_message(
         text, name = await _load_history_session(store, hs_id, language=language)
         if not text:
             continue
+        path = await _transcript_path_for(session_id, f"referenced-{hs_id}", text, materialize)
         inv.add(
             SourceEntry(
                 sid=sid,
@@ -467,6 +501,7 @@ async def _collect_from_user_message(
                 full_text=text,
                 fresh=False,
                 first_seen_turn=turn_ordinal,
+                path=path,
             )
         )
 

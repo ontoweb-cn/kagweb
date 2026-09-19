@@ -3,13 +3,11 @@ import { parseAuthEnabled } from "./lib/api";
 import { resolveBackendApiBase } from "./lib/backend-runtime-config";
 import { stripBasePath } from "./shared/base-path";
 import {
-  CODEX_CALLBACK_API_PATH,
   COOKIE_NAME,
   LOGIN_PATH,
   classifyToken,
   isAuthExempt,
   isBackendPath,
-  isCodexCallbackPath,
   isRetiredPagePath,
 } from "./lib/proxy-policy";
 
@@ -55,12 +53,6 @@ export function proxy(req: NextRequest): NextResponse {
   // include it, this keeps every policy function app-relative either way.
   const pathname = stripBasePath(req.nextUrl.pathname);
   const { search } = req.nextUrl;
-
-  if (isCodexCallbackPath(pathname)) {
-    return NextResponse.rewrite(
-      new URL(CODEX_CALLBACK_API_PATH + search, API_BASE_URL),
-    );
-  }
 
   if (isRetiredPagePath(pathname)) {
     return new NextResponse(null, { status: 404 });

@@ -472,14 +472,15 @@ def test_same_origin_and_non_browser_callers_are_allowed(client: TestClient) -> 
     assert headless.status_code == 200
 
 
-def test_the_cross_site_guard_also_covers_the_codex_lifecycle(client: TestClient) -> None:
-    """Same class of exposure: these establish or tear down a credential."""
+def test_the_codex_lifecycle_endpoints_are_gone(client: TestClient) -> None:
+    """The codex_auth retirement removed the whole OAuth lifecycle; the
+    endpoints must not come back as ghosts (404, not 403/500)."""
     for path in (
         "/api/settings/providers/openai-codex/oauth/start",
         "/api/settings/providers/openai-codex/oauth/logout",
     ):
         response = client.post(path, headers={"Origin": "https://evil.example"})
-        assert response.status_code == 403, path
+        assert response.status_code == 404, path
 
 
 def test_a_malformed_tenant_id_is_refused_while_saving(client: TestClient) -> None:

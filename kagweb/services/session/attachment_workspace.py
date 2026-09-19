@@ -94,17 +94,20 @@ def _copy_one(store, session_id: str, rec: dict[str, Any]) -> str | None:  # noq
         return None
 
 
-async def write_session_transcript(session_id: str, content: str) -> str:
-    """Write the session transcript into the workspace; return its path.
+async def write_session_transcript(
+    session_id: str, content: str, *, filename: str = "session-transcript.md"
+) -> str:
+    """Write a conversation transcript into the workspace; return its path.
 
     The L0 history channel (agent-loop history design): a plain file every
-    workspace-running backend can read, refreshed each turn. Fail-soft like
-    the attachment copies — a transcript that cannot be written simply
-    yields no manifest row.
+    workspace-running backend can read. The current session's transcript is
+    refreshed each turn under the default name; referenced sessions get one
+    file per source session. Fail-soft like the attachment copies — a
+    transcript that cannot be written simply yields no manifest row.
     """
     from kagweb.services.path_service import get_path_service
 
-    target = get_path_service().get_task_workspace("chat", session_id) / "session-transcript.md"
+    target = get_path_service().get_task_workspace("chat", session_id) / filename
 
     def _write() -> None:
         target.parent.mkdir(parents=True, exist_ok=True)

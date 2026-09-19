@@ -17,7 +17,7 @@ from fastapi import (
     WebSocket,
     status,
 )
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
 
 from kagweb.services.config import load_auth_settings
@@ -50,8 +50,6 @@ from kagweb.services.auth import (
     set_avatar,
     set_role,
 )
-from kagweb.services.codex_auth.contracts import CodexAuthError
-from kagweb.services.codex_auth.service import deliver_codex_oauth_callback
 
 logger = logging.getLogger(__name__)
 
@@ -409,35 +407,6 @@ def _local_admin_token_payload() -> TokenPayload:
 # ---------------------------------------------------------------------------
 # Public endpoints (no auth required)
 # ---------------------------------------------------------------------------
-
-
-@router.get("/openai-codex/callback")
-async def receive_codex_oauth_callback(
-    request: Request,
-    code: str | None = None,
-    state: str | None = None,
-    error: str | None = None,
-) -> HTMLResponse:
-    headers = {"Cache-Control": "no-store"}
-    try:
-        callback_state = state if len(request.query_params.getlist("state")) == 1 else None
-        await deliver_codex_oauth_callback(code, callback_state, error)
-    except CodexAuthError as exc:
-        return HTMLResponse(
-            (
-                "<!doctype html><title>KAGWeb Codex</title>"
-                "<p>Authentication could not be received. Return to KAGWeb and try again.</p>"
-            ),
-            status_code=exc.http_status,
-            headers=headers,
-        )
-    return HTMLResponse(
-        (
-            "<!doctype html><title>KAGWeb Codex</title>"
-            "<p>Authentication received. You can return to KAGWeb.</p>"
-        ),
-        headers=headers,
-    )
 
 
 def _per_turn_model_enabled() -> bool:

@@ -25,14 +25,8 @@ import {
   reasoningEffortOptions,
   reasoningEffortOptionsFromSupportedLevels,
 } from "@/lib/reasoning-effort";
-import { CodexOAuthCard } from "./CodexOAuthCard";
 import { IntellectLinkCard } from "./IntellectLinkCard";
 import { CodeBuddyAuthCard } from "./CodeBuddyAuthCard";
-import {
-  isBoundManagedCodexProfile,
-  isCodexOAuthProfile,
-  isManagedCodexProfile,
-} from "./codex-profile";
 import {
   type CatalogModel,
   type CatalogProfile,
@@ -187,14 +181,6 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
   const activeProviderOption = (providers[service] || []).find(
     (option) => option.value === activeProviderValue,
   );
-  const isManagedCodex = isManagedCodexProfile(activeProfile);
-  const isBoundManagedCodex = isBoundManagedCodexProfile(activeProfile);
-  const isCodexOAuth = isCodexOAuthProfile(
-    service,
-    activeProviderValue,
-    activeProviderOption,
-    activeProfile,
-  );
 
   // Arriving from Settings > Connections with ?profile=<id>: open that
   // provider's dialog directly. It used to have to *adopt* the profile to
@@ -282,18 +268,12 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
       : null;
   const reasoningOptions =
     service === "llm" && activeModel
-      ? isManagedCodex
-        ? isBoundManagedCodex
-          ? reasoningEffortOptionsFromSupportedLevels(
-              activeModel.codex_supported_reasoning_levels ?? [],
-            )
-          : []
-        : reasoningEffortOptions(
-            activeProfile?.binding,
-            activeModel.model,
-            activeModel.reasoning_effort,
-            activeModel.capabilities?.reasoning,
-          )
+      ? reasoningEffortOptions(
+          activeProfile?.binding,
+          activeModel.model,
+          activeModel.reasoning_effort,
+          activeModel.capabilities?.reasoning,
+        )
       : [];
 
   const syncProviderModels = async (
@@ -431,12 +411,6 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
             "Model endpoints are assigned by your administrator. You can still personalize theme and language here.",
           )}
         </div>
-        {/* One thing an ordinary user CAN configure for themselves: an
-            owner-bound Codex login. It authenticates their own ChatGPT plan,
-            so it is never something an administrator can grant them — the
-            account has to sign in for itself (#781). The card talks only to
-            the per-user OAuth endpoints and exposes no catalog. */}
-        {service === "llm" && <CodexOAuthCard />}
         {/* Likewise personal: the user's own Intellect account on the agent
             backend, so a turn is attributed to them rather than to the
             deployment. It hides itself when no agent service is configured. */}
@@ -629,7 +603,6 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
                               </CardAction>
                             )}
                           {LLM_SHAPED.has(service) &&
-                            !isCodexOAuth &&
                             openedProfile.binding !== "codebuddy" &&
                             Boolean(
                               String(openedProfile.base_url || "").trim(),
@@ -702,7 +675,7 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
 
                 {service !== "search" && (
                   <div>
-                    {activeModel && (!isCodexOAuth || isBoundManagedCodex) && (
+                    {activeModel && true && (
                       <div className="mb-2.5 flex items-center justify-between gap-2 border-b border-[var(--border)]/60 pb-2">
                         <div className="min-w-0 truncate text-[13px] font-medium text-[var(--foreground)]">
                           {(activeModel.name || "").trim() || t("Model")}
@@ -717,9 +690,9 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
                         </button>
                       </div>
                     )}
-                    {activeModel && (!isCodexOAuth || isBoundManagedCodex) && (
+                    {activeModel && true && (
                       <div className="grid gap-4 sm:grid-cols-2">
-                        {!isCodexOAuth && (
+                        {(
                           <div>
                             <div className="mb-1.5 text-[12px] text-[var(--muted-foreground)]">
                               {t("Model ID")}
@@ -740,7 +713,7 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
                         )}
                         {service === "llm" && (
                           <>
-                            {!isCodexOAuth && (
+                            {(
                               <>
                                 <div>
                                   <div className="mb-1.5 text-[12px] text-[var(--muted-foreground)]">
@@ -798,7 +771,7 @@ export function ServiceConfigEditor({ service }: { service: ServiceName }) {
                             )}
                           </>
                         )}
-                        {LLM_SHAPED.has(service) && !isCodexOAuth && (
+                        {LLM_SHAPED.has(service) && (
                           <ModelCapabilityFields
                             binding={activeProfile?.binding}
                             model={activeModel}
@@ -1340,13 +1313,6 @@ function ProfileFields({
   const providerOption = (providers[service] || []).find(
     (option) => option.value === providerValue,
   );
-  const isManagedCodex = isManagedCodexProfile(profile);
-  const isCodexOAuth = isCodexOAuthProfile(
-    service,
-    providerValue,
-    providerOption,
-    profile,
-  );
   const isCodeBuddyAuth = service === "llm" && providerValue === "codebuddy";
   const apiFormats = LLM_SHAPED.has(service)
     ? (providerOption?.api_formats ?? [])
@@ -1374,7 +1340,7 @@ function ProfileFields({
   };
 
   const fields =
-    isCodexOAuth || isCodeBuddyAuth
+    isCodeBuddyAuth
       ? { apiKey: false, baseUrl: false, baseUrlRequired: false }
       : service === "search"
         ? searchProviderFields(profile.provider, providerOption)
@@ -1399,7 +1365,6 @@ function ProfileFields({
           <select
             className={`${selectClass} ${providerValue ? "pl-9" : ""}`}
             value={providerValue}
-            disabled={isManagedCodex}
             onChange={(e) => {
               const val = e.target.value;
               const field = service === "search" ? "provider" : "binding";
@@ -1502,11 +1467,6 @@ function ProfileFields({
           </p>
         )}
       </div>
-      {isCodexOAuth && (
-        <div className="sm:col-span-2">
-          <CodexOAuthCard />
-        </div>
-      )}
       {isCodeBuddyAuth && (
         <div className="sm:col-span-2">
           <CodeBuddyAuthCard />
@@ -1626,7 +1586,7 @@ function ProfileFields({
           )}
         </div>
       )}
-      {!isCodexOAuth && !isCodeBuddyAuth && (
+      {!isCodeBuddyAuth && (
         <div className="sm:col-span-2 rounded-xl border border-[var(--border)]/60 bg-[var(--muted)]/20">
           <button
             type="button"

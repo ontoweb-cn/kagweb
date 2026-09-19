@@ -11,12 +11,9 @@ import { config as proxyConfig } from "../proxy";
 // adapter that maps these decisions onto NextResponse.
 
 import {
-  CODEX_CALLBACK_API_PATH,
-  CODEX_CALLBACK_PATH,
   classifyToken,
   isAuthExempt,
   isBackendPath,
-  isCodexCallbackPath,
   isRetiredPagePath,
 } from "../lib/proxy-policy";
 
@@ -54,15 +51,6 @@ test("backend proxy allows long-running agent requests", () => {
   );
 });
 
-test("isCodexCallbackPath matches only the exact public callback path", () => {
-  assert.equal(CODEX_CALLBACK_PATH, "/auth/callback");
-  assert.equal(CODEX_CALLBACK_API_PATH, "/api/auth/openai-codex/callback");
-  assert.equal(isCodexCallbackPath("/auth/callback"), true);
-  assert.equal(isCodexCallbackPath("/auth/callback/"), false);
-  assert.equal(isCodexCallbackPath("/auth/callback/extra"), false);
-  assert.equal(isCodexCallbackPath("/auth/callback-near"), false);
-  assert.equal(isCodexCallbackPath("/Auth/callback"), false);
-});
 
 test("retired pages cannot fall through to colliding dynamic routes", () => {
   assert.equal(isRetiredPagePath("/partners/groups"), true);
@@ -71,21 +59,12 @@ test("retired pages cannot fall through to colliding dynamic routes", () => {
   assert.equal(isRetiredPagePath("/partners/group-1"), false);
 });
 
-test("proxy rewrites the exact callback before backend routing and auth gating", () => {
-  const source = readFileSync(path.resolve(process.cwd(), "proxy.ts"), "utf8");
-  const callbackBranch = source.indexOf("if (isCodexCallbackPath(pathname))");
-  const backendBranch = source.indexOf("if (isBackendPath(pathname))");
-  const authGate = source.indexOf("if (!AUTH_ENABLED");
-
-  assert.notEqual(callbackBranch, -1);
-  assert.notEqual(backendBranch, -1);
-  assert.notEqual(authGate, -1);
-  assert.ok(callbackBranch < backendBranch);
-  assert.ok(callbackBranch < authGate);
-  assert.match(
-    source,
-    /NextResponse\.rewrite\(\s*new URL\(\s*CODEX_CALLBACK_API_PATH \+ search,\s*API_BASE_URL,?\s*\),?\s*\)/,
-  );
+test("the old codex callback path is retired with a 404", () => {
+  const source = readFileSync(path.resolve(process.cwd(), "lib/proxy-policy.ts"), "utf8");
+  // The backend route is gone; the path must land in the retired set, not
+  // rewrite to a ghost endpoint.
+  assert.match(source, /RETIRED_PAGE_PATHS = new Set\(\[.*"\/auth\/callback"/s);
+  assert.doesNotMatch(source, /openai-codex/);
 });
 
 test("isAuthExempt allows public static assets through the auth gate (issue #599)", () => {

@@ -28,11 +28,6 @@ from kagweb.services.agent_loop.workdir import (
     resolve_allowed_workdir,
 )
 from kagweb.services.codebuddy_auth import get_codebuddy_auth_service
-from kagweb.services.codex_auth import (
-    CodexAuthError,
-    get_codex_oauth_service,
-    reconcile_codex_catalog_update,
-)
 from kagweb.services.config import (
     CATALOG_SECRET_MASK,
     get_config_test_runner,
@@ -557,28 +552,6 @@ def _identity_service_available() -> bool:
         return False
 
 
-def _require_codex_oauth_actor() -> None:
-    """Gate the Codex OAuth lifecycle: personal, not administrative.
-
-    Every one of these endpoints acts on the *caller's own* credentials —
-    ``get_codex_oauth_service()`` resolves the store, the model catalog, and
-    the callback route from owner scope — so requiring an administrator was
-    what left ordinary users unable to use Codex at all: an owner-bound
-    profile is (correctly) never grantable, and they could not sign in for
-    themselves either (#781).
-    """
-
-
-def _codex_http_exception(error: CodexAuthError) -> HTTPException:
-    return HTTPException(
-        status_code=error.http_status,
-        detail={
-            "code": error.code,
-            "message": error.public_message,
-        },
-    )
-
-
 def _provider_choices() -> dict[str, list[dict[str, Any]]]:
     """Build dropdown options for provider selection, keyed by service type."""
     from kagweb.services.config.provider_runtime import (
@@ -853,64 +826,6 @@ async def get_settings():
     }
 
 
-@router.post("/providers/openai-codex/oauth/start")
-async def start_openai_codex_oauth(request: Request) -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    _require_same_origin(request)
-    try:
-        return await get_codex_oauth_service().start_login()
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-
-
-@router.get("/providers/openai-codex/oauth/status")
-async def get_openai_codex_oauth_status() -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    try:
-        return get_codex_oauth_service().public_status()
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-
-
-@router.post("/providers/openai-codex/oauth/cancel")
-async def cancel_openai_codex_oauth(request: Request) -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    _require_same_origin(request)
-    try:
-        return await get_codex_oauth_service().cancel_login()
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-
-
-@router.post("/providers/openai-codex/oauth/logout")
-async def logout_openai_codex_oauth(request: Request) -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    # Same-origin guard: a cross-site logout would silently disconnect the
-    # victim's credential, and the re-link that follows is the attacker's.
-    _require_same_origin(request)
-    try:
-        return await get_codex_oauth_service().logout()
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-
-
-@router.post("/providers/openai-codex/models/refresh")
-async def refresh_openai_codex_models() -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    try:
-        return await get_codex_oauth_service().refresh_models()
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-
-
-# ── Linked Intellect account (per user, deliberately not admin-gated) ───────
-#
-# This is a *personal* credential, like the Codex OAuth lifecycle above: each
-# user connects their own account, and the agent-loop settings endpoints — all
-# admin-only — are the wrong place for it. The token never leaves the server:
-# every response below reports the link, never the credential.
-
-
 class IdentityLinkRequest(BaseModel):
     """Either a password login, or a token the user was handed out of band."""
 
@@ -1005,25 +920,6 @@ async def cancel_codebuddy_auth() -> dict[str, Any]:
 async def logout_codebuddy_auth() -> dict[str, Any]:
     _require_settings_admin()
     return await get_codebuddy_auth_service().logout()
-
-
-@router.post("/providers/openai-codex/models/reasoning-effort")
-async def update_openai_codex_reasoning_effort(
-    payload: CodexReasoningEffortUpdate,
-) -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    try:
-        status_payload = await get_codex_oauth_service().set_reasoning_effort(
-            payload.model,
-            payload.reasoning_effort,
-        )
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-    # This writes the catalog the runtime resolves against, like every other
-    # catalog write here — without it the next turn keeps the old effort until
-    # something else happens to invalidate.
-    _invalidate_runtime_caches()
-    return status_payload
 
 
 @router.get("/catalog")
@@ -2040,7 +1936,7 @@ async def update_catalog(payload: CatalogPayload):
     service = get_model_catalog_service()
     current = service.load()
     restored = restore_catalog_secrets(payload.catalog, current)
-    proposed = reconcile_codex_catalog_update(current, restored)
+    proposed = restored  # codex catalog reconciliation retired with codex_auth
     catalog = service.save(proposed)
     _invalidate_runtime_caches()
     return {"catalog": redact_catalog_secrets(catalog)}
@@ -2107,7 +2003,7 @@ async def apply_catalog(payload: CatalogPayload | None = None):
             if isinstance(draft_catalog, dict)
             else current
         )
-    catalog = reconcile_codex_catalog_update(current, proposed)
+    catalog = proposed
     applied = service.apply(catalog)
     draft_service.clear()
     _invalidate_runtime_caches()

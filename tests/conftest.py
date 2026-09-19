@@ -64,8 +64,7 @@ def _guard_real_owner_secrets():
             pytest.fail(
                 "test wrote into the real per-account state tree "
                 f"{root}: {sorted(added)}. Redirect paths.SYSTEM_ROOT and "
-                "paths.ADMIN_WORKSPACE_ROOT (see "
-                "tests/services/codex_auth/test_credential_location.py)."
+                "paths.ADMIN_WORKSPACE_ROOT.",
             )
 
 

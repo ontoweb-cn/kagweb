@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from .codebuddy_http_provider import CodeBuddyHTTPProvider
     from .codebuddy_provider import CodeBuddyProvider
     from .github_copilot_provider import GitHubCopilotProvider
-    from .openai_codex_provider import OpenAICodexProvider
     from .openai_compat_provider import OpenAICompatProvider
 
 __all__ = [
@@ -25,7 +24,6 @@ __all__ = [
     "GitHubCopilotProvider",
     "LLMProvider",
     "LLMResponse",
-    "OpenAICodexProvider",
     "OpenAICompatProvider",
     "ToolCallRequest",
 ]
@@ -37,7 +35,6 @@ _LAZY_TYPES = {
     "CodeBuddyHTTPProvider": ("codebuddy_http_provider", "CodeBuddyHTTPProvider"),
     "CodeBuddyProvider": ("codebuddy_provider", "CodeBuddyProvider"),
     "GitHubCopilotProvider": ("github_copilot_provider", "GitHubCopilotProvider"),
-    "OpenAICodexProvider": ("openai_codex_provider", "OpenAICodexProvider"),
     "OpenAICompatProvider": ("openai_compat_provider", "OpenAICompatProvider"),
 }
 
