@@ -464,13 +464,18 @@ class KagMembersUpdateRequest(BaseModel):
 
 @router.get("/projects/{project_id}/members")
 async def get_project_members(project_id: str) -> dict[str, Any]:
-    """项目成员（项目访问可读；T2）。"""
+    """项目成员（项目访问可读；T2）。``can_edit`` 标记当前用户是否可改
+    成员（admin），供前端控制编辑区显隐。"""
+    from kagweb.services.kag.access import _is_admin
+
     _require_project_access(project_id)
     owner = project_owner(project_id)
+    user = _current_user()
     return {
         "owner": owner,
         "owner_user_no": derive_user_no(owner) if owner else "",
         "members": project_members(project_id),
+        "can_edit": _is_admin(user),
     }
 
 

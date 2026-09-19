@@ -3272,7 +3272,7 @@
   "Saving pushes these values into every profile this connection supplies.": "保存后，这些值会写入由此连接供给的每一个配置。",
   "Saving to your space…": "正在保存到你的空间…",
   "Saving...": "保存中…",
-  "Saving…": "正在保存…",
+  "Saving…": "保存中…",
   "Say hello — channels are optional, and any connected channel shares this partner's memory.": "直接和伙伴聊吧——频道是可选的；接入后，它们会共享这位伙伴的记忆。",
   "Say hello — this conversation shares the same memory your partner has on its connected channels.": "打个招呼吧——这里与伙伴在各频道上的对话共享同一份记忆。",
   "Scan completed": "扫码完成",
@@ -4880,5 +4880,18 @@
   "{{count}} row(s) returned": "返回 {{count}} 行",
   "Graph canvas": "图画布",
   "Run a read-only reason DSL query. Node types must use the namespace-qualified full name; relation labels are bare. Two-column id results render as a graph. The DSL takes no LIMIT clause - results are capped server-side.": "执行只读 reason DSL 查询。节点类型须用带 namespace 的全名，关系 label 用裸名；两列 id 的结果渲染为图。DSL 不支持 LIMIT 子句——结果在服务端截断。",
-  "Build": "构建"
+  "Build": "构建",
+  "Project members": "项目成员",
+  "Owner": "所有者",
+  "OpenSPG userNo": "OpenSPG 归因 userNo",
+  "Member user ids (comma-separated)": "成员用户 ID（逗号分隔）",
+  "Save members": "保存成员",
+  "Members: {{count}}": "成员：{{count}}",
+  "The project members could not be loaded": "无法加载项目成员",
+  "The member update was rejected": "成员更新被拒绝",
+  "Build pipeline": "构建流水线",
+  "Submit a KAG_COMMAND build. This locally accepts the job; the remote executor must be configured for it to actually run.": "提交一个 KAG_COMMAND 构建。本操作仅受理任务；远程 executor 需配置后才能真正执行。",
+  "Enter a build command first": "请先输入构建命令",
+  "Submit build": "提交构建",
+  "The build submission was rejected": "构建提交被拒绝"
 }

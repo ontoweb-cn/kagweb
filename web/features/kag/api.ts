@@ -124,6 +124,66 @@ export async function queryKagGraph(
   return parseGraphQueryResult(payload);
 }
 
+/** M4-A：触发 KAG_COMMAND 构建（受理层；本地 executor 缺失时执行会失败）。 */
+export async function submitKagBuild(
+  projectId: string,
+  command: string,
+): Promise<unknown> {
+  return requestJson<unknown>(
+    `/api/kag/projects/${encodeURIComponent(projectId)}/build`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ command }),
+      scope: "kag",
+    },
+  );
+}
+
+/** M4-B：项目成员 + owner（owner_user_no 为 OpenSPG 归因 userNo）。 */
+export interface KagProjectMembers {
+  owner: string;
+  ownerUserNo: string;
+  members: string[];
+  /** 当前用户是否可编辑成员（admin）。 */
+  canEdit: boolean;
+}
+
+export async function fetchKagMembers(
+  projectId: string,
+  signal?: AbortSignal,
+): Promise<KagProjectMembers> {
+  const payload = await requestJson<unknown>(
+    `/api/kag/projects/${encodeURIComponent(projectId)}/members`,
+    { cache: "no-store", signal, scope: "kag" },
+  );
+  const record = (payload ?? {}) as Record<string, unknown>;
+  const members = Array.isArray(record.members)
+    ? record.members.map((m) => String(m))
+    : [];
+  return {
+    owner: String(record.owner ?? ""),
+    ownerUserNo: String(record.owner_user_no ?? ""),
+    members,
+    canEdit: record.can_edit === true,
+  };
+}
+
+export async function updateKagMembers(
+  projectId: string,
+  members: string[],
+): Promise<unknown> {
+  return requestJson<unknown>(
+    `/api/kag/projects/${encodeURIComponent(projectId)}/members`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ members }),
+      scope: "kag",
+    },
+  );
+}
+
 export async function fetchKagTasks(
   taskQuery: KagTaskQuery = {},
   signal?: AbortSignal,

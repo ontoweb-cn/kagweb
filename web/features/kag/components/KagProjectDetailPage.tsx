@@ -23,6 +23,7 @@ import {
 } from "../model";
 import { KagBackLink, KagPageBody, KagPageHeader, KagStateView } from "./KagPageFrame";
 import { GraphExplorerSection } from "./GraphExplorerSection";
+import { MemberBuildPanel } from "./MemberBuildPanel";
 import { SchemaEditPanel } from "./SchemaEditPanel";
 
 /**
@@ -397,6 +398,8 @@ export default function KagProjectDetailPage({
       {rows.length > 0 ? (
         <GraphExplorerSection projectId={projectId} types={rows} />
       ) : null}
+
+      <MemberBuildPanel projectId={projectId} />
 
       <section>
         <h2 className="mb-2 text-[15px] font-semibold tracking-tight text-[var(--foreground)]">

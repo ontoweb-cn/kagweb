@@ -230,5 +230,19 @@
   "{{count}} row(s) returned": "{{count}} row(s) returned",
   "Graph canvas": "Graph canvas",
   "Run a read-only reason DSL query. Node types must use the namespace-qualified full name; relation labels are bare. Two-column id results render as a graph. The DSL takes no LIMIT clause - results are capped server-side.": "Run a read-only reason DSL query. Node types must use the namespace-qualified full name; relation labels are bare. Two-column id results render as a graph. The DSL takes no LIMIT clause - results are capped server-side.",
-  "Build": "Build"
+  "Build": "Build",
+  "Project members": "Project members",
+  "Owner": "Owner",
+  "OpenSPG userNo": "OpenSPG userNo",
+  "Member user ids (comma-separated)": "Member user ids (comma-separated)",
+  "Save members": "Save members",
+  "Saving…": "Saving…",
+  "Members: {{count}}": "Members: {{count}}",
+  "The project members could not be loaded": "The project members could not be loaded",
+  "The member update was rejected": "The member update was rejected",
+  "Build pipeline": "Build pipeline",
+  "Submit a KAG_COMMAND build. This locally accepts the job; the remote executor must be configured for it to actually run.": "Submit a KAG_COMMAND build. This locally accepts the job; the remote executor must be configured for it to actually run.",
+  "Enter a build command first": "Enter a build command first",
+  "Submit build": "Submit build",
+  "The build submission was rejected": "The build submission was rejected"
 }
