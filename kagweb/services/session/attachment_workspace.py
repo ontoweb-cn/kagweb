@@ -111,7 +111,9 @@ async def write_session_transcript(
 
     def _write() -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
-        tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+        # pid + uuid4: concurrent writes of the SAME file (a referenced
+        # transcript re-resolved by two turns) must not share a tmp name.
+        tmp = target.with_name(f".{target.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
         tmp.write_text(content, encoding="utf-8")
         _publish_copy(tmp, target)
 
