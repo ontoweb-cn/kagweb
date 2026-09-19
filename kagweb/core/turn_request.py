@@ -80,8 +80,11 @@ class TurnRequest(BaseModel):
     #: vocabulary (an ACP option id, an operator-curated model name), sent
     #: verbatim to the backend and validated there. Mutually exclusive with
     #: ``llm_selection`` — the request preparer drops any stored catalog pin
-    #: when this is set. ``None``/"" = no backend-native override.
-    backend_model: str | None = None
+    #: when this is set. ``None``/"" = no backend-native override. The cap
+    #: bounds what a hostile client can push into a CLI argv element or an
+    #: HTTP body field: model ids are nowhere near this, garbage is rejected
+    #: at the protocol layer instead of failing the turn downstream.
+    backend_model: str | None = Field(default=None, max_length=256)
     workspace_mode: str | None = None
     mastery_path_id: str | None = None
     mastery_path_lease_managed: bool = False

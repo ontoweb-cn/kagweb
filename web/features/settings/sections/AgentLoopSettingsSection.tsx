@@ -335,6 +335,20 @@ function StatusChip({ ok, text }: { ok: boolean; text: string }) {
   );
 }
 
+/** Amber advisory: something is configured in a way that will not take
+ *  effect. Never blocks saving — the operator decides. */
+function WarnChip({ text }: { text: string }) {
+  return (
+    <span
+      title={text}
+      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-medium text-amber-600 dark:text-amber-400"
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+      {text}
+    </span>
+  );
+}
+
 function DetectBadge({ result }: { result?: DetectInfo }) {
   const { t } = useTranslation();
   if (!result) return null;
@@ -897,6 +911,19 @@ export default function AgentLoopSettingsPage() {
                         )}
                       </button>
                       <DetectBadge result={detect} />
+                      {(() => {
+                        // §4.2-7: a curated per-turn list does nothing for a
+                        // one-shot CLI unless the operator's args substitute
+                        // `{model}` — surface that at draft time instead of
+                        // letting the picker silently no-op.
+                        const family = familyOfProfile(draft, payload.presets ?? []);
+                        if (family !== "cli") return null;
+                        if (!draft.modelsText.trim()) return null;
+                        if (draft.argsText.includes("{model}")) return null;
+                        return (
+                          <WarnChip text={t("Per-turn models need {model} in the extra arguments")} />
+                        );
+                      })()}
                       <label className="flex shrink-0 items-center gap-1.5 text-[11.5px] text-[var(--muted-foreground)]">
                         {t("Enabled")}
                         <Toggle

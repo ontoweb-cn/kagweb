@@ -247,3 +247,41 @@ opencode 预设同样标 `per_turn_model=True` 且有 `opencode models` 列表�
   后期添加无需改动任何字段或 wire 形态。
 - **Intellect HTTP 的服务端模型目录查询端点**(上游没有,推动上游另立 issue)。
 - **凭据打通(P3)** 维持挂起,不在本期。
+
+## 7. 实施与评审记录(2026-09-19 定稿)
+
+| 提交 | 内容 |
+| --- | --- |
+| `1470a3a` | M1+M2+M3 全量实施(§4.2 按 §5a 偏差执行);评审中发现并修复 `model_selector_enabled` 恒 False 的潜伏 bug(`RuntimeSettingsService.load()` 不存在);CI run 35411424538 全绿 |
+| `efc6268` | 第一轮代码评审修复:catalog 模式默认行文案回归(保留「System default」)、补 §4.3-4 跨 source 陈旧选型清空(effect,后端 source 空清单时豁免)、`useAgentLoopModels` 去掉 keyless single-flight(会话切换污染,`withClientCache` 本身按 key 共享在途请求);CI run 35412257110 全绿 |
+| `55835b8` | 第二轮代码评审修复:**P1 既有 bug** —— `regenerate_last_turn` 自 f4121ba(9/11 删除 tools 契约字段)起 payload 仍带 `"tools"`,`TurnRequest` extra=forbid 把所有重新生成请求拒绝(extra_forbidden),WS regenerate 分支只捕 RuntimeError,ValidationError 直接逃逸;同修复 regenerate 对 `{"backend_model": …}` 快照形态的恢复(否则按回合选型的回合无法重生成);CI run 35413330131 全绿 |
+
+验收记录:pytest 1723+ 全绿(新增 ACP 广播/过滤/端点/门控/regenerate 回归约 25 用例);web node 689 + vitest 51;本机实例实测 `/api/auth/status` `model_selector_enabled=true`、models 端点返回真实 ACP 广播清单(`deepseek:deepseek-flash` current + `deepseek-v4-pro`)。
+
+评审确认的非问题:`StartTurnCommand` 继承 `TurnRequest`,WS 契约自动放行 `backend_model`;CLI `{model}`/`{prompt}` 哨兵单遍替换,模型值不会把 prompt 泄进 argv;`invalidateClientCache` 为前缀语义;`ensure()` 失败路径不登记句柄。
+
+## 8. 挂账任务细化(评审后实施)
+
+评审遗留的 P3 项,细化为四个任务:
+
+### T1 `backend_model` 长度上限(P3,卫生)
+
+- **问题**:`TurnRequest.backend_model: str | None` 无长度上限;恶意客户端可发超大字符串,落入单个 argv 元素(`--model={model}`)或 HTTP body——无注入面、失败安全,但便宜的上限值得加。
+- **改动**:`TurnRequest.backend_model` 加 `Field(default=None, max_length=256)`(pydantic 对 str 生效,WS 契约继承自动生效);超限 → 协议层校验错误,与其它字段行为一致。
+- **判据**:单测——201+ 字符的 payload 被拒;契约 schema 再生后含 maxLength。
+
+### T2 设置页校验 badge(§4.2-7 的剩余一半)
+
+- **问题**:CLI profile 配了按回合清单但 args 缺 `{model}` 占位符时,选择器的值不会生效——目前只有编辑器描述文案提示,无显式提醒。
+- **改动**:AgentLoopSettingsSection 的 profile 卡片在**保存前草稿态**校验:`preset` 为 one-shot CLI 族 && `modelsText` 非空 && `argsText` 不含 `{model}` → 显示 amber 警示(文案:「args 需引用 {model},否则按回合模型不会生效」),不阻断保存。
+- **判据**:组件渲染校验(node 测试或 typecheck+人工);文案入 zh locale。
+
+### T3 端点与 ABC 的 profile 行构造去重
+
+- **问题**:profile 词汇 → 选项行的映射在 `GET /api/settings/agent-loop/models` 的 step-3 和 `AgentLoopBackend.list_model_options` 默认实现各写一遍(行为微差:默认实现不追加配置模型)。
+- **改动**:抽取模块级 `profile_model_options(models, configured) -> list[dict]` helper(protocol.py),两处共用;行为对齐到端点现状(配置模型缺失时追加并标 current)。行为不变,纯收敛。
+- **判据**:现有端点测试与 `test_factory_*` 全绿,无新行为。
+
+### T4 probe 失败负缓存(有意不做,记录在案)
+
+- 失败不缓存 = 瞬时故障不被钉死 60s,代价是 CLI 坏掉时每次 force 刷新重拉探测子进程(受 `MAX_ACTIVE_CHILDREN` 与 10s 超时约束)。**维持现状**,此条仅归档。

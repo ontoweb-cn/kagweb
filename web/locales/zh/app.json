@@ -4800,5 +4800,6 @@
   "Current": "当前",
   "Per-turn models": "按回合模型",
   "Optional. One per line, offered in the composer's model picker for individual turns — format: model, or model | label. The service must accept the body's model field; a non-empty list is what turns the picker on for this service.": "可选。每行一个,出现在 composer 的按回合模型选择器中——格式:模型名,或 模型名 | 显示名。服务必须接受请求体中的 model 字段;非空清单即为对该服务开启选择器的开关。",
-  "Optional. One per line, offered in the composer's model picker for individual turns — format: model, or model | label. Names must be ones the CLI itself accepts (it carries its own login); the profile's args must reference {model} for these to take effect.": "可选。每行一个,出现在 composer 的按回合模型选择器中——格式:模型名,或 模型名 | 显示名。名称必须是该 CLI 自身接受的模型(CLI 自带登录态);profile 参数须引用 {model} 才会生效。"
+  "Optional. One per line, offered in the composer's model picker for individual turns — format: model, or model | label. Names must be ones the CLI itself accepts (it carries its own login); the profile's args must reference {model} for these to take effect.": "可选。每行一个,出现在 composer 的按回合模型选择器中——格式:模型名,或 模型名 | 显示名。名称必须是该 CLI 自身接受的模型(CLI 自带登录态);profile 参数须引用 {model} 才会生效。",
+  "Per-turn models need {model} in the extra arguments": "按回合模型需要参数中引用 {model},否则不会生效"
 }

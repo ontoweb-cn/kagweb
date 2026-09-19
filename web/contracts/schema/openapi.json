@@ -1793,6 +1793,7 @@
           "backend_model": {
             "anyOf": [
               {
+                "maxLength": 256,
                 "type": "string"
               },
               {

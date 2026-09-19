@@ -337,9 +337,14 @@ The composer's option list is family-specific (`GET
 catalog for the self-hosted Intellect HTTP services (the one family the
 catalog actually configures), and the operator-curated profile `models` list
 for everything else. A backend-native pick travels as `TurnRequest.backend_model`
-and is validated against the backend's vocabulary (`AgentLoopBackend.filter_turn_model`);
-a stale pick degrades to the backend default, never to a name the backend cannot
-resolve.
+(capped at 256 characters) and is validated against the backend's vocabulary
+(`AgentLoopBackend.filter_turn_model`); a stale pick degrades to the backend
+default, never to a name the backend cannot resolve. The selection persists in
+the user message's request snapshot (as `llmSelection`, in either the catalog
+pair or the `{"backend_model": …}` form), which is also how a **regenerated**
+turn re-applies the same model — `regenerate_last_turn` splits the backend
+form out before dispatch instead of routing it through the strict catalog
+validation.
 
 ## Consultation (multi agent-loop)
 

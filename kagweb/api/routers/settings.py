@@ -1960,6 +1960,7 @@ async def get_agent_loop_models(session_id: str = ""):
         normalize_profile_models,
         preset_family,
     )
+    from kagweb.services.agent_loop.protocol import profile_model_options
     from kagweb.services.agent_loop.settings import (
         profile_per_turn_model,
         resolve_primary_profile,
@@ -2018,19 +2019,13 @@ async def get_agent_loop_models(session_id: str = ""):
         except Exception:  # noqa: BLE001 — a broken catalog degrades, never fails
             logger.debug("agent-loop models: catalog listing failed", exc_info=True)
 
-    # 3) Profile vocabulary: curated list plus the configured model itself.
-    configured = str(profile.get("model") or "").strip()
-    options = []
-    for row in normalize_profile_models(profile.get("models")):
-        options.append(
-            {
-                "id": row["id"],
-                "name": row["name"],
-                "is_current": bool(configured) and row["id"] == configured,
-            }
-        )
-    if configured and all(row["id"] != configured for row in options):
-        options.append({"id": configured, "name": configured, "is_current": True})
+    # 3) Profile vocabulary: curated list plus the configured model itself —
+    # the same rows `AgentLoopBackend.list_model_options` defaults to (shared
+    # helper, so the endpoint and the backends cannot drift apart).
+    options = profile_model_options(
+        normalize_profile_models(profile.get("models")),
+        str(profile.get("model") or ""),
+    )
     return {
         "per_turn_model": True,
         "source": "profile",
