@@ -19,7 +19,18 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
 
 from kagweb.services.kag import get_kag_settings, kag_enabled
-from kagweb.services.kag.access import kag_read_allowed
+from kagweb.services.kag.access import (
+    derive_user_no,
+    filter_projects_by_access,
+    kag_read_allowed,
+    project_access_allowed,
+)
+from kagweb.services.kag.member_store import (
+    ensure_project_owner,
+    project_members,
+    project_owner,
+    update_project_members,
+)
 from kagweb.services.kag.openspg_client import OpenSPGClient, OpenSPGError
 from kagweb.services.kag.task_store import append_task, list_tasks
 
@@ -42,6 +53,14 @@ def _require_read() -> None:
     user = _current_user()
     if not kag_read_allowed(user, kag_configured=kag_enabled()):
         raise HTTPException(status_code=403, detail="KAG management plane is not available.")
+
+
+def _require_project_access(project_id: str) -> None:
+    """T2 项目级门禁（M4-B）：read 总门 + 该项目 membership。"""
+    _require_read()
+    user = _current_user()
+    if not project_access_allowed(user, project_id, kag_configured=kag_enabled()):
+        raise HTTPException(status_code=403, detail="You do not have access to this KAG project.")
 
 
 def _require_admin() -> None:
@@ -144,13 +163,13 @@ async def list_projects() -> dict[str, Any]:
         projects = await _client().list_projects()
     except OpenSPGError as exc:
         raise _upstream_error(exc) from exc
-    return {
-        "projects": [
-            _sanitize(p) for p in projects if isinstance(p, dict)
-        ]
-        if isinstance(projects, list)
-        else []
-    }
+    # T2（M4-B）：非 admin 仅返回其 owner/成员项目
+    visible = filter_projects_by_access(
+        _current_user(),
+        [p for p in projects if isinstance(p, dict)],
+        kag_configured=kag_enabled(),
+    )
+    return {"projects": [_sanitize(p) for p in visible]}
 
 
 class KagProjectCreateRequest(BaseModel):
@@ -170,8 +189,10 @@ async def create_project(request: Request, payload: KagProjectCreateRequest) -> 
     """创建 LOCAL 项目（完整流程：vectorizer 从模型目录组装，维度经实测探测）。
 
     embedding_model_id 指向 KAGWeb 模型目录中的 embedding profile（凭据不回显）。
+    T2（M4-B）：创建者成为项目 owner（登记 member_store），userNo 归因为
+    ``derive_user_no(user_id)``（系统调用/本地无用户上下文回落 service_user_no）。
     """
-    _require_admin()
+    _require_read()
     _require_same_origin(request)
 
     name = str(payload.name or "").strip()
@@ -183,10 +204,15 @@ async def create_project(request: Request, payload: KagProjectCreateRequest) -> 
             status_code=400,
             detail="namespace 必须为纯字母数字且以字母开头（Neo4j 数据库名约束，3-64 位）",
         )
-    block = get_kag_settings()
-    user_no = str(payload.service_user_no or block.get("service_user_no") or "kagweb")
-    if not _USERNO_RE.match(user_no):
-        raise HTTPException(status_code=400, detail="service_user_no 须 6-20 位字母/数字/下划线")
+    user = _current_user()
+    uid = str(getattr(user, "user_id", "") or str(getattr(user, "id", "") or "") or "")
+    if uid:
+        user_no = derive_user_no(uid)
+    else:
+        block = get_kag_settings()
+        user_no = str(payload.service_user_no or block.get("service_user_no") or "kagweb")
+        if not _USERNO_RE.match(user_no):
+            raise HTTPException(status_code=400, detail="service_user_no 须 6-20 位字母/数字/下划线")
 
     vectorizer = await _assemble_vectorizer(
         model_id=str(payload.embedding_model_id or "").strip(),
@@ -198,7 +224,11 @@ async def create_project(request: Request, payload: KagProjectCreateRequest) -> 
         )
     except OpenSPGError as exc:
         raise _upstream_error(exc) from exc
-    return {"project": _sanitize(result)}
+    project = result if isinstance(result, dict) else {}
+    project_id = str(project.get("projectId") or project.get("id") or "")
+    if project_id and uid:
+        ensure_project_owner(project_id, uid)
+    return {"project": _sanitize(project)}
 
 
 async def _assemble_vectorizer(*, model_id: str, vector_dimensions: int | None) -> dict[str, Any]:
@@ -285,7 +315,7 @@ async def _probe_dimensions(vectorizer: dict[str, Any]) -> int:
 @router.get("/projects/{project_id}")
 async def get_project(project_id: str) -> dict[str, Any]:
     """项目详情 + Schema 摘要 + 图 labels 概览（labels 失败不阻塞详情）。"""
-    _require_read()
+    _require_project_access(project_id)
     client = _client()
     try:
         project = await client.get_project(project_id)
@@ -318,7 +348,7 @@ async def get_project(project_id: str) -> dict[str, Any]:
 
 @router.get("/projects/{project_id}/schema")
 async def get_project_schema(project_id: str) -> dict[str, Any]:
-    _require_read()
+    _require_project_access(project_id)
     try:
         schema = await _client().query_schema(project_id)
     except OpenSPGError as exc:
@@ -352,12 +382,13 @@ class KagSchemaEditRequest(BaseModel):
 async def alter_project_schema(
     request: Request, project_id: str, payload: KagSchemaEditRequest
 ) -> dict[str, Any]:
-    """提交 Schema 变更（admin + same-origin；M3.5）。
+    """提交 Schema 变更（项目成员 + same-origin；M3.5）。
 
     语义（M3.5 实测）：UPDATE 覆写 + 元素级 CREATE/DELETE；缺条目不等于
-    删除（服务端 500），删除必须显式 DELETE 操作。
+    删除（服务端 500），删除必须显式 DELETE 操作。T2（M4-B）写操作由
+    admin-only 放宽为项目 membership（owner/成员可改自己的项目）。
     """
-    _require_admin()
+    _require_project_access(project_id)
     _require_same_origin(request)
     from kagweb.services.kag.schema_draft import new_relation, read_type_to_draft
 
@@ -425,6 +456,38 @@ async def alter_project_schema(
     return {"result": result, "schema_after": after}
 
 
+class KagMembersUpdateRequest(BaseModel):
+    """项目成员设置（T2，M4-B）：owner 不变，members 为成员 uid 列表。"""
+
+    members: list[str] = []
+
+
+@router.get("/projects/{project_id}/members")
+async def get_project_members(project_id: str) -> dict[str, Any]:
+    """项目成员（项目访问可读；T2）。"""
+    _require_project_access(project_id)
+    owner = project_owner(project_id)
+    return {
+        "owner": owner,
+        "owner_user_no": derive_user_no(owner) if owner else "",
+        "members": project_members(project_id),
+    }
+
+
+@router.put("/projects/{project_id}/members")
+async def put_project_members(
+    request: Request, project_id: str, payload: KagMembersUpdateRequest
+) -> dict[str, Any]:
+    """设置项目成员（admin + same-origin；T2，M4-B）。"""
+    _require_admin()
+    _require_same_origin(request)
+    try:
+        entry = update_project_members(project_id, [str(m) for m in payload.members])
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"owner": entry.get("owner", ""), "members": entry.get("members", [])}
+
+
 class KagGraphQueryRequest(BaseModel):
     """图浏览 DSL 查询（M3.4，经 /public/v1/reason/run）。
 
@@ -447,9 +510,9 @@ async def query_project_graph(
     """图浏览 DSL 查询（read 权限 + same-origin；M3.4）——rows ≤200 裁剪。
 
     same-origin 与其他 POST 端点一致（评审 M-3，纵深防御：跨站无法读
-    响应，但保持写类端点的统一门禁面）。
+    响应，但保持写类端点的统一门禁面）。T2（M4-B）项目级门禁。
     """
-    _require_read()
+    _require_project_access(project_id)
     _require_same_origin(request)
     dsl = str(payload.dsl or "").strip()
     if not dsl:
