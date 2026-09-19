@@ -59,6 +59,11 @@ The web app stays deployable under a subpath
 (e.g. `https://your.host/kagweb` behind Kubernetes/Ingress). See
 `CONTAINERIZATION.md`, `deploy/k8s/`, and the subpath rules in `AGENTS.md`.
 
+## Changelog
+
+Release notes live in [`CHANGELOG.md`](CHANGELOG.md). The current version is the
+single source of truth in `kagweb/__version__.py`.
+
 ## License
 
 Apache-2.0, inherited from the upstream project; see `LICENSE` and
