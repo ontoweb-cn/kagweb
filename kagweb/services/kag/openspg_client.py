@@ -134,6 +134,31 @@ class OpenSPGClient:
         )
         return result if isinstance(result, dict) else {"spgTypes": result or []}
 
+    async def alter_schema(
+        self, project_id: str | int, schema_draft: list[dict[str, Any]]
+    ) -> Any:
+        """提交 Schema 变更（M3.5）。
+
+        REST wire 契约（M3.5 实测：拦截 knext ``schema_alter_schema_post`` 抓
+        ``sanitize_for_serialization`` 产物并重放 200）：POST
+        /public/v1/schema/alterSchema，body ``{"projectId", "schemaDraft":
+        {"alterSpgTypes": [<spgType>]}}``。元素形态由
+        ``read_type_to_draft`` 从 queryProjectSchema 读模型转换而来（读模型
+        富化字段会 400——Spring 反序列化失败）。
+        """
+        if not isinstance(schema_draft, list) or not schema_draft:
+            raise OpenSPGError("schema_draft 必须为非空 SPG type 数组")
+        return await self._request(
+            "POST",
+            "/public/v1/schema/alterSchema",
+            json_body={
+                "projectId": int(project_id),
+                "schemaDraft": {"alterSpgTypes": schema_draft},
+            },
+            # alter 触发服务端校验 + Neo4j 元数据同步，慢于查询
+            timeout=60.0,
+        )
+
     # —— 图概览（GraphController；无子图查询端点，M2 仅 allLabels，M0 侦察修正）——
 
     async def all_labels(self, project_id: str | int) -> Any:

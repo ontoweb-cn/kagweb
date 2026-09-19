@@ -326,6 +326,106 @@ async def get_project_schema(project_id: str) -> dict[str, Any]:
     return {"schema": schema}
 
 
+class KagSchemaRelationAdd(BaseModel):
+    """新增关系（M3.5）：目标类型用 nameEn（schema 内现有类型）。"""
+
+    name: str
+    name_zh: str = ""
+    desc: str = ""
+    object_type_name: str
+
+
+class KagSchemaEditRequest(BaseModel):
+    """Schema 编辑（M3.5）：读模型进、wire 转换在后端。
+
+    ``spg_type`` 为 queryProjectSchema 返回的 SPG type 原样（前端就地编辑
+    中文名/描述等）；新增/删除关系以意图列表表达（CREATE/DELETE 元素级
+    操作由服务端组装——M3.5 实测 wire 契约，schema_draft.py）。
+    """
+
+    spg_type: dict[str, Any]
+    add_relations: list[KagSchemaRelationAdd] = []
+    delete_relations: list[str] = []
+
+
+@router.post("/projects/{project_id}/schema/alter")
+async def alter_project_schema(
+    request: Request, project_id: str, payload: KagSchemaEditRequest
+) -> dict[str, Any]:
+    """提交 Schema 变更（admin + same-origin；M3.5）。
+
+    语义（M3.5 实测）：UPDATE 覆写 + 元素级 CREATE/DELETE；缺条目不等于
+    删除（服务端 500），删除必须显式 DELETE 操作。
+    """
+    _require_admin()
+    _require_same_origin(request)
+    from kagweb.services.kag.schema_draft import new_relation, read_type_to_draft
+
+    spg_type = payload.spg_type
+    name = ((spg_type.get("basicInfo") or {}).get("name") or {})
+    if not str(name.get("nameEn") or "").strip():
+        raise HTTPException(status_code=400, detail="spg_type.basicInfo.name.nameEn is required")
+    if not payload.add_relations and not payload.delete_relations:
+        raise HTTPException(status_code=400, detail="nothing to alter")
+    # 组装：读模型 → wire draft
+    draft = read_type_to_draft(spg_type)
+    if payload.add_relations:
+        try:
+            schema = await _client().query_schema(project_id)
+        except OpenSPGError as exc:
+            raise _upstream_error(exc) from exc
+        types = schema.get("spgTypes") or []
+        for add in payload.add_relations:
+            target = next(
+                (
+                    t
+                    for t in types
+                    if ((t.get("basicInfo") or {}).get("name") or {}).get("nameEn") == add.object_type_name
+                ),
+                None,
+            )
+            if target is None:
+                raise HTTPException(
+                    status_code=400, detail=f"object type not found: {add.object_type_name}"
+                )
+            if not str(add.name or "").strip():
+                raise HTTPException(status_code=400, detail="relation name is required")
+            draft.setdefault("relations", []).append(
+                new_relation(
+                    host_type=spg_type,
+                    object_type=target,
+                    name=str(add.name).strip(),
+                    name_zh=str(add.name_zh or ""),
+                    desc=str(add.desc or ""),
+                )
+            )
+    if payload.delete_relations:
+        doomed = {str(n) for n in payload.delete_relations}
+        existing = {
+            str(((r.get("basicInfo") or {}).get("name") or {}).get("name") or "")
+            for r in (draft.get("relations") or [])
+        }
+        unknown = doomed - existing
+        if unknown:
+            raise HTTPException(
+                status_code=400, detail=f"relations not found: {sorted(unknown)}"
+            )
+        for rel in draft.get("relations") or []:
+            if str(((rel.get("basicInfo") or {}).get("name") or {}).get("name") or "") in doomed:
+                rel["alterOperation"] = "DELETE"
+    try:
+        result = await _client().alter_schema(project_id, [draft])
+    except OpenSPGError as exc:
+        raise _upstream_error(exc) from exc
+    # 跨请求回读验证（防 knext 式"进程内缓存假阳性"在代理层复现）：alter 后
+    # 立即 query 一次，确认变更已在服务端可见。
+    try:
+        after = await _client().query_schema(project_id)
+    except OpenSPGError:
+        after = None
+    return {"result": result, "schema_after": after}
+
+
 # ---------------------------------------------------------------------------
 # 推理任务（自有存储；Bridge 上报见 bridge_router）
 # ---------------------------------------------------------------------------
