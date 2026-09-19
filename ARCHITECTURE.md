@@ -346,6 +346,21 @@ turn re-applies the same model — `regenerate_last_turn` splits the backend
 form out before dispatch instead of routing it through the strict catalog
 validation.
 
+## Session transcripts as agent-readable files
+
+Every turn, the session's own conversation transcript (serialized from the
+store, not the budgeted history copy) and the transcripts of any
+user-referenced sessions are written into the session workspace when the
+backend runs in a filesystem workspace (CLI/ACP family): the current session
+as `session-transcript.md`, referenced ones as `referenced-<session-id>.md`.
+The Attached-Sources manifest renders their absolute paths, and the bundled
+hint tells the agent to read the file when the inline preview is not enough —
+the full-fidelity history channel that survives agent-session resets and
+backend switches. Hardening: transcript file names are slugified from the
+source id (path traversal cannot escape the workspace) and the writes publish
+atomically via a unique tmp file; serialization failures degrade to a
+warning log and simply no manifest row, never a failed turn.
+
 ## Consultation (multi agent-loop)
 
 Enabled, `consult_enabled` profiles other than the primary are offered to
@@ -406,7 +421,7 @@ the agent-loop backend carries its own tooling.
 
 | Layer | Location | Notes |
 | --- | --- | --- |
-| LLM providers | `kagweb/services/llm/` | OpenAI Chat Completions **and** Responses API wire protocols (`WireAPI = auto/responses/chat_completions`), Anthropic, Azure, Codex OAuth, Copilot, CodeBuddy, embedding-free |
+| LLM providers | `kagweb/services/llm/` | OpenAI Chat Completions **and** Responses API wire protocols (`WireAPI = auto/responses/chat_completions`), Anthropic, Azure, Copilot, CodeBuddy, embedding-free. Codex OAuth retired (stale `openai_codex` catalog profiles fail safe: owner-bound, default-provider fallback) |
 | Sessions | `kagweb/services/session/` | SQLite + PocketBase stores, turn runtime (prepare/execute/lifecycle/title), request snapshots, regenerate |
 | Turn coordination | `kagweb/runtime/` | multi-worker leader election, memory reclaim |
 | Multi-user | `kagweb/multi_user/` | grants (models/exec/agent-loop), audit |

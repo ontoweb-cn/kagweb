@@ -82,13 +82,15 @@ fixture)全部复用附件的既有机制。
 
 | 项 | 状态 | 复评条件 |
 | --- | --- | --- |
-| 凭据打通定位 | **待拍板**(建议 A/B,2026-09-19 复核理由增强:opencode 已示范"操作员把 key 配进 agent 自身配置"的生态常态) | 用户选定后:选 A → 出退役清理实施方案(§1.4 清理面);选 C → 先做 1.3 的三项验证 |
-| history 文件化 | **已实施**(2026-09-19 随历史方案 M3,提交 e820e72):当前会话转录 → 工作区 `session-transcript.md` + manifest path 行,真机验证 4999 字符落盘。**残余**:被引用会话(references)的转录仍只以 2k 预览内联(§2.4),文件化机制现成,待真实痛点触发 | 引用大会话出现可读性/上下文挤压问题 |
+| 凭据打通定位 | **A 退役已实施**(用户拍板,提交 e16d1e8 + f112dbc;CI 绿 run 35452193629)。**安全评审确认**(ff761c7,run 35453267470):API key 零泄漏(工作树/历史/commit msg 三层扫描);data 树无 codex 凭据文件;陈旧 codex profile 解析探针证实安全兜底(默认 provider,不崩溃);`openai_codex` 保持 owner-bound = 永不可授权 | 无(闭环;task 服务配普通 provider 档即完成供血切换) |
+| history 文件化 | **已全部实施**:当前会话(M3,`session-transcript.md`)+ 被引用会话(§2.4,`referenced-<id>.md`),均带 manifest path 行,真机验证 | 无(闭环) |
 
-### 2.4 残余(2026-09-19 实施后盘点)
+### 2.4 残余 → 已补齐(2026-09-19 同日实施)
 
-M3 的 L0 覆盖了**当前会话**的转录;backlog 原始条目所指的**被引用会话**
-(`history_references`,composer 的历史选择器)仍是旧机制:整段序列化文本进
-`SourceEntry.full_text`,manifest 只渲染 2k 预览(`MANIFEST_PREVIEW_CHARS_FRESH`),
-无 path 行——模型实际只能看到预览。若要补齐:materialize 回调已 threaded 进
-`_add_historical`,对 history 条目按同样阈值落盘即可(半天级,机制零新增)。
+被引用会话(`history_references`,composer 的历史选择器)的转录原先是旧机制:
+整段序列化文本进 `SourceEntry.full_text`,manifest 只渲染 2k 预览
+(`MANIFEST_PREVIEW_CHARS_FRESH`),无 path 行——模型看不到引用大会话的细节。
+
+现已补齐:fresh 与 historical 两路的 history 条目,转录 ≥2k 字符时经
+`_transcript_path_for` 落盘 `referenced-<id>.md`(slug 清洗 + 会话工作区)并
+渲染 path 行,走既有 materialize 门控(仅 workspace 后端族)。
