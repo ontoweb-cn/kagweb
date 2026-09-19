@@ -143,7 +143,7 @@ flowchart TB
 **双 transport（M3.0 决策 D1 修订）**：
 
 - **MCP stdio**：Claude Code（session workdir `.mcp.json` 自动发现 / `--mcp-config`）、Codex（config.toml）原生支持；
-- **MCP streamable-http**：Bridge 同时以 FastMCP streamable-http 监听（`KAG_BRIDGE_HTTP_URL`，默认 `127.0.0.1:8890/mcp`），`Authorization: Bearer <KAG_BRIDGE_API_KEY>` 鉴权——Intellect 经其原生 MCP 客户端接入（`intellect-rag/common/mcp_tool_call_conn.py` 实测支持 SSE + streamable-http 双 transport 与 Bearer header 模板），Hermes/AgentScope 同路径。原设计的"KAGWeb custom-http 中立帧端点"取消（A.2 修订）：Intellect 不需要自定义 HTTP 工具协议，统一收敛到 MCP 降低桥接面。
+- **MCP streamable-http**：Bridge 同时以 FastMCP streamable-http 监听（`KAG_BRIDGE_TRANSPORT=http` 分发；`KAG_BRIDGE_HTTP_HOST`/`KAG_BRIDGE_HTTP_PORT`/`KAG_BRIDGE_HTTP_PATH`，默认 `127.0.0.1:8890/mcp`），`Authorization: Bearer <KAG_BRIDGE_API_KEY>` 鉴权——Intellect 经其原生 MCP 客户端接入（`intellect-rag/common/mcp_tool_call_conn.py` 实测支持 SSE + streamable-http 双 transport 与 Bearer header 模板），Hermes/AgentScope 同路径。原设计的"KAGWeb custom-http 中立帧端点"取消（A.2 修订）：Intellect 不需要自定义 HTTP 工具协议，统一收敛到 MCP 降低桥接面。
 
 **并发与超时（评审修正 R3）**：Bridge 内设并发信号量（超限排队，排队/执行超时返回结构化 `error` 帧向上传导）；agent loop 的 turn `timeout_seconds`（默认 900s）覆盖全链路；取消 = 取消 `ainvoke` 任务。
 
@@ -422,20 +422,21 @@ flowchart LR
 }
 ```
 
-MCP 通道：推理过程经 progress notification 上报（ReporterABC 事件桥接，帧结构同 A.2 的 `progress` 帧）；终态经 `tool_result` 返回 `{"content": [{"type": "text", "text": "<answer>"}], "isError": false}`，结构化扩展在 content 数组追加一段 references JSON（与 A.2 终态帧的 `reference` 字段同构）。`kag_schema`/`kag_status` 为同风格的只读工具。
+MCP 通道：推理过程经 MCP 协议内 progress notification 上报（ReporterABC 事件桥接）；终态 `tool_result` 返回 `{"content": [{"type": "text", "text": "<JSON>"}], "isError": false}`——text 为**单段 JSON 字符串** `{"answer", "reference", "subgraph", "cost_ms", "namespace"}`（M3.0/M3.1 实测形态，字段结构见 A.2；M3.2 live 实测：claude-code 的 stream-json 转述时会再包一层 `{"result": "<该 JSON>"}`，KAGWeb 消费侧剥层）。`kag_schema`/`kag_status` 为同风格的只读工具。
 
-### A.2 streamable-http transport：`POST <KAG_BRIDGE_HTTP_URL>/mcp`（M3.0 决策 D1 修订）
+### A.2 streamable-http transport：`POST http://<host>:<port><path>`（M3.0 决策 D1 修订；M3.1 实装）
 
 原设计的自定义 HTTP 工具端点（SSE 中立帧）**取消**——Intellect 实测带原生 MCP 客户端（SSE + streamable-http 双 transport，`Authorization` header 模板），无需自定义工具协议。Bridge 以 FastMCP 同时暴露 stdio 与 streamable-http 两个 transport，工具面/帧语义完全同 A.1（MCP 协议内 progress notification + tool_result）：
 
-- 监听：`KAG_BRIDGE_HTTP_URL`（默认 `127.0.0.1:8890`，路径 `/mcp`），仅内网；
-- 鉴权：`Authorization: Bearer <KAG_BRIDGE_API_KEY>`（FastMCP transport header 中间件，401 结构化错误帧）；
+- 监听：`KAG_BRIDGE_TRANSPORT=stdio|http` 分发（`main()`）；http 时 `KAG_BRIDGE_HTTP_HOST`（默认 `127.0.0.1`）/ `KAG_BRIDGE_HTTP_PORT`（默认 `8890`，非数字拒绝启动）/ `KAG_BRIDGE_HTTP_PATH`（默认 `/mcp`，须以 `/` 开头），仅内网；FastMCP stateless（`stateless_http=True`，单问单答不依赖服务端会话保持）；
+- 鉴权：`Authorization: Bearer <KAG_BRIDGE_API_KEY>`——自研**纯 ASGI 中间件**（非 BaseHTTPMiddleware，规避流式响应缓冲），`hmac.compare_digest` 防时序侧信道，401 结构化错误帧 + `WWW-Authenticate: Bearer`；未配置 API_KEY **拒绝启动**（fail-closed）；`GET /healthz` 探活精确豁免（含尾斜杠变体，其余 `/healthz*` 路径不豁免）；websocket 升级一律拒绝（`websocket.close` → 403），lifespan scope 照常透传；
+- DNS-rebinding 防护（M3.1 实测 421 修复）：FastMCP 对 loopback 绑定默认开启，`TransportSecuritySettings.allowed_hosts` 显式放行 `127.0.0.1`/`localhost`/`[::1]`/`host.docker.internal`/绑定地址（均 `:*` 通配端口），`KAG_BRIDGE_EXTRA_HOSTS` 逗号分隔追加（内网域名/IP，裸域名自动补 `:*`）；`KAG_BRIDGE_HTTP_HOST=0.0.0.0` 时启动 WARN 提示客户端 Host 头（实际 IP）需经 EXTRA_HOSTS 显式放行；
 - 终态 `tool_result` 的 content 扩展段（references/subgraph JSON）与 M0/M3.0 归档的实测形态对齐：
   - `reference`：`[{"id": "reference_ref_format", "type": "chunk", "info": [{"id": "chunk:0_1", "content": "…", "document_id": "doc1", "document_name": "开元大学简介", "url": null}]}]`；
   - `subgraph`：图数组，每图 `{"class_name", "result_nodes", "result_edges"}`；节点 `{"id": "人物[\"张三\"]", "label": "人物", "name": "…", "properties": {…}}`，边 `{"id": "… 任职于 …", "_from": "…", "from_type": "人物", "to": "…", "to_type": "组织机构", "label": "任职于", "properties": {}}`——节点/边分别在 `result_nodes`/`result_edges` 键下（非 `nodes`/`edges`），`_from`/`to` 即节点 id，cytoscape elements 可直接映射；**边依赖 kg_cs 命中（§5.1 实装注意二第 4 条），节点（chunk 实体）恒在**；
   - `cost_ms` + `metrics`。
 
-（M3.0 实测：4 graphs / 29 nodes / 12 edges 端到端产出，事件流 22 帧——planner→kg_cs/kg_rc 并行检索→merger→summary→generator，`spo_graph` 事件即 subgraph 数据源；归档 `scripts/kag_m3/results/m3_0/trajectory_probe.json`。）
+（M3.0 实测：4 graphs / 29 nodes / 12 edges 端到端产出，事件流 22 帧——planner→kg_cs/kg_rc 并行检索→merger→summary→generator，`spo_graph` 事件即 subgraph 数据源；归档 `scripts/kag_m3/results/m3_0/trajectory_probe.json`。KAGWeb 侧消费归一（图数组去重合并/引用/摘录，兼容 `mcp__<server>__kag_solve` 工具名与 claude-code `{"result": …}` 外层包装）见 §9 M3.2 记录与 `kagweb/services/kag/trace.py`。）
 
 ### A.3 凭证演进与任务上报（评审 A2 方案①的落地口径）
 
