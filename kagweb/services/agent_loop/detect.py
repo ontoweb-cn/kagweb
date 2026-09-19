@@ -100,7 +100,7 @@ async def detect_agent_loops(block: dict[str, Any] | None = None) -> list[Detect
     Returns preset-level CLI results (keyed by preset name, for the picker)
     followed by profile-level results (keyed by profile id, for the cards).
     """
-    from .builtin import PRESETS
+    from .builtin import PRESETS, preset_transports, resolve_transport, transport_key
     from .settings import get_agent_loop_settings
 
     settings = block if block is not None else get_agent_loop_settings()
@@ -111,22 +111,36 @@ async def detect_agent_loops(block: dict[str, Any] | None = None) -> list[Detect
     profile_coros = []
 
     for preset in PRESETS.values():
-        if preset.family == "cli" and preset.command:
-            cli_results.append(detect_cli(preset.name, preset.name, preset.command))
-        elif preset.family == "http" and preset.probe_url:
-            # Preset-level reachability probe for HTTP backends that ship a
-            # well-known local default (e.g. the Intellect api_server health
-            # endpoint) — remote services still require an explicit profile.
-            preset_http_coros.append(detect_http(preset.name, preset.name, preset.probe_url))
+        # Each transport of a preset is probed on its own terms and keyed as
+        # the picker's buttons are (a preset offering several shows one badge
+        # per button, not one for whichever transport happened to be first).
+        for transport in preset_transports(preset.name):
+            key = transport_key(preset.name, transport.id)
+            label = preset.name if not transport.id else f"{preset.name}:{transport.id}"
+            if transport.family == "cli" and transport.command:
+                cli_results.append(detect_cli(key, label, transport.command))
+            elif transport.family == "http" and transport.probe_url:
+                # Preset-level reachability probe for HTTP backends that ship a
+                # well-known local default (e.g. the Intellect api_server health
+                # endpoint) — remote services still need an explicit profile.
+                preset_http_coros.append(detect_http(key, label, transport.probe_url))
 
     for profile in profiles:
         preset = PRESETS.get(str(profile.get("preset") or ""))
         label = str(profile.get("name") or profile.get("preset") or "profile")
-        if preset is not None and preset.family == "cli":
-            command = str(profile.get("command") or "").strip()
-            if command:
+        if preset is not None:
+            # Probe what this profile actually builds: its own transport may be
+            # the CLI child or the HTTP service, whichever the preset offers.
+            transport = resolve_transport(preset.name, str(profile.get("transport") or ""))
+            if transport is not None and transport.family == "cli":
+                command = str(profile.get("command") or "").strip() or transport.command
+                if command:
+                    profile_coros.append(
+                        asyncio.to_thread(detect_cli, str(profile.get("id")), label, command)
+                    )
+            elif transport is not None and str(profile.get("url") or "").strip():
                 profile_coros.append(
-                    asyncio.to_thread(detect_cli, str(profile.get("id")), label, command)
+                    detect_http(str(profile.get("id")), label, str(profile.get("url")))
                 )
         elif str(profile.get("url") or "").strip():
             profile_coros.append(

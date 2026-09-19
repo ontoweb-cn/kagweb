@@ -24,16 +24,30 @@ import { PRIMARY_AUTO, PRIMARY_NONE, modeFromPrimary } from "@/lib/agent-loop-mo
 
 type AgentLoopFamily = "cli" | "http";
 
+/** One way of reaching a preset's agent; a preset may offer several. */
+type TransportInfo = {
+  id: string;
+  family: AgentLoopFamily;
+  label: string;
+  description: string;
+  /** Detection key for this transport's badge (`preset` or `preset:id`). */
+  detect_key: string;
+};
+
 type PresetInfo = {
   name: string;
   family: AgentLoopFamily;
   description: string;
+  transports: TransportInfo[];
+  default_transport: string;
 };
 
 type StoredProfile = {
   id: string;
   name: string;
   preset: string;
+  /** "" = the preset's default transport (single-transport presets keep ""). */
+  transport?: string;
   enabled: boolean;
   command: string;
   args: string[];
@@ -47,6 +61,8 @@ type StoredProfile = {
   workdir: string;
   /** The model this backend should run; "" = the backend's own default. */
   model: string;
+  /** Operator-curated per-turn model vocabulary (composer option source). */
+  models?: Array<{ id: string; name: string }>;
   /** The backend's real context window for history budgeting; 0 = unknown. */
   context_window: number;
   /**
@@ -57,6 +73,16 @@ type StoredProfile = {
   approval_timeout_seconds?: number;
   approval_default?: string;
   api_key_set?: boolean;
+  /**
+   * Who a turn runs as on the remote service: "off" sends nothing extra,
+   * "header" attributes the turn to the calling account, "token" presents that
+   * account's own linked member token, "token_required" refuses to run without
+   * one. "" = the preset's own default (attribution for the Intellect
+   * services, nothing for everything else).
+   */
+  identity_mode?: string;
+  /** The instance tenant the service runs as; "" = the service's default. */
+  tenant_id?: string;
 };
 
 type AgentLoopPayload = {
@@ -97,6 +123,8 @@ type DraftProfile = StoredProfile & {
   envText: string;
   headersText: string;
   apiKey: string | null;
+  /** One curated model per line: `id` or `id | display name`. */
+  modelsText: string;
 };
 
 type Lang = "zh" | "en";
@@ -136,17 +164,50 @@ function presetUrl(name: string): string | undefined {
   return PRESET_META[name]?.url;
 }
 
+/** The transport a profile uses: its own selection, or the preset's default. */
+function transportOf(
+  profile: { preset: string; transport?: string },
+  presets: PresetInfo[],
+): TransportInfo | undefined {
+  const preset = presets.find((item) => item.name === profile.preset);
+  if (!preset) return undefined;
+  const id = profile.transport || preset.default_transport;
+  return (
+    preset.transports.find((entry) => entry.id === id) ??
+    preset.transports[0] ??
+    undefined
+  );
+}
+
+/** Family follows from the resolved transport, not from the preset name. */
+function familyOfProfile(
+  profile: { preset: string; transport?: string },
+  presets: PresetInfo[],
+): AgentLoopFamily | null {
+  const preset = presets.find((item) => item.name === profile.preset);
+  if (!preset) return null;
+  if (!preset.transports.length) return preset.family;
+  return transportOf(profile, presets)?.family ?? null;
+}
+
 function isLocalProfile(profile: {
   preset: string;
+  transport?: string;
   url?: string;
   presets: PresetInfo[];
 }): boolean {
-  const preset = profile.presets.find((item) => item.name === profile.preset);
-  if (preset) return preset.family === "cli";
+  const family = familyOfProfile(profile, profile.presets);
+  if (family !== null) return family === "cli";
   const host = (profile.url || "").replace(/^[a-z]+:\/\//i, "").split(/[/:]/)[0];
   return (
     host === "localhost" || host === "::1" || host === "0.0.0.0" || host.startsWith("127.")
   );
+}
+
+/** Detection key for one preset transport (`preset` or `preset:id`). */
+function detectKeyFor(preset: PresetInfo, transportId: string): string {
+  const entry = preset.transports.find((item) => item.id === transportId);
+  return entry?.detect_key ?? preset.name;
 }
 
 function parseKeyValueLines(text: string): Record<string, string> {
@@ -183,7 +244,28 @@ function toDraft(profile: StoredProfile): DraftProfile {
     envText: formatKeyValueLines(profile.env),
     headersText: formatKeyValueLines(profile.headers),
     apiKey: null,
+    modelsText: (profile.models || [])
+      .map((row) => (row.name && row.name !== row.id ? `${row.id} | ${row.name}` : row.id))
+      .join("\n"),
   };
+}
+
+/** Parse the curated-model textarea: one entry per line, `id` or
+ *  `id | display name`; empties and blank lines are dropped. */
+function parseModelLines(text: string): Array<{ id: string; name: string }> {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const sep = line.indexOf("|");
+      if (sep > 0) {
+        const id = line.slice(0, sep).trim();
+        const name = line.slice(sep + 1).trim();
+        if (id) return { id, name: name || id };
+      }
+      return { id: line, name: line };
+    });
 }
 
 function draftToRequest(draft: DraftProfile) {
@@ -191,6 +273,7 @@ function draftToRequest(draft: DraftProfile) {
     id: draft.id,
     name: draft.name,
     preset: draft.preset,
+    transport: draft.transport ?? "",
     enabled: draft.enabled,
     command: draft.command,
     args: parseArgLines(draft.argsText),
@@ -204,12 +287,15 @@ function draftToRequest(draft: DraftProfile) {
     consult_enabled: draft.consult_enabled,
     workdir: draft.workdir,
     model: draft.model,
+    models: parseModelLines(draft.modelsText),
     context_window: draft.context_window,
     // Echoed so a save keeps whatever policy is stored. This form has no
     // approval controls, and the PUT replaces the whole profile list — sending
     // nothing here would silently reset an out-of-band policy to the defaults.
     approval_timeout_seconds: draft.approval_timeout_seconds ?? 60,
     approval_default: draft.approval_default ?? "deny",
+    identity_mode: draft.identity_mode ?? "",
+    tenant_id: draft.tenant_id ?? "",
   };
 }
 
@@ -244,6 +330,20 @@ function StatusChip({ ok, text }: { ok: boolean; text: string }) {
       }`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-emerald-500" : "bg-[var(--muted-foreground)]/50"}`} />
+      {text}
+    </span>
+  );
+}
+
+/** Amber advisory: something is configured in a way that will not take
+ *  effect. Never blocks saving — the operator decides. */
+function WarnChip({ text }: { text: string }) {
+  return (
+    <span
+      title={text}
+      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-medium text-amber-600 dark:text-amber-400"
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
       {text}
     </span>
   );
@@ -288,13 +388,6 @@ export default function AgentLoopSettingsPage() {
   const [testResults, setTestResults] = useState<
     Record<string, { ok: boolean; message: string }>
   >({});
-
-  const familyOf = useCallback(
-    (presetName: string): AgentLoopFamily | null =>
-      payload?.presets.find((preset) => preset.name === presetName)?.family ??
-      null,
-    [payload],
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -497,14 +590,24 @@ export default function AgentLoopSettingsPage() {
       ),
     );
 
-  const addProfile = (preset: PresetInfo) => {
+  const addProfile = (preset: PresetInfo, transportId?: string) => {
     const tempId = `new-${Date.now().toString(36)}-${Math.random()
       .toString(36)
       .slice(2, 6)}`;
+    // Several transports behind one product pick the first family's label
+    // apart, so the name carries the transport when there is a choice.
+    const chosenTransport = preset.transports.find(
+      (entry) => entry.id === (transportId || preset.default_transport),
+    );
+    const baseName = presetLabel(preset.name, lang);
     const draft = toDraft({
       id: tempId,
-      name: presetLabel(preset.name, lang),
+      name:
+        preset.transports.length > 1 && chosenTransport
+          ? `${baseName} · ${chosenTransport.label}`
+          : baseName,
       preset: preset.name,
+      transport: transportId ?? preset.default_transport ?? "",
       enabled: true,
       command: "",
       args: [],
@@ -518,6 +621,10 @@ export default function AgentLoopSettingsPage() {
       workdir: "",
       model: "",
       context_window: 0,
+      // "" = the preset's default: attribution for the Intellect services,
+      // nothing extra for a service that knows no identity header.
+      identity_mode: "",
+      tenant_id: "",
     });
     setDrafts((current) => [...(current ?? []), draft]);
     setExpanded(tempId);
@@ -611,16 +718,31 @@ export default function AgentLoopSettingsPage() {
           >
             <div className="flex flex-wrap items-center gap-2 py-4">
               {(payload.presets ?? [])
-                .filter((preset) => preset.family === "cli" && preset.name !== "custom-cli")
-                .map((preset) => {
-                  const result = detects[preset.name];
+                .filter((preset) => preset.name !== "custom-cli")
+                .flatMap((preset) => {
+                  // One chip per CLI-reachable transport: a merged preset
+                  // probes its local transport here and its service transport
+                  // through the profile card.
+                  const entries = preset.transports.length
+                    ? preset.transports.filter((entry) => entry.family === "cli")
+                    : preset.family === "cli"
+                      ? [{ id: "", label: "", detect_key: preset.name }]
+                      : [];
+                  return entries.map((entry) => ({ preset, entry }));
+                })
+                .map(({ preset, entry }) => {
+                  const result = detects[entry.detect_key];
+                  const label =
+                    entry.label || presetLabel(preset.name, lang);
                   return (
                     <span
-                      key={preset.name}
+                      key={entry.detect_key}
                       className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)]/60 px-2.5 py-1 text-[12px]"
                     >
                       <span className="text-[var(--foreground)]">
-                        {presetLabel(preset.name, lang)}
+                        {entry.label
+                          ? `${presetLabel(preset.name, lang)} · ${label}`
+                          : label}
                       </span>
                       {detecting && !result ? (
                         <Loader2 className="h-3 w-3 animate-spin text-[var(--muted-foreground)]" />
@@ -728,11 +850,17 @@ export default function AgentLoopSettingsPage() {
           >
             <div className="space-y-3 py-4">
               {drafts.map((draft) => {
-                const family = familyOf(draft.preset);
+                const family = familyOfProfile(draft, payload.presets ?? []);
                 const known = family !== null;
+                const presetEntry = (payload.presets ?? []).find(
+                  (item) => item.name === draft.preset,
+                );
+                const transportEntry = transportOf(draft, payload.presets ?? []);
+                const offersTransports = (presetEntry?.transports.length ?? 0) > 1;
                 const detect = detects[draft.id];
                 const local = isLocalProfile({
                   preset: draft.preset,
+                  transport: draft.transport,
                   url: draft.url,
                   presets: payload.presets ?? [],
                 });
@@ -768,6 +896,11 @@ export default function AgentLoopSettingsPage() {
                         <span className="shrink-0 rounded-md bg-[var(--border)]/40 px-1.5 py-0.5 text-[10.5px] font-medium text-[var(--muted-foreground)]">
                           {presetLabel(draft.preset, lang)}
                         </span>
+                        {offersTransports && transportEntry && (
+                          <span className="shrink-0 rounded-md bg-sky-500/10 px-1.5 py-0.5 text-[10.5px] font-medium text-sky-600 dark:text-sky-400">
+                            {transportEntry.label}
+                          </span>
+                        )}
                         <span className="shrink-0 text-[10.5px] text-[var(--muted-foreground)]">
                           {local ? t("Local") : t("Remote")}
                         </span>
@@ -778,6 +911,19 @@ export default function AgentLoopSettingsPage() {
                         )}
                       </button>
                       <DetectBadge result={detect} />
+                      {(() => {
+                        // §4.2-7: a curated per-turn list does nothing for a
+                        // one-shot CLI unless the operator's args substitute
+                        // `{model}` — surface that at draft time instead of
+                        // letting the picker silently no-op.
+                        const family = familyOfProfile(draft, payload.presets ?? []);
+                        if (family !== "cli") return null;
+                        if (!draft.modelsText.trim()) return null;
+                        if (draft.argsText.includes("{model}")) return null;
+                        return (
+                          <WarnChip text={t("Per-turn models need {model} in the extra arguments")} />
+                        );
+                      })()}
                       <label className="flex shrink-0 items-center gap-1.5 text-[11.5px] text-[var(--muted-foreground)]">
                         {t("Enabled")}
                         <Toggle
@@ -789,6 +935,43 @@ export default function AgentLoopSettingsPage() {
 
                     {expanded === draft.id && (
                       <div className="border-t border-[var(--border)]/50 px-4 py-3">
+                        {offersTransports && presetEntry && (
+                          <div className="py-3">
+                            <div className="text-[13.5px] font-medium text-[var(--foreground)]">
+                              {t("Connection method")}
+                            </div>
+                            <p className="mb-2 mt-1 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
+                              {t(
+                                "Both run the same agent. The local CLI spawns a process on this host (needs an agent-process grant); the HTTP service calls one you host.",
+                              )}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {presetEntry.transports.map((entry) => {
+                                const selected =
+                                  (draft.transport ||
+                                    presetEntry.default_transport ||
+                                    presetEntry.transports[0]?.id) === entry.id;
+                                return (
+                                  <button
+                                    key={entry.id}
+                                    type="button"
+                                    onClick={() =>
+                                      update(draft.id, { transport: entry.id })
+                                    }
+                                    title={entry.description}
+                                    className={`rounded-lg border px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
+                                      selected
+                                        ? "border-[var(--ring)] bg-[var(--ring)]/10 text-[var(--foreground)]"
+                                        : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--ring)]/60 hover:text-[var(--foreground)]"
+                                    }`}
+                                  >
+                                    {entry.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         <SettingRow
                           title={t("Profile name")}
                           description={t(
@@ -890,6 +1073,63 @@ export default function AgentLoopSettingsPage() {
                             />
                             <div className="py-3">
                               <div className="text-[13.5px] font-medium text-[var(--foreground)]">
+                                {t("Per-turn models")}
+                              </div>
+                              <p className="mb-2 mt-1 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
+                                {t(
+                                  "Optional. One per line, offered in the composer's model picker for individual turns — format: model, or model | label. The service must accept the body's model field; a non-empty list is what turns the picker on for this service.",
+                                )}
+                              </p>
+                              <textarea
+                                className={`${inputClass} min-h-20 resize-y font-mono text-[12.5px] leading-relaxed`}
+                                placeholder={"qwen-max\ndeepseek-chat | DeepSeek Chat"}
+                                value={draft.modelsText}
+                                onChange={(event) =>
+                                  update(draft.id, { modelsText: event.target.value })
+                                }
+                              />
+                            </div>
+                            <SettingRow
+                              title={t("Tenant id")}
+                              description={t(
+                                "The instance tenant this service runs as, sent as X-Tenant-Id. Required when the service enforces a tenant: copy the 32-hex id from the service's configuration. Leave blank for its default tenant.",
+                              )}
+                              control={
+                                <input
+                                  className={`${inputClass} w-[320px] max-w-[44vw] font-mono`}
+                                  placeholder={t("service default")}
+                                  value={draft.tenant_id ?? ""}
+                                  onChange={(event) =>
+                                    update(draft.id, { tenant_id: event.target.value })
+                                  }
+                                />
+                              }
+                            />
+                            <SettingRow
+                              title={t("Turn identity")}
+                              description={t(
+                                "Who a turn runs as on the service. Leave blank for the default: attribute each turn to the signed-in account. Connect your own account under Models to be attributed to it; \"Delegated\" additionally runs with that account's own token, and \"Required\" refuses to run without one.",
+                              )}
+                              control={
+                                <select
+                                  className={`${inputClass} w-[280px] max-w-[40vw]`}
+                                  value={draft.identity_mode ?? ""}
+                                  onChange={(event) =>
+                                    update(draft.id, { identity_mode: event.target.value })
+                                  }
+                                >
+                                  <option value="">{t("Preset default (attribution)")}</option>
+                                  <option value="header">{t("Attribute to the account")}</option>
+                                  <option value="token">{t("Delegated (needs a link)")}</option>
+                                  <option value="token_required">
+                                    {t("Required (needs a link)")}
+                                  </option>
+                                  <option value="off">{t("Send nothing")}</option>
+                                </select>
+                              }
+                            />
+                            <div className="py-3">
+                              <div className="text-[13.5px] font-medium text-[var(--foreground)]">
                                 {t("Extra headers")}
                               </div>
                               <p className="mb-2 mt-1 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
@@ -941,6 +1181,24 @@ export default function AgentLoopSettingsPage() {
                                 />
                               }
                             />
+                            <div className="py-3">
+                              <div className="text-[13.5px] font-medium text-[var(--foreground)]">
+                                {t("Per-turn models")}
+                              </div>
+                              <p className="mb-2 mt-1 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
+                                {t(
+                                  "Optional. One per line, offered in the composer's model picker for individual turns — format: model, or model | label. Names must be ones the CLI itself accepts (it carries its own login); the profile's args must reference {model} for these to take effect.",
+                                )}
+                              </p>
+                              <textarea
+                                className={`${inputClass} min-h-20 resize-y font-mono text-[12.5px] leading-relaxed`}
+                                placeholder={"sonnet\nclaude-sonnet-4-5 | Claude Sonnet 4.5"}
+                                value={draft.modelsText}
+                                onChange={(event) =>
+                                  update(draft.id, { modelsText: event.target.value })
+                                }
+                              />
+                            </div>
                             <div className="py-3">
                               <div className="text-[13.5px] font-medium text-[var(--foreground)]">
                                 {t("Extra arguments")}
@@ -1137,32 +1395,64 @@ export default function AgentLoopSettingsPage() {
                     {(payload.presets ?? [])
                       .filter((preset) => preset.name !== "custom-cli" && preset.name !== "custom-http")
                       .map((preset) => {
-                        const detect =
-                          preset.family === "cli" ? detects[preset.name] : undefined;
+                        // A preset with several transports offers one button
+                        // per transport inside its card, each with its own
+                        // detection badge — the product is one entry, the way
+                        // to reach it is the choice.
+                        const choices: { id: string; label: string; family: AgentLoopFamily }[] =
+                          preset.transports.length > 1
+                            ? preset.transports.map((entry) => ({
+                                id: entry.id,
+                                label: entry.label,
+                                family: entry.family,
+                              }))
+                            : [{ id: "", label: "", family: preset.family }];
                         return (
-                          <button
+                          <div
                             key={preset.name}
-                            type="button"
-                            onClick={() => addProfile(preset)}
-                            className="flex items-start gap-2 rounded-xl border border-[var(--border)]/60 px-3.5 py-2.5 text-left transition-colors hover:border-[var(--ring)]/60"
+                            className="flex items-start gap-2 rounded-xl border border-[var(--border)]/60 px-3.5 py-2.5"
                           >
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center gap-2">
                                 <span className="text-[13px] font-medium text-[var(--foreground)]">
                                   {presetLabel(preset.name, lang)}
                                 </span>
-                                {preset.family === "http" && (
-                                  <span className="rounded-md bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-600 dark:text-sky-400">
-                                    HTTP
-                                  </span>
+                                {presetUrl(preset.name) && (
+                                  <a
+                                    href={presetUrl(preset.name)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[11px] text-[var(--muted-foreground)] underline-offset-2 hover:text-[var(--foreground)] hover:underline"
+                                  >
+                                    {t("Docs")}
+                                  </a>
                                 )}
                               </span>
                               <span className="mt-0.5 block text-[11.5px] leading-relaxed text-[var(--muted-foreground)]">
                                 {preset.description}
                               </span>
+                              <span className="mt-2 flex flex-wrap gap-1.5">
+                                {choices.map((choice) => {
+                                  const detect =
+                                    choice.family === "cli"
+                                      ? detects[detectKeyFor(preset, choice.id)]
+                                      : undefined;
+                                  return (
+                                    <span key={choice.id || "default"} className="inline-flex items-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => addProfile(preset, choice.id || undefined)}
+                                        className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-[12px] font-medium text-[var(--foreground)] transition-colors hover:border-[var(--ring)]/60"
+                                      >
+                                        {choice.label || t("Add")}
+                                      </button>
+                                      {detect && <DetectBadge result={detect} />}
+                                    </span>
+                                  );
+                                })}
+                              </span>
                             </span>
-                            {detect && <DetectBadge result={detect} />}
-                          </button>
+                          </div>
                         );
                       })}
                     {(payload.presets ?? [])

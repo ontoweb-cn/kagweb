@@ -7,6 +7,8 @@
 > **文档结构**：§一~§四为**现状分析**（基于代码实测）；**§五为产品决策安排**（8 条方向性决策及其落地分析）；§六为优先级建议。§五的决策 6/7/8（人格与合伙人移除、Intellect 对接校正）会**反转**本文若干早期建议，反转处已在原位置标注。
 > **基准说明**：§一~§四成文于 `c3ffe57`；§五决策 6-8 与「基准漂移复核」小节则在远端领先 20+ 提交后重新实测，Intellect 部分另经跨仓库核对（见决策 8）。
 > **落地状态（2026-09-11，`ef8bbf5`）**：批次四/五已实施——合伙人+IM 通道、人格（决策 6，含决策 7 的 SOUL 模板与 `locked_persona` 耦合）、学习者+监护人子系统（决策 4）、内置工具包（决策 3a）均已移除，导航「Learning Agent/Learning Space/Learning」更名为 Chat/Space/Workspace。§五/§六中相应的「待决策」「批次五方向性」条目自此**已落地**；P2 状态见优先级表。
+>
+> **后续变更（2026-09-18）**：预设 `intellect-runs` 已并入 `intellect`，作为其 `transport="http"` 连接方式（`web/features/settings/sections/AgentLoopSettingsSection.tsx` 的同一张卡片内两个按钮）；`preset_family` / `per_turn_model_apply` / `llm_settings_apply` 均改为按 profile 的 transport 解析。本文中所有 `intellect-runs` 的表述在阅读时应对应「`intellect` 预设 + HTTP transport」，环境变量侧对应 `KAGWEB_AGENT_LOOP_TRANSPORT=http`。§五决策 5 提到的「判定集合不完整」问题随之消失：判据是 transport 的 family，而非预设名枚举。
 
 ## 结论摘要
 
@@ -123,6 +125,12 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 `services/agent_loop/` **不 import `codex_auth`**。有测试钉死这一独立性（`tests/cli/test_provider_cli.py:76-80` 断言 `"~/.codex" not in PROVIDER_CMD`）。
 
 **运营后果**：一份 ChatGPT/Codex 订阅不会在两者间共享。登录 KAGWeb 的 provider **不会**让 `codex` agent-loop 预设获得认证，反之亦然。
+
+**处置状态（2026-09-19）**：该打通项（§六 P3）已完成决策材料细化——`codex_auth`
+长期定位的三选项（退役 / 维持 / CODEX_HOME 托管目录打通）与建议见
+`docs/plans/2026-09-19-pending-decisions-credentials-and-history.md`（决策一），
+**待拍板**。对照项：claude-code 预设无需打通，操作员经 profile env 填
+`ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` 即可。
 
 ### 1.6 检测与测试：只看「在不在」，不看「能不能用」
 
@@ -657,7 +665,7 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 > | 预设 | family | 传输 | 是否在集合内 |
 > |---|---|---|---|
 > | `intellect` | **cli** | ACP（`intellect acp`，长驻子进程） | ✅ |
-> | `intellect-team` | http | turn（**应改为 runs，见决策 8 D1**） | ✅ |
+> | `intellect-team` | http | runs（`/v1/runs` + SSE；D1 已修复，预设自带该 transport 默认值） | ✅ |
 > | **`intellect-runs`** | http | runs（`/v1/runs` + SSE） | ❌ **缺失** |
 >
 > `intellect-runs` 的描述是「Intellect **community** api_server over the run endpoints… for containerized deployments that cannot spawn the CLI」——**同属 Intellect 社区版**，按决策 5 的规则应一并启用 LLM 设置。落地前必须把 `intellect-runs` 加入该集合（或改为按 family/名称前缀判定，而非硬编码枚举）。
@@ -1062,7 +1070,7 @@ HTTP 族的通用 «turn» 协议（`custom-http`）现在会 **fail 掉回合**
 | **P1** | 合伙人与 IM 通道移除（约 42,000 行） | §五 决策 7 | 与决策 1 同源；**前置：迁移 `safe_filename`** | ⬜ 未做 |
 | **P2** | 学习 / 研究表述清理 | §五 决策 4 | 学习者/监护人去留已决策为移除 | ✅ 完成（批次四/五：学习者子系统移除 + 导航更名 + 死词条清理，见 `ef8bbf5`） |
 | **P2** | 工具层与 MCP 的重新定位 | §四 #6、§五 3c | 架构方向，取决于决策 1 的落地深度 | ✅ 2026-09-11 裁决：撤退，整块移除 |
-| **P3** | 凭据打通（codex OAuth 复用） | §四 #10 | 需架构决策（涉及把凭据交给外部进程） |
+| **P3** | 凭据打通（codex OAuth 复用） | §四 #10 | 需架构决策（涉及把凭据交给外部进程）——决策材料已细化（三选项+建议），见 `docs/plans/2026-09-19-pending-decisions-credentials-and-history.md` 决策一，**待拍板** |
 
 **建议的执行批次**：
 

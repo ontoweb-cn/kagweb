@@ -599,7 +599,9 @@ async def test_session_workspace_is_created_before_use(tmp_path, monkeypatch) ->
 
     monkeypatch.setattr("kagweb.services.path_service.get_path_service", lambda: _StubPathService())
     request = await _build_request(
-        UnifiedContext(session_id="sess-9", user_message="hi"), session_workspace=True
+        UnifiedContext(session_id="sess-9", user_message="hi"),
+        backend=object(),
+        session_workspace=True,
     )
     assert request.workdir == str(tmp_path / "ws" / "chat" / "sess-9")
     assert (tmp_path / "ws" / "chat" / "sess-9").is_dir()
@@ -628,17 +630,17 @@ def test_turn_model_resolves_from_the_metadata_selection(monkeypatch) -> None:
         user_message="hi",
         metadata={"llm_selection": {"profile_id": "p1", "model_id": "m1"}},
     )
-    assert asyncio.run(_build_request(context, session_workspace=False)).model == "deepseek-v3"
+    assert asyncio.run(_build_request(context, backend=object(), session_workspace=False)).model == "deepseek-v3"
 
     dangling = UnifiedContext(
         session_id="s",
         user_message="hi",
         metadata={"llm_selection": {"profile_id": "p1", "model_id": "gone"}},
     )
-    assert asyncio.run(_build_request(dangling, session_workspace=False)).model == ""
+    assert asyncio.run(_build_request(dangling, backend=object(), session_workspace=False)).model == ""
 
     bare = UnifiedContext(session_id="s", user_message="hi", metadata={})
-    assert asyncio.run(_build_request(bare, session_workspace=False)).model == ""
+    assert asyncio.run(_build_request(bare, backend=object(), session_workspace=False)).model == ""
 
 
 # ---------------------------------------------------------------------------

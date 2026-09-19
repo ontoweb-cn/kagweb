@@ -24,11 +24,30 @@ cd web && npm ci
 
 ## Run
 
+`kagweb` is installed into the virtual environment, so activate it first
+(or call `.venv/bin/kagweb` directly):
+
 ```bash
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
+
 kagweb start                 # backend + frontend together
 kagweb serve --port 8082     # API server only
 kagweb run chat "hello"      # single turn through the stub capability
 ```
+
+`kagweb start` runs in the foreground until Ctrl+C. For a background instance,
+start detached and manage it with `restart` / `stop`:
+
+```bash
+kagweb start --detach        # background launcher; log: data/user/runtime/launcher.log
+kagweb restart               # stop the running launcher, then start it again
+kagweb stop                  # stop the background launcher
+```
+
+`kagweb restart` keeps the frontend mode the running launcher was started
+with; pass `--dev` / `--prod` to switch it. If a port is already taken,
+`kagweb start` lists the occupying processes and offers to change ports or
+stop them (interactive terminals only).
 
 ## Provider auth
 

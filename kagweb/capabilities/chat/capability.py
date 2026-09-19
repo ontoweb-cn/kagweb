@@ -31,7 +31,6 @@ from kagweb.core.capability_protocol import CapabilityManifest, TurnCapability
 from kagweb.core.context import UnifiedContext
 from kagweb.core.trace import build_trace_metadata, merge_trace_metadata, new_call_id
 from kagweb.services.agent_loop import build_agent_loop_backend
-from kagweb.services.agent_loop.builtin import preset_family
 from kagweb.services.agent_loop.consult import (
     consult_manifest,
     consult_session_id,
@@ -55,6 +54,7 @@ from kagweb.services.agent_loop.settings import (
     consult_profiles,
     find_consult_profile,
     get_agent_loop_settings,
+    profile_family,
     resolve_primary_profile,
 )
 from kagweb.services.i18n import t
@@ -161,7 +161,7 @@ class ChatCapability(TurnCapability):
         try:
             identity = resolve_backend_identity(
                 profile,
-                family=preset_family(str(profile.get("preset") or "")),
+                family=profile_family(profile),
                 language=language,
             )
         except IdentityUnavailable as exc:
@@ -234,6 +234,7 @@ class ChatCapability(TurnCapability):
             )
         request = await _build_request(
             context,
+            backend=backend,
             session_workspace=bool(primary.get("session_workspace")),
             workdir=workdir,
             consult_manifest=(
@@ -696,6 +697,7 @@ async def _prepare_workdir(
 async def _build_request(
     context: UnifiedContext,
     *,
+    backend: Any,
     session_workspace: bool,
     workdir: str = "",
     consult_manifest: str | None = None,
@@ -775,6 +777,19 @@ async def _build_request(
             turn_model = resolve_agent_model_for_selection(selection)
         except Exception:
             turn_model = ""
+    # The backend-native selection (``backend_model``) takes precedence: it
+    # names an entry in the backend's own vocabulary verbatim (an ACP option
+    # id or an operator-curated model name), so it is validated by the backend
+    # rather than resolved through the conversation catalog. A stale pick —
+    # the operator edited the list meanwhile — filters to "" and degrades to
+    # the backend default, exactly like no selection.
+    backend_model = str(context.metadata.get("backend_model") or "").strip()
+    if backend_model:
+        filter_turn_model = getattr(backend, "filter_turn_model", None)
+        if callable(filter_turn_model):
+            turn_model = filter_turn_model(backend_model, context.session_id or "")
+        else:
+            turn_model = backend_model
     return AgentLoopRequest(
         prompt=prompt,
         history=history,

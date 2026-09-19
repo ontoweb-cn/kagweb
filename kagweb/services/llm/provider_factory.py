@@ -57,13 +57,8 @@ def _build_runtime_provider(llm_config: LLMConfig) -> LLMProvider:
         # the Azure SDK; the services path must make the same call.
         backend = "azure_openai"
 
-    if backend == "openai_codex":
-        from kagweb.services.llm.provider_core.openai_codex_provider import (
-            OpenAICodexProvider,
-        )
-
-        provider: LLMProvider = OpenAICodexProvider(default_model=llm_config.model)
-    elif backend == "github_copilot":
+    provider: LLMProvider
+    if backend == "github_copilot":
         from kagweb.services.llm.provider_core.github_copilot_provider import (
             GitHubCopilotProvider,
         )

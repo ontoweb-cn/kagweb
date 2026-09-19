@@ -447,17 +447,52 @@ def test_factory_http_requires_url() -> None:
 
 
 def test_intellect_http_presets_ride_the_run_channel() -> None:
-    """Both Intellect HTTP presets must select the runs transport.
+    """Both Intellect HTTP shapes must select the runs transport.
 
     ``intellect-team`` used to carry no ``turn_path``/``protocol``, so it fell
     back to the preset default ``/agent/turn`` — an endpoint the service does
     not expose, making every turn a guaranteed 404. The failure was invisible
     because the transport is chosen from the very fields that were missing.
+    The community edition reaches its runs channel through the ``http``
+    transport of the merged ``intellect`` preset.
     """
-    for preset in ("intellect-team", "intellect-runs"):
-        backend = build_agent_loop_backend({"backend": preset, "url": "http://intellect.test"})
-        assert isinstance(backend, RunsAgentLoopBackend), preset
-        assert backend.turn_path == "/v1/runs", preset
+    for spec in (
+        {"backend": "intellect-team", "url": "http://intellect.test"},
+        {"backend": "intellect", "transport": "http", "url": "http://intellect.test"},
+    ):
+        backend = build_agent_loop_backend(spec)
+        assert isinstance(backend, RunsAgentLoopBackend), spec
+        assert backend.turn_path == "/v1/runs", spec
+
+
+def test_community_intellect_defaults_to_its_local_acp_child() -> None:
+    """Omitting the transport must keep building the ACP child.
+
+    Existing profiles predate the ``transport`` field; if a bare ``intellect``
+    resolved to the HTTP shape they would silently stop spawning a local
+    process and start calling a service that may not be there.
+    """
+    from kagweb.services.agent_loop.builtin import preset_family
+
+    assert preset_family("intellect") == "cli"
+    assert preset_family("intellect", "acp") == "cli"
+    assert preset_family("intellect", "http") == "http"
+
+
+def test_an_unknown_transport_is_a_loud_error() -> None:
+    """A selector this build does not know must not fall back to the default.
+
+    The two community transports differ in privilege (local child vs remote
+    service), so silently running a turn somewhere else is not an option.
+    """
+    with pytest.raises(AgentLoopError):
+        build_agent_loop_backend(
+            {"backend": "intellect", "transport": "nonsense", "url": "http://x:1"}
+        )
+    with pytest.raises(AgentLoopError):
+        build_agent_loop_backend(
+            {"backend": "claude-code", "transport": "http", "command": "claude"}
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -882,33 +917,110 @@ def test_codex_token_count_without_counters_emits_nothing() -> None:
 
 def test_per_turn_model_flag_is_true_exactly_for_backends_that_consume_it() -> None:
     """The picker's honesty gate: a preset claims per-turn model support only
-    when its service actually reads the ``model`` field.
+    when its transport actually applies the ``model`` field.
 
     The one-shot CLI presets substitute ``{model}`` locally. The two Intellect
     run presets send it in the POST /v1/runs body, which both implementations
-    read and honor. ACP has no per-turn model field in its protocol, and the
-    generic HTTP presets stay False — their services are unknown, so claiming
-    support would present a picker that changes nothing.
+    read and honor. The ACP transport applies it as a session config option
+    (``session/set_config_option``), which Intellect implements. The generic
+    HTTP presets stay False — their services are unknown, so claiming support
+    would present a picker that changes nothing; a profile's curated
+    ``models`` list is the operator's opt-in (tested in the derivation test).
     """
     from kagweb.services.agent_loop.builtin import PRESETS, per_turn_model_apply
 
+    # Presets with one transport answer with their ``per_turn_model`` default;
+    # the merged Intellect preset answers per transport instead (both of its
+    # channels apply a model — runs via the body, ACP via a config option).
     expected = {
         "claude-code": True,
         "codex": True,
         "opencode": True,
         "custom-cli": True,
-        "intellect": False,  # ACP: no per-turn model field in the protocol
+        "intellect": False,  # the *preset* default stays off; per-transport below
         "intellect-team": True,
-        "intellect-runs": True,
         "hermes": False,
         "agentscope": False,
         "custom-http": False,
     }
     assert {name: preset.per_turn_model for name, preset in PRESETS.items()} == expected
     assert per_turn_model_apply("claude-code") is True
-    assert per_turn_model_apply("intellect-runs") is True
+    assert per_turn_model_apply("intellect", "http") is True
+    assert per_turn_model_apply("intellect", "acp") is True
     assert per_turn_model_apply("custom-http") is False
     assert per_turn_model_apply("unknown") is False
+
+
+def test_per_turn_model_derivation_opts_http_turn_in_via_the_models_list() -> None:
+    """The HTTP-turn opt-in: curating ``models`` claims the service honors the
+    body's ``model`` key; an empty list keeps the picker hidden."""
+    from kagweb.services.agent_loop.settings import profile_per_turn_model
+
+    assert profile_per_turn_model({"preset": "hermes"}) is False
+    assert profile_per_turn_model({"preset": "hermes", "models": ["qwen-max"]}) is True
+    assert profile_per_turn_model({"preset": "custom-http", "url": "http://h:1"}) is False
+    # Non-HTTP-turn families with a list: the preset flag already decided.
+    assert profile_per_turn_model({"preset": "claude-code"}) is True
+    assert profile_per_turn_model(None) is False
+
+
+def test_normalize_profile_models_accepts_strings_and_rows() -> None:
+    from kagweb.services.agent_loop.builtin import normalize_profile_models
+
+    rows = normalize_profile_models(
+        ["gpt-5", {"id": "sonnet", "name": "Sonnet"}, "", {"model": "opus"}, "gpt-5"]
+    )
+    assert rows == [
+        {"id": "gpt-5", "name": "gpt-5"},
+        {"id": "sonnet", "name": "Sonnet"},
+        {"id": "opus", "name": "opus"},
+    ]
+    assert normalize_profile_models(None) == []
+    assert normalize_profile_models("not-a-list") == []
+
+
+def test_factory_threads_the_models_list_onto_every_family() -> None:
+    from kagweb.services.agent_loop import build_agent_loop_backend
+
+    rows = ["gpt-5", {"id": "sonnet", "name": "Sonnet"}]
+    cli = build_agent_loop_backend(
+        {"preset": "claude-code", "command": "claude", "models": rows, "model": "opus"}
+    )
+    assert cli.models == [
+        {"id": "gpt-5", "name": "gpt-5"},
+        {"id": "sonnet", "name": "Sonnet"},
+    ]
+
+    http = build_agent_loop_backend({"preset": "hermes", "url": "http://h:1", "models": rows})
+    assert http.models[0] == {"id": "gpt-5", "name": "gpt-5"}
+
+    runs = build_agent_loop_backend(
+        {"preset": "intellect", "transport": "http", "url": "http://r:1", "models": rows}
+    )
+    assert runs.models[0] == {"id": "gpt-5", "name": "gpt-5"}
+
+    acp = build_agent_loop_backend(
+        {"preset": "intellect", "transport": "acp", "models": rows, "model": "opus"}
+    )
+    assert acp.models[0] == {"id": "gpt-5", "name": "gpt-5"}
+
+
+def test_filter_turn_model_whitelists_the_profile_vocabulary() -> None:
+    """A stale pick degrades to "backend default"; no vocabulary passes through."""
+    from kagweb.services.agent_loop import build_agent_loop_backend
+
+    cli = build_agent_loop_backend(
+        {"preset": "claude-code", "command": "claude", "models": ["sonnet"], "model": "opus"}
+    )
+    assert cli.filter_turn_model("sonnet") == "sonnet"
+    assert cli.filter_turn_model("opus") == "opus"  # the configured model is allowed
+    assert cli.filter_turn_model("ghost") == ""
+    assert cli.filter_turn_model("") == ""
+
+    # No vocabulary at all: the override rides the path the profile model
+    # always has (it is substituted locally, never injected into a shell).
+    bare = build_agent_loop_backend({"preset": "claude-code", "command": "claude"})
+    assert bare.filter_turn_model("anything") == "anything"
 
 
 def test_factory_threads_the_model_onto_every_family() -> None:
@@ -923,7 +1035,7 @@ def test_factory_threads_the_model_onto_every_family() -> None:
     assert http.model == "qwen-max"
 
     runs = build_agent_loop_backend(
-        {"backend": "intellect-runs", "url": "http://r:1", "model": "gpt-5"}
+        {"backend": "intellect", "transport": "http", "url": "http://r:1", "model": "gpt-5"}
     )
     assert runs.model == "gpt-5"
 

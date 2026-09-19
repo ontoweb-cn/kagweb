@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
+from kagweb.services.agent_loop.builtin import normalize_profile_models
 from kagweb.services.agent_loop.workdir import normalize_workdir_roots
 from kagweb.services.file_io import atomic_write_json as _atomic_write_json
 from kagweb.services.path_service import get_path_service
@@ -533,6 +534,54 @@ def _agent_loop_profile_id(value: Any, index: int) -> str:
     return candidate
 
 
+def _agent_loop_transport(preset: str, transport: str) -> str:
+    """One profile's transport selector: "" unless the preset offers several.
+
+    Imported function-locally: the preset registry is the backend layer and
+    this is the settings layer it reads from (same reason
+    ``_auto_primary_agent_loop`` imports ``PRESETS`` inside the function).
+    """
+    if not preset:
+        return ""
+    try:
+        from kagweb.services.agent_loop.builtin import profile_transport_id
+    except Exception:
+        return ""
+    return profile_transport_id(preset, transport)
+
+
+def _agent_loop_turn_path(preset: str, transport: str) -> str:
+    """The turn path a preset's transport defaults to, or ``""``.
+
+    A profile that names no path must inherit the **transport's** default, not
+    the generic one: ``/agent/turn`` is a contract several services never
+    implement, and the Intellect presets speak ``/v1/runs``. Storing the
+    generic fallback here used to mask the preset and turn every deployment of
+    those presets into a guaranteed 404 — the preset layer was fixed first, but
+    this normalizer overwrote it on the way to disk, so the resolved value has
+    to come from the same place the turn path resolves it.
+    """
+    if not preset:
+        return ""
+    try:
+        from kagweb.services.agent_loop.builtin import resolve_transport
+    except Exception:
+        return ""
+    resolved = resolve_transport(preset, transport)
+    return resolved.turn_path if resolved is not None else ""
+
+
+def _agent_loop_default_identity_mode(preset: str, transport: str) -> str:
+    """The identity bridge a preset gets when the profile names none."""
+    if not preset:
+        return "off"
+    try:
+        from kagweb.services.agent_loop.builtin import default_identity_mode
+    except Exception:
+        return "off"
+    return default_identity_mode(preset, transport)
+
+
 def _string_or_list(value: Any) -> str | list[str]:
     if isinstance(value, list):
         return [item for raw in value if (item := _string(raw))]
@@ -917,7 +966,7 @@ class RuntimeSettingsService:
     def _apply_agent_loop_env_overrides(self, block: Any) -> dict[str, Any] | None:
         """Pin the primary profile through process env (containerized shape).
 
-        The four overrides land on the primary profile (creating a synthetic
+        The overrides land on the primary profile (creating a synthetic
         ``env-override`` profile when the file configures none), so single-
         backend deployments keep working with ``KAGWEB_AGENT_LOOP_BACKEND``
         alone while profile-based setups stay intact.
@@ -925,11 +974,15 @@ class RuntimeSettingsService:
         backend = self._process_env_value("KAGWEB_AGENT_LOOP_BACKEND")
         command = self._process_env_value("KAGWEB_AGENT_LOOP_COMMAND")
         url = self._process_env_value("KAGWEB_AGENT_LOOP_URL")
+        # Which transport of a multi-transport preset the deployment uses.
+        # Needed for the containerized Intellect shape, which cannot spawn the
+        # CLI and therefore must reach the same preset over HTTP.
+        transport = self._process_env_value("KAGWEB_AGENT_LOOP_TRANSPORT")
         # The api_key override carries the KAG_ prefix, not KAGWEB_: the
         # credential belongs to the external agent-loop service, while the
-        # other three are KAGWeb deployment concerns.
+        # other four are KAGWeb deployment concerns.
         api_key = self._process_env_value("KAG_AGENT_LOOP_API_KEY")
-        if not (backend or command or url or api_key):
+        if not (backend or command or url or transport or api_key):
             return None
         normalized = self._normalize_agent_loop({"agent_loop": block or {}})
         profiles = [dict(profile) for profile in normalized["profiles"]]
@@ -945,6 +998,11 @@ class RuntimeSettingsService:
             profiles.append(target)
         if backend:
             target["preset"] = backend
+        if transport:
+            # Normalized through the same helper the file layer uses, so an id
+            # this build does not know degrades to the preset's default rather
+            # than becoming an unresolvable selector on the turn path.
+            target["transport"] = _agent_loop_transport(backend or target["preset"], transport)
         if command:
             target["command"] = str(command)
         if url:
@@ -1360,13 +1418,24 @@ class RuntimeSettingsService:
         # The community `intellect` preset moved from the HTTP family to the
         # ACP transport; a legacy profile that configured it as a URL service
         # keeps working as a custom HTTP backend instead of silently turning
-        # into a CLI spawn.
-        if preset == "intellect" and _string(raw.get("url")).strip():
+        # into a CLI spawn. The guard on `transport` keeps a profile that
+        # deliberately selected the preset's own HTTP transport out of this
+        # rewrite — that one speaks the /v1/runs protocol, not /agent/turn.
+        if (
+            preset == "intellect"
+            and _string(raw.get("url")).strip()
+            and not _string(raw.get("transport")).strip()
+        ):
             preset = "custom-http"
+        # Unknown transport ids are rewritten to the preset's default rather
+        # than stored: the file should not carry a selector that no build
+        # understands. A multi-transport preset only.
+        transport = _agent_loop_transport(preset, _string(raw.get("transport")).strip())
         return {
             "id": _agent_loop_profile_id(raw.get("id"), index),
             "name": _string(raw.get("name")).strip() or preset or f"profile-{index + 1}",
             "preset": preset,
+            "transport": transport,
             "enabled": _coerce_bool(raw.get("enabled"), True),
             "command": _string(raw.get("command")).strip(),
             "args": (
@@ -1376,9 +1445,22 @@ class RuntimeSettingsService:
             ),
             "env": _env_map(raw.get("env")),
             "url": _string(raw.get("url")).strip(),
-            "turn_path": _string(raw.get("turn_path")).strip() or "/agent/turn",
+            # Empty = the preset transport's own default (see the helper): the
+            # generic "/agent/turn" applies only when the preset declares
+            # nothing either.
+            "turn_path": _string(raw.get("turn_path")).strip()
+            or _agent_loop_turn_path(preset, transport)
+            or "/agent/turn",
             "headers": _env_map(raw.get("headers")),
             "api_key": _string(raw.get("api_key")),
+            # The instance tenant the service runs as, when the deployment
+            # names one (Intellect: a 32-hex id, sent as X-Tenant-Id and
+            # validated by the service against its own INTELLECT_TENANT_ID).
+            # Empty = the service's default tenant. Kept verbatim — the value
+            # must match the service's configuration character for character,
+            # so this layer never re-cases it; the settings API refuses a
+            # malformed one at save time.
+            "tenant_id": _string(raw.get("tenant_id")).strip(),
             "timeout_seconds": _coerce_clamped_int(
                 raw.get("timeout_seconds"), 900, *AGENT_LOOP_TIMEOUT_RANGE
             ),
@@ -1392,6 +1474,12 @@ class RuntimeSettingsService:
             # setting). CLI profiles reference it as `{model}` in `args`; HTTP
             # profiles send it in the request body.
             "model": _string(raw.get("model")).strip(),
+            # The operator-curated per-turn model vocabulary, normalized to
+            # [{id, name}] rows (plain strings accepted). Feeds the composer's
+            # option list and — for the HTTP-turn presets, where consumption
+            # of the body's `model` key is unknowable from here — doubles as
+            # the operator's opt-in that the service honors it.
+            "models": normalize_profile_models(raw.get("models")),
             # The backend's real context window, used for history budgeting
             # instead of the 16K fallback that applies when no model name is
             # known. 0 = not configured (the window is guessed).
@@ -1410,12 +1498,20 @@ class RuntimeSettingsService:
             # text (`intellect chat -Q`-style backends) — no progress events.
             "text_output": _coerce_bool(raw.get("text_output"), False),
             # Who a turn runs as on an HTTP agent service: `off` sends nothing
-            # extra (the pre-existing behaviour), `header` attributes the turn
-            # to the calling account, `token` presents the account's own linked
-            # member token when there is one, `token_required` refuses to run
-            # without one. Unknown values fall back to `off`, which is also the
-            # safe direction — see services/agent_loop/identity.py.
-            "identity_mode": _identity_mode(raw.get("identity_mode")),
+            # extra, `header` attributes the turn to the calling account, `token`
+            # presents the account's own linked member token when there is one,
+            # `token_required` refuses to run without one. Unknown values fall
+            # back to `off`, which is also the safe direction — see
+            # services/agent_loop/identity.py.
+            #
+            # An absent value means "whatever this preset does by default",
+            # which for the self-hosted Intellect services is attribution —
+            # the same shape the sibling enterprise UI ships. An explicit
+            # value is stored verbatim (including "off", which is how an
+            # operator turns attribution back off).
+            "identity_mode": _identity_mode(raw.get("identity_mode"))
+            if _string(raw.get("identity_mode")).strip()
+            else _agent_loop_default_identity_mode(preset, transport),
         }
 
     @staticmethod
@@ -1587,12 +1683,18 @@ def _auto_primary_agent_loop(profiles: list[dict[str, Any]]) -> str:
     enabled = [profile for profile in profiles if profile.get("enabled")]
     if not enabled:
         return ""
-    from kagweb.services.agent_loop.builtin import PRESETS, is_intellect_preset
+    from kagweb.services.agent_loop.builtin import PRESETS, is_intellect_preset, preset_family
 
     def _is_local(profile: dict[str, Any]) -> bool:
         preset = PRESETS.get(str(profile.get("preset") or ""))
         if preset is not None:
-            return preset.family == "cli"
+            # Transport-aware: the community Intellect preset is local as an
+            # ACP child but remote as an HTTP service, so a profile pointing
+            # at a remote api_server must not win the "local first" rule.
+            return (
+                preset_family(str(profile.get("preset") or ""), str(profile.get("transport") or ""))
+                == "cli"
+            )
         from urllib.parse import urlsplit
 
         host = (urlsplit(str(profile.get("url") or "")).hostname or "").lower()

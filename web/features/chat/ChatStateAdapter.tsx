@@ -19,10 +19,10 @@ import {
   readStoredResponseLanguage,
   writeStoredActiveSessionId,
 } from "@/context/app-shell-storage";
-import type {
-  StreamEvent,
-  ChatMessage,
-  LLMSelection,
+import {
+  type StreamEvent,
+  type ChatMessage,
+  type TurnModelSelection,
 } from "@/features/chat/model/protocol";
 import { UnifiedTurnClient } from "@/features/chat/transport/UnifiedTurnClient";
 import { buildStartTurnInput } from "@/features/chat/controllers/buildStartTurnInput";
@@ -114,7 +114,8 @@ export interface ChatState {
   activeCapability: string | null;
   /** Stable product surface; per-turn capability selection is orthogonal. */
   workspaceMode: WorkspaceMode | null;
-  llmSelection: LLMSelection | null;
+  /** What the user picked: a catalog pair or a backend-native model id. */
+  llmSelection: TurnModelSelection | null;
   /** Persistent mastery state associated with this conversation. */
   masteryPathId: string | null;
   /** Study course this conversation belongs to; "" = unclassified.
@@ -180,7 +181,7 @@ export interface MessageRequestSnapshot {
   masteryPathId?: string;
   timedMediaId?: string;
   memoryReferences?: MemoryReferencePayload;
-  llmSelection?: LLMSelection | null;
+  llmSelection?: TurnModelSelection | null;
   /** Stable identity of the material open for this turn. */
   readingMaterialId?: string;
   /** Immutable content revision open when the turn was submitted. */
@@ -232,7 +233,7 @@ interface SessionSnapshot {
   status?: SessionRuntimeStatus;
   capability?: string | null;
   workspaceMode?: WorkspaceMode | null;
-  llmSelection?: LLMSelection | null;
+  llmSelection?: TurnModelSelection | null;
   masteryPathId?: string | null;
   courseId?: string;
   language?: string;
@@ -241,7 +242,7 @@ interface SessionSnapshot {
 
 type Action =
   | { type: "SET_CAPABILITY"; cap: string | null }
-  | { type: "SET_LLM_SELECTION"; selection: LLMSelection | null }
+  | { type: "SET_LLM_SELECTION"; selection: TurnModelSelection | null }
   // ``key`` targets a specific conversation — a backend push belongs to the
   // session that produced it, which may no longer be the selected one. The
   // composer omits it and means "the one on screen".
@@ -983,7 +984,7 @@ const POST_DONE_TITLE_REFRESH_MS = 5_000;
 interface ChatContextValue {
   state: ChatState;
   setCapability: (cap: string | null) => void;
-  setLLMSelection: (selection: LLMSelection | null) => void;
+  setLLMSelection: (selection: TurnModelSelection | null) => void;
   setMasteryPathId: (masteryPathId: string | null) => void;
   setCourseId: (courseId: string) => void;
   setLanguage: (lang: string) => void;
@@ -1081,8 +1082,13 @@ function asStringArray(value: unknown): string[] {
     : [];
 }
 
-function asLLMSelection(value: unknown): LLMSelection | null {
+function asLLMSelection(value: unknown): TurnModelSelection | null {
   const record = asRecord(value);
+  // Backend-native form first: `{"backend_model": "…"}` names an entry of the
+  // agent backend's own vocabulary (design §5a-1).
+  const backendModel =
+    typeof record?.backend_model === "string" ? record.backend_model.trim() : "";
+  if (backendModel) return { backend_model: backendModel };
   const profileId =
     typeof record?.profile_id === "string" ? record.profile_id.trim() : "";
   const modelId =
@@ -2183,7 +2189,7 @@ export function ChatStateAdapterProvider({
     dispatch({ type: "SET_CAPABILITY", cap });
   }, []);
 
-  const setLLMSelection = useCallback((selection: LLMSelection | null) => {
+  const setLLMSelection = useCallback((selection: TurnModelSelection | null) => {
     dispatch({ type: "SET_LLM_SELECTION", selection });
   }, []);
 

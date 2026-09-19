@@ -25,12 +25,14 @@ CLI (kagweb_cli)   WebSocket /ws   Python SDK (KAGWebApp)
                        │                                   │
                  CLI subprocess                       HTTP service
         claude-code · codex · opencode ·    intellect-team · hermes ·
-        intellect (ACP) · custom-cli        agentscope · custom-http
+        intellect (ACP) · custom-cli        agentscope · custom-http ·
+                                            intellect (HTTP)
 
         intellect runs `intellect acp` — one long-lived Agent Client
         Protocol child per session: message deltas, thinking, tool
         calls, plans, approvals (ask_user cards) and usage all map to
-        neutral events; kagweb[acp] required.
+        neutral events; kagweb[acp] required. The same preset reached
+        over its HTTP transport speaks the /v1/runs channel instead.
                               │
                               ▼
                     neutral AgentLoopEvents → StreamBus → consumers
@@ -85,15 +87,17 @@ single-operator / local-deployment shape.
 One streaming POST per turn for agent services — the multi-user shape, since
 the loop's code execution happens inside the operator's service, not the
 KAGWeb process. `hermes`, `agentscope` and `custom-http` speak one small
-contract; `intellect-team` and `intellect-runs` speak Intellect's run
-channel instead (see below):
+contract; `intellect-team` and the community preset's `http` transport speak
+Intellect's run channel instead (see below):
 
 ```
 POST {url}{turn_path}                      # default path /agent/turn
 Authorization: Bearer <api_key>            # when set
 {"session_id": "…", "language": "en",
  "prompt": "user turn text",
- "history": [{"role": "user"|"assistant", "content": "…"}, …]}
+ "history": [{"role": "user"|"assistant", "content": "…"}, …],
+ "model": "…"}                           # only when a model is configured or
+                                         # picked for the turn; omitted otherwise
 
 → 200: SSE (text/event-stream) or NDJSON, one JSON object per event:
   {"kind": "content"|"thinking"|"tool_call"|"tool_result"|"progress"|"usage"|"error",
@@ -108,8 +112,8 @@ real status/body.
 
 #### Intellect run channel (`protocol: "runs"`)
 
-The `intellect-team` and `intellect-runs` presets speak Intellect's run
-channel instead of the generic turn contract: `POST {url}/v1/runs` returns
+The `intellect-team` preset and the `intellect` preset's `http` transport
+speak Intellect's run channel instead of the generic turn contract: `POST {url}/v1/runs` returns
 `202 {run_id}` and `GET /v1/runs/{run_id}/events` streams lifecycle events
 (SSE, each `data:` frame a `RunEvent`). Dispatch is on the payload's own
 `type` first and the frame's `event` second — text, reasoning and the
@@ -140,8 +144,12 @@ answer arrives after the agent stopped listening.
 ### Identity: who a turn runs as
 
 `identity_mode` (per profile, HTTP family) decides what a turn presents to
-the agent service. The default `off` sends exactly what the profile
-configures — the pre-existing behaviour.
+the agent service. An absent value means "whatever this preset does by
+default": the self-hosted Intellect presets (`intellect` over HTTP,
+`intellect-team`) default to `header`, because their service records an
+owner and the sibling enterprise UI always presents the signed-in account.
+Every other preset defaults to `off`, and an explicit value — including
+`off` — is always honoured.
 
 | Mode | Sends | Effect |
 | --- | --- | --- |
@@ -149,6 +157,12 @@ configures — the pre-existing behaviour.
 | `header` | profile key + `X-Intellect-User: mem_<account>` | **Attribution**: the service records which account owns each session/run |
 | `token` | the account's own linked member token | **Delegation**: service-side roles and per-owner isolation apply; unlinked users fall back to `header` |
 | `token_required` | as `token`, but mandatory | An unlinked user cannot start a turn |
+
+Under `header`, an account that has *linked* its Intellect account is
+attributed to the real member id from that sign-in rather than to the one
+derived from KAGWeb's local account id. Linking is therefore worth doing
+before delegation is switched on: it makes the service-side record agree
+with the account the user actually signed in as.
 
 **`header` is attribution, not isolation.** The service key carries an
 unrestricted principal (`bypass_member_filter`), so every ownership check
@@ -231,11 +245,15 @@ profile when the file configures none):
       "env": {},                    // CLI: the ONLY credentials the child gets
       "session_workspace": true,    // CLI: per-session working dir
       "url": "http://localhost:8083", // HTTP: service base URL (required)
-      "turn_path": "/agent/turn",   // HTTP: turn endpoint path
+      "turn_path": "/v1/runs",      // HTTP: turn endpoint path; empty =
+                                    // the preset transport's own default
       "headers": {},                // HTTP: extra headers
       "api_key": "",                // HTTP: Bearer token
-      "identity_mode": "off",       // HTTP: off | header | token | token_required
-                                    // (see "Identity: who a turn runs as")
+      "tenant_id": "",              // HTTP: instance tenant (32-hex), sent as
+                                    // X-Tenant-Id; empty = the service's own
+      "identity_mode": "header",    // HTTP: off | header | token | token_required;
+                                    // empty = the preset's default (attribution
+                                    // for Intellect HTTP, off elsewhere)
       "model": "",                  // model this backend should run
       "context_window": 0,          // real window for history budgeting; 0 = guess
       "timeout_seconds": 900,       // per-turn wall clock (30..86400)
@@ -301,14 +319,47 @@ concrete model name on `AgentLoopRequest.model`; family support varies:
 | Family | Support | Mechanism |
 | --- | --- | --- |
 | CLI (one-shot) | ✅ | `{model}` substitution uses the turn override, else the profile's `model`, else the arg drops |
-| HTTP runs (`intellect-team` / `intellect-runs`) | ✅ | sent as `model` in the `POST /v1/runs` body, which both implementations read. The Python adapter validates it against its model catalog, so a name it does not know is rejected with `model_not_found` rather than ignored |
-| HTTP turn (`hermes` / `agentscope` / `custom-http`) | ⬜ body carries `model` | honored where the service reads it; unknown services claim nothing |
-| ACP | ❌ | no per-turn model field in the protocol; picker hidden |
+| HTTP runs (`intellect-team` / `intellect` with the `http` transport) | ✅ | sent as `model` in the `POST /v1/runs` body, which both implementations read. The Python adapter validates it against its model catalog, so a name it does not know is rejected with `model_not_found` rather than ignored |
+| HTTP turn (`hermes` / `agentscope` / `custom-http`) | ⬜ opt-in | the body carries `model`; a profile with a non-empty curated `models` list claims the service honors it |
+| ACP | ✅ | no per-request field — the model is a session config option (`id="model"`), advertised by the agent in the handshake and applied via `session/set_config_option` before the prompt; Intellect implements both sides |
 
-`AgentLoopPreset.per_turn_model` declares support; `/api/auth/status` exposes
-it as `model_selector_enabled` so the composer hides the picker when the
-configured backend cannot honor it. Precedence: **turn selection >
-profile `model` > backend default**.
+`AgentLoopPreset.per_turn_model` declares the preset truth;
+`profile_per_turn_model` derives the effective answer — for the HTTP-turn
+presets, a non-empty profile `models` list is the operator's opt-in that the
+service consumes the key ("unknown services claim nothing").
+`/api/auth/status` exposes it as `model_selector_enabled` so the composer
+hides the picker when the configured backend cannot honor it. Precedence:
+**turn selection > profile `model` > backend default**.
+
+The composer's option list is family-specific (`GET
+/api/settings/agent-loop/models`): the agent's advertised selector for ACP
+(the live session's answer, else a TTL-cached probe), the conversation LLM
+catalog for the self-hosted Intellect HTTP services (the one family the
+catalog actually configures), and the operator-curated profile `models` list
+for everything else. A backend-native pick travels as `TurnRequest.backend_model`
+(capped at 256 characters) and is validated against the backend's vocabulary
+(`AgentLoopBackend.filter_turn_model`); a stale pick degrades to the backend
+default, never to a name the backend cannot resolve. The selection persists in
+the user message's request snapshot (as `llmSelection`, in either the catalog
+pair or the `{"backend_model": …}` form), which is also how a **regenerated**
+turn re-applies the same model — `regenerate_last_turn` splits the backend
+form out before dispatch instead of routing it through the strict catalog
+validation.
+
+## Session transcripts as agent-readable files
+
+Every turn, the session's own conversation transcript (serialized from the
+store, not the budgeted history copy) and the transcripts of any
+user-referenced sessions are written into the session workspace when the
+backend runs in a filesystem workspace (CLI/ACP family): the current session
+as `session-transcript.md`, referenced ones as `referenced-<session-id>.md`.
+The Attached-Sources manifest renders their absolute paths, and the bundled
+hint tells the agent to read the file when the inline preview is not enough —
+the full-fidelity history channel that survives agent-session resets and
+backend switches. Hardening: transcript file names are slugified from the
+source id (path traversal cannot escape the workspace) and the writes publish
+atomically via a unique tmp file; serialization failures degrade to a
+warning log and simply no manifest row, never a failed turn.
 
 ## Consultation (multi agent-loop)
 
@@ -370,7 +421,7 @@ the agent-loop backend carries its own tooling.
 
 | Layer | Location | Notes |
 | --- | --- | --- |
-| LLM providers | `kagweb/services/llm/` | OpenAI Chat Completions **and** Responses API wire protocols (`WireAPI = auto/responses/chat_completions`), Anthropic, Azure, Codex OAuth, Copilot, CodeBuddy, embedding-free |
+| LLM providers | `kagweb/services/llm/` | OpenAI Chat Completions **and** Responses API wire protocols (`WireAPI = auto/responses/chat_completions`), Anthropic, Azure, Copilot, CodeBuddy, embedding-free. Codex OAuth retired (stale `openai_codex` catalog profiles fail safe: owner-bound, default-provider fallback) |
 | Sessions | `kagweb/services/session/` | SQLite + PocketBase stores, turn runtime (prepare/execute/lifecycle/title), request snapshots, regenerate |
 | Turn coordination | `kagweb/runtime/` | multi-worker leader election, memory reclaim |
 | Multi-user | `kagweb/multi_user/` | grants (models/exec/agent-loop), audit |

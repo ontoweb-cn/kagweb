@@ -750,3 +750,152 @@ async def test_a_request_left_parked_by_the_previous_turn_is_swept(tmp_path) -> 
     assert "acp-clarify-stale" not in handle.client._pending
 
     await backend._manager.close_all()
+
+
+# ---------------------------------------------------------------------------
+# Per-turn model selection: the advertised selector (design §3.1 / §4.2-3)
+# ---------------------------------------------------------------------------
+
+
+async def test_acp_lists_advertised_model_options_via_probe(tmp_path) -> None:
+    """The composer's option list comes from the agent's own handshake answer."""
+    from kagweb.services.agent_loop.acp_backend import _MODEL_OPTIONS_CACHE
+
+    backend = _backend("models", tmp_path / "result.json")
+    options = await asyncio.wait_for(backend.list_model_options(""), timeout=20)
+
+    assert [row["id"] for row in options] == [
+        "deepseek:deepseek-flash",
+        "deepseek:deepseek-v4-pro",
+    ]
+    assert options[0]["is_current"] is True
+    assert options[1]["is_current"] is False
+    assert options[1]["description"] == "Bigger context"
+    # the throwaway probe child was closed, not left running
+    assert not backend._manager._handles
+    _MODEL_OPTIONS_CACHE.clear()
+
+
+async def test_acp_agent_without_selector_lists_nothing(tmp_path) -> None:
+    """No advertised option is a valid shape — the caller falls back to the
+    profile's curated list."""
+    from kagweb.services.agent_loop.acp_backend import _MODEL_OPTIONS_CACHE
+
+    backend = _backend("full", tmp_path / "result.json")
+    options = await asyncio.wait_for(backend.list_model_options(""), timeout=20)
+
+    assert options is None
+    # …and the "no selector" answer is cached like a successful probe, so the
+    # composer's repeated fetches do not spawn a child each time.
+    assert backend._config_key in _MODEL_OPTIONS_CACHE
+    _MODEL_OPTIONS_CACHE.clear()
+
+
+async def test_acp_applies_per_turn_model_via_config_option(tmp_path) -> None:
+    """A per-turn model rides session/set_config_option, before the prompt.
+
+    The agent's refreshed selector comes back in the response and is kept on
+    the handle, so the composer shows the session's real current model.
+    """
+    result_file = tmp_path / "result.json"
+    backend = _backend("models-stop-end_turn", result_file)
+    request = _request("acp-models", tmp_path)
+    request = AgentLoopRequest(
+        prompt="hi",
+        session_id="acp-models",
+        workdir=str(tmp_path),
+        model="deepseek:deepseek-v4-pro",
+    )
+
+    events = [event async for event in backend.run(request)]
+
+    assert not [event for event in events if event.kind == "error"]
+    outcome = json.loads(result_file.read_text())
+    assert outcome["applied_model"] == "deepseek:deepseek-v4-pro"
+    handle = backend._manager._handles.get("acp-models")
+    assert handle is not None and handle.model_options is not None
+    current = [row for row in handle.model_options if row["is_current"]]
+    assert [row["id"] for row in current] == ["deepseek:deepseek-v4-pro"]
+    await backend._manager.close_all()
+
+
+async def test_acp_turn_without_model_leaves_the_agent_default(tmp_path) -> None:
+    result_file = tmp_path / "result.json"
+    backend = _backend("models-stop-end_turn", result_file)
+    request = AgentLoopRequest(
+        prompt="hi", session_id="acp-nomodel", workdir=str(tmp_path), model=""
+    )
+
+    [event async for event in backend.run(request)]
+
+    outcome = json.loads(result_file.read_text())
+    assert outcome["applied_model"] == ""
+    await backend._manager.close_all()
+
+
+async def test_acp_filter_turn_model_uses_the_advertised_selector(tmp_path) -> None:
+    """With a live session the whitelist is the advertised option ids."""
+    backend = _backend("models", tmp_path / "result.json")
+    await asyncio.wait_for(backend._manager.ensure("acp-filter", str(tmp_path)), timeout=20)
+
+    assert backend.filter_turn_model("deepseek:deepseek-v4-pro", "acp-filter") == (
+        "deepseek:deepseek-v4-pro"
+    )
+    # A stale pick (operator/agent vocab changed) degrades to "backend default".
+    assert backend.filter_turn_model("ghost-model", "acp-filter") == ""
+    assert backend.filter_turn_model("", "acp-filter") == ""
+    await backend._manager.close_all()
+
+
+async def test_acp_filter_without_a_session_passes_through(tmp_path) -> None:
+    """No advertised selector available: fail-soft, like the apply step."""
+    backend = _backend("models", tmp_path / "result.json")
+
+    assert backend.filter_turn_model("anything", "no-such-session") == "anything"
+
+
+async def test_acp_reset_after_lost_session_is_observable_and_folds_history(tmp_path) -> None:
+    """G-1: a load_session failure opens a fresh agent session — the turn
+    announces the reset and folds a bounded tail of the KAGWeb history into
+    the first prompt instead of silently losing the conversation."""
+    result_file = tmp_path / "result.json"
+    backend = _backend("reject-load-stop-end_turn", result_file)
+    # A recorded session the agent no longer holds: the re-attach must fail.
+    from kagweb.services.agent_loop.acp_session_store import save_acp_session
+
+    save_acp_session(
+        "acp-reset",
+        config_key=backend._config_key,
+        session_id="vanished-id",
+        cwd=str(tmp_path),
+    )
+    request = AgentLoopRequest(
+        prompt="继续",
+        session_id="acp-reset",
+        workdir=str(tmp_path),
+        history=[
+            {"role": "user", "content": "第一回合:记住暗号菠萝42"},
+            {"role": "assistant", "content": "好的"},
+        ],
+    )
+
+    events = [event async for event in backend.run(request)]
+
+    assert not [event for event in events if event.kind == "error"]
+    assert [event.kind for event in events if event.kind == "progress"] == ["progress"]
+    outcome = json.loads(result_file.read_text())
+    assert "Conversation context" in outcome["prompt_head"]
+    assert "菠萝42" in outcome["prompt_head"]
+    await backend._manager.close_all()
+
+
+async def test_acp_first_turn_without_history_stays_quiet(tmp_path) -> None:
+    """A brand-new conversation has nothing to restore: no progress event,
+    no fold — the flag is consumed without noise."""
+    result_file = tmp_path / "result.json"
+    backend = _backend("models-stop-end_turn", result_file)
+
+    events = [event async for event in backend.run(_request("acp-fresh", tmp_path))]
+
+    assert not [event for event in events if event.kind == "progress"]
+    await backend._manager.close_all()

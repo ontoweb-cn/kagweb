@@ -14,7 +14,7 @@ Architecture:
          provider_factory.get_runtime_provider()
               ↓
     provider_core.* (one SDK-backed class per backend:
-    openai_compat / anthropic / azure_openai / openai_codex /
+    openai_compat / anthropic / azure_openai /
     github_copilot / codebuddy)
 
 Features:

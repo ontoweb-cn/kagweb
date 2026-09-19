@@ -260,6 +260,68 @@ def test_intellect_url_profile_migrates_to_custom_http() -> None:
     # ACP transport) is left alone.
     block2 = _normalize_agent_loop({"profiles": [{"id": "a", "preset": "intellect"}]})
     assert block2["profiles"][0]["preset"] == "intellect"
+    # A profile that explicitly selected the preset's own HTTP transport also
+    # speaks a different protocol (/v1/runs), so it must not be folded into
+    # the URL-shaped legacy rewrite above.
+    block3 = _normalize_agent_loop(
+        {
+            "profiles": [
+                {
+                    "id": "runs",
+                    "preset": "intellect",
+                    "transport": "http",
+                    "url": "http://localhost:8642",
+                }
+            ]
+        }
+    )
+    assert block3["profiles"][0]["preset"] == "intellect"
+    assert block3["profiles"][0]["transport"] == "http"
+
+
+def test_transport_normalizes_to_the_presets_defaults() -> None:
+    """``transport`` is stored resolved, and only where a choice exists.
+
+    Single-transport presets keep "" so the config file does not grow a field
+    that means nothing. For a preset that does offer a choice the default is
+    written out, so the file states which backend a profile builds without the
+    reader having to know today's default. An id this build does not know is
+    rewritten to that default rather than persisted as an unresolvable
+    selector — the turn path refuses on unknown selectors (correct for a
+    hand-edited file), and a file this build just wrote must not become one.
+    """
+    block = _normalize_agent_loop(
+        {
+            "profiles": [
+                {"id": "bare", "preset": "intellect"},
+                {"id": "acp", "preset": "intellect", "transport": "acp"},
+                {"id": "junk", "preset": "intellect", "transport": "nonsense"},
+                {"id": "cli", "preset": "claude-code", "transport": "http"},
+            ]
+        }
+    )
+    by_id = {profile["id"]: profile for profile in block["profiles"]}
+    assert by_id["bare"]["transport"] == "acp"
+    assert by_id["acp"]["transport"] == "acp"
+    assert by_id["junk"]["transport"] == "acp"
+    assert by_id["cli"]["transport"] == ""
+
+
+def test_env_transport_override_pins_the_preset_transport() -> None:
+    """A containerized deployment reaches Intellect over HTTP by env alone."""
+    service = RuntimeSettingsService(
+        Path("./nonexistent-settings"),
+        process_env={
+            "KAGWEB_AGENT_LOOP_BACKEND": "intellect",
+            "KAGWEB_AGENT_LOOP_TRANSPORT": "http",
+            "KAGWEB_AGENT_LOOP_URL": "http://gw:8642",
+        },
+    )
+    block = service.load_system().get("agent_loop") or {}
+    primary = next(profile for profile in block["profiles"] if profile["id"] == block["primary"])
+    assert primary["preset"] == "intellect"
+    assert primary["transport"] == "http"
+    assert primary["url"] == "http://gw:8642"
 
 
 def test_reserved_picker_ids_are_regenerated() -> None:
@@ -324,6 +386,11 @@ def test_identity_mode_normalizes_and_never_widens() -> None:
     The safe direction matters here: an unrecognized value must land on `off`
     (send nothing extra), never on one of the modes that forwards identity — a
     typo should not silently turn on credential delegation for every turn.
+
+    An *absent* value is not a typo, though: it means "whatever this preset
+    does by default", which for the self-hosted Intellect services is
+    attribution (the same shape the sibling enterprise UI sends). Every other
+    preset still sends nothing.
     """
     block = _normalize_agent_loop(
         {
@@ -334,6 +401,19 @@ def test_identity_mode_normalizes_and_never_widens() -> None:
                 {"id": "d", "preset": "intellect-team", "identity_mode": "tokn"},
                 {"id": "e", "preset": "intellect-team"},
                 {"id": "f", "preset": "intellect-team", "identity_mode": ""},
+                {
+                    "id": "g",
+                    "preset": "intellect",
+                    "transport": "http",
+                    "url": "http://127.0.0.1:8642",
+                },
+                {"id": "h", "preset": "hermes", "url": "https://h.example"},
+                {
+                    "id": "i",
+                    "preset": "intellect",
+                    "transport": "acp",
+                    "identity_mode": "token",
+                },
             ],
         }
     )
@@ -343,5 +423,90 @@ def test_identity_mode_normalizes_and_never_widens() -> None:
     assert by_id["b"]["identity_mode"] == "header"  # case and space folded
     assert by_id["c"]["identity_mode"] == "token_required"
     assert by_id["d"]["identity_mode"] == "off"  # a typo sends nothing
-    assert by_id["e"]["identity_mode"] == "off"  # absent keeps prior behaviour
-    assert by_id["f"]["identity_mode"] == "off"
+    assert by_id["e"]["identity_mode"] == "header"  # absent = the preset default
+    assert by_id["f"]["identity_mode"] == "header"
+    assert by_id["g"]["identity_mode"] == "header"  # community over HTTP too
+    assert by_id["h"]["identity_mode"] == "off"  # a service that knows nothing
+    # The local ACP child presents no headers at all, so the default is nothing
+    # — and an explicit mode on it is not silently rewritten, either.
+    assert by_id["i"]["identity_mode"] == "token"
+
+
+def test_turn_path_falls_back_to_the_presets_own_endpoint() -> None:
+    """A profile that names no path inherits the *transport's* default.
+
+    The generic ``/agent/turn`` is only correct for the presets that speak
+    KAGWeb's own turn contract. Both Intellect HTTP presets speak the run
+    channel, and this normalizer used to overwrite their ``/v1/runs`` with the
+    generic path on the way to disk — which made every deployment of them POST
+    an endpoint the service does not expose. The preset layer is where the path
+    is declared, so the resolved value has to come from there.
+    """
+    block = _normalize_agent_loop(
+        {
+            "profiles": [
+                {"id": "team", "preset": "intellect-team", "url": "http://gw:8642"},
+                {
+                    "id": "community",
+                    "preset": "intellect",
+                    "transport": "http",
+                    "url": "http://gw:8642",
+                },
+                {"id": "generic", "preset": "custom-http", "url": "http://as:9000"},
+                {"id": "override", "preset": "intellect-team", "turn_path": "/elsewhere"},
+            ]
+        }
+    )
+    by_id = {profile["id"]: profile for profile in block["profiles"]}
+
+    assert by_id["team"]["turn_path"] == "/v1/runs"
+    assert by_id["community"]["turn_path"] == "/v1/runs"
+    assert by_id["generic"]["turn_path"] == "/agent/turn"  # the contract's own
+    assert by_id["override"]["turn_path"] == "/elsewhere"  # an explicit path wins
+
+
+def test_tenant_id_survives_normalization_verbatim() -> None:
+    """The instance tenant is compared character for character by the service.
+
+    Re-casing or trimming it here would make a deployment that copied a
+    lowercase id from its service stop matching, so the only thing this layer
+    does is drop surrounding whitespace.
+    """
+    block = _normalize_agent_loop(
+        {
+            "profiles": [
+                {"id": "a", "preset": "intellect-team", "tenant_id": "  " + "ab" * 16 + "  "},
+                {"id": "b", "preset": "intellect-team", "tenant_id": "AB" * 16},
+                {"id": "c", "preset": "intellect-team"},
+            ]
+        }
+    )
+    by_id = {profile["id"]: profile for profile in block["profiles"]}
+
+    assert by_id["a"]["tenant_id"] == "ab" * 16
+    assert by_id["b"]["tenant_id"] == "AB" * 16  # casing preserved
+    assert by_id["c"]["tenant_id"] == ""  # absent = the service's own default
+
+
+def test_models_list_normalizes() -> None:
+    """The curated vocabulary survives normalization as [{id, name}] rows —
+    strings are accepted, empties and duplicates dropped, order kept."""
+    block = _normalize_agent_loop(
+        {
+            "profiles": [
+                {"id": "a", "preset": "claude-code"},
+                {
+                    "id": "b",
+                    "preset": "hermes",
+                    "models": ["qwen-max", {"id": "sonnet", "name": "Sonnet"}, "", "qwen-max"],
+                },
+            ],
+        }
+    )
+    by_id = {profile["id"]: profile for profile in block["profiles"]}
+
+    assert by_id["a"]["models"] == []
+    assert by_id["b"]["models"] == [
+        {"id": "qwen-max", "name": "qwen-max"},
+        {"id": "sonnet", "name": "Sonnet"},
+    ]

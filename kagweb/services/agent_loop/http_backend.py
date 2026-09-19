@@ -73,6 +73,12 @@ def _path_segment(value: str) -> str:
     return quote(str(value), safe="")
 
 
+#: The instance-tenant header, under both names the Intellect api_server
+#: implementations read (Rust / Python). See ``_tenant_headers``.
+_HEADER_TENANT_RUST = "X-Tenant-Id"
+_HEADER_TENANT_PYTHON = "X-Intellect-Tenant-Id"
+
+
 def _pretty_arguments(raw: Any) -> str:
     """Render tool arguments for the approval card body.
 
@@ -209,7 +215,9 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         timeout_seconds: float,
         transport: httpx.AsyncBaseTransport | None = None,
         model: str = "",
+        models: list[dict[str, str]] | None = None,
         identity_mode: str = "off",
+        tenant_id: str = "",
     ) -> None:
         self.name = name
         self.url = url.rstrip("/")
@@ -217,6 +225,11 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         self.api_key = str(api_key or "")
         self.headers = {str(k): str(v) for k, v in (headers or {}).items()}
         self.timeout_seconds = float(timeout_seconds) if timeout_seconds else 0.0
+        #: The instance tenant this service runs as, when the deployment names
+        #: one. Applied to every request the backend makes, from whichever
+        #: method builds headers — deliberately *not* part of ``self.headers``,
+        #: which :meth:`with_identity` replaces wholesale on the turn path.
+        self.tenant_id = str(tenant_id or "").strip()
         #: Base key/headers, kept so applying a turn's identity is idempotent:
         #: the resolved values always derive from the profile, never from a
         #: previous turn's identity.
@@ -239,6 +252,9 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         #: deployment that never sets a model sees the exact request it did
         #: before this field existed.
         self.model = str(model or "").strip()
+        #: The operator-curated per-turn model vocabulary ([{id, name}]) — the
+        #: composer's option source and the ``filter_turn_model`` whitelist.
+        self.models = list(models or [])
         # Test/embedding hook: injected httpx transport (never set by the
         # settings-driven factory).
         self._transport = transport
@@ -299,6 +315,25 @@ class HttpAgentLoopBackend(AgentLoopBackend):
     def endpoint(self) -> str:
         return f"{self.url}{self.turn_path}"
 
+    def _tenant_headers(self) -> dict[str, str]:
+        """The tenant header(s) for this turn, or ``{}`` when none is set.
+
+        Two names, because the two Intellect api_server implementations read
+        different ones and each ignores the other's: the Rust gateway (the
+        authoritative build, and the one the ``intellect-team`` preset requires)
+        validates ``X-Tenant-Id``, while the legacy Python adapter reads
+        ``X-Intellect-Tenant-Id``. Sending both keeps one profile working
+        against either build; a service that knows neither ignores them.
+
+        A wrong value is not quietly tolerated on the service side — it is
+        compared with that instance's configured tenant and answered with 400
+        (malformed) or 403 (mismatch), which is why the settings API refuses a
+        malformed id at save time instead of letting every turn fail here.
+        """
+        if not self.tenant_id:
+            return {}
+        return {_HEADER_TENANT_RUST: self.tenant_id, _HEADER_TENANT_PYTHON: self.tenant_id}
+
     async def run(self, request: AgentLoopRequest) -> AsyncIterator[AgentLoopEvent]:
         self._apply_profile_identity()
         payload: dict[str, Any] = {
@@ -317,6 +352,7 @@ class HttpAgentLoopBackend(AgentLoopBackend):
         headers = {
             "Accept": "text/event-stream, application/x-ndjson, application/jsonl",
             **self.headers,
+            **self._tenant_headers(),
         }
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
@@ -578,7 +614,9 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         timeout_seconds: float,
         transport: httpx.AsyncBaseTransport | None = None,
         model: str = "",
+        models: list[dict[str, str]] | None = None,
         identity_mode: str = "off",
+        tenant_id: str = "",
     ) -> None:
         super().__init__(
             name=name,
@@ -589,7 +627,9 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
             timeout_seconds=timeout_seconds,
             transport=transport,
             model=model,
+            models=models,
             identity_mode=identity_mode,
+            tenant_id=tenant_id,
         )
         self._run_id = ""
 
@@ -614,7 +654,11 @@ class RunsAgentLoopBackend(HttpAgentLoopBackend):
         return self._runs_url(self._run_id, "clarify")
 
     def _headers(self) -> dict[str, str]:
-        headers = {"Accept": "application/json, text/event-stream", **self.headers}
+        headers = {
+            "Accept": "application/json, text/event-stream",
+            **self.headers,
+            **self._tenant_headers(),
+        }
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         return headers

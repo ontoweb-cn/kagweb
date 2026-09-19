@@ -26,6 +26,7 @@ export type Type = string;
 export type Url = string | null;
 export type Attachments = OutgoingAttachment[];
 export type AutoRoute = boolean | null;
+export type BackendModel = string | null;
 export type BookId = string;
 export type PageIds = string[];
 export type BookReferences = BookReference[];
@@ -256,6 +257,7 @@ export interface TurnProtocolDocument {
 export interface StartTurnCommand {
   attachments?: Attachments;
   auto_route?: AutoRoute;
+  backend_model?: BackendModel;
   book_references?: BookReferences;
   capability?: Capability;
   config?: Config;

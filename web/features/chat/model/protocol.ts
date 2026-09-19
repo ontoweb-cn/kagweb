@@ -27,6 +27,23 @@ export type ServerEvent = GeneratedServerEvent;
 export type StreamEventType = GeneratedStreamEventType;
 export type LLMSelection = GeneratedLLMSelection;
 
+/**
+ * What the user picked in the composer's model control.
+ *
+ * Either a conversation-catalog pair (the self-hosted Intellect HTTP family,
+ * where the catalog *is* the model configuration) or a backend-native model
+ * id — an entry of the agent backend's own vocabulary (an ACP option id or an
+ * operator-curated name) sent verbatim and validated by the backend. `null`
+ * means "backend default".
+ */
+export type TurnModelSelection = LLMSelection | { backend_model: string };
+
+export function isBackendModelSelection(
+  selection: TurnModelSelection | null | undefined,
+): selection is { backend_model: string } {
+  return typeof selection === "object" && selection !== null && "backend_model" in selection;
+}
+
 export type StreamEvent = Omit<
   GeneratedStreamEvent,
   "content" | "metadata" | "source" | "stage" | "session_id"

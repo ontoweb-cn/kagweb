@@ -94,6 +94,33 @@ def _copy_one(store, session_id: str, rec: dict[str, Any]) -> str | None:  # noq
         return None
 
 
+async def write_session_transcript(
+    session_id: str, content: str, *, filename: str = "session-transcript.md"
+) -> str:
+    """Write a conversation transcript into the workspace; return its path.
+
+    The L0 history channel (agent-loop history design): a plain file every
+    workspace-running backend can read. The current session's transcript is
+    refreshed each turn under the default name; referenced sessions get one
+    file per source session. Fail-soft like the attachment copies — a
+    transcript that cannot be written simply yields no manifest row.
+    """
+    from kagweb.services.path_service import get_path_service
+
+    target = get_path_service().get_task_workspace("chat", session_id) / filename
+
+    def _write() -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # pid + uuid4: concurrent writes of the SAME file (a referenced
+        # transcript re-resolved by two turns) must not share a tmp name.
+        tmp = target.with_name(f".{target.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
+        tmp.write_text(content, encoding="utf-8")
+        _publish_copy(tmp, target)
+
+    await asyncio.to_thread(_write)
+    return str(target)
+
+
 async def materialize_attachments(
     session_id: str,
     records: list[dict[str, Any]],

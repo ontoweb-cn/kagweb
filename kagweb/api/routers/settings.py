@@ -22,16 +22,12 @@ logger = logging.getLogger(__name__)
 from kagweb.multi_user.context import get_current_user
 from kagweb.multi_user.model_access import allowed_llm_options
 from kagweb.multi_user.paths import get_admin_path_service
+from kagweb.services.agent_loop.builtin import normalize_profile_models
 from kagweb.services.agent_loop.workdir import (
     normalize_workdir_roots,
     resolve_allowed_workdir,
 )
 from kagweb.services.codebuddy_auth import get_codebuddy_auth_service
-from kagweb.services.codex_auth import (
-    CodexAuthError,
-    get_codex_oauth_service,
-    reconcile_codex_catalog_update,
-)
 from kagweb.services.config import (
     CATALOG_SECRET_MASK,
     get_config_test_runner,
@@ -249,6 +245,10 @@ class AgentLoopProfileUpdate(BaseModel):
     id: str = ""
     name: str = ""
     preset: str
+    #: Which way to reach a preset that offers several (the community
+    #: Intellect preset: ``acp`` local child vs ``http`` service). Empty =
+    #: the preset's default.
+    transport: str = ""
     enabled: bool = True
     command: str = ""
     args: List[str] = Field(default_factory=list)
@@ -274,14 +274,25 @@ class AgentLoopProfileUpdate(BaseModel):
     #: CLI profiles reference it as ``{model}`` in ``args``; HTTP profiles send
     #: it in the request body.
     model: str = ""
+    #: Operator-curated per-turn model vocabulary (``[{id, name}]`` or plain
+    #: strings, normalized on save). Option source for the composer's model
+    #: picker; for the plain HTTP-turn presets a non-empty list also opts the
+    #: profile into per-turn model support.
+    models: List[Any] = Field(default_factory=list)
     #: The backend's real context window, used for history budgeting. 0 = not
     #: configured (the budget planner falls back to its model-name heuristics).
     context_window: int = Field(default=0, ge=0, le=AGENT_LOOP_CONTEXT_WINDOW_RANGE[1])
     #: HTTP family only. Who a turn runs as on the remote service: ``off``
     #: sends nothing extra, ``header`` attributes the turn to the calling
     #: account, ``token`` also presents that account's own linked member token,
-    #: ``token_required`` refuses to run without one.
-    identity_mode: str = "off"
+    #: ``token_required`` refuses to run without one. Empty = the preset's own
+    #: default (attribution for the self-hosted Intellect services).
+    identity_mode: str = ""
+    #: The instance tenant the service runs as, when the deployment names one.
+    #: Intellect validates it against its configured tenant (32 hex chars) and
+    #: answers 400/403 on a malformed or mismatched value, so it is checked
+    #: here rather than at the first turn. Empty = the service's default tenant.
+    tenant_id: str = ""
 
 
 class AgentLoopSettingsUpdate(BaseModel):
@@ -545,28 +556,6 @@ def _identity_service_available() -> bool:
         return bool(str(profile.get("url") or "").strip())
     except Exception:
         return False
-
-
-def _require_codex_oauth_actor() -> None:
-    """Gate the Codex OAuth lifecycle: personal, not administrative.
-
-    Every one of these endpoints acts on the *caller's own* credentials —
-    ``get_codex_oauth_service()`` resolves the store, the model catalog, and
-    the callback route from owner scope — so requiring an administrator was
-    what left ordinary users unable to use Codex at all: an owner-bound
-    profile is (correctly) never grantable, and they could not sign in for
-    themselves either (#781).
-    """
-
-
-def _codex_http_exception(error: CodexAuthError) -> HTTPException:
-    return HTTPException(
-        status_code=error.http_status,
-        detail={
-            "code": error.code,
-            "message": error.public_message,
-        },
-    )
 
 
 def _provider_choices() -> dict[str, list[dict[str, Any]]]:
@@ -843,64 +832,6 @@ async def get_settings():
     }
 
 
-@router.post("/providers/openai-codex/oauth/start")
-async def start_openai_codex_oauth(request: Request) -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    _require_same_origin(request)
-    try:
-        return await get_codex_oauth_service().start_login()
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-
-
-@router.get("/providers/openai-codex/oauth/status")
-async def get_openai_codex_oauth_status() -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    try:
-        return get_codex_oauth_service().public_status()
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-
-
-@router.post("/providers/openai-codex/oauth/cancel")
-async def cancel_openai_codex_oauth(request: Request) -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    _require_same_origin(request)
-    try:
-        return await get_codex_oauth_service().cancel_login()
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-
-
-@router.post("/providers/openai-codex/oauth/logout")
-async def logout_openai_codex_oauth(request: Request) -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    # Same-origin guard: a cross-site logout would silently disconnect the
-    # victim's credential, and the re-link that follows is the attacker's.
-    _require_same_origin(request)
-    try:
-        return await get_codex_oauth_service().logout()
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-
-
-@router.post("/providers/openai-codex/models/refresh")
-async def refresh_openai_codex_models() -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    try:
-        return await get_codex_oauth_service().refresh_models()
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-
-
-# ── Linked Intellect account (per user, deliberately not admin-gated) ───────
-#
-# This is a *personal* credential, like the Codex OAuth lifecycle above: each
-# user connects their own account, and the agent-loop settings endpoints — all
-# admin-only — are the wrong place for it. The token never leaves the server:
-# every response below reports the link, never the credential.
-
-
 class IdentityLinkRequest(BaseModel):
     """Either a password login, or a token the user was handed out of band."""
 
@@ -995,25 +926,6 @@ async def cancel_codebuddy_auth() -> dict[str, Any]:
 async def logout_codebuddy_auth() -> dict[str, Any]:
     _require_settings_admin()
     return await get_codebuddy_auth_service().logout()
-
-
-@router.post("/providers/openai-codex/models/reasoning-effort")
-async def update_openai_codex_reasoning_effort(
-    payload: CodexReasoningEffortUpdate,
-) -> dict[str, Any]:
-    _require_codex_oauth_actor()
-    try:
-        status_payload = await get_codex_oauth_service().set_reasoning_effort(
-            payload.model,
-            payload.reasoning_effort,
-        )
-    except CodexAuthError as exc:
-        raise _codex_http_exception(exc) from None
-    # This writes the catalog the runtime resolves against, like every other
-    # catalog write here — without it the next turn keeps the old effort until
-    # something else happens to invalidate.
-    _invalidate_runtime_caches()
-    return status_payload
 
 
 @router.get("/catalog")
@@ -1131,7 +1043,7 @@ async def update_chat_attachment_settings(payload: ChatAttachmentSettingsUpdate)
 # agent_loop block keys a process-env override can currently pin. When one is
 # pinned, the stored value is not what turns actually use — the UI disables the
 # corresponding input instead of letting an operator "save" a lie.
-AGENT_LOOP_ENV_OVERRIDABLE_KEYS = ("preset", "command", "url", "api_key")
+AGENT_LOOP_ENV_OVERRIDABLE_KEYS = ("preset", "transport", "command", "url", "api_key")
 
 
 def _agent_loop_profile_block(
@@ -1140,6 +1052,8 @@ def _agent_loop_profile_block(
 ) -> dict[str, Any]:
     """One profile as persisted — honoring the api_key tri-state and the
     stored key for unknown ids (new profiles default to no key)."""
+    from kagweb.services.agent_loop.builtin import profile_transport_id
+
     stored = stored_profiles.get(profile.id) or {}
     api_key = str(stored.get("api_key") or "")
     if profile.api_key is not None:
@@ -1148,6 +1062,10 @@ def _agent_loop_profile_block(
         "id": profile.id.strip(),
         "name": profile.name.strip(),
         "preset": profile.preset,
+        # Stored normalized: a single-transport preset keeps "" (so the file
+        # does not grow a field that means nothing), and a multi-transport
+        # preset resolves its default here rather than at every read site.
+        "transport": profile_transport_id(profile.preset, profile.transport),
         "enabled": profile.enabled,
         "command": profile.command,
         "args": [str(arg) for arg in profile.args],
@@ -1163,8 +1081,10 @@ def _agent_loop_profile_block(
         "approval_timeout_seconds": profile.approval_timeout_seconds,
         "approval_default": profile.approval_default,
         "model": profile.model.strip(),
+        "models": normalize_profile_models(profile.models),
         "context_window": profile.context_window,
-        "identity_mode": profile.identity_mode,
+        "identity_mode": profile.identity_mode.strip(),
+        "tenant_id": profile.tenant_id.strip(),
     }
 
 
@@ -1227,12 +1147,13 @@ def _agent_loop_payload() -> dict[str, Any]:
 
     effective_primary = str(effective.get("primary") or "")
     stored_primary = str(stored.get("primary") or "")
-    from kagweb.services.agent_loop.builtin import (
-        llm_settings_apply,
-        per_turn_model_apply,
-        preset_family,
+    from kagweb.services.agent_loop.builtin import preset_transports, transport_key
+    from kagweb.services.agent_loop.settings import (
+        profile_family,
+        profile_llm_settings_apply,
+        profile_per_turn_model,
+        resolve_primary_profile,
     )
-    from kagweb.services.agent_loop.settings import resolve_primary_profile
     from kagweb.services.config.runtime_settings import _auto_primary_agent_loop
 
     # Which backend actually drives turns, and whether the LLM settings apply to
@@ -1241,6 +1162,7 @@ def _agent_loop_payload() -> dict[str, Any]:
     # behaviour.
     resolved = resolve_primary_profile(effective)
     resolved_preset = str((resolved or {}).get("preset") or "")
+    resolved_transport = str((resolved or {}).get("transport") or "")
 
     return {
         "settings": _public(stored),
@@ -1249,13 +1171,14 @@ def _agent_loop_payload() -> dict[str, Any]:
             "id": str((resolved or {}).get("id") or ""),
             "name": str((resolved or {}).get("name") or ""),
             "preset": resolved_preset,
-            "family": preset_family(resolved_preset),
+            "transport": resolved_transport,
+            "family": profile_family(resolved),
             # Gates the LLM (models and connections) section: only a
             # self-hosted HTTP backend needs model credentials entered here.
-            "llm_settings_enabled": llm_settings_apply(resolved_preset),
+            "llm_settings_enabled": profile_llm_settings_apply(resolved),
             # Gates the composer's model selector: only backends that consume
             # a per-turn model expose one (one-shot CLI family today).
-            "per_turn_model": per_turn_model_apply(resolved_preset),
+            "per_turn_model": profile_per_turn_model(resolved),
         },
         # What the default rule (local Intellect first) would pick — shown
         # next to the "Automatic" primary option so the rule is visible.
@@ -1272,6 +1195,22 @@ def _agent_loop_payload() -> dict[str, Any]:
                 "name": preset.name,
                 "family": preset.family,
                 "description": preset.description,
+                # Several ways to reach the same product (the community
+                # Intellect preset: local ACP child vs remote /v1/runs
+                # service). Empty for single-transport presets.
+                "transports": [
+                    {
+                        "id": transport.id,
+                        "family": transport.family,
+                        "label": transport.label,
+                        "description": transport.description,
+                        "detect_key": transport_key(preset.name, transport.id),
+                    }
+                    for transport in preset_transports(preset.name)
+                ]
+                if preset.transports
+                else [],
+                "default_transport": preset.default_transport,
                 # The preset picker's detection column is filled by /detect.
             }
             for preset in PRESETS.values()
@@ -1334,6 +1273,32 @@ def _reject_unauthorized_workdirs(block: dict[str, Any]) -> None:
             )
 
 
+def _reject_malformed_tenant_ids(block: dict[str, Any]) -> None:
+    """Refuse a tenant id the service would reject, while saving.
+
+    Intellect compares the header with the tenant its instance is configured
+    with, and a value that is not 32 hex characters is refused outright with a
+    400 before the comparison even happens. Both failure modes are identical on
+    every turn, so the one place a typo can be caught is here — the field is a
+    deployment fact the operator copies from the service, not something KAGWeb
+    can repair or normalize (re-casing would silently stop matching a service
+    configured with a lowercase id).
+    """
+    for profile in block.get("profiles") or []:
+        tenant = str(profile.get("tenant_id") or "").strip()
+        if not tenant:
+            continue
+        if len(tenant) != 32 or any(char not in "0123456789abcdefABCDEF" for char in tenant):
+            label = profile.get("name") or profile.get("id") or "profile"
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Profile {label!r}: tenant_id must be 32 hex characters "
+                    f"(the service's tenant id), got {tenant!r}."
+                ),
+            )
+
+
 @router.put("/agent-loop")
 async def update_agent_loop_settings(payload: AgentLoopSettingsUpdate):
     _require_settings_admin()
@@ -1341,6 +1306,7 @@ async def update_agent_loop_settings(payload: AgentLoopSettingsUpdate):
     current = service.load_system(include_process_overrides=False)
     block = _agent_loop_settings_block(payload)
     _reject_unauthorized_workdirs(block)
+    _reject_malformed_tenant_ids(block)
     # save_system re-normalizes (migration of odd shapes, id dedupe, the
     # auto-primary rule, clamps) exactly as it does for every other
     # system.json block, so the response is the truth.
@@ -1874,13 +1840,109 @@ async def get_llm_options():
     return list_llm_options(get_model_catalog_service().load())
 
 
+@router.get("/agent-loop/models")
+async def get_agent_loop_models(session_id: str = ""):
+    """Options for the composer's per-turn agent-loop model picker.
+
+    One source per backend family (see the composer model-selector design):
+
+    - ``acp``     — the agent's advertised selector (live session's handshake
+                    answer, else a TTL-cached probe child);
+    - ``catalog`` — the conversation LLM catalog, which is the intended model
+                    configuration only for the self-hosted Intellect HTTP
+                    services; the frontend fetches ``/llm-options`` itself so
+                    grant filtering and ``active`` semantics stay in one place;
+    - ``profile`` — the operator-curated ``models`` list (plus the profile's
+                    configured ``model``), the honest fallback for the CLI
+                    family and the opt-in for plain HTTP-turn services;
+    - ``none``    — the backend consumes no per-turn model (picker hidden).
+    """
+    from kagweb.services.agent_loop.builtin import (
+        is_intellect_preset,
+        normalize_profile_models,
+        preset_family,
+    )
+    from kagweb.services.agent_loop.protocol import profile_model_options
+    from kagweb.services.agent_loop.settings import (
+        profile_per_turn_model,
+        resolve_primary_profile,
+    )
+
+    # Through the module accessor (not agent_loop.settings's own reader) so
+    # the same RuntimeSettingsService every other endpoint here uses is
+    # consulted — including the one tests install.
+    block = get_runtime_settings_service().load_system().get("agent_loop") or {}
+    profile = resolve_primary_profile(block)
+    if profile is None:
+        return {"per_turn_model": False, "source": "none", "backend_label": "", "options": []}
+    preset = str(profile.get("preset") or "")
+    transport = str(profile.get("transport") or "")
+    family = preset_family(preset, transport)
+    backend_label = str(profile.get("name") or preset)
+    if not profile_per_turn_model(profile):
+        return {
+            "per_turn_model": False,
+            "source": "none",
+            "backend_label": backend_label,
+            "options": [],
+        }
+
+    # 1) ACP: the agent's own selector is the truthful list.
+    if family == "cli" and transport == "acp":
+        options: list[dict[str, Any]] | None = None
+        try:
+            from kagweb.services.agent_loop import build_agent_loop_backend
+
+            backend = build_agent_loop_backend(profile)
+            if backend is not None:
+                options = await backend.list_model_options(session_id)
+        except Exception:  # noqa: BLE001 — listing degrades to the profile list
+            logger.debug("agent-loop models: ACP listing failed", exc_info=True)
+        if options:
+            return {
+                "per_turn_model": True,
+                "source": "acp",
+                "backend_label": backend_label,
+                "options": options,
+            }
+
+    # 2) Catalog: only the family the conversation LLM settings actually
+    # configure (self-hosted Intellect HTTP). Non-empty, or the profile list
+    # answers instead.
+    if is_intellect_preset(preset) and family == "http":
+        try:
+            if allowed_llm_options().get("options"):
+                return {
+                    "per_turn_model": True,
+                    "source": "catalog",
+                    "backend_label": backend_label,
+                    "options": [],
+                }
+        except Exception:  # noqa: BLE001 — a broken catalog degrades, never fails
+            logger.debug("agent-loop models: catalog listing failed", exc_info=True)
+
+    # 3) Profile vocabulary: curated list plus the configured model itself —
+    # the same rows `AgentLoopBackend.list_model_options` defaults to (shared
+    # helper, so the endpoint and the backends cannot drift apart).
+    options = profile_model_options(
+        normalize_profile_models(profile.get("models")),
+        str(profile.get("model") or ""),
+    )
+    return {
+        "per_turn_model": True,
+        "source": "profile",
+        "backend_label": backend_label,
+        "options": options,
+    }
+
+
 @router.put("/catalog")
 async def update_catalog(payload: CatalogPayload):
     _require_settings_admin()
     service = get_model_catalog_service()
     current = service.load()
     restored = restore_catalog_secrets(payload.catalog, current)
-    proposed = reconcile_codex_catalog_update(current, restored)
+    proposed = restored  # codex catalog reconciliation retired with codex_auth
     catalog = service.save(proposed)
     _invalidate_runtime_caches()
     return {"catalog": redact_catalog_secrets(catalog)}
@@ -1947,7 +2009,7 @@ async def apply_catalog(payload: CatalogPayload | None = None):
             if isinstance(draft_catalog, dict)
             else current
         )
-    catalog = reconcile_codex_catalog_update(current, proposed)
+    catalog = proposed
     applied = service.apply(catalog)
     draft_service.clear()
     _invalidate_runtime_caches()

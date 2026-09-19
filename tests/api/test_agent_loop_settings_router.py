@@ -79,16 +79,26 @@ def test_get_returns_presets_and_bounds(client: TestClient) -> None:
     assert data["bounds"]["consult_budget"] == [0, 12]
     assert data["env_overrides"] == {
         "preset": False,
+        "transport": False,
         "command": False,
         "url": False,
         "api_key": False,
     }
+    # The community preset exposes both ways to reach Intellect, so the picker
+    # offers them from one card instead of listing two pseudo-presets.
+    intellect = next(preset for preset in data["presets"] if preset["name"] == "intellect")
+    assert intellect["default_transport"] == "acp"
+    assert {entry["id"] for entry in intellect["transports"]} == {"acp", "http"}
+    assert all(entry["detect_key"] for entry in intellect["transports"])
+    # The folded preset name must be gone from the catalogue entirely.
+    assert "intellect-runs" not in preset_names
     # With nothing configured the shell stub drives turns, so no backend is
     # resolved and the LLM section stays off.
     assert data["effective_primary"] == {
         "id": "",
         "name": "",
         "preset": "",
+        "transport": "",
         "family": "",
         "per_turn_model": False,
         "llm_settings_enabled": False,
@@ -247,12 +257,14 @@ def test_detect_reports_cli_presets_and_http_profiles(client: TestClient) -> Non
         for key, r in http.items()
         if not r["key"].startswith("intellect")
     )
-    # Profiles without a URL are not probed at all. Both Intellect run presets
-    # carry a preset-level probe, so the probe count is the agentscope profile
+    # Profiles without a URL are not probed at all. The Intellect run channels
+    # carry preset-level probes, so the probe count is the agentscope profile
     # plus those two — the team preset gaining a probe target is the fix for a
     # preset that previously had none at all.
     assert len(http) == 3
-    assert http["intellect-runs"]["local"] is True  # preset-level local gateway probe
+    # The community runs channel is keyed per transport (`intellect:http`), so
+    # each button in the picker can show its own badge.
+    assert http["intellect:http"]["local"] is True
     assert http["intellect-team"]["local"] is True
 
 
@@ -460,11 +472,278 @@ def test_same_origin_and_non_browser_callers_are_allowed(client: TestClient) -> 
     assert headless.status_code == 200
 
 
-def test_the_cross_site_guard_also_covers_the_codex_lifecycle(client: TestClient) -> None:
-    """Same class of exposure: these establish or tear down a credential."""
+def test_the_codex_lifecycle_endpoints_are_gone(client: TestClient) -> None:
+    """The codex_auth retirement removed the whole OAuth lifecycle; the
+    endpoints must not come back as ghosts (404, not 403/500)."""
     for path in (
         "/api/settings/providers/openai-codex/oauth/start",
         "/api/settings/providers/openai-codex/oauth/logout",
     ):
         response = client.post(path, headers={"Origin": "https://evil.example"})
-        assert response.status_code == 403, path
+        assert response.status_code == 404, path
+
+
+def test_a_malformed_tenant_id_is_refused_while_saving(client: TestClient) -> None:
+    """Intellect compares the tenant header with its own configured tenant and
+    refuses anything that is not 32 hex characters — on every turn. Catching a
+    typo at save time is the difference between one error message and a
+    deployment where every turn fails with a 400 from the service."""
+    response = client.put(
+        "/api/settings/agent-loop",
+        json={
+            "profiles": [
+                _profile(
+                    id="team",
+                    preset="intellect-team",
+                    url="https://gw",
+                    tenant_id="not-a-tenant",
+                )
+            ]
+        },
+    )
+    assert response.status_code == 400
+    assert "32 hex" in response.json()["detail"]
+
+    # A well-formed id is accepted and survives the round trip.
+    data = _put(
+        client,
+        [
+            _profile(
+                id="team",
+                preset="intellect-team",
+                url="https://gw",
+                tenant_id="AB" * 16,
+            )
+        ],
+    )
+    (profile,) = data["settings"]["profiles"]
+    assert profile["tenant_id"] == "AB" * 16  # casing is the service's business
+
+
+def test_an_absent_identity_mode_takes_the_preset_default(client: TestClient) -> None:
+    """The self-hosted Intellect services attribute turns to the calling
+    account by default (the shape the sibling enterprise UI sends); every other
+    preset keeps sending nothing. An explicit "off" is honoured, because that is
+    how an operator turns attribution back off."""
+    data = _put(
+        client,
+        [
+            _profile(preset="intellect-team", url="https://gw"),
+            _profile(preset="hermes", url="https://h"),
+            _profile(preset="intellect-team", url="https://gw2", identity_mode="off"),
+        ],
+    )
+    modes = {p["url"]: p["identity_mode"] for p in data["settings"]["profiles"]}
+    assert modes["https://gw"] == "header"  # absent = the preset default
+    assert modes["https://h"] == "off"  # a service that knows no such header
+    assert modes["https://gw2"] == "off"  # an explicit choice is honoured
+
+
+def test_the_profiles_turn_path_takes_the_presets_endpoint(client: TestClient) -> None:
+    """The settings page leaves the field blank; both Intellect presets must
+    still resolve to the run channel they actually speak, not the generic
+    contract path the service never implemented."""
+    data = _put(
+        client,
+        [
+            _profile(preset="intellect-team", url="https://gw", turn_path=""),
+            _profile(preset="hermes", url="https://h", turn_path=""),
+        ],
+    )
+    paths = sorted(p["turn_path"] for p in data["settings"]["profiles"])
+    assert paths == ["/agent/turn", "/v1/runs"]
+
+
+# ---------------------------------------------------------------------------
+# GET /api/settings/agent-loop/models — the composer picker's option source
+# ---------------------------------------------------------------------------
+
+
+def test_models_endpoint_hides_the_picker_without_a_backend(client: TestClient) -> None:
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data == {
+        "per_turn_model": False,
+        "source": "none",
+        "backend_label": "",
+        "options": [],
+    }
+
+
+def test_models_endpoint_lists_profile_vocabulary_for_cli(
+    client: TestClient, settings_dir: Path
+) -> None:
+    _put(
+        client,
+        [
+            _profile(
+                id="cc",
+                name="Claude Code CLI",
+                preset="claude-code",
+                model="opus",
+                models=["sonnet", {"id": "ghost", "name": "Ghost"}],
+            )
+        ],
+        primary="cc",
+    )
+    data = client.get("/api/settings/agent-loop/models").json()
+
+    assert data["per_turn_model"] is True
+    assert data["source"] == "profile"
+    assert data["backend_label"] == "Claude Code CLI"
+    assert data["options"] == [
+        {"id": "sonnet", "name": "sonnet", "is_current": False},
+        {"id": "ghost", "name": "Ghost", "is_current": False},
+        {"id": "opus", "name": "opus", "is_current": True},
+    ]
+
+
+def test_models_endpoint_opts_http_turn_in_via_the_models_list(
+    client: TestClient, settings_dir: Path
+) -> None:
+    """A plain HTTP service: no list → picker hidden; a list → profile source."""
+    _put(
+        client, [_profile(id="h1", name="Hermes", preset="hermes", url="http://h:1")], primary="h1"
+    )
+    assert client.get("/api/settings/agent-loop/models").json()["per_turn_model"] is False
+
+    _put(
+        client,
+        [
+            _profile(
+                id="h2",
+                name="Hermes",
+                preset="hermes",
+                url="http://h:1",
+                models=["qwen-max"],
+            )
+        ],
+        primary="h2",
+    )
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["per_turn_model"] is True
+    assert data["source"] == "profile"
+    assert data["options"] == [{"id": "qwen-max", "name": "qwen-max", "is_current": False}]
+
+
+def test_models_endpoint_defers_to_the_catalog_for_intellect_http(
+    client: TestClient, settings_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The conversation catalog is the intended configuration for the
+    self-hosted Intellect HTTP services; when it has options the endpoint says
+    so and the frontend fetches /llm-options (grants stay in one place)."""
+    _put(
+        client,
+        [
+            _profile(
+                id="team",
+                name="Intellect Team",
+                preset="intellect-team",
+                url="http://r:1",
+                models=["fallback-model"],
+            )
+        ],
+        primary="team",
+    )
+    monkeypatch.setattr(
+        settings_router,
+        "allowed_llm_options",
+        lambda: {
+            "active": {"profile_id": "p", "model_id": "m"},
+            "options": [{"profile_id": "p", "model_id": "m"}],
+        },
+    )
+
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["per_turn_model"] is True
+    assert data["source"] == "catalog"
+    assert data["options"] == []
+
+    # An empty catalog falls back to the profile vocabulary.
+    monkeypatch.setattr(
+        settings_router, "allowed_llm_options", lambda: {"active": None, "options": []}
+    )
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["source"] == "profile"
+    assert data["options"] == [
+        {"id": "fallback-model", "name": "fallback-model", "is_current": False}
+    ]
+
+
+def test_models_endpoint_acp_reports_real_options_or_profile_fallback(
+    client: TestClient, settings_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ACP lists the agent's advertised selector when the probe succeeds and
+    falls back to the profile vocabulary when it does not."""
+    _put(
+        client,
+        [
+            _profile(
+                id="intellect",
+                name="Intellect 社区版",
+                preset="intellect",
+                transport="acp",
+                model="deepseek-flash",
+                models=["deepseek:deepseek-flash", "deepseek-flash"],
+            )
+        ],
+        primary="intellect",
+    )
+
+    class _FakeBackend:
+        def __init__(self, options) -> None:
+            self._options = options
+
+        async def list_model_options(self, session_id: str = ""):
+            return self._options
+
+    import kagweb.services.agent_loop as agent_loop_package
+
+    monkeypatch.setattr(
+        agent_loop_package,
+        "build_agent_loop_backend",
+        lambda profile: _FakeBackend(
+            [{"id": "deepseek:deepseek-flash", "name": "deepseek-flash", "is_current": True}]
+        ),
+    )
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["per_turn_model"] is True
+    assert data["source"] == "acp"
+    assert data["options"][0]["id"] == "deepseek:deepseek-flash"
+
+    # Probe failure (factory raises / backend None / listing error) → profile list.
+    monkeypatch.setattr(agent_loop_package, "build_agent_loop_backend", lambda profile: None)
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["source"] == "profile"
+    assert data["options"] == [
+        {"id": "deepseek:deepseek-flash", "name": "deepseek:deepseek-flash", "is_current": False},
+        {"id": "deepseek-flash", "name": "deepseek-flash", "is_current": True},
+    ]
+
+
+def test_models_endpoint_survives_a_broken_catalog(
+    client: TestClient, settings_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A catalog error must degrade to the profile list, never fail the fetch."""
+    _put(
+        client,
+        [
+            _profile(
+                id="team",
+                name="Intellect Team",
+                preset="intellect-team",
+                url="http://r:1",
+                models=["fallback-model"],
+            )
+        ],
+        primary="team",
+    )
+
+    def _boom():
+        raise RuntimeError("catalog unavailable")
+
+    monkeypatch.setattr(settings_router, "allowed_llm_options", _boom)
+    data = client.get("/api/settings/agent-loop/models").json()
+    assert data["source"] == "profile"
+    assert data["options"] == [
+        {"id": "fallback-model", "name": "fallback-model", "is_current": False}
+    ]

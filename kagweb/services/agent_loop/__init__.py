@@ -15,7 +15,7 @@ import logging
 
 from kagweb.services.i18n import t
 
-from .builtin import PRESETS
+from .builtin import PRESETS, normalize_profile_models, resolve_transport
 from .cli_backend import TRANSLATORS, CliAgentLoopBackend, translate_generic
 from .http_backend import HttpAgentLoopBackend
 from .protocol import (
@@ -46,17 +46,33 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
     if preset is None:
         raise AgentLoopError(t("agent_loop.unknown_backend", backend=name), backend=name)
 
+    # Which way to reach this preset's agent. A profile that names a transport
+    # the preset does not define is a hard error: silently building the default
+    # would run the turn somewhere the operator did not ask for — and for the
+    # community Intellect preset that difference is "local child process with
+    # server privileges" versus "remote HTTP service".
+    requested_transport = str(resolved.get("transport") or "").strip()
+    transport = resolve_transport(name, requested_transport)
+    if transport is None:
+        raise AgentLoopError(
+            t("agent_loop.unknown_transport", backend=name, transport=requested_transport),
+            backend=name,
+        )
+
     timeout = float(resolved.get("timeout_seconds") or 0.0)
     #: The operator's chosen model, if any. Empty means "use the backend's own
     #: default" and leaves every code path exactly as it was without this field.
     model = str(resolved.get("model") or "").strip()
-    if preset.family == "cli":
-        command = str(resolved.get("command") or "").strip() or preset.command
+    #: The operator-curated per-turn model vocabulary ([{id, name}]). Normalized
+    #: here so the backends see one shape whatever the settings file carried.
+    models = normalize_profile_models(resolved.get("models"))
+    if transport.family == "cli":
+        command = str(resolved.get("command") or "").strip() or transport.command
         if not command:
             raise AgentLoopError(t("agent_loop.command_required", backend=name), backend=name)
         extra_args = [str(arg) for arg in (resolved.get("args") or [])]
         env = resolved.get("env") if isinstance(resolved.get("env"), dict) else {}
-        if getattr(preset, "transport", "one-shot") == "acp":
+        if transport.cli_transport == "acp":
             # Lazy import: the ACP SDK is an extra (kagweb[acp]); the backend
             # itself is importable and only the spawn path needs the SDK.
             from .acp_backend import AcpAgentLoopBackend
@@ -64,27 +80,30 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
             return AcpAgentLoopBackend(
                 name=name,
                 command=command,
-                base_args=list(preset.base_args),
+                base_args=list(transport.base_args),
                 env=env,
                 timeout_seconds=timeout,
                 model=model,
+                models=models,
             )
         return CliAgentLoopBackend(
             name=name,
             command=command,
-            base_args=list(preset.base_args),
+            base_args=list(transport.base_args),
             extra_args=extra_args,
             env=env,
             timeout_seconds=timeout,
-            translator=TRANSLATORS.get(preset.translator, translate_generic),
+            translator=TRANSLATORS.get(transport.translator, translate_generic),
             text_output=bool(resolved.get("text_output")),
             model=model,
+            models=models,
+            resume_kind=transport.resume_kind,
         )
 
     url = str(resolved.get("url") or "").strip()
     if not url:
         raise AgentLoopError(t("agent_loop.url_required", backend=name), backend=name)
-    turn_path = str(resolved.get("turn_path") or "").strip() or preset.turn_path
+    turn_path = str(resolved.get("turn_path") or "").strip() or transport.turn_path
     headers = resolved.get("headers") if isinstance(resolved.get("headers"), dict) else {}
     api_key = str(resolved.get("api_key") or "")
     # `identity_mode` rides along unresolved: *who the turn runs as* is per-user
@@ -94,7 +113,12 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
     # builds a profile precisely to probe it), and this function is deployment
     # configuration, not turn configuration.
     identity_mode = str(resolved.get("identity_mode") or "off")
-    if getattr(preset, "protocol", "turn") == "runs":
+    # The instance tenant the service runs as (Intellect: a 32-hex id the
+    # service validates against its own configured tenant). Deployment
+    # configuration, applied to every request the backend makes, so it is
+    # threaded here rather than resolved per turn like identity.
+    tenant_id = str(resolved.get("tenant_id") or "").strip()
+    if transport.protocol == "runs":
         from .http_backend import RunsAgentLoopBackend
 
         return RunsAgentLoopBackend(
@@ -105,7 +129,9 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
             headers=headers,
             timeout_seconds=timeout,
             model=model,
+            models=models,
             identity_mode=identity_mode,
+            tenant_id=tenant_id,
         )
     return HttpAgentLoopBackend(
         name=name,
@@ -115,7 +141,9 @@ def build_agent_loop_backend(settings: dict | None = None) -> AgentLoopBackend |
         headers=headers,
         timeout_seconds=timeout,
         model=model,
+        models=models,
         identity_mode=identity_mode,
+        tenant_id=tenant_id,
     )
 
 

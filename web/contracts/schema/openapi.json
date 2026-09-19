@@ -104,7 +104,7 @@
             "type": "string"
           },
           "identity_mode": {
-            "default": "off",
+            "default": "",
             "title": "Identity Mode",
             "type": "string"
           },
@@ -112,6 +112,11 @@
             "default": "",
             "title": "Model",
             "type": "string"
+          },
+          "models": {
+            "items": {},
+            "title": "Models",
+            "type": "array"
           },
           "name": {
             "default": "",
@@ -127,12 +132,22 @@
             "title": "Session Workspace",
             "type": "boolean"
           },
+          "tenant_id": {
+            "default": "",
+            "title": "Tenant Id",
+            "type": "string"
+          },
           "timeout_seconds": {
             "default": 900,
             "maximum": 86400.0,
             "minimum": 30.0,
             "title": "Timeout Seconds",
             "type": "integer"
+          },
+          "transport": {
+            "default": "",
+            "title": "Transport",
+            "type": "string"
           },
           "turn_path": {
             "default": "",
@@ -464,31 +479,6 @@
           "trace_count"
         ],
         "title": "ChatStarterSettingsUpdate",
-        "type": "object"
-      },
-      "CodexReasoningEffortUpdate": {
-        "properties": {
-          "model": {
-            "minLength": 1,
-            "title": "Model",
-            "type": "string"
-          },
-          "reasoning_effort": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Effort"
-          }
-        },
-        "required": [
-          "model"
-        ],
-        "title": "CodexReasoningEffortUpdate",
         "type": "object"
       },
       "DoclingRemoteTest": {
@@ -1931,6 +1921,19 @@
             "default": null,
             "title": "Auto Route"
           },
+          "backend_model": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Backend Model"
+          },
           "book_references": {
             "items": {
               "$ref": "#/components/schemas/BookReference"
@@ -2750,85 +2753,6 @@
           }
         },
         "summary": "Logout",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/openai-codex/callback": {
-      "get": {
-        "operationId": "receive_codex_oauth_callback_api_auth_openai_codex_callback_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "code",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code"
-            }
-          },
-          {
-            "in": "query",
-            "name": "state",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "State"
-            }
-          },
-          {
-            "in": "query",
-            "name": "error",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Error"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Receive Codex Oauth Callback",
         "tags": [
           "auth"
         ]
@@ -6393,6 +6317,80 @@
         ]
       }
     },
+    "/api/settings/agent-loop/models": {
+      "get": {
+        "description": "Options for the composer's per-turn agent-loop model picker.\n\nOne source per backend family (see the composer model-selector design):\n\n- ``acp``     — the agent's advertised selector (live session's handshake\n                answer, else a TTL-cached probe child);\n- ``catalog`` — the conversation LLM catalog, which is the intended model\n                configuration only for the self-hosted Intellect HTTP\n                services; the frontend fetches ``/llm-options`` itself so\n                grant filtering and ``active`` semantics stay in one place;\n- ``profile`` — the operator-curated ``models`` list (plus the profile's\n                configured ``model``), the honest fallback for the CLI\n                family and the opt-in for plain HTTP-turn services;\n- ``none``    — the backend consumes no per-turn model (picker hidden).",
+        "operationId": "get_agent_loop_models_api_settings_agent_loop_models_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "dt_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dt Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Agent Loop Models",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/api/settings/agent-loop/test": {
       "post": {
         "description": "Validate one draft profile without saving it or sending a live turn.\n\nBuilds the backend exactly as a turn would (preset resolution, required\ncommand / URL). CLI commands additionally get a server-PATH resolution\nprobe; HTTP services only get URL sanity checks — the turn contract has\nno health endpoint, and POSTing it would run a real (possibly costly)\nagent turn.",
@@ -9105,418 +9103,6 @@
           }
         },
         "summary": "Get Codebuddy Auth Status",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
-    "/api/settings/providers/openai-codex/models/reasoning-effort": {
-      "post": {
-        "operationId": "update_openai_codex_reasoning_effort_api_settings_providers_openai_codex_models_reasoning_effort_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CodexReasoningEffortUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Update Openai Codex Reasoning Effort Api Settings Providers Openai Codex Models Reasoning Effort Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Openai Codex Reasoning Effort",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
-    "/api/settings/providers/openai-codex/models/refresh": {
-      "post": {
-        "operationId": "refresh_openai_codex_models_api_settings_providers_openai_codex_models_refresh_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Refresh Openai Codex Models Api Settings Providers Openai Codex Models Refresh Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Refresh Openai Codex Models",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
-    "/api/settings/providers/openai-codex/oauth/cancel": {
-      "post": {
-        "operationId": "cancel_openai_codex_oauth_api_settings_providers_openai_codex_oauth_cancel_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Cancel Openai Codex Oauth Api Settings Providers Openai Codex Oauth Cancel Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Cancel Openai Codex Oauth",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
-    "/api/settings/providers/openai-codex/oauth/logout": {
-      "post": {
-        "operationId": "logout_openai_codex_oauth_api_settings_providers_openai_codex_oauth_logout_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Logout Openai Codex Oauth Api Settings Providers Openai Codex Oauth Logout Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Logout Openai Codex Oauth",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
-    "/api/settings/providers/openai-codex/oauth/start": {
-      "post": {
-        "operationId": "start_openai_codex_oauth_api_settings_providers_openai_codex_oauth_start_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Start Openai Codex Oauth Api Settings Providers Openai Codex Oauth Start Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Start Openai Codex Oauth",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
-    "/api/settings/providers/openai-codex/oauth/status": {
-      "get": {
-        "operationId": "get_openai_codex_oauth_status_api_settings_providers_openai_codex_oauth_status_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "in": "cookie",
-            "name": "dt_token",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Dt Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Openai Codex Oauth Status Api Settings Providers Openai Codex Oauth Status Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Openai Codex Oauth Status",
         "tags": [
           "settings"
         ]

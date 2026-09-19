@@ -454,6 +454,33 @@ class TurnExecutor:
             current_turn_ordinal = (
                 await _count_branch_user_turns(self.store, session_id, branch_parent_id) + 1
             )
+            # L0: the session's own transcript, serialized straight from the
+            # store (full fidelity — the budgeted copy the history builder
+            # produced is exactly what the file must NOT be). Written into
+            # the workspace by build_inventory and referenced as a manifest
+            # path row. The just-persisted user message of THIS turn is not
+            # in it yet (it lands after this point); it is already in the
+            # prompt verbatim.
+            current_transcript: str | None = None
+            if materialize is not None:
+                try:
+                    from kagweb.services.session.source_inventory import (
+                        serialize_referenced_transcript,
+                    )
+
+                    session_meta = await self.store.get_session(session_id)
+                    branch_messages = await self.store.get_messages_for_context(
+                        session_id, leaf_message_id=branch_parent_id
+                    )
+                    if session_meta and branch_messages:
+                        current_transcript = serialize_referenced_transcript(
+                            session_meta,
+                            branch_messages,
+                            language=str(payload.get("language", "en") or "en"),
+                        )
+                except Exception as exc:  # noqa: BLE001 - best effort
+                    logger.warning("failed to serialize the session transcript: %s", exc)
+
             inventory = await build_inventory(
                 self.store,
                 session_id=session_id,
@@ -464,6 +491,7 @@ class TurnExecutor:
                 language=str(payload.get("language", "en") or "en"),
                 attachment_paths=attachment_paths,
                 materialize=materialize,
+                current_transcript=current_transcript,
             )
             source_manifest_text = render_manifest(inventory)
             effective_user_message = raw_user_content
@@ -494,7 +522,11 @@ class TurnExecutor:
                         config=request_config,
                         attachments=persisted_attachment_records,
                         history_references=history_references,
-                        llm_selection=payload.get("llm_selection"),
+                        llm_selection=(
+                            {"backend_model": payload["backend_model"]}
+                            if payload.get("backend_model")
+                            else payload.get("llm_selection")
+                        ),
                     ),
                     **parent_kwargs,
                 )
@@ -525,6 +557,11 @@ class TurnExecutor:
                     "selection_tutor_context": selection_tutor_context or {},
                     "history_references": history_references,
                     "llm_selection": payload.get("llm_selection") or {},
+                    # Backend-native per-turn model (an entry of the agent
+                    # backend's own vocabulary). Mutually exclusive with the
+                    # catalog-shaped llm_selection above; the chat capability
+                    # prefers it when both ever appear.
+                    "backend_model": str(payload.get("backend_model") or ""),
                     "llm_model": str(getattr(llm_config, "model", "") or ""),
                     "llm_provider": str(getattr(llm_config, "provider_name", "") or ""),
                     "llm_reasoning_effort": str(getattr(llm_config, "reasoning_effort", "") or ""),

@@ -105,23 +105,6 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
-  readonly "/api/auth/openai-codex/callback": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /** Receive Codex Oauth Callback */
-    readonly get: operations["receive_codex_oauth_callback_api_auth_openai_codex_callback_get"];
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
   readonly "/api/auth/profile": {
     readonly parameters: {
       readonly query?: never;
@@ -853,6 +836,39 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
+  readonly "/api/settings/agent-loop/models": {
+    readonly parameters: {
+      readonly query?: never;
+      readonly header?: never;
+      readonly path?: never;
+      readonly cookie?: never;
+    };
+    /**
+     * Get Agent Loop Models
+     * @description Options for the composer's per-turn agent-loop model picker.
+     *
+     *     One source per backend family (see the composer model-selector design):
+     *
+     *     - ``acp``     — the agent's advertised selector (live session's handshake
+     *                     answer, else a TTL-cached probe child);
+     *     - ``catalog`` — the conversation LLM catalog, which is the intended model
+     *                     configuration only for the self-hosted Intellect HTTP
+     *                     services; the frontend fetches ``/llm-options`` itself so
+     *                     grant filtering and ``active`` semantics stay in one place;
+     *     - ``profile`` — the operator-curated ``models`` list (plus the profile's
+     *                     configured ``model``), the honest fallback for the CLI
+     *                     family and the opt-in for plain HTTP-turn services;
+     *     - ``none``    — the backend consumes no per-turn model (picker hidden).
+     */
+    readonly get: operations["get_agent_loop_models_api_settings_agent_loop_models_get"];
+    readonly put?: never;
+    readonly post?: never;
+    readonly delete?: never;
+    readonly options?: never;
+    readonly head?: never;
+    readonly patch?: never;
+    readonly trace?: never;
+  };
   readonly "/api/settings/agent-loop/test": {
     readonly parameters: {
       readonly query?: never;
@@ -1471,108 +1487,6 @@ export interface paths {
     readonly patch?: never;
     readonly trace?: never;
   };
-  readonly "/api/settings/providers/openai-codex/models/reasoning-effort": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /** Update Openai Codex Reasoning Effort */
-    readonly post: operations["update_openai_codex_reasoning_effort_api_settings_providers_openai_codex_models_reasoning_effort_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/settings/providers/openai-codex/models/refresh": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /** Refresh Openai Codex Models */
-    readonly post: operations["refresh_openai_codex_models_api_settings_providers_openai_codex_models_refresh_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/settings/providers/openai-codex/oauth/cancel": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /** Cancel Openai Codex Oauth */
-    readonly post: operations["cancel_openai_codex_oauth_api_settings_providers_openai_codex_oauth_cancel_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/settings/providers/openai-codex/oauth/logout": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /** Logout Openai Codex Oauth */
-    readonly post: operations["logout_openai_codex_oauth_api_settings_providers_openai_codex_oauth_logout_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/settings/providers/openai-codex/oauth/start": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly get?: never;
-    readonly put?: never;
-    /** Start Openai Codex Oauth */
-    readonly post: operations["start_openai_codex_oauth_api_settings_providers_openai_codex_oauth_start_post"];
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
-  readonly "/api/settings/providers/openai-codex/oauth/status": {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    /** Get Openai Codex Oauth Status */
-    readonly get: operations["get_openai_codex_oauth_status_api_settings_providers_openai_codex_oauth_status_get"];
-    readonly put?: never;
-    readonly post?: never;
-    readonly delete?: never;
-    readonly options?: never;
-    readonly head?: never;
-    readonly patch?: never;
-    readonly trace?: never;
-  };
   readonly "/api/settings/reset": {
     readonly parameters: {
       readonly query?: never;
@@ -2177,7 +2091,7 @@ export interface components {
       readonly id: string;
       /**
        * Identity Mode
-       * @default off
+       * @default
        */
       readonly identity_mode: string;
       /**
@@ -2185,6 +2099,8 @@ export interface components {
        * @default
        */
       readonly model: string;
+      /** Models */
+      readonly models?: readonly unknown[];
       /**
        * Name
        * @default
@@ -2198,10 +2114,20 @@ export interface components {
        */
       readonly session_workspace: boolean;
       /**
+       * Tenant Id
+       * @default
+       */
+      readonly tenant_id: string;
+      /**
        * Timeout Seconds
        * @default 900
        */
       readonly timeout_seconds: number;
+      /**
+       * Transport
+       * @default
+       */
+      readonly transport: string;
       /**
        * Turn Path
        * @default
@@ -2361,13 +2287,6 @@ export interface components {
     readonly ChatStarterSettingsUpdate: {
       /** Trace Count */
       readonly trace_count: number;
-    };
-    /** CodexReasoningEffortUpdate */
-    readonly CodexReasoningEffortUpdate: {
-      /** Model */
-      readonly model: string;
-      /** Reasoning Effort */
-      readonly reasoning_effort?: string | null;
     };
     /**
      * DoclingRemoteTest
@@ -3112,6 +3031,11 @@ export interface components {
        * @default null
        */
       readonly auto_route: boolean | null;
+      /**
+       * Backend Model
+       * @default null
+       */
+      readonly backend_model: string | null;
       /** Book References */
       readonly book_references?: readonly components["schemas"]["BookReference"][];
       /**
@@ -3417,8 +3341,6 @@ export type SchemaChatResponseTimeoutUpdate =
   components["schemas"]["ChatResponseTimeoutUpdate"];
 export type SchemaChatStarterSettingsUpdate =
   components["schemas"]["ChatStarterSettingsUpdate"];
-export type SchemaCodexReasoningEffortUpdate =
-  components["schemas"]["CodexReasoningEffortUpdate"];
 export type SchemaDoclingRemoteTest =
   components["schemas"]["DoclingRemoteTest"];
 export type SchemaDocumentParsingInstall =
@@ -3630,39 +3552,6 @@ export interface operations {
           readonly "application/json": {
             readonly [key: string]: unknown;
           };
-        };
-      };
-    };
-  };
-  readonly receive_codex_oauth_callback_api_auth_openai_codex_callback_get: {
-    readonly parameters: {
-      readonly query?: {
-        readonly code?: string | null;
-        readonly error?: string | null;
-        readonly state?: string | null;
-      };
-      readonly header?: never;
-      readonly path?: never;
-      readonly cookie?: never;
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };
@@ -5418,6 +5307,41 @@ export interface operations {
       };
     };
   };
+  readonly get_agent_loop_models_api_settings_agent_loop_models_get: {
+    readonly parameters: {
+      readonly query?: {
+        readonly session_id?: string;
+      };
+      readonly header?: {
+        readonly Authorization?: string | null;
+      };
+      readonly path?: never;
+      readonly cookie?: {
+        readonly dt_token?: string | null;
+      };
+    };
+    readonly requestBody?: never;
+    readonly responses: {
+      /** @description Successful Response */
+      readonly 200: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      readonly 422: {
+        headers: {
+          readonly [name: string]: unknown;
+        };
+        content: {
+          readonly "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   readonly test_agent_loop_settings_api_settings_agent_loop_test_post: {
     readonly parameters: {
       readonly query?: never;
@@ -6774,220 +6698,6 @@ export interface operations {
     };
   };
   readonly get_codebuddy_auth_status_api_settings_providers_codebuddy_auth_status_get: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly update_openai_codex_reasoning_effort_api_settings_providers_openai_codex_models_reasoning_effort_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody: {
-      readonly content: {
-        readonly "application/json": components["schemas"]["CodexReasoningEffortUpdate"];
-      };
-    };
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly refresh_openai_codex_models_api_settings_providers_openai_codex_models_refresh_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly cancel_openai_codex_oauth_api_settings_providers_openai_codex_oauth_cancel_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly logout_openai_codex_oauth_api_settings_providers_openai_codex_oauth_logout_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly start_openai_codex_oauth_api_settings_providers_openai_codex_oauth_start_post: {
-    readonly parameters: {
-      readonly query?: never;
-      readonly header?: {
-        readonly Authorization?: string | null;
-      };
-      readonly path?: never;
-      readonly cookie?: {
-        readonly dt_token?: string | null;
-      };
-    };
-    readonly requestBody?: never;
-    readonly responses: {
-      /** @description Successful Response */
-      readonly 200: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": {
-            readonly [key: string]: unknown;
-          };
-        };
-      };
-      /** @description Validation Error */
-      readonly 422: {
-        headers: {
-          readonly [name: string]: unknown;
-        };
-        content: {
-          readonly "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  readonly get_openai_codex_oauth_status_api_settings_providers_openai_codex_oauth_status_get: {
     readonly parameters: {
       readonly query?: never;
       readonly header?: {

@@ -1,54 +1,60 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bot, Check, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLingerExpand } from "@/hooks/use-linger-expand";
 import ProviderIcon from "@/components/common/ProviderIcon";
-import type { LLMSelection } from "@/features/chat/model/protocol";
-import {
-  llmSelectionKey,
-  sameLLMSelection,
-  type LLMOption,
-} from "@/lib/llm-options";
 
-function formatContextWindow(value?: number) {
+/**
+ * One row of the composer's model picker, normalized out of whichever source
+ * drives it — the conversation catalog (LLMOption) or the agent backend's own
+ * vocabulary (BackendModelOption). `key` is what `onChange` hands back.
+ */
+export interface ModelPickerOption {
+  key: string;
+  /** Primary label — the model id actually sent for the turn. */
+  label: string;
+  /** Trailing muted text (provider / profile / description). */
+  detail?: string;
+  /** Whole-row hover tooltip; defaults to the label. */
+  title?: string;
+  /** Small right-side text (context window). */
+  trailing?: string;
+  /** Badge between label and detail ("Default", "Current"). */
+  badge?: string;
+  /** Brand icon (catalog rows); backend rows may omit it. */
+  provider?: string;
+}
+
+export function formatContextWindow(value?: number) {
   if (!value) return "";
   if (value >= 1_000_000) return `${Math.round(value / 1_000_000)}M ctx`;
   if (value >= 1_000) return `${Math.round(value / 1_000)}k ctx`;
   return `${value} ctx`;
 }
 
-function providerLabel(option: LLMOption) {
-  return (
-    option.provider_label || option.provider || option.profile_name || "LLM"
-  );
-}
-
-function ModelOptionRow({
+function PickerOptionRow({
   option,
   selected,
   onSelect,
 }: {
-  option: LLMOption;
+  option: ModelPickerOption;
   selected: boolean;
   onSelect: () => void;
 }) {
-  const { t } = useTranslation();
-  // Official model ID as the primary label (what gets sent to the API),
-  // per design. The user-given nickname and profile live in the tooltip.
-  const modelLabel = option.model || option.model_name;
-  const contextWindow = formatContextWindow(option.context_window);
-  // Long model ids ("google/gemini-3-flash-preview") get ellipsized by the
-  // inline layout; hovering the row reveals the full id as an overlay. The
-  // scrollWidth check at mouseenter time keeps the overlay away from rows
-  // that aren't actually truncated.
+  // The model id is the primary label (what gets sent for the turn); the
+  // nickname/profile/description live in the tooltip. Long ids
+  // ("google/gemini-3-flash-preview") get ellipsized by the inline layout;
+  // hovering the row reveals the full id as an overlay. The scrollWidth
+  // check at mouseenter time keeps the overlay away from rows that aren't
+  // actually truncated.
   const nameRef = useRef<HTMLSpanElement>(null);
   const [revealFull, setRevealFull] = useState(false);
   return (
     <button
       type="button"
-      title={`${option.model_name} | ${option.profile_name}`}
+      title={option.title || option.label}
       onClick={onSelect}
       onMouseEnter={() => {
         const el = nameRef.current;
@@ -59,30 +65,32 @@ function ModelOptionRow({
         selected ? "bg-[var(--primary)]/[0.06]" : "hover:bg-[var(--muted)]/45"
       }`}
     >
-      <ProviderIcon
-        provider={option.provider}
-        size={14}
-        className={
-          selected ? "text-[var(--primary)]" : "text-[var(--muted-foreground)]"
-        }
-      />
+      {option.provider === undefined ? null : (
+        <ProviderIcon
+          provider={option.provider}
+          size={14}
+          className={
+            selected ? "text-[var(--primary)]" : "text-[var(--muted-foreground)]"
+          }
+        />
+      )}
       <span
         ref={nameRef}
         className="min-w-0 truncate text-[12.5px] font-medium text-[var(--foreground)]"
       >
-        {modelLabel}
+        {option.label}
       </span>
-      {option.is_active_default && (
+      {option.badge && (
         <span className="shrink-0 rounded-full bg-[var(--muted)] px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
-          {t("Default")}
+          {option.badge}
         </span>
       )}
       <span className="min-w-0 flex-1 truncate text-[11px] text-[var(--muted-foreground)]">
-        {providerLabel(option)}
+        {option.detail}
       </span>
-      {contextWindow ? (
+      {option.trailing ? (
         <span className="shrink-0 text-[11px] text-[var(--muted-foreground)]">
-          {contextWindow}
+          {option.trailing}
         </span>
       ) : null}
       {selected && (
@@ -94,7 +102,7 @@ function ModelOptionRow({
       )}
       {revealFull && (
         <span className="pointer-events-none absolute inset-x-1.5 top-1/2 z-10 -translate-y-1/2 break-all rounded-lg border border-[var(--border)] bg-[var(--popover)] px-2 py-1 text-[12px] font-medium text-[var(--foreground)] shadow-md">
-          {modelLabel}
+          {option.label}
         </span>
       )}
     </button>
@@ -103,8 +111,7 @@ function ModelOptionRow({
 
 export default function ModelSelector({
   options,
-  activeDefault,
-  value,
+  selectedKey,
   loading,
   error,
   allowSystemDefault = false,
@@ -115,9 +122,9 @@ export default function ModelSelector({
   onChange,
   onRefresh,
 }: {
-  options: LLMOption[];
-  activeDefault: LLMSelection | null;
-  value: LLMSelection | null;
+  options: ModelPickerOption[];
+  /** The selected option's key; "" selects the system/default row. */
+  selectedKey: string;
   loading: boolean;
   error: boolean;
   allowSystemDefault?: boolean;
@@ -125,7 +132,8 @@ export default function ModelSelector({
   systemDefaultDetail?: string;
   helperText?: string;
   placement?: "top" | "bottom";
-  onChange: (selection: LLMSelection | null) => void;
+  /** Receives the picked option's key, or "" for the default row. */
+  onChange: (key: string) => void;
   onRefresh?: () => void;
 }) {
   const { t } = useTranslation();
@@ -133,16 +141,7 @@ export default function ModelSelector({
   const rootRef = useRef<HTMLDivElement>(null);
   const { expanded, linger, triggerProps: lingerProps } = useLingerExpand(open);
 
-  const selectedSelection = allowSystemDefault
-    ? value
-    : (value ?? activeDefault);
-  const selectedKey = llmSelectionKey(selectedSelection);
-  const selectedOption = useMemo(
-    () =>
-      options.find((option) => sameLLMSelection(option, selectedSelection)) ??
-      null,
-    [options, selectedSelection],
-  );
+  const selectedOption = options.find((option) => option.key === selectedKey) ?? null;
 
   useEffect(() => {
     if (!open) return;
@@ -170,12 +169,9 @@ export default function ModelSelector({
       ? canRefresh
         ? t("Refresh models")
         : t("Models unavailable")
-      : allowSystemDefault && !selectedSelection
+      : allowSystemDefault && !selectedKey
         ? defaultLabel
-        : // Official model ID, consistent with the dropdown rows.
-          selectedOption?.model ||
-          selectedOption?.model_name ||
-          t("Select model");
+        : selectedOption?.label || t("Select model");
   const menuPlacementClass =
     placement === "bottom" ? "top-full mt-1.5" : "bottom-full mb-1.5";
 
@@ -243,7 +239,7 @@ export default function ModelSelector({
                 type="button"
                 title={defaultDetail}
                 onClick={() => {
-                  onChange(null);
+                  onChange("");
                   setOpen(false);
                   linger();
                 }}
@@ -274,25 +270,18 @@ export default function ModelSelector({
                 )}
               </button>
             )}
-            {options.map((option) => {
-              const optionSelection = {
-                profile_id: option.profile_id,
-                model_id: option.model_id,
-              };
-              const optionKey = llmSelectionKey(optionSelection);
-              return (
-                <ModelOptionRow
-                  key={optionKey}
-                  option={option}
-                  selected={optionKey === selectedKey}
-                  onSelect={() => {
-                    onChange(optionSelection);
-                    setOpen(false);
-                    linger();
-                  }}
-                />
-              );
-            })}
+            {options.map((option) => (
+              <PickerOptionRow
+                key={option.key}
+                option={option}
+                selected={option.key === selectedKey}
+                onSelect={() => {
+                  onChange(option.key);
+                  setOpen(false);
+                  linger();
+                }}
+              />
+            ))}
           </div>
         </div>
       )}

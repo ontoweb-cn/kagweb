@@ -30,7 +30,7 @@ class ProviderSpec:
     display_name: str = ""
 
     # Which provider implementation to use:
-    # "openai_compat" | "anthropic" | "azure_openai" | "openai_codex" | "github_copilot" | "codebuddy"
+    # "openai_compat" | "anthropic" | "azure_openai" | "github_copilot" | "codebuddy"
     backend: str = "openai_compat"
 
     env_extras: tuple[tuple[str, str], ...] = ()
@@ -102,7 +102,7 @@ class ProviderSpec:
         Anthropic Messages when the vendor is known to serve it too or when
         the endpoint is user-supplied and could be anything.
         """
-        if self.is_oauth or self.backend in {"azure_openai", "openai_codex", "github_copilot"}:
+        if self.is_oauth or self.backend in {"azure_openai", "github_copilot"}:
             return ()
         if self.backend == "anthropic":
             return ("anthropic",)
@@ -142,7 +142,6 @@ PROVIDER_ALIASES = {
     "bytepluscodingplan": "byteplus_coding_plan",
     "byteplusCodingPlan": "byteplus_coding_plan",
     "github-copilot": "github_copilot",
-    "openai-codex": "openai_codex",
     "codebuddy-code": "codebuddy",
     "codebuddy_code": "codebuddy",
     "workbuddy": "codebuddy",
@@ -337,15 +336,6 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         backend="openai_compat",
         default_api_base="https://api.openai.com/v1",
         supports_max_completion_tokens=True,
-    ),
-    ProviderSpec(
-        name="openai_codex",
-        keywords=("openai-codex",),
-        env_key="",
-        display_name="OpenAI Codex",
-        backend="openai_codex",
-        is_oauth=True,
-        default_api_base="https://chatgpt.com/backend-api",
     ),
     ProviderSpec(
         name="github_copilot",

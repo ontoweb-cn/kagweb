@@ -102,6 +102,40 @@ class AgentLoopError(RuntimeError):
         self.backend = backend
 
 
+def profile_model_options(
+    models: list[dict[str, str]] | None,
+    configured: str = "",
+) -> list[dict[str, Any]]:
+    """The composer rows for one profile's curated vocabulary.
+
+    ``[{id, name, description?, is_current}]`` in curation order; the
+    profile's configured ``model`` is appended when it is not among the rows
+    so the operator's default stays selectable next to the curated picks.
+    Shared by :meth:`AgentLoopBackend.list_model_options` and the settings
+    endpoint, which must not drift apart on what a profile offers.
+    """
+    configured = str(configured or "").strip()
+    options: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in models or []:
+        option_id = str(row.get("id") or "").strip()
+        if not option_id or option_id in seen:
+            continue
+        seen.add(option_id)
+        entry: dict[str, Any] = {
+            "id": option_id,
+            "name": str(row.get("name") or option_id),
+            "is_current": bool(configured) and option_id == configured,
+        }
+        description = str(row.get("description") or "").strip()
+        if description:
+            entry["description"] = description
+        options.append(entry)
+    if configured and configured not in seen:
+        options.append({"id": configured, "name": configured, "is_current": True})
+    return options
+
+
 class AgentLoopBackend(ABC):
     """One configured agent-loop backend.
 
@@ -145,6 +179,53 @@ class AgentLoopBackend(ABC):
         """Yield :class:`AgentLoopEvent` objects for one turn."""
         raise NotImplementedError
 
+    def filter_turn_model(self, value: str, session_id: str = "") -> str:
+        """Validate one user-picked model against this backend's vocabulary.
+
+        The per-turn override is a client-supplied protocol field, so it is
+        checked against what this profile actually offers — the curated
+        ``models`` list and the profile's configured ``model`` — before it
+        reaches the backend. An empty result means "backend default": a stale
+        selection (picked before the operator edited the list) degrades to the
+        same behaviour as no selection instead of feeding the backend a name
+        it cannot resolve. A profile with no vocabulary at all passes the
+        value through: the override then rides the exact path the configured
+        profile model always has. ``session_id`` lets session-scoped backends
+        (ACP) check against that session's advertised selector.
+        """
+        candidate = str(value or "").strip()
+        if not candidate:
+            return ""
+        allowed = {
+            str(row.get("id") or "").strip()
+            for row in (getattr(self, "models", None) or [])
+            if isinstance(row, dict)
+        }
+        allowed.discard("")
+        configured = str(getattr(self, "model", "") or "").strip()
+        if configured:
+            allowed.add(configured)
+        if not allowed:
+            return candidate
+        return candidate if candidate in allowed else ""
+
+    async def list_model_options(self, session_id: str = "") -> list[dict[str, Any]] | None:
+        """The model options this backend can currently offer, or ``None``.
+
+        ``[{id, name, description?, is_current}]`` — the composer's option
+        list. ``None`` means "nothing beyond the profile configuration"; the
+        caller falls back to the profile's curated list. The default knows
+        nothing beyond that list, which is the honest answer for the CLI and
+        HTTP-turn families.
+        """
+        return (
+            profile_model_options(
+                getattr(self, "models", None),
+                str(getattr(self, "model", "") or ""),
+            )
+            or None
+        )
+
     async def respond_approval(self, request_id: str, choice: str) -> None:
         """Deliver the user's decision for one pending ``approval_request``.
 
@@ -186,6 +267,7 @@ class AgentLoopBackend(ABC):
 
 
 __all__ = [
+    "profile_model_options",
     "APPROVAL_CHOICES",
     "AgentLoopBackend",
     "AgentLoopError",

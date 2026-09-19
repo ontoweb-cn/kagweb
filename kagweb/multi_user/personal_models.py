@@ -18,7 +18,6 @@ editor. The profile is merged into the catalog the runtime resolves against
 per request instead — which is safe because a managed Codex profile carries
 no secret at all (``api_key`` is empty; the token is read from the owner's
 credential store at call time by
-:class:`~kagweb.services.llm.provider_core.openai_codex_provider.OpenAICodexProvider`).
 
 Ownership resolution is shared with the credential store via
 :func:`~kagweb.multi_user.paths.get_owner_path_service`, so a profile and
@@ -33,17 +32,6 @@ from typing import Any
 from kagweb.services.config.model_catalog import ModelCatalogService
 
 from .paths import get_owner_path_service
-
-_CODEX_MANAGED_BY = "openai_codex_oauth"
-
-
-def _codex_profile_is_current(profile: dict[str, Any]) -> bool:
-    try:
-        from kagweb.services.codex_auth import get_codex_oauth_service
-
-        return get_codex_oauth_service().profile_matches_current_account(profile)
-    except Exception:
-        return False
 
 
 def owner_catalog_service() -> ModelCatalogService:
@@ -80,11 +68,7 @@ def _personal_catalog_profiles() -> list[dict[str, Any]]:
         return []
     profiles = service.load().get("services", {}).get("llm", {}).get("profiles", []) or []
     return [
-        profile
-        for profile in profiles
-        if isinstance(profile, dict)
-        and is_owner_bound(profile)
-        and (profile.get("managed_by") != _CODEX_MANAGED_BY or _codex_profile_is_current(profile))
+        profile for profile in profiles if isinstance(profile, dict) and is_owner_bound(profile)
     ]
 
 
