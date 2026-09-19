@@ -1,14 +1,18 @@
 # KAGWeb 后端 LLM 部署机制分析与改进建议
 
-> 适用版本：KAGWeb 0.2.1（`kagweb/__version__.py`）
-> 核对基准：`main` 分支 `c3ffe57`（2026-09-10 实测）
-> 关联文档：[`backend-architecture.md`](./backend-architecture.md)、[`../ARCHITECTURE.md`](../ARCHITECTURE.md)
+> 适用版本：KAGWeb 0.2.2（`kagweb/__version__.py`）
+> 核对基准：**tag `v0.2.2`**（版本号提交 `aad0eb1`，2026-09-20 实测）
+> 关联文档：[`backend-architecture.md`](./backend-architecture.md)、[`kag-integration-design.md`](./kag-integration-design.md)、[`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 
-> **文档结构**：§一~§四为**现状分析**（基于代码实测）；**§五为产品决策安排**（8 条方向性决策及其落地分析）；§六为优先级建议。§五的决策 6/7/8（人格与合伙人移除、Intellect 对接校正）会**反转**本文若干早期建议，反转处已在原位置标注。
+> **⚠ 阅读须知（2026-09-20）**：本文是**评审历史文档**，§一~§五的正文成文于 `c3ffe57`（2026-09-10），其后 KAGWeb 已推进约 140 个提交，**多条结论已被落地改动推翻**。为免误导，凡已失效者均已在原位置加注；**当前状态的权威摘要见文末「§八 基准漂移总复核（2026-09-20，`aad0eb1`）」**——先读那一节再读正文。
+>
+> **文档结构**：§一~§四为**现状分析**（基于代码实测，`c3ffe57` 口径）；**§五为产品决策安排**（8 条方向性决策及其落地分析）；§六为优先级建议；§七为多用户身份映射；§八为最新基准的漂移复核。
 > **基准说明**：§一~§四成文于 `c3ffe57`；§五决策 6-8 与「基准漂移复核」小节则在远端领先 20+ 提交后重新实测，Intellect 部分另经跨仓库核对（见决策 8）。
 > **落地状态（2026-09-11，`ef8bbf5`）**：批次四/五已实施——合伙人+IM 通道、人格（决策 6，含决策 7 的 SOUL 模板与 `locked_persona` 耦合）、学习者+监护人子系统（决策 4）、内置工具包（决策 3a）均已移除，导航「Learning Agent/Learning Space/Learning」更名为 Chat/Space/Workspace。§五/§六中相应的「待决策」「批次五方向性」条目自此**已落地**；P2 状态见优先级表。
 >
 > **后续变更（2026-09-18）**：预设 `intellect-runs` 已并入 `intellect`，作为其 `transport="http"` 连接方式（`web/features/settings/sections/AgentLoopSettingsSection.tsx` 的同一张卡片内两个按钮）；`preset_family` / `per_turn_model_apply` / `llm_settings_apply` 均改为按 profile 的 transport 解析。本文中所有 `intellect-runs` 的表述在阅读时应对应「`intellect` 预设 + HTTP transport」，环境变量侧对应 `KAGWEB_AGENT_LOOP_TRANSPORT=http`。§五决策 5 提到的「判定集合不完整」问题随之消失：判据是 transport 的 family，而非预设名枚举。
+>
+> **后续变更（2026-09-20，`aad0eb1`）**：工具层与 MCP 客户端栈**整块移除**（P0-2 以「删除」而非「打通」结案）；`AgentLoopRequest` **已有 `model` 字段**（P1-2/P1-3 已修复，§1.1 的「无 model、无 tools」结论作废）；`NoModelConfiguredError` 文案已按要求改写（P2-3 关闭）；`AGENT_LOOP_INTELLECT_PRESETS` 枚举已删除，改为 `is_intellect_preset()` 前缀匹配 + `llm_settings_apply()` 按 transport 判定。
 
 ## 结论摘要
 
@@ -16,15 +20,15 @@ KAGWeb 剥离 agent loop 之后，**「LLM 部署」在代码里仍然指两件�
 
 | 概念 | 归谁管 | 现状 |
 |---|---|---|
-| **KAGWeb 自己的 LLM 层** | `services/llm/`（4,839 + 4,637 行） | 仅服务 9 个**旁路**调用点；**不在主对话路径上** |
-| **Agent backend 的模型** | 外部 CLI / HTTP 服务 | KAGWeb **既不知道也不配置**——schema 里连 `model` 字段都没有 |
+| **KAGWeb 自己的 LLM 层** | `services/llm/`（顶层 + `provider_core/` 共 9,233 行，`aad0eb1` 实测） | 仅服务 **8 个**旁路调用点；**不在主对话路径上** |
+| **Agent backend 的模型** | 外部 CLI / HTTP 服务 | ~~KAGWeb **既不知道也不配置**——schema 里连 `model` 字段都没有~~ **已修正（2026-09-10 起）**：profile 有 `model` 与 `context_window`，`AgentLoopRequest.model` 逐回合下发 |
 
-主对话路径（`ChatCapability`）**对 LLM 层零依赖**，已确认。但外围仍有四道耦合没有解开，其中两道是**产品级阻断**：
+主对话路径（`ChatCapability`）**对 LLM 层零依赖**，已确认——该结论在 `aad0eb1` 复测仍成立（`grep -c "get_llm_config" kagweb/capabilities/chat/capability.py` → **0**；该文件对 `llm_selection` 的引用是修复 P1-2 后新加的模型名解析，见 §P1-2）。外围的四道耦合中，**四项已全部处理**：
 
-1. **非管理员用户无法使用任何 agent backend**——轮次门禁强制要求「已授权的 LLM 模型」，而 agent loop 部署里根本没有模型可授（P0-1）。
-2. **KAGWeb 的工具层整体不可达**——4 个内置工具在 agent loop 模式下永远不会被调用，但仍在 UI 上可开关、在授权里可授予（P0-2）。
-3. **上下文窗口错配**——历史裁剪预算按 16K 模型推导，实际消费者是 200K~1M 窗口的外部后端（P1-1）。
-4. **模型选择器指向错误对象**——用户在界面选的模型对 agent backend 完全无效，且无任何提示（P1-2）。
+1. ~~**非管理员用户无法使用任何 agent backend**~~ —— ✅ 已修复（`required_service` 门禁解耦，§1.2）。
+2. ~~**KAGWeb 的工具层整体不可达**~~ —— ✅ 已结案：工具层**整块删除**（连同 MCP 客户端栈），不再有「可开关但不生效」的误导面。
+3. ~~**上下文窗口错配**~~ —— ✅ 已修复（profile `context_window` 经 payload 键注入预算，§P1-1）。
+4. ~~**模型选择器指向错误对象**~~ —— ✅ 已修复（`llm_selection` → `AgentLoopRequest.model`，并加 `model_selector_enabled` 门控，§P1-2）。
 
 **另有两条更紧急的发现**（成文后经跨仓库核对得出，详见 §五决策 8）：
 
@@ -46,7 +50,7 @@ KAGWeb 剥离 agent loop 之后，**「LLM 部署」在代码里仍然指两件�
 model_catalog.json  ──► resolve_llm_runtime_config() ──► LLMConfig
         │                        │
         │                        ├──► ContextBuilder（历史预算）  ← 主路径耦合点
-        │                        └──► 9 个旁路调用点（标题/洞察/工具/诊断）
+        │                        └──► 8 个旁路调用点（标题/洞察/摘要/诊断/搜索）
         │
         └──► 轮次门禁（has_capability_access("llm")）  ← 主路径阻断点
                                                               ⚠ 与 agent backend 无关
@@ -58,14 +62,16 @@ Agent backend 的模型
 HTTP 靠服务端自己的配置
 ```
 
-**关键事实**：`ChatCapability`（`capabilities/chat/capability.py:112-122`）只读 `agent_loop` 设置块并调用 `build_agent_loop_backend()`，**从不触碰 `get_llm_config()`**。`AgentLoopRequest`（`agent_loop/protocol.py:59-75`）的字段只有 `prompt / history / session_id / language / workdir`——**没有 `model`，也没有 `tools`**。
+**关键事实**：`ChatCapability`（`capabilities/chat/capability.py:126-139`）只读 `agent_loop` 设置块并调用 `build_agent_loop_backend()`，**从不触碰 `get_llm_config()`**。~~`AgentLoopRequest`（`agent_loop/protocol.py:59-75`）的字段只有 `prompt / history / session_id / language / workdir`——**没有 `model`，也没有 `tools`**。~~
+
+> **⚠ 上句已作废（2026-09-10 起，P1-3 修复）**：`AgentLoopRequest`（`agent_loop/protocol.py:72-94`）现在**有 `model` 字段**（`:94`，语义为「空 = 后端默认」），由 `llm_selection` 解析后逐回合下发；**仍然没有 `tools` 字段**，且这一条现在不会再改变——工具层已整块移除（P0-2 结案），KAGWeb 不再持有任何工具实现。字段全集为 `prompt / history / session_id / language / workdir / model`。
 
 ### 1.2 轮次门禁（资源授权）
 
 `request_preparer.py`。门禁在 `start_turn` 中**同步**执行（跑完才 `create_task(_run_turn)`），且对**每个非管理员回合无条件生效**——包括调用方固定了 `llm_selection` 的情形。
 
 ```python
-# request_preparer.py（节选，2026-09-10 修复后的结构）
+# request_preparer.py（节选，2026-09-10 修复后的结构；行号已按 aad0eb1 更新）
 current_user = get_current_user()
 if not current_user.is_admin:
     # 这一轮实际需要什么资源：chat 在配了 agent 后端时不需要 LLM
@@ -78,6 +84,8 @@ if llm_selection:  # 调用方固定了选择：只校验该模型是否被授�
 elif not current_user.is_admin:  # 否则固定第一个已授权的可用模型
     ...
 ```
+
+现位于 `request_preparer.py:186-196`（`_effective_required_service()` 定义在 `:42`）。
 
 `required` 的取值：
 
@@ -114,7 +122,13 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 
 白名单刻意包含 `HOME` / `USERPROFILE` / `APPDATA` / `LOCALAPPDATA`——**正是为了让 agent CLI 能找到自己的登录态**（`~/.claude`、`~/.codex`、CodeBuddy 的 AppData）。这是「agent 自带认证」这一假设在代码里的直接体现。
 
-### 1.5 凭据双份：`codex_auth` 与 `codex` CLI 互不相通
+### 1.5 凭据双份：`codex_auth` 与 `codex` CLI —— ✅ 已以「退役」结案
+
+> **⚠ 本节结论已被推翻（2026-09-19）**：`services/codex_auth/` 与 `openai_codex` provider **已整体退役**（提交 `ff761c7`，其评审记录含「no credential residue」的凭据残留核查与 38 对 `codex.oauth.*` 词条清理）。因此「凭据双份互不相通」不再是需要打通的缺口——**KAGWeb 侧那一份已不存在**，只剩 `codex` CLI 预设自己读 `~/.codex`。
+>
+> **残留处理（有意）**：`multi_user/model_access.py:54` 的注释说明 `openai_codex` 仍留在 `OWNER_BOUND_BINDINGS` 中——旧 catalog 文件里可能残留此类 profile，保留该绑定使其「永不可授予」，且未知 binding 会回落到默认 provider（已在退役评审中用 stale codex profile 探针验证）。
+>
+> 以下为成文时的分析：
 
 | 维度 | KAGWeb 的 `openai_codex` provider | `codex` CLI agent-loop 预设 |
 |---|---|---|
@@ -122,50 +136,49 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 | 模型来源 | 登录后发布到模型目录的托管 profile | CLI 配置 / `args` / `env` |
 | 消费 `codex_auth`？ | 是 —— **唯一**消费者 | **否** |
 
-`services/agent_loop/` **不 import `codex_auth`**。有测试钉死这一独立性（`tests/cli/test_provider_cli.py:76-80` 断言 `"~/.codex" not in PROVIDER_CMD`）。
+`services/agent_loop/` **不 import `codex_auth`**（`aad0eb1` 复测仍为 0 次）。
 
-**运营后果**：一份 ChatGPT/Codex 订阅不会在两者间共享。登录 KAGWeb 的 provider **不会**让 `codex` agent-loop 预设获得认证，反之亦然。
+**运营后果**（成文时）：一份 ChatGPT/Codex 订阅不会在两者间共享。
 
-**处置状态（2026-09-19）**：该打通项（§六 P3）已完成决策材料细化——`codex_auth`
-长期定位的三选项（退役 / 维持 / CODEX_HOME 托管目录打通）与建议见
-`docs/plans/2026-09-19-pending-decisions-credentials-and-history.md`（决策一），
-**待拍板**。对照项：claude-code 预设无需打通，操作员经 profile env 填
-`ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` 即可。
+**处置结果**：`docs/plans/2026-09-19-pending-decisions-credentials-and-history.md` 决策一提的三个选项（退役 / 维持 / CODEX_HOME 托管目录打通）最终选了**退役**。`codex` CLI 预设本身仍在（`builtin.py:136`），继续靠 CLI 自己的登录态工作；claude-code 预设同理，操作员经 profile env 填 `ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL`。
 
 ### 1.6 检测与测试：只看「在不在」，不看「能不能用」
 
-`detect.py` 与 `/agent-loop/test` 端点（`api/routers/settings.py:1184-1246`）都只做存在性检查：
+`detect.py` 与 `/agent-loop/test` 端点（`api/routers/settings.py:1333`）都只做存在性检查：
 
 - CLI：`shutil.which(command)`——**不执行子进程，不查版本，不验认证**。
 - HTTP：2.5s 超时 GET——**任何 HTTP 响应（含 404）都算「可达」**。
 
 **一个装了 `codex` 二进制但 `~/.codex/auth.json` 无效的部署，检测会报「available」。** 设置页的 Test 按钮同样不做认证检查。
 
+> **✅ 部分改善（`aad0eb1` 复核）**：**ACP 族**已加握手探测——`AcpAgentLoopBackend.probe()`（`acp_backend.py:1001`）会真的 spawn → initialize → attach → shutdown，由 `/agent-loop/test` 调用（`settings.py:1477`）。one-shot CLI 族与 HTTP 族**仍维持原来的存在性检查**（HTTP 族只做 URL 形式校验，注释说明「turn 契约没有健康端点，POST 过去会真的跑一轮 agent」）。故本条对 ACP 族已不成立，对其余族仍成立。
+
 ### 1.7 环境变量契约
 
-`.env.example` 只含宿主机端口与 TZ，**不含任何模型或后端凭据**。agent-loop 的环境变量覆盖是另一套（`runtime_settings.py:842-879`）：`KAGWEB_AGENT_LOOP_BACKEND` / `_COMMAND` / `_URL` 与 `KAG_AGENT_LOOP_API_KEY`——**同样没有 model 键**。
+`.env.example` 只含宿主机端口与 TZ，**不含任何模型或后端凭据**。agent-loop 的环境变量覆盖是另一套（`runtime_settings.py:947-962` 的 `_apply_agent_loop_env_overrides`）：`KAGWEB_AGENT_LOOP_BACKEND` / `_COMMAND` / `_URL` / `_TRANSPORT` 与 `KAG_AGENT_LOOP_API_KEY`——**同样没有 model 键**（model 是每 profile 的常规配置，刻意不纳入环境覆盖，见 P1-3）。
 
 ---
 
 ## 二、真实 LLM 调用点清单
 
-全部经由 `services/llm/factory.py` 的 `complete()` / `stream()`。共 **9 处**，**无一在主对话答案路径上**。
+全部经由 `services/llm/factory.py` 的 `complete()` / `stream()`。**`aad0eb1` 实测为 8 处**，**无一在主对话答案路径上**。
 
 | # | 位置 | 用途 | 路径性质 | 无 LLM 时的降级 |
 |---|---|---|---|---|
 | 1 | `session/turns/title_service.py:124` | 会话标题 | 轮次后后台 | 截断首条用户消息 |
 | 2 | `session/turns/title_service.py:245` | 轮次洞察徽章 | 轮次后后台 | 静默跳过 |
-| 3 | `session/context_builder.py:391` | **历史滚动摘要** | **轮次前，主路径** | 退化为截断（长会话丢连续性） |
-| 4 | `tools/brainstorm.py:89` | 头脑风暴 | 工具 | **不可达**（见 P0-2） |
-| 5 | `tools/reason.py:104` | 深度推理 | 工具 | **不可达**（见 P0-2） |
-| 6 | `services/search/consolidation.py:302` | 搜索结果合成 | 工具（**可选**） | 默认走模板，**不调用** |
-| 7 | `api/routers/system.py:459` | 设置页「测试连接」 | 设置 UI | 报错 |
-| 8 | `services/config/test_runner.py:219` | 诊断自检 | 诊断 | 报错 |
-| 9 | `services/config/settings_spec.py:516` | 保存前探测 | 设置 UI | 报错 |
+| 3 | `session/context_builder.py:411` | **历史滚动摘要** | **轮次前，主路径** | 退化为截断（长会话丢连续性） |
+| 4 | `services/search/consolidation.py:302` | 搜索结果合成 | 工具（**可选**） | 默认走模板，**不调用** |
+| 5 | `api/routers/system.py:459` | 设置页「测试连接」 | 设置 UI | 报错 |
+| 6 | `services/config/test_runner.py:219` | 诊断自检 | 诊断 | 报错 |
+| 7 | `services/config/settings_spec.py:516` | 保存前探测 | 设置 UI | 报错 |
+| 8 | `services/doctor.py:253` | `kagweb doctor --online` 的 provider 探测 | 诊断 | 报错 |
 
-> #6 默认不触发：`web_search()` 仅在显式传入 `consolidation_llm_model` 时才走 LLM 合成（`search/__init__.py:240`），默认路径用 Jinja 模板。
+> #4 默认不触发：`web_search()` 仅在显式传入 `consolidation_llm_model` 时才走 LLM 合成（`search/__init__.py:240`），默认路径用 Jinja 模板。
 
-**确认无 LLM 调用的目录**：`services/parsing/`、`services/voice/`、`services/imagegen/`、`services/agent_loop/`、`multi_user/`。
+**与原表（9 处）的差异**：原表第 4、5 项 `tools/brainstorm.py:89`、`tools/reason.py:104` **已随工具层整体移除**（P0-2 结案）；同时新增第 8 项 `services/doctor.py:253`——**它其实在 `c3ffe57` 时就已存在**（`af10330` 引入），原表遗漏了它。故口径为 9 − 2 + 1 = 8。
+
+**确认无 LLM 调用的目录**：`services/parsing/`、`services/voice/`、`services/imagegen/`、`services/agent_loop/`、`multi_user/`（`aad0eb1` 复测仍成立；`multi_user/personal_models.py` 对 `services.llm` 的提及仅为 docstring 里的类型交叉引用，非调用）。
 
 ---
 
@@ -190,7 +203,11 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 
 > **残留**：CLI/ACP 子进程仍以服务器 uid 运行、无沙箱，这是架构既定（文档多处声明 single-operator shape）。本轮只是把「谁可以启动它」收敛为管理员显式授权，**不等于隔离**。
 
-### P0-2 KAGWeb 工具层整体不可达
+### P0-2 KAGWeb 工具层整体不可达 —— ✅ 已结案（2026-09-11 裁决：整块删除）
+
+**结论**：工具层**不再存在**。`kagweb/tools/`、`api/routers/tools.py`、`runtime/providers/`、`ToolRegistry`/`ScopedToolRegistry`、`core/tool_protocol.py` 与 MCP 客户端栈（`services/mcp/`）均已移除；`get_tool_schemas()` 在 `aad0eb1` 全仓库零命中。「用户能开一个永远不生效的开关」这一**功能性误导**随之消失，因为开关本身也没了。
+
+以下为成文时的分析，保留以记录判断依据：
 
 **现象**：4 个内置工具（`brainstorm` / `web_search` / `paper_search` / `reason`）在 agent loop 部署下**永远不会被调用**，但：
 
@@ -200,13 +217,13 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 
 **根因**：工具的设计假设是「LLM 用 function calling 调用 KAGWeb 注册的工具」。这个假设随 in-process agent loop 一起被移除了。现在：
 
-- `AgentLoopRequest` 没有 `tools` 字段——后端收不到工具 schema；
+- `AgentLoopRequest` 没有 `tools` 字段——后端收不到工具 schema（**此条仍成立，且将永久成立**）；
 - `ChatCapability` 不 import 也不使用 `ToolRegistry`；
 - CLI 后端**只接收 prompt 字符串**，没有任何工具注入通道。
 
-**决定性证据**：`ChatOrchestrator.get_tool_schemas()`（`orchestrator.py:179`）在全仓库**零调用者**。
+**决定性证据**：`ChatOrchestrator.get_tool_schemas()`（`orchestrator.py:179`）在全仓库**零调用者**。→ `aad0eb1` 复测：该**方法本身已删除**，`orchestrator.py` 从 200+ 行缩至 172 行。
 
-**影响**：用户能开一个永远不生效的开关，管理员能授一个永远用不上的权限。这是**功能性误导**，比死代码更糟。
+**影响**：用户能开一个永远不生效的开关，管理员能授一个永远用不上的权限。这是**功能性误导**，比死代码更糟。 → **已通过删除消除**。
 
 ### P1-1 上下文窗口错配 —— ✅ 已修复
 
@@ -219,6 +236,8 @@ CLI 后端的子进程环境是**白名单**的（`cli_backend.py:80-119`），�
 `LARGE_CONTEXT_MODEL_DEFAULT = 65_536` 的「大模型多给」兜底逻辑依赖**模型名匹配**（`KNOWN_LARGE_CONTEXT_MARKERS` 含 `claude`/`gpt-5` 等），而 agent loop 部署下模型名是空字符串——**永远走最低档**。
 
 **影响**：长会话过早触发摘要甚至截断，丢掉本该保留的上下文。
+
+> **备注（2026-09-20）**：P1-3 修复后 `AgentLoopRequest` 已有 `model` 字段，但该值**不回流**到 KAGWeb 的 `llm_config`——历史预算仍由 profile 的 `context_window` 决定，下面这条修复路径不变。
 
 **修复（2026-09-10）**：profile 新增 `context_window`，操作者填该后端的真实窗口。注入路径受**时序约束**约束——`executor` 建 context 时（`_run_turn` 内）capability 尚未解析 profile，故值经内部 payload 键 `agent_loop_context_window` 传递：
 
@@ -239,9 +258,9 @@ agent_loop 设置块 → request_preparer 提取 primary 的 context_window（�
 
 `llm_selection`（`core/turn_request.py`）随轮次请求下发，前端在伙伴配置等界面仍在发送。但在 agent loop 模式下：
 
-- `ChatCapability` 完全不读它（grep 无命中）；
+- ~~`ChatCapability` 完全不读它（grep 无命中）~~ **已作废**：修复后 `capability.py:741-750` 会读 `context.metadata["llm_selection"]` 并解析成具体模型名（见下方 ✅）；
 - 它只影响 KAGWeb 自己的 LLM 层（标题、洞察、摘要）；
-- 对 agent backend **零影响**。
+- 对 agent backend **零影响** → 已修复，见下。
 
 用户换一个模型，对话行为**毫无变化**，且没有任何提示说明这一点。
 
@@ -269,23 +288,25 @@ timeout_seconds, session_workspace, consult_enabled, workdir
 
 `model` **不**加入 `AGENT_LOOP_ENV_OVERRIDABLE_KEYS`：环境覆盖是部署级 pin 的场景（`KAGWEB_AGENT_LOOP_COMMAND` 等），而 model 是每 profile 的常规配置。
 
-### P1-4 凭据双份，互不相通
+### P1-4 凭据双份，互不相通 —— ✅ 已以「退役」结案
 
 见 §1.5。运营者要维护两套 Codex 认证，且不理解为什么登录了 KAGWeb 的 Codex 之后 `codex` 预设仍然不可用。
+
+> **✅ 2026-09-19 结案**：KAGWeb 侧那一份 `codex_auth` 已整体退役（提交 `ff761c7`），「要维护两套认证」的问题随之消失——现在只有一套（CLI 自己的 `~/.codex`）。本节描述的运营困惑不再存在。
 
 ### P2-1 检测不覆盖认证
 
 见 §1.6。检测无法回答运营者真正关心的问题：「这个后端能用吗？」
 
-### P2-2 模型目录残留服务槽位
+### P2-2 模型目录残留服务槽位 —— ⚠️ 部分保留（有意）
 
 `SERVICE_NAMES`（`model_catalog.py:151-160`）声明 8 个服务，但：
 
 | 服务 | 解析函数 | 消费方 |
 |---|---|---|
-| `llm` | `resolve_llm_runtime_config` | 9 个旁路调用点 |
+| `llm` | `resolve_llm_runtime_config` | 8 个旁路调用点 |
 | `task` | 经 `service_name=TASK_SERVICE` 复用 | 标题生成（`model_selection/tasks.py`） |
-| `search` | `resolve_search_runtime_config` | `system.py`、`test_runner.py`、搜索设置页（`tools.py:21` 的消费方将随决策 3b 移除） |
+| `search` | `resolve_search_runtime_config` | `system.py`、`test_runner.py`、搜索设置页（~~`tools.py:21`~~ 已随工具层移除） |
 | `tts`/`stt` | 有 | `voice/` |
 | `imagegen` | 有 | `imagegen/` |
 | **`embedding`** | **不存在** | **无** |
@@ -293,9 +314,20 @@ timeout_seconds, session_workspace, consult_enabled, workdir
 
 `embedding` 与 `videogen` 对不上任何解析函数，是 RAG / videogen 剥离后的残留槽位，仍出现在设置界面。
 
-### P2-3 错误文案指向无效动作
+> **`aad0eb1` 复核（本条结论部分失效）**：
+> - **`videogen` 的导航项已移除**：`settings-nav.ts` 中已无 `videogen` 条目（初版 #24b 记录的问题已关闭）。但服务名**有意保留**——`runtime_settings.py:1269` 的复核注记说明：它带有逐模型的迁移默认值，**删名会静默丢弃已存配置**。
+> - **`embedding` 完全无导航项**（`settings-nav.ts` 零命中），但仍留在 `SERVICE_NAMES` 与 `CONNECTABLE_SERVICES` 中，且 `model_catalog.py:177` 为它保留了连接路径映射（`/embeddings`）。属**仅存在于配置面的残留**，无 UI 入口，危害降为「死配置键」。
+> - 因此本条从「用户可见的误导」降级为「配置面卫生问题」，优先级下调。
 
-`llm/config.py:200-202` 的提示是 *"No active LLM model is configured. Please set it in Settings > Catalog."*。在 agent loop 部署下，去 Catalog 配一个模型**不会**改变对话行为——真正的配置在 Settings → Chat → Agent Loop。
+### P2-3 错误文案指向无效动作 —— ✅ 已修复
+
+~~`llm/config.py:200-202` 的提示是 *"No active LLM model is configured. Please set it in Settings > Catalog."*~~
+
+`aad0eb1` 实测（`llm/config.py:200-207`）文案已改写为区分场景的版本：
+
+> *"No LLM model is configured. **Conversations are unaffected while an agent backend is set (Settings > Agent Backend)**, but KAGWeb's own calls — session titles, turn insights and history summaries — need one here: Settings > Models."*
+
+它同时说明了「对话不受影响」与「哪些旁路功能需要模型」，与 §决策 5 的联动影响一节一致。
 
 ---
 
@@ -410,9 +442,11 @@ KAGWeb 不再持有工具实现，改为**桥接**：
 
 CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做，是为了「side-effect free」）；更有价值的是在 profile 上增加一个「认证自检」按钮，明确告知运营者后端是否真的可用。
 
-**10. 凭据打通（可选）**（P1-4）
+**10. 凭据打通（可选）**（P1-4）—— ❌ **已作废（2026-09-19）**
 
-让 `codex` agent-loop 预设复用 `codex_auth` 的 token：CLI 后端在子进程 env 中注入从 `codex_auth` 取得的凭据（而非让 CLI 读 `~/.codex`）。**注意**：这需要谨慎——`codex_auth` 的 token 绑定 ChatGPT 账户，注入子进程等同于把 KAGWeb 管理的凭据交给外部进程，应视为架构决策而非实现细节。
+原建议：让 `codex` agent-loop 预设复用 `codex_auth` 的 token（CLI 后端在子进程 env 中注入从 `codex_auth` 取得的凭据，而非让 CLI 读 `~/.codex`）。
+
+**该建议连同其前提一起消失**：`codex_auth` 已整体退役，没有 token 可注入了。退役而非打通的方向选择，正好也避开了本建议自己提示的风险——「把 KAGWeb 管理的凭据交给外部进程，应视为架构决策而非实现细节」。
 
 ---
 
@@ -431,7 +465,7 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 | 组件 | 处置 | 依据 |
 |---|---|---|
 | `services/agent_loop/`（1,765 行） | **保留**，它是后端对接层 | 已有 CLI/HTTP 两族 + 中性事件 schema |
-| `services/llm/`（9,476 行） | **大幅缩减**，非全删 | 9 个旁路调用点中仅少数仍需（见决策 5） |
+| `services/llm/`（顶层 4,842 + `provider_core/` 4,637 行） | **大幅缩减**，非全删 | 8 个旁路调用点中仅少数仍需（见决策 5） |
 | `kagweb/tools/` | **移除** | 见决策 3 |
 | `capabilities/`（仅 `chat`） | **保留** | 编排骨架仍需要 |
 
@@ -467,9 +501,13 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 
 **注意**：`AgentLoopSettingsSection.tsx` 组件本身无需重写，只是挂载位置与导航层级变化。
 
-### 决策 3：移除 Skills 与 Tools
+### 决策 3：移除 Skills 与 Tools —— ✅ 已全部落地
 
-两者的移除成本**差异很大**，因为 MCP 以工具协议为底座。
+> **最终结果（`aad0eb1`）**：Skills 与 Tools **都已移除**，且 3b 中列为「必须保留（MCP 底座）」的那批文件也**一并移除了**——因为 MCP 客户端栈随后被裁决为整块撤退（见 3c）。本节保留的是成文时的移除边界分析，**「必须保留」清单已全部作废**，请以本节末尾的现状小结为准。
+>
+> **现状小结**：`kagweb/tools/`、`kagweb/skills/`、`api/routers/tools.py`、`core/tool_protocol.py`、`runtime/providers/`、`services/mcp/`、`ToolRegistry`/`ScopedToolRegistry`/`deferred_tools`、`runtime/registry/tool_registry.py` 均**零残留**；`pyproject.toml` 的唯一 `.md` 规则是 `kagweb_cli = ["**/*.md"]`（指向 `kagweb_cli/README.md`，与 Skills/人格无关）。
+
+两者（当时）的移除成本**差异很大**，因为 MCP 以工具协议为底座。
 
 #### 3a. Skills 移除
 
@@ -654,11 +692,17 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 
 `tests/api/test_canonical_route_surface.py:30-40` 维护了退役路由前缀清单，是判断「哪些已移除」的权威来源：`/api/learning`、`/api/reading`、`/api/mastery-paths`、`/api/question*`、`/api/notebook(s)`、`/api/courses`、`/api/skills`、`/api/subagents`、`/api/video-learning`、`/api/visualizers` 等。前端另有 `web/tests/no-v1-chat-surface.test.ts`、`space-dashboard-capability-gate.test.ts` 作为守护测试。
 
-### 决策 5：仅 Intellect 社区版/企业版启用 LLM 设置
+### 决策 5：仅 Intellect 社区版/企业版启用 LLM 设置 —— ✅ 已落地（判据已重设计）
 
-**规则**：当且仅当 primary agent backend 为 `intellect` 或 `intellect-team` 时，启用 Settings 中的 LLM（模型与连接）分区；其余后端一律不呈现 LLM 设置。
+> **落地结果（`aad0eb1`）**：门控已实现，但**判据不是本文设计的「预设名集合」，而是「自托管 HTTP 服务」**——`llm_settings_apply()`（`agent_loop/builtin.py:381`）在解析出 transport 后判定 `is_intellect_preset(preset) and resolved.family == "http"`。同时门控**收窄到「对话用 LLM」这一个叶子**（特意不隐藏整个 models 分类，因为 `task` 服务还要喂 KAGWeb 自己的标题/洞察/摘要调用，全隐藏会把唯一能修那条告警的页面也藏掉）。
+>
+> **`AGENT_LOOP_INTELLECT_PRESETS` 枚举已删除**——`runtime_settings.py:103-105` 的注释明确记录删除理由：「第二真源，且已经漂移（它从不知道 `intellect-runs`）」。故下文的「集合不完整」问题**以删除枚举的方式解决**；`intellect-runs` 也已并入 `intellect`（见文首 2026-09-18 注）。前端拿不到 primary preset 的问题同样已解决：`_agent_loop_payload()` 现返回 `effective_primary.llm_settings_enabled`（`settings.py:1269`），前端由 `SettingsAccessProvider.tsx:30` 消费。
+>
+> 以下为成文时的分析，保留以记录推导过程。
 
-**判定基元已有**：`AGENT_LOOP_INTELLECT_PRESETS = frozenset({"intellect", "intellect-team"})`（`runtime_settings.py:97`），已用于自动选择 primary 的优先级。
+**规则**（原始表述）：当且仅当 primary agent backend 为 `intellect` 或 `intellect-team` 时，启用 Settings 中的 LLM（模型与连接）分区；其余后端一律不呈现 LLM 设置。
+
+**判定基元已有**：~~`AGENT_LOOP_INTELLECT_PRESETS = frozenset({"intellect", "intellect-team"})`（`runtime_settings.py:97`）~~ **该枚举已删除**。
 
 > **⚠ 该集合已不完整（2026-09-10 补记）**。远端在此期间合入了大量 agent-loop 变更，Intellect 现在有**三个**预设，而集合只含两个：
 >
@@ -682,7 +726,7 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
        "id": <profile id or "">,
        "preset": <preset name or "">,
        "family": <"cli"|"http"|"">,
-       "llm_settings_enabled": <preset in AGENT_LOOP_INTELLECT_PRESETS>,
+       "llm_settings_enabled": <bool>,   # 落地后实现为 profile_llm_settings_apply(resolved)
    }
    ```
    判定逻辑应复用 `resolve_primary_profile()`，与真实轮次行为保持同源。
@@ -701,14 +745,18 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 
 **联动影响**：
 
-- 关闭 LLM 设置后，9 个旁路调用点中的**设置类**（`system.py:459` 测试连接、`settings_spec.py:516` 保存探测）自然失去入口——**方向正确**。
-- 但**后台类**调用点仍会执行：会话标题（`title_service.py:124`）、轮次洞察（`:245`）、**历史摘要**（`context_builder.py:391`）。若不配模型，这三者按 §二的降级列正常退化（摘要退化为截断）。**建议**：在 Agent Backend 设置页明确说明这一后果，或对非 Intellect 后端默认关闭轮次洞察。
+- 关闭 LLM 设置后，8 个旁路调用点中的**设置类**（`system.py:459` 测试连接、`settings_spec.py:516` 保存探测）失去入口——**方向正确**。
+- 但**后台类**调用点仍会执行：会话标题（`title_service.py:124`）、轮次洞察（`:245`）、**历史摘要**（`context_builder.py:411`）。若不配模型，这三者按 §二的降级列正常退化（摘要退化为截断）。
 
-### 决策 6：人格（Persona）整体移出 KAGWeb
+> **✅ 该后果已在 `NoModelConfiguredError` 文案中说明**（`llm/config.py:200-207`，2026-09-20 复核）：提示明确写出「Conversations are unaffected while an agent backend is set (Settings > Agent Backend), but KAGWeb's own calls — session titles, turn insights and history summaries — need one here: Settings > Models.」——即本文建议的「在设置页说明这一后果」以错误文案的形式落地了。剩余未做的是「对非 Intellect 后端默认关闭轮次洞察」。
+
+### 决策 6：人格（Persona）整体移出 KAGWeb —— ✅ 已落地
+
+> **落地结果（`aad0eb1`）**：`services/persona/`、`api/routers/personas.py`、`web/lib/skill-slug.ts`、`web/components/space/PersonasSection.tsx` 均已删除；`git ls-files 'kagweb/**/*.md'` 为 **0**；`executor.py` 的人格加载分支与 `context.persona_context` 字段同时消失（后者因决策 6+7 的两个写入方都移除而可整体删除，见下）。**`.md` 打包规则的最终处置**：`pyproject.toml` 中 `"**/*.md"` 已改为只覆盖 `kagweb_cli`（`kagweb_cli = ["**/*.md"]`），指向 `kagweb_cli/README.md`，与 Skills/人格无关。
 
 **规则**：人格**不在 KAGWeb 内配置**，一律从 agent backend 获取。
 
-**现状**：KAGWeb 持有一整套 in-process 人格子系统，与决策 1（作门面）直接冲突。
+**现状**（成文时）：KAGWeb 持有一整套 in-process 人格子系统，与决策 1（作门面）直接冲突。
 
 **规模**：后端约 **535 行** + 前端界面 + 3 个打包预设。
 
@@ -742,7 +790,11 @@ CLI 检测可考虑增加**可选**的 `--version` 探测（当前刻意不做�
 **落地顺序提示**：决策 6 与决策 3/4 在 `pyproject.toml` 打包规则上有依赖——**先落决策 6、再删 `.md` 规则**，否则会静默丢失内置人格（详见决策 3a 打包说明）。
 
 
-### 决策 7：移除合伙人（Partners）与 IM 通道
+### 决策 7：移除合伙人（Partners）与 IM 通道 —— ✅ 已落地
+
+> **落地结果（`aad0eb1`）**：`kagweb/partners/`、`kagweb/services/partners/`、`kagweb/services/partner_groups/`、`api/routers/partners.py`、`api/routers/partner_groups.py`、前端 `components/partners/**` 与 5 个路由页、`kagweb_cli/partner.py` 均已删除（`git ls-files` 全为 0）。`safe_filename` 的阻断性迁移前置已完成——它现位于 `kagweb/utils/filenames.py:16`，`services/storage/attachment_store.py` 的模块级导入已改指该处。
+>
+> **⚠ 后台命令子协议未完全清除**（本文成文时判断「4 个取值全部可删」，实际只删了 3 个）：`BackgroundCommandKind` 仍在（`coordination/types.py:37-38`），只剩 `CRON_RELOAD` 一个取值且零消费者；`submit/read/acknowledge_background_command` 三方法也仍在（`memory.py:167-200`、`redis.py:413` 起），`submit` 在生产代码中零调用者。**该残留已记入 `backend-architecture.md` §9 第 5 项。**
 
 **规则**：合伙人功能**只对接 agent backend**，而本项目已无 agent backend，因此**先移除**。将来恢复 IM 接入时，由 **agent backend 自己对接 IM** —— 即 KAGWeb 不为 IM 保留任何接缝。
 
@@ -1062,15 +1114,19 @@ HTTP 族的通用 «turn» 协议（`custom-http`）现在会 **fail 掉回合**
 |---|---|---|---|---|
 | **P0** | **批次零：Intellect 对接修复（7 项）** | §五 决策 8 §D | **当前必然失败**：(a) 预设指向不存在的 `/agent/turn`；(b) Rust 下文本/推理/工具/审批**四项全失效**且无日志。不改则对接不成立 | ✅ 已落地（提交 `67d4759`；夹具同步换权威格式） |
 | **P0** | 轮次门禁解耦（`required_service`） | §四 #1 | 决定多用户部署是否可行；决策 1 的前置 | ✅ 已落地（`d2ee506` + 修正 `cec68ff`；CLI/ACP 族另需显式授权） |
-| **P0** | 移除死字段 / 死 UI（Skills、Tools 开关） | §五 决策 3 | 消除功能性误导，改动小、风险低 | ✅ UI/API 已移除（`5faeca0`、`0e25598`）；`kagweb/tools/` 本体留待决策 7 |
+| **P0** | 移除死字段 / 死 UI（Skills、Tools 开关） | §五 决策 3 | 消除功能性误导，改动小、风险低 | ✅ 已落地（`5faeca0`、`0e25598`）；`kagweb/tools/` 本体亦已移除（决策 7 批次） |
 | **P1** | Agent Backend 提为顶级设置项 | §五 决策 2 | 纯前端导航调整，无后端风险 | ✅ 已落地（`21663be`） |
 | **P1** | LLM 设置按 Intellect 门控 | §五 决策 5 | 与决策 2 同一次 UI 改动完成 | ✅ 已落地（`21663be`）；判据改为「自托管 HTTP 服务」，`intellect-runs` 一并覆盖 |
 | **P1** | profile 增加 `model` + `context_window` | §四 #3/#4 | 用户核心诉求；一并修掉 P1-1 上下文错配 | ✅ 已落地（`model` 走 `{model}` 占位符/请求体；`context_window` 经 payload 键注入预算；未配置时行为不变） |
-| **P1** | 人格子系统整体移出 | §五 决策 6 | 与决策 1 同源；**须早于 `.md` 打包规则移除** | ⬜ 未做 |
-| **P1** | 合伙人与 IM 通道移除（约 42,000 行） | §五 决策 7 | 与决策 1 同源；**前置：迁移 `safe_filename`** | ⬜ 未做 |
+| **P1** | 人格子系统整体移出 | §五 决策 6 | 与决策 1 同源；**须早于 `.md` 打包规则移除** | ✅ 已落地（`services/persona/` 与 3 个 PERSONA.md 均已删除；`.md` 规则收窄为 `kagweb_cli`） |
+| **P1** | 合伙人与 IM 通道移除（约 42,000 行） | §五 决策 7 | 与决策 1 同源；**前置：迁移 `safe_filename`** | ✅ 已落地（`kagweb/partners/`、`services/partners/`、`services/partner_groups/` 零残留） |
 | **P2** | 学习 / 研究表述清理 | §五 决策 4 | 学习者/监护人去留已决策为移除 | ✅ 完成（批次四/五：学习者子系统移除 + 导航更名 + 死词条清理，见 `ef8bbf5`） |
 | **P2** | 工具层与 MCP 的重新定位 | §四 #6、§五 3c | 架构方向，取决于决策 1 的落地深度 | ✅ 2026-09-11 裁决：撤退，整块移除 |
-| **P3** | 凭据打通（codex OAuth 复用） | §四 #10 | 需架构决策（涉及把凭据交给外部进程）——决策材料已细化（三选项+建议），见 `docs/plans/2026-09-19-pending-decisions-credentials-and-history.md` 决策一，**待拍板** |
+| **P2** | 模型选择器指向错误对象 | §三 P1-2 | 用户选的模型对后端无效且无提示 | ✅ 已修复（`llm_selection` → `AgentLoopRequest.model` + `model_selector_enabled` 门控） |
+| **P2** | 错误文案指向无效动作 | §三 P2-3 | 提示把用户引向 Catalog，而配置在 Agent Backend | ✅ 已修复（文案区分「对话不受影响」与「旁路调用需要模型」） |
+| **P2** | 模型目录残留服务槽位（`embedding`/`videogen`） | §三 P2-2 | 无解析函数的服务名 | ⚠️ **部分保留**：`videogen` 有意保留（删名会丢已存配置）、导航项已移除；`embedding` 仅存于配置面（见 §三 P2-2） |
+| **P3** | ~~凭据打通（codex OAuth 复用）~~ | §四 #10 | ~~需架构决策~~ | ✅ **以退役结案**（2026-09-19，`ff761c7`）：`codex_auth` 与 `openai_codex` provider 已删除，无 token 可打通 |
+| **P3** | 检测增强（认证自检） | §三 P2-1 | CLI 探测刻意不做 `--version` | ⚠️ 部分：ACP 族已加 `probe()` 握手探测（`acp_backend.py:1001`），CLI/HTTP 族仍只看「在不在」 |
 
 **建议的执行批次**：
 
@@ -1113,34 +1169,69 @@ HTTP 族的通用 «turn» 协议（`custom-http`）现在会 **fail 掉回合**
 
 ## 附：核验命令
 
+> **⚠ 本节命令的基准是 `c3ffe57`**。以下命令中有多条已因代码变更而**不再可用**（目标文件/行为已改），已在原处标注；末尾给出 `aad0eb1` 的替代命令。
+
 ```bash
 cd /d/workspace/kagweb
 
-# 主对话路径不依赖 LLM 层
-grep -n "get_llm_config\|llm_selection" kagweb/capabilities/chat/capability.py   # 无输出
+# 主对话路径不依赖 LLM 层（✅ 仍成立）
+grep -n "get_llm_config" kagweb/capabilities/chat/capability.py   # 无输出
+# 注意：不要用 "get_llm_config\|llm_selection" —— 后者现在有命中（P1-2 修复新增）
 
-# 工具 schema 零调用者（P0-2）
-grep -rn "get_tool_schemas(" --include=*.py kagweb/ | grep -v __pycache__
+# 工具 schema 零调用者（P0-2）—— ❌ 已失效：方法连同工具层一起删除了
+grep -rn "get_tool_schemas(" --include=*.py kagweb/ | grep -v __pycache__   # 无输出（定义处也没了）
 
-# AgentLoopRequest 无 model / tools 字段（仅第 4 行 docstring 命中）
-grep -n "model\|tools" kagweb/services/agent_loop/protocol.py
+# AgentLoopRequest 无 model / tools 字段（P0-2）—— ❌ 已失效：现在有 model 了
+grep -n "model\|tools" kagweb/services/agent_loop/protocol.py   # 有 model 命中
 
-# 门禁硬编码 llm（P0-1）
-sed -n '105,134p' kagweb/services/session/turns/request_preparer.py
+# 门禁硬编码 llm（P0-1）—— ❌ 已失效：门禁已解耦
+sed -n '186,196p' kagweb/services/session/turns/request_preparer.py
 
-# profile schema 无 model（P1-3）
+# profile schema 无 model（P1-3）—— ❌ 已失效：profile 现有 model / context_window
 sed -n '1272,1310p' kagweb/services/config/runtime_settings.py
 
-# 上下文窗口回落（P1-1）
+# 上下文窗口回落（P1-1，✅ 常量仍在）
 grep -n "DEFAULT_CONTEXT_WINDOW_FALLBACK\|history_budget_ratio" \
   kagweb/services/llm/context_window.py kagweb/services/session/context_builder.py
 
-# codex_auth 与 agent_loop 无关联（P1-4）
-grep -rn "codex_auth" kagweb/services/agent_loop/    # 无输出
+# codex_auth 与 agent_loop 无关联（P1-4）—— ⚠️ 现为平凡成立：该模块已整体退役
+git ls-files kagweb/services/codex_auth/ | wc -l    # 0
+grep -rn "codex_auth" kagweb/services/agent_loop/   # 无输出
 
-# 模型目录残留槽位（P2-2）
+# 模型目录残留槽位（P2-2，⚠️ 仍成立但已降级）
 grep -n "def resolve_embedding_runtime_config\|def resolve_videogen_runtime_config" \
   kagweb/services/config/provider_runtime.py         # 无输出，但 SERVICE_NAMES 含二者
+```
+
+### `aad0eb1`（v0.2.2）的替代核验命令
+
+```bash
+# 已移除子系统的零残留断言（全部应为 0）
+for d in partners tools services/partners services/persona services/mcp runtime/providers; do
+  echo "$d: $(git ls-files kagweb/$d | wc -l)"; done
+
+# LLM 旁路调用点（应为 8 处，见 §二）
+grep -rnE "llm_stream\(|llm_complete\(|llm\.complete_sync\(|await complete\(" \
+  --include="*.py" kagweb/ | grep -v __pycache__ | grep -v "^kagweb/services/llm/"
+
+# AgentLoopRequest 字段全集（现有 model，仍无 tools）
+grep -n "class AgentLoopRequest" -A 22 kagweb/services/agent_loop/protocol.py
+
+# LLM 设置门控改为按 transport 判定（决策 5 的落点）
+grep -n "def llm_settings_apply" -A 25 kagweb/services/agent_loop/builtin.py
+
+# Intellect 预设与前缀匹配（原 AGENT_LOOP_INTELLECT_PRESETS 已删除）
+grep -n "def is_intellect_preset" -A 8 kagweb/services/agent_loop/builtin.py
+
+# codex 凭据链路零残留（2026-09-19 退役）
+git ls-files kagweb/services/codex_auth/ | wc -l                    # 0
+grep -rl "openai_codex_provider" --include="*.py" kagweb/ | wc -l   # 0
+# 残留的 catalog profile 仍安全：owner-bound = 永不可授予
+grep -n "OWNER_BOUND_BINDINGS" -A 3 kagweb/multi_user/model_access.py
+
+# KAG 管理面（新增于 aad0eb1）
+ls kagweb/services/kag/ kagweb/api/routers/kag.py
+grep -n "include_router(kag" kagweb/api/main.py   # /api/kag 与 /api/kag/bridge
 ```
 
 ### 跨仓库核验（决策 8）
@@ -1261,6 +1352,8 @@ cd web && npm run build && npm run perf:check
 
 ### 基准漂移复核（2026-09-10，提交时）
 
+> **⚠ 本节是 `ef8bbf5` 时期的复核记录，其「仍然成立」表此后已再次漂移**（表中「Skills 资产、人格预设、合伙人代码均未变」等项现均已移除；「9 个 LLM 调用点」现为 8 个）。**当前状态的权威复核见 §八**，本节仅作历史留档。
+
 提交时远端（`gitee.com/wustbd/kagweb`）已领先 **20+ 个提交**，其中包含大量 `services/agent_loop/` 改动（新增 `acp_backend.py` 692 行、`http_backend.py` +295、`protocol.py` +45；`capabilities/chat/capability.py` ±217；`web/locales/en/app.json` −4,668 行）。本文基准 `c3ffe57` 因此**部分过时**，逐条复核结果如下。
 
 **经复核仍然成立的断言**（本轮于新 HEAD 重新实测）：
@@ -1271,7 +1364,7 @@ cd web && npm run build && npm run perf:check
 | `ChatCapability` 对 LLM 层零依赖 | `grep -c get_llm_config\|llm_selection` | **0** ✅ |
 | `get_tool_schemas()` 零调用者（P0-2 决定性证据） | 全仓库 grep | 仅定义处 ✅ |
 | 轮次门禁仍硬编码 `has_capability_access("llm")`（P0-1） | `request_preparer.py` | ❌ **已不成立**：2026-09-10 起按 `required_service` 分派（§1.2） |
-| 9 个 LLM 调用点 | 逐文件 grep | ✅（旁路调用点未变；主路径仍零依赖） |
+| 9 个 LLM 调用点 | 逐文件 grep | ✅ 旁路调用点当时未变、主路径仍零依赖（**注**：`aad0eb1` 已降为 8 个，见 §八） |
 | `SERVICE_NAMES` 仍含 `embedding`/`videogen` 残留（P2-2） | 计数 | ✅ 仍 8 个服务。**注**：`videogen` 有意保留——它有逐模型迁移默认值，删名会静默丢弃已存配置；仅其设置导航项已移除 |
 | Skills 资产、人格预设、合伙人代码均未变 | `ls` + 文件计数 | ✅ 全部仍在（决策 3/6/7 尚未执行） |
 | 子进程环境白名单（§1.4） | `acp_backend.py` 复用 `_build_child_env` | ✅ 新 ACP 族同样遵守 |
@@ -1301,7 +1394,9 @@ cd web && npm run build && npm run perf:check
 **更广的残留**：该文件的能力目录还引用了 `code_execution` / `imagegen` / `videogen`（`:28-48`）等工具与 `allowedTools` 列表（`:105-107`、`:122-124`），对应子系统均已移除。这属于 §五决策 4 与 §P0-2 的交叉地带——**前端工具/能力目录的整块陈旧数据**，建议在批次一中一并处理。
 > **✅ 已处理（2026-09-11）**：能力目录收缩落地——`CHAT_CAPABILITIES` 砍到只剩 `chat`（含描述诚实化），`ALL_TOOLS`/`allowedTools`/`defaultTools` 与 `state.enabledTools` 写不读状态链整删，`readChatLaunchIntent` 的 `tool` 参数随之移除；`mergeCapabilityPresentations`/`visibleCapabilityPresentations` 保留（插件能力的展示通道，遗留 id 以 `HIDDEN_CAPABILITY_IDS` 硬排除）。
 
-**复核实为准确、无需修正的项**：`request_preparer.py:105-134` 门禁代码；`capabilities/chat/capability.py:112-122` 无 LLM 依赖；`get_tool_schemas()` 零调用者（`orchestrator.py:179`）；`codex_auth` 与 `agent_loop` 无关联；9 个 LLM 调用点行号；`ChatRequestConfig(EmptyConfig)` 零字段；`AGENT_LOOP_INTELLECT_PRESETS` 值；`question_bank` 读路径孤立 / 写路径活跃。
+**复核实为准确、无需修正的项**（**成文时口径**，多项此后已变，勿直接引用）：`request_preparer.py:105-134` 门禁代码；`capabilities/chat/capability.py:112-122` 无 LLM 依赖；`get_tool_schemas()` 零调用者（`orchestrator.py:179`）；`codex_auth` 与 `agent_loop` 无关联；9 个 LLM 调用点行号；`ChatRequestConfig(EmptyConfig)` 零字段；`AGENT_LOOP_INTELLECT_PRESETS` 值；`question_bank` 读路径孤立 / 写路径活跃。
+
+> **⚠ `aad0eb1` 复核**：其中 `get_tool_schemas()` 零调用者（方法已删）、`AGENT_LOOP_INTELLECT_PRESETS` 值（枚举已删）、9 个调用点（已降为 8）三条**已不适用**；`request_preparer` 门禁代码已重构。权威状态见 §八。
 
 **本文件所有精度声明**：行号与计数均为 2026-09-10 于 `c3ffe57` 实测；会随代码漂移的计数（locale 键数、代码行数）已在原处标注实测口径。
 
@@ -1393,3 +1488,76 @@ profile 的 `identity_mode` 字段决定用哪种。默认 `off`，即与升级�
 `member_id_for` 原先只做字符折叠，**不是单射**：`a/b` 与 `a-b` 都折成 `a-b`，两个账号会被归因到同一服务端主体。而 `user_id` 在 `multi_user/context.py` 里可回退为**用户自选的用户名**，所以这条路径可达。现改为：仅当折叠**确实改变了** id 时，追加原值的 8 位摘要（并把可读部分截断以适配 64 字符上限）。普通 `u_<hex>` 与 `local-admin`/`env-admin` 输出**逐字节不变**，判定按 id 逐条进行，因此异常账号也不会与正常账号相撞。
 
 > 影响面说明：仅影响**归属标记**，不影响隔离——会话命名空间用的是原始 owner id，不是 member id。
+
+---
+
+## 八、基准漂移总复核（2026-09-20，`aad0eb1` / v0.2.2）
+
+**本节目的**：本文正文成文于 `c3ffe57`（2026-09-10），此后仓库推进至 `aad0eb1`（139 个提交）。为避免「按正文操作却对不上代码」，这里把**所有已失效的结论一次性列清**，并给出当前状态的权威断言。**本节优先级高于正文任何与之冲突的表述。**
+
+### 8.1 批次执行结果（§六优先级表的最终态）
+
+> **本节成文于 `3bf3464`，随后更新到 `aad0eb1` 基准**（2026-09-20）。两处变化：KAGWeb 新增 KAG 管理面（`services/kag/` + `/api/kag`）；`services/codex_auth/` 与 `openai_codex` provider **退役**（提交 `ff761c7`）。后者又关闭了本文的一项建议（§四 #10 的凭据打通）。
+
+| 批次 | 内容 | 结果 |
+|---|---|---|
+| 批次零 | Intellect 对接修复（7 项） | ✅ 全部落地 |
+| 批次一 | 死字段/死 UI 清理、设置导航重构 | ✅ 全部落地 |
+| 批次二 | 门禁解耦 + `agent_loop` / `agent_loop_cli` 授权维度 | ✅ 全部落地 |
+| 批次三 | profile `model` / `context_window` | ✅ 全部落地 |
+| 批次四 | 合伙人移除、人格移除、`.md` 规则删除 | ✅ 全部落地 |
+| 批次五 | 学习者/监护人移除、工具层移除、MCP 撤退 | ✅ 全部落地 |
+| 批次六 | Intellect 多用户身份桥接（§七） | ✅ 已实现（`agent_loop/identity.py`，4 种 `identity_mode`） |
+| 批次七 | codex 凭据链路退役（P1-4/P3 结案） | ✅ 已落地（`ff761c7`；含凭据残留核查） |
+
+**八条产品决策的落地状态**：决策 1（KAGWeb 作门面）✅ 定位已写入 `AGENTS.md`/`ARCHITECTURE.md`；决策 2（Agent Backend 顶级项）✅；决策 3（Skills/Tools 移除）✅ **含资产**；决策 4（学习表述清理）✅；决策 5（LLM 设置门控）✅ 判据改为「自托管 HTTP 服务」；决策 6（人格移出）✅；决策 7（合伙人移除）✅；决策 8（Intellect 校正）✅ Rust-only。
+
+### 8.2 已失效的正文结论（**勿再引用**）
+
+| 正文位置 | 旧结论 | 现状 |
+|---|---|---|
+| §结论摘要 / §1.1 | 「schema 里连 `model` 字段都没有」 | ❌ `AgentLoopRequest` 有 `model`（`protocol.py:94`） |
+| §1.1 / §三 P0-2 | 「`AgentLoopRequest` 没有 `model`，也没有 `tools`」 | ❌ 前半句已失效；后半句成立但**理由变了**——不是「待打通」，而是工具层已被删除 |
+| §1.2 | 门禁硬编码 `has_capability_access("llm")`，可被固定 `llm_selection` 绕过 | ❌ 已解耦（`request_preparer.py:42`、`:186-196`），见 §1.2 的「历史」注 |
+| §三 P0-2 | 「工具层不可达，但 UI 上可开关」 | ❌ 工具层与开关**都已不存在** |
+| §三 P1-2 | 「`ChatCapability` 完全不读 `llm_selection`（grep 无命中）」 | ❌ `capability.py:741-750` 现会解析它并以 `{model}` / 请求体下发 |
+| §三 P2-3 | 错误文案指向 Catalog | ❌ 文案已改写（`llm/config.py:200-207`） |
+| §五 决策 5 | `AGENT_LOOP_INTELLECT_PRESETS` 集合不完整（缺 `intellect-runs`） | ❌ 该枚举已删除（`runtime_settings.py:103` 注释说明它是「第二真源且已漂移」）；改为 `is_intellect_preset()` 前缀匹配 + `llm_settings_apply()` 按 transport |
+| §五 决策 5 | `intellect-runs` 是独立预设 | ❌ 已并入 `intellect` 作为 `transport="http"` |
+| §五 决策 6 | `skill-slug.ts` 等前端文件随决策 6 删除 | ✅ 已执行（该文件与 `PersonasSection.tsx` 均不存在） |
+| §五 3a | 5 个 `SKILL.md` 与 3 个 `PERSONA.md` 共 8 个 `.md`；删规则前须先删资产 | ✅ 已执行：`git ls-files 'kagweb/**/*.md'` → **0 个**；`pyproject.toml` 唯一 `.md` 规则为 `kagweb_cli = ["**/*.md"]`（保留，指向 `kagweb_cli/README.md`） |
+| §五 决策 7 | 合伙人约 42,000 行，需先迁移 `safe_filename` | ✅ 已执行且零残留；`safe_filename` 的迁移前置已完成（模块级导入不再指向已删目录） |
+| §七 | `identity_mode` 的 4 种模式 | ✅ 仍准确（`identity.py:52` `IDENTITY_MODES = ("off", "header", "token", "token_required")`） |
+| §二 | 9 个 LLM 调用点 | ⚠️ 现为 **8 个**（工具层 2 处删除、`doctor.py` 1 处补入），见 §二 |
+| §1.5 / P1-4 / §四 #10 | 「凭据双份互不相通」，建议打通或维持 | ❌ **以退役结案**（2026-09-19）：`services/codex_auth/` 与 `openai_codex` provider 已删除，无 token 可打通 |
+| §五 决策 4 等 | 提到 codex OAuth 卡片、`codex_auth` 的消费方 | ❌ 该卡片与账户链路已移除（38 对 `codex.oauth.*` 词条一并清理） |
+| §六 优先级表 | 「合伙人/人格未做」「工具层定位待定」 | ✅ 均已完成（见 8.1 批次四/五） |
+| §六 P3 检测增强 | 「CLI 探测刻意不做 `--version`」 | ⚠️ ACP 族已加 `probe()` 握手探测；CLI/HTTP 族仍不做 |
+
+### 8.3 复测确认仍成立的结论
+
+以下在 `aad0eb1` 逐条复测通过，可放心引用：
+
+- **主对话路径对 LLM 层零依赖**（`capability.py` 中 `get_llm_config` 零命中）。
+- **`AgentLoopRequest` 仍无 `tools` 字段**——且这是**终态**：KAGWeb 不再持有工具实现。
+- **`services/agent_loop/` 零 import `codex_auth`**——现在是**平凡成立**（该模块已被删除），但结论（CLI 族自带登录态、与 KAGWeb 凭据无关）不变。
+- **子进程环境白名单**（`cli_backend.py:113` `_build_child_env`）与「CLI 族自带登录态」的假设（放行 `HOME`/`APPDATA`/`USERPROFILE`）——ACP 族复用同一函数。
+- **`services/parsing/`、`services/voice/`、`services/imagegen/`、`services/agent_loop/`、`multi_user/` 无 LLM 调用**。
+- **`NoModelConfiguredError` / `LLMConfigError` 的分层语义**（`llm/exceptions.py:32-38`）：前者被 executor 捕获、后者不被捕获。
+- **`SERVICE_NAMES` 含 `embedding`/`videogen`、两者无解析函数**。
+- **§七 的全部安全设计**（归属不隔离、失效不降级、令牌绑定服务 origin、`Origin` 校验、`member_id` 折叠摘要）——本轮复核代码均在位。
+
+### 8.4 规模变化（供交叉参考）
+
+| 项 | `c3ffe57` | `ef8bbf5` | `aad0eb1`（v0.2.2） |
+|---|---:|---:|---:|
+| 后端 Python 文件 | 412 | 340 | **323** |
+| 后端 Python 行数 | 98,169 | 72,217 | **69,860** |
+| HTTP 端点 | 214 | 126 | **121** |
+| WS 端点 | 3 | 1 | **1** |
+| 测试文件 | 221 | 194 | **185** |
+| `services/agent_loop/` 行数 | 1,765 | 3,219 | **6,048** |
+
+> 详细口径与复现命令见 [`backend-architecture.md`](./backend-architecture.md) 的「规模实测」与「验证」两节。注意 **`services/agent_loop/` 是唯一逆势增长的模块**（ACP 族、身份桥接、opencode 续接），这与决策 1「KAGWeb 作 agent backend 门面」的方向一致：**裁剪的是 KAGWeb 自己实现 agent 的部分，增厚的是对接 agent 的部分。**
+>
+> HTTP 端点在 `aad0eb1` 回升到 121（较 `ef8bbf5` 的 126 只差 5）：新增的 KAG 管理面（`/api/kag` 14 个端点）抵消了大部分此前的移除量。
